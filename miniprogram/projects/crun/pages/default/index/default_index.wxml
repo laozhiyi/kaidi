@@ -22,29 +22,6 @@
 			</view>
 			<image class="right" mode="aspectFill" src="../../../images/menu/mail.png" />
 		</view>
-		<view class="item shadow-project" bindtap="url" data-url="../../thing/index/thing_index">
-			<view class="left">
-				<view class="line1">代办急事</view>
-				<view class="line2">省时省力 更高效</view>
-			</view>
-			<image class="right" mode="aspectFill" src="../../../images/menu/thing.png" />
-		</view>
-		<view class="item shadow-project" bindtap="url" data-url="../../food/index/food_index">
-			<view class="left">
-				<view class="line1">代买服务</view>
-				<view class="line2">省时省力 更高效</view>
-			</view>
-			<image class="right" mode="aspectFill" src="../../../images/menu/food.png" />
-		</view>
-		<view class="item shadow-project" bindtap="url" data-url="../../follow/index/follow_index">
-			<view class="left">
-				<view class="line1">陪替服务</view>
-				<view class="line2">省时省力 更高效</view>
-			</view>
-			<image class="right" mode="aspectFill" src="../../../images/menu/partner.png" />
-		</view>
-
-
 	</view>
 	<view style="height: 100rpx;"></view>
 </view>

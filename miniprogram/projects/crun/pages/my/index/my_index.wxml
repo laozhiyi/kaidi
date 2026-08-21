@@ -59,20 +59,6 @@
 				</view>
 			</view> 
 
-			<view class="item arrow" bindtap="url" data-url="../../about/index/about_index?key=SETUP_CONTENT_ABOUT">
-				<view class="content">
-					<text class="icon-service my-icon-project"></text>
-					<text class="text-black">关于我们</text>
-				</view>
-			</view>
-
-			<view class="item arrow" bindtap="url" data-url="../../about/index/about_index?key=SETUP_CONTENT_CONTACT">
-				<view class="content">
-					<text class="icon-phone my-icon-project"></text>
-					<text class="text-black">联系我们</text>
-				</view>
-			</view>
-
 			<view wx:if="{{skin.IS_SUB}}" class="item arrow" bindtap="bindSetTap">
 				<view class="content">
 					<text class="icon-settings my-icon-project"></text>

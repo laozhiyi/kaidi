@@ -128,111 +128,21 @@ Page({
 
 
 	bindMyAcceptTap: function (e) {
-		let itemList = ['快递代取', '代办急事', '代买服务', '陪替服务'];
-		wx.showActionSheet({
-			itemList,
-			success: async res => {
-				switch (res.tapIndex) {
-					case 0: {
-						wx.navigateTo({
-							url: '../../mail/index/mail_index?search=我的接单',
-						});
-						break;
-					}
-					case 1: {
-						wx.navigateTo({
-							url: '../../thing/index/thing_index?search=我的接单',
-						});
-						break;
-					}
-					case 2: {
-						wx.navigateTo({
-							url: '../../food/index/food_index?search=我的接单',
-						});
-						break;
-					}
-					case 3: {
-						wx.navigateTo({
-							url: '../../follow/index/follow_index?search=我的接单',
-						});
-						break;
-					}
-				}
-			},
-			fail: function (err) { }
-		})
+		wx.navigateTo({
+			url: '../../mail/index/mail_index?search=我的接单',
+		});
 	},
 
 	bindMyFavTap: function (e) {
-		let itemList = ['快递代取', '代办急事', '代买服务', '陪替服务'];
-		wx.showActionSheet({
-			itemList,
-			success: async res => {
-				switch (res.tapIndex) {
-					case 0: {
-						wx.navigateTo({
-							url: '../../mail/index/mail_index?search=我的收藏',
-						});
-						break;
-					}
-					case 1: {
-						wx.navigateTo({
-							url: '../../thing/index/thing_index?search=我的收藏',
-						});
-						break;
-					}
-					case 2: {
-						wx.navigateTo({
-							url: '../../food/index/food_index?search=我的收藏',
-						});
-						break;
-					}
-					case 3: {
-						wx.navigateTo({
-							url: '../../follow/index/follow_index?search=我的收藏',
-						});
-						break;
-					}
-				}
-			},
-			fail: function (err) { }
-		})
+		wx.navigateTo({
+			url: '../../mail/index/mail_index?search=我的收藏',
+		});
 	},
 
 
 	bindMyPostTap: function (e) {
-		let itemList = ['快递代取', '代办急事', '代买服务', '陪替服务'];
-		wx.showActionSheet({
-			itemList,
-			success: async res => {
-				switch (res.tapIndex) {
-					case 0: {
-						wx.navigateTo({
-							url: '../../mail/index/mail_index?search=我的发布',
-						});
-						break;
-					}
-					case 1: {
-						wx.navigateTo({
-							url: '../../thing/index/thing_index?search=我的发布',
-						});
-						break;
-					}
-					case 2: {
-						wx.navigateTo({
-							url: '../../food/index/food_index?search=我的发布',
-						});
-						break;
-					}
-					case 3: {
-						wx.navigateTo({
-							url: '../../follow/index/follow_index?search=我的发布',
-						});
-						break;
-					}
-				}
-			},
-			fail: function (err) { }
-		})
+		wx.navigateTo({
+			url: '../../mail/index/mail_index?search=我的发布',
+		});
 	}
 })

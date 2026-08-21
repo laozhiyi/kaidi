@@ -39,9 +39,14 @@
 		"showES6CompileOption": false,
 		"useCompilerPlugins": false,
 		"ignoreUploadUnusedFiles": true,
-		"useStaticServer": true
+		"useStaticServer": true,
+		"compileWorklet": false,
+		"localPlugins": false,
+		"condition": false,
+		"swc": false,
+		"disableSWC": true
 	},
-	"appid": "wxb100b44af794708e",
+	"appid": "wx34b00d23d6d73cf9",
 	"projectname": "Multi多功能平台",
 	"libVersion": "2.30.2",
 	"simulatorType": "wechat",
