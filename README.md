@@ -19,14 +19,6 @@
 
 
 
-## 作者
-- 如有疑问，欢迎骚扰联系我：开发交流，技术分享，问题答疑，功能建议收集，版本更新通知，安装部署协助，小程序开发定制等。
-- 俺的微信: 
- 
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/da4fc94d-18dc-477d-9292-85032af8167b)
-
-
-
 ## 演示 
  ![image](https://github.com/dearancelan/MiniRun/assets/89879893/06ca55a2-adf4-483b-8937-94ce12bee794)
 
@@ -36,22 +28,6 @@
 - 安装手册见源码包里的word文档 
 
 
-
-## 截图
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/69d62338-d810-4547-8b88-a233763bf56e)
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/0172d709-e1d2-422f-9458-9d80117e6eee)
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/bbcc68b7-9a10-455d-8b3c-19580037fea8)
-
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/eed696b6-85f9-40d3-9788-e0b5d4ee29ad)
-
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/7cef1635-912d-4b4c-a546-032636f87b51)
-
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/59f61345-4c17-4e15-bd34-e0ea362c17dd)
-
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/c0c90992-b74f-4a6a-a5ad-dc30a9db23e8)
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/c4ca181f-0560-4167-b785-6c8a93d31b1e)
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/b2fe78d2-562f-422a-b9f1-9ff05cbf72e4)
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/c72df7c8-eaf0-4726-8eb8-cd5510125e10)
 
 ## 项目结构
 
@@ -297,25 +273,3 @@ MiniRun/
 
 ## 后台管理系统截图 
 - 后台超级管理员默认账号:admin，密码123456，请登录后台后及时修改密码和创建普通管理员。
-
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/1c0a1843-a408-4147-a1a5-73458bd32413)
-
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/c6f715f6-a859-4889-bec8-ba083be07c15)
-
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/4aba349d-9c51-42e0-995d-9dfd3c0bfcc5)
-
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/f05980d0-409b-4c33-ab15-3af6cedd3859)
-
-![image](https://github.com/dearancelan/MiniRun/assets/89879893/60d4d3b7-cda3-4a26-8545-f0ee3d7f78a9)
-
-
-
-
-
-
-
-
-
-
-
-
