@@ -65,11 +65,21 @@ Page({
 
 		let data = this.data;
 		data = validate.check(data, FollowBiz.CHECK_FORM, this);
-		if (!data) return; 
+		if (!data) return;
 
 		let forms = this.selectComponent("#cmpt-form").getForms(true);
 		if (!forms) return;
-		data.forms = forms; 
+		data.forms = forms;
+
+		// 注入 formEnd 到 forms 中
+		if (data.formEnd) {
+			forms.push({
+				mark: 'formEnd',
+				title: '接单截止时间',
+				type: 'date',
+				val: data.formEnd
+			});
+		}
 
 		data.cateName = FollowBiz.getCateName(data.cateId);
 
@@ -78,14 +88,23 @@ Page({
 			// 创建
 			let result = await cloudHelper.callCloudSumbit('follow/insert', data);
 			let followId = result.data.id;
+			let followDbId = result.data._id;
 
-			// 图片
-			await cloudHelper.transFormsTempPics(forms, 'follow/', followId, 'follow/update_forms');
+			// 图片（用数据库 _id 来定位记录）
+			if (followDbId) {
+				await cloudHelper.transFormsTempPics(forms, 'follow/', followDbId, 'follow/update_forms');
+			}
 
 			let callback = async function () {
 				PublicBiz.removeCacheList('admin-follow-list');
 				PublicBiz.removeCacheList('follow-list');
-				wx.navigateBack();
+				if (followDbId) {
+					wx.redirectTo({
+						url: '/pages/follow/detail/follow_detail?id=' + followDbId
+					});
+				} else {
+					wx.navigateBack();
+				}
 
 			}
 			pageHelper.showSuccToast('发布成功', 2000, callback);

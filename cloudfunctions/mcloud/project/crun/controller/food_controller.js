@@ -97,13 +97,14 @@ class FoodController extends BaseProjectController {
 		let rules = {
 			id: 'must|id',
 			status: 'must|int',
+			overTime: 'int|default=0',
 		};
 
 		// 取得数据
 		let input = this.validateData(rules);
 
 		let service = new FoodService();
-		return await service.statusFood(this._userId, input.id, input.status);
+		return await service.statusFood(this._userId, input.id, input.status, input.overTime);
 
 	}
 
@@ -152,9 +153,11 @@ class FoodController extends BaseProjectController {
 	/** 发布 */
 	async insertFood() {
 
-		// 数据校验 
+		// 数据校验
 		let rules = {
-		 
+			forms: 'array|name=表单数据',
+			cateId: 'string|name=分类',
+			totalFee: 'number|name=支付金额',
 		};
 
 
@@ -172,11 +175,13 @@ class FoodController extends BaseProjectController {
 	}
 
 	/** 修改 */
-	async editFood() {
+async editFood() {
 
-		// 数据校验 
+		// 数据校验
 		let rules = {
-			 
+			id: 'must|id',
+			forms: 'array|name=表单数据',
+			cateId: 'string|name=分类',
 		};
 
 
@@ -196,7 +201,8 @@ class FoodController extends BaseProjectController {
 
 		// 数据校验
 		let rules = {
-		 
+			id: 'must|string|name=订单ID',
+			hasImageForms: 'array|name=图片表单',
 		};
 
 		// 取得数据

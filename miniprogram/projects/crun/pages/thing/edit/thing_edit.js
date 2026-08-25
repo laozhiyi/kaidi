@@ -108,6 +108,22 @@ Page({
 		if (!forms) return;
 		data.forms = forms;
 
+		// 注入 formEnd 到 forms 中
+		if (data.formEnd) {
+			let hasFormEnd = false;
+			for (let k = 0; k < forms.length; k++) {
+				if (forms[k].mark === 'formEnd') { hasFormEnd = true; break; }
+			}
+			if (!hasFormEnd) {
+				forms.push({
+					mark: 'formEnd',
+					title: '接单截止时间',
+					type: 'date',
+					val: data.formEnd
+				});
+			}
+		}
+
 		data.cateName = ThingBiz.getCateName(data.cateId);
 
 		try {
@@ -120,23 +136,23 @@ Page({
 				// 图片
 				await cloudHelper.transFormsTempPics(forms, 'thing/', id, 'thing/update_forms');
 
-				let cb = () => {
-					// 更新列表页面数据
-					let node = {
-						'status': res.data.statusDesc,
-						'THING_CATE_ID': data.cateId,
-						'end': data.end,
-						'THING_OBJ': {
-							'title': dataHelper.getDataByKey(data.forms, 'mark', 'title').val,
-							'price': dataHelper.getDataByKey(data.forms, 'mark', 'price').val,
-							'poster': dataHelper.getDataByKey(data.forms, 'mark', 'poster').val 
-						}
+let cb = () => {
+				// 更新列表页面数据
+				let node = {
+					'status': res.data.statusDesc,
+					'THING_CATE_ID': data.cateId,
+					'end': data.formEnd,
+					'THING_OBJ': {
+						'title': dataHelper.getDataByKey(data.forms, 'mark', 'title').val,
+						'price': dataHelper.getDataByKey(data.forms, 'mark', 'price').val,
+						'poster': dataHelper.getDataByKey(data.forms, 'mark', 'poster').val
 					}
-					pageHelper.modifyPrevPageListNodeObject(id, node);
-
-					wx.navigateBack();
-
 				}
+				pageHelper.modifyPrevPageListNodeObject(id, node);
+
+				wx.navigateBack();
+
+			}
 				pageHelper.showSuccToast('修改成功', 2000, cb);
 			});
 

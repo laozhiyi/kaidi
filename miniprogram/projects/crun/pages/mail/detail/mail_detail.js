@@ -167,6 +167,41 @@ Page({
 	},
 
 	/**
+	 * 确认完成（发布者/接单者皆可触发）
+	 */
+	bindOverTap: async function (e) {
+		if (!await PassportBiz.loginMustBackWin(this)) return;
+
+		let id = this.data.id;
+
+		let cb = async () => {
+			try {
+				let params = {
+					id,
+					status: 9, // 已完成
+					overTime: Date.now() // 当前时间作为完成时间
+				};
+
+				await cloudHelper.callCloudSumbit('mail/status', params, {}).then(res => {
+					let callback = () => {
+						wx.redirectTo({
+							url: 'mail_detail?id=' + this.data.id,
+						});
+					}
+					pageHelper.showSuccToast('已确认完成', 1500, callback);
+
+				});
+			}
+			catch (err) {
+				console.error(err);
+			}
+		}
+		pageHelper.showConfirm('请确认订单已完成？完成后将记录当前时间为完成时间。', cb);
+	},
+
+	// ========== 支付相关 ==========
+
+	/**
 	 * 用户点击右上角分享
 	 */
 	onShareAppMessage: function (res) {
@@ -255,5 +290,14 @@ Page({
 			list[i] = list[i].toString().split('')
 		}
 		return list;
+	},
+
+	// 查看收款码大图
+	bindShowPayPicTap: function (e) {
+		if (!this.data.mail || !this.data.mail.MAIL_ACCEPT_PAY_PIC) return;
+		wx.previewImage({
+			urls: [this.data.mail.MAIL_ACCEPT_PAY_PIC],
+			current: this.data.mail.MAIL_ACCEPT_PAY_PIC
+		});
 	},
 })

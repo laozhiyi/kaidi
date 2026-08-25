@@ -32,6 +32,7 @@ ThingModel.DB_STRUCTURE = {
 
 	THING_ACCEPT_USER_ID: 'string|false|comment=接单用户ID',
 	THING_ACCEPT_USER_NAME: 'string|false|comment=接单用户名',
+	THING_ACCEPT_PAY_PIC: 'string|false|comment=接单者收款码',
 	THING_ACCEPT_TIME: 'int|true|default=0',   
  
 	THING_OVER_TIME: 'int|true|default=0',   
@@ -46,6 +47,12 @@ ThingModel.DB_STRUCTURE = {
 	THING_VIEW_CNT: 'int|true|default=0',   
 
 	THING_QR: 'string|false',
+
+	// ========== 支付相关字段 ==========
+	THING_PAY_STATUS: 'int|true|default=0|comment=支付状态 0=未支付,1=已支付,2=已退款',
+	THING_PAY_TIME: 'int|true|default=0|comment=支付时间',
+	THING_PAY_NO: 'string|false|comment=支付订单号',
+	THING_TOTAL_FEE: 'int|true|default=0|comment=总费用(分)',
 
 	THING_ADD_TIME: 'int|true',
 	THING_EDIT_TIME: 'int|true',

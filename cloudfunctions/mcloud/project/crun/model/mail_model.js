@@ -19,7 +19,7 @@ MailModel.DB_STRUCTURE = {
 
 	MAIL_ID: 'string|true',
 
-	MAIL_STATUS: 'int|true|default=0|comment=状态 0=待处理,1=在处理,9=已完成',
+	MAIL_STATUS: 'int|true|default=0|comment=状态 0=待付款,1=待接单,2=接单中,3=已完成,9=已取消',
 	MAIL_END_TIME: 'int|false|default=0|comment=截止时间',
 
 	MAIL_CATE_ID: 'string|true|default=0|comment=分类',
@@ -32,8 +32,9 @@ MailModel.DB_STRUCTURE = {
 
 	MAIL_ACCEPT_USER_ID: 'string|false|comment=接单用户ID',
 	MAIL_ACCEPT_USER_NAME: 'string|false|comment=接单用户名',
+	MAIL_ACCEPT_PAY_PIC: 'string|false|comment=接单者收款码',
 	MAIL_ACCEPT_TIME: 'int|true|default=0',   
- 
+
 	MAIL_OVER_TIME: 'int|true|default=0',   
 
 	MAIL_DAY: 'string|false|comment=日期',
@@ -46,6 +47,12 @@ MailModel.DB_STRUCTURE = {
 	MAIL_VIEW_CNT: 'int|true|default=0',   
 
 	MAIL_QR: 'string|false',
+
+	// ========== 支付相关字段 ==========
+	MAIL_PAY_STATUS: 'int|true|default=0|comment=支付状态 0=未支付,1=已支付,2=已退款',
+	MAIL_PAY_TIME: 'int|true|default=0|comment=支付时间',
+	MAIL_PAY_NO: 'string|false|comment=支付订单号',
+	MAIL_TOTAL_FEE: 'int|true|default=0|comment=总费用(分)',
 
 	MAIL_ADD_TIME: 'int|true',
 	MAIL_EDIT_TIME: 'int|true',

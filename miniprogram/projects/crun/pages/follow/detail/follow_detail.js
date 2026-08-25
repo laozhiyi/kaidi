@@ -167,6 +167,39 @@ Page({
 	},
 
 	/**
+	 * 确认完成
+	 */
+	bindOverTap: async function (e) {
+		if (!await PassportBiz.loginMustBackWin(this)) return;
+
+		let id = this.data.id;
+
+		let cb = async () => {
+			try {
+				let params = {
+					id,
+					status: 9,
+					overTime: Date.now()
+				};
+
+				await cloudHelper.callCloudSumbit('follow/status', params, {}).then(res => {
+					let callback = () => {
+						wx.redirectTo({
+							url: 'follow_detail?id=' + this.data.id,
+						});
+					}
+					pageHelper.showSuccToast('已确认完成', 1500, callback);
+
+				});
+			}
+			catch (err) {
+				console.error(err);
+			}
+		}
+		pageHelper.showConfirm('请确认订单已完成？完成后将记录当前时间为完成时间。', cb);
+	},
+
+	/**
 	 * 用户点击右上角分享
 	 */
 	onShareAppMessage: function (res) {
@@ -255,5 +288,13 @@ Page({
 			list[i] = list[i].toString().split('')
 		}
 		return list;
+	},
+
+	bindShowPayPicTap: function (e) {
+		if (!this.data.follow || !this.data.follow.FOLLOW_ACCEPT_PAY_PIC) return;
+		wx.previewImage({
+			urls: [this.data.follow.FOLLOW_ACCEPT_PAY_PIC],
+			current: this.data.follow.FOLLOW_ACCEPT_PAY_PIC
+		});
 	},
 })

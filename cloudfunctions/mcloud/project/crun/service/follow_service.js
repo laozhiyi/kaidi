@@ -21,13 +21,51 @@ class FollowService extends BaseProjectService {
 
 	/** 接单 */
 	async acceptFollow(userId, id) {
+		if (!id) this.AppError('id不能为空');
 
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let follow = await FollowModel.getOne(id);
+		if (!follow) this.AppError('订单不存在');
+
+		if (follow.FOLLOW_STATUS !== 0) this.AppError('该订单已被接单或不在可接状态');
+		if (follow.FOLLOW_ACCEPT_USER_ID) this.AppError('该订单已被接');
+
+		let user = await UserModel.getOne({ USER_MINI_OPENID: userId }, 'USER_NAME,USER_PAY_PIC');
+		let userName = user ? user.USER_NAME : '';
+		let userPayPic = user ? user.USER_PAY_PIC : '';
+
+		let data = {
+			FOLLOW_STATUS: 1,
+			FOLLOW_ACCEPT_USER_ID: userId,
+			FOLLOW_ACCEPT_USER_NAME: userName,
+			FOLLOW_ACCEPT_PAY_PIC: userPayPic,
+			FOLLOW_ACCEPT_TIME: this._timestamp,
+			FOLLOW_EDIT_TIME: this._timestamp,
+		};
+		await FollowModel.edit(id, data);
+
+		return { id };
 	}
 
 	/** 取消我的订单 */
 	async cancelFollow(userId, id) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		if (!id) this.AppError('id不能为空');
+
+		let follow = await FollowModel.getOne(id);
+		if (!follow) this.AppError('订单不存在');
+
+		if (follow.FOLLOW_USER_ID !== userId && follow.FOLLOW_ACCEPT_USER_ID !== userId) {
+			this.AppError('无权限取消该订单');
+		}
+
+		let data = {
+			FOLLOW_STATUS: 99,
+			FOLLOW_CANCEL_USER_ID: userId,
+			FOLLOW_CANCEL_TIME: this._timestamp,
+			FOLLOW_EDIT_TIME: this._timestamp,
+		};
+		await FollowModel.edit(id, data);
+
+		return { id };
 	}
 
 	/** 浏览 */
@@ -58,29 +96,163 @@ class FollowService extends BaseProjectService {
 	}
 
 	/**修改状态 */
-	async statusFollow(userId, id, status) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+	async statusFollow(userId, id, status, overTime) {
+		if (!id) this.AppError('id不能为空');
+		if (status === undefined || status === null) this.AppError('status不能为空');
 
+		let follow = await FollowModel.getOne(id);
+		if (!follow) this.AppError('订单不存在');
+		if (follow.FOLLOW_USER_ID !== userId && follow.FOLLOW_ACCEPT_USER_ID !== userId) {
+			this.AppError('无权限操作');
+		}
+
+		let updateData = {
+			FOLLOW_STATUS: Number(status),
+			FOLLOW_EDIT_TIME: this._timestamp,
+		};
+
+		if (Number(status) === 9) {
+			let ovTime = (overTime && Number(overTime) > 0) ? Number(overTime) : this._timestamp;
+			updateData.FOLLOW_OVER_TIME = ovTime;
+		}
+
+		await FollowModel.edit(id, updateData);
+
+		return { id };
 	}
 
 	/** 删除 */
 	async delFollow(userId, id) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		if (!id) this.AppError('id不能为空');
+
+		let follow = await FollowModel.getOne(id);
+		if (!follow) this.AppError('订单不存在');
+		if (follow.FOLLOW_USER_ID !== userId) this.AppError('只能删除自己发布的订单');
+
+		await FollowModel.del(id);
+
+		return { id };
 	}
 
 	/** 插入 */
 	async insertFollow(userId, {
-	 
+		forms,
+		cateId,
+		totalFee = 0
 	}) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		const orderId = 'FOLLOW' + Date.now() + Math.random().toString(36).substr(2, 9);
+
+		let endTime = 0;
+		if (forms && Array.isArray(forms)) {
+			for (let k = 0; k < forms.length; k++) {
+				if (forms[k].mark === 'formEnd' && forms[k].val) {
+					endTime = timeUtil.time2Timestamp(forms[k].val);
+					break;
+				}
+			}
+		}
+		// 如果没有截止时间，默认3天后
+		if (!endTime) endTime = this._timestamp + 86400 * 3 * 1000;
+
+		let data = {
+			FOLLOW_ID: orderId,
+			FOLLOW_STATUS: 0,
+			FOLLOW_PAY_STATUS: 0,
+			FOLLOW_PAY_TIME: 0,
+			FOLLOW_TOTAL_FEE: Math.round(totalFee * 100),
+			FOLLOW_USER_ID: userId,
+			FOLLOW_CATE_ID: cateId,
+			FOLLOW_FORMS: forms,
+			FOLLOW_OBJ: this.getFormObj(forms),
+			FOLLOW_END_TIME: endTime,
+			FOLLOW_ADD_TIME: this._timestamp,
+			FOLLOW_EDIT_TIME: this._timestamp,
+		};
+
+		if (cateId) {
+			try {
+				const projectSetting = require('../public/project_setting.js');
+				const cateList = projectSetting.FOLLOW_CATE || [];
+				for (let k = 0; k < cateList.length; k++) {
+					let cat = cateList[k];
+					if (cat.id == cateId || cat.id === Number(cateId)) {
+						data.FOLLOW_CATE_NAME = cat.title;
+						break;
+					}
+				}
+			} catch (e) {
+				console.error('获取分类名称失败', e);
+			}
+		}
+
+		let ret = await FollowModel.insert(data);
+
+		return { id: orderId, _id: ret, fee: totalFee };
+	}
+
+	/** 从forms获取对象数据 */
+	getFormObj(forms) {
+		let obj = {};
+		for (let k = 0; k < forms.length; k++) {
+			let item = forms[k];
+			if (item.type === 'image') {
+				obj.imgUrl = item.val;
+			} else if (item.title) {
+				obj[item.mark] = item.val;
+			}
+		}
+		return obj;
 	}
 
 	/** 修改 */
 	async editFollow(userId, {
-		 
+		id,
+		forms,
+		cateId
 	}) {
+		if (!id) this.AppError('id不能为空');
 
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let follow = await FollowModel.getOne(id);
+		if (!follow) this.AppError('订单不存在');
+		if (follow.FOLLOW_USER_ID !== userId) this.AppError('只能修改自己发布的订单');
+
+		let endTime = 0;
+		if (forms && Array.isArray(forms)) {
+			for (let k = 0; k < forms.length; k++) {
+				if (forms[k].mark === 'formEnd' && forms[k].val) {
+					endTime = timeUtil.time2Timestamp(forms[k].val);
+					break;
+				}
+			}
+		}
+
+		let data = {
+			FOLLOW_CATE_ID: cateId || follow.FOLLOW_CATE_ID,
+			FOLLOW_FORMS: forms,
+			FOLLOW_OBJ: this.getFormObj(forms),
+			FOLLOW_END_TIME: endTime || follow.FOLLOW_END_TIME,
+			FOLLOW_EDIT_TIME: this._timestamp,
+		};
+
+		if (cateId) {
+			try {
+				const projectSetting = require('../public/project_setting.js');
+				const cateList = projectSetting.FOLLOW_CATE || [];
+				for (let k = 0; k < cateList.length; k++) {
+					let cat = cateList[k];
+					if (cat.id == cateId || cat.id === Number(cateId)) {
+						data.FOLLOW_CATE_NAME = cat.title;
+						break;
+					}
+				}
+			} catch (e) {
+				console.error('获取分类名称失败', e);
+			}
+		}
+
+		await FollowModel.edit(id, data);
+
+		return { id };
 	}
 
 	/** 更新forms信息 */
@@ -88,7 +260,10 @@ class FollowService extends BaseProjectService {
 		id,
 		hasImageForms
 	}) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		if (!id) this.AppError('id不能为空');
+		if (!hasImageForms || !Array.isArray(hasImageForms) || hasImageForms.length === 0) return;
+
+		await FollowModel.editForms(id, 'FOLLOW_FORMS', 'FOLLOW_OBJ', hasImageForms);
 	}
 
 	/** 列表与搜索 */
@@ -106,7 +281,7 @@ class FollowService extends BaseProjectService {
 			'FOLLOW_ORDER': 'asc',
 			'FOLLOW_ADD_TIME': 'desc'
 		};
-		let fields = 'FOLLOW_ACCEPT_USER_ID,FOLLOW_END_TIME,FOLLOW_STATUS,FOLLOW_ADD_TIME,FOLLOW_USER_ID,FOLLOW_OBJ';
+		let fields = '_id,FOLLOW_ACCEPT_USER_ID,FOLLOW_END_TIME,FOLLOW_STATUS,FOLLOW_ADD_TIME,FOLLOW_USER_ID,FOLLOW_OBJ';
 
 		let where = {};
 		where.and = {
@@ -162,7 +337,17 @@ class FollowService extends BaseProjectService {
 			}
 		}
 
-		return await FollowModel.getList(where, fields, orderBy, page, size, isTotal, oldTotal);
+		let result = await FollowModel.getList(where, fields, orderBy, page, size, isTotal, oldTotal);
+
+		// 标记 mypost/myaccept
+		if (result && result.list && userId) {
+			for (let k = 0; k < result.list.length; k++) {
+				result.list[k].mypost = result.list[k].FOLLOW_USER_ID === userId;
+				result.list[k].myaccept = result.list[k].FOLLOW_ACCEPT_USER_ID === userId;
+			}
+		}
+
+		return result;
 
 	}
 

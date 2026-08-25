@@ -87,14 +87,18 @@ class AdminUserService extends BaseProjectAdminService {
 	}
 
 	async statusUser(id, status, reason) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		if (!id) this.AppError('id不能为空');
+		let data = { USER_STATUS: Number(status) };
+		if (reason) data.USER_STATUS_REASON = reason;
+		await UserModel.edit(id, data);
+		return { id };
 	}
 
 	/**删除用户 */
 	async delUser(id) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
- 
-
+		if (!id) this.AppError('id不能为空');
+		await UserModel.del(id);
+		return { id };
 	}
 
 	// #####################导出用户数据

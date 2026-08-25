@@ -21,13 +21,51 @@ class FoodService extends BaseProjectService {
 
 	/** 接单 */
 	async acceptFood(userId, id) {
+		if (!id) this.AppError('id不能为空');
 
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let food = await FoodModel.getOne(id);
+		if (!food) this.AppError('订单不存在');
+
+		if (food.FOOD_STATUS !== 0) this.AppError('该订单已被接单或不在可接状态');
+		if (food.FOOD_ACCEPT_USER_ID) this.AppError('该订单已被接');
+
+		let user = await UserModel.getOne({ USER_MINI_OPENID: userId }, 'USER_NAME,USER_PAY_PIC');
+		let userName = user ? user.USER_NAME : '';
+		let userPayPic = user ? user.USER_PAY_PIC : '';
+
+		let data = {
+			FOOD_STATUS: 1,
+			FOOD_ACCEPT_USER_ID: userId,
+			FOOD_ACCEPT_USER_NAME: userName,
+			FOOD_ACCEPT_PAY_PIC: userPayPic,
+			FOOD_ACCEPT_TIME: this._timestamp,
+			FOOD_EDIT_TIME: this._timestamp,
+		};
+		await FoodModel.edit(id, data);
+
+		return { id };
 	}
 
 	/** 取消我的订单 */
 	async cancelFood(userId, id) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		if (!id) this.AppError('id不能为空');
+
+		let food = await FoodModel.getOne(id);
+		if (!food) this.AppError('订单不存在');
+
+		if (food.FOOD_USER_ID !== userId && food.FOOD_ACCEPT_USER_ID !== userId) {
+			this.AppError('无权限取消该订单');
+		}
+
+		let data = {
+			FOOD_STATUS: 99,
+			FOOD_CANCEL_USER_ID: userId,
+			FOOD_CANCEL_TIME: this._timestamp,
+			FOOD_EDIT_TIME: this._timestamp,
+		};
+		await FoodModel.edit(id, data);
+
+		return { id };
 	}
 
 	/** 浏览 */
@@ -58,28 +96,163 @@ class FoodService extends BaseProjectService {
 	}
 
 	/**修改状态 */
-	async statusFood(userId, id, status) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+	async statusFood(userId, id, status, overTime) {
+		if (!id) this.AppError('id不能为空');
+		if (status === undefined || status === null) this.AppError('status不能为空');
+
+		let food = await FoodModel.getOne(id);
+		if (!food) this.AppError('订单不存在');
+		if (food.FOOD_USER_ID !== userId && food.FOOD_ACCEPT_USER_ID !== userId) {
+			this.AppError('无权限操作');
+		}
+
+		let updateData = {
+			FOOD_STATUS: Number(status),
+			FOOD_EDIT_TIME: this._timestamp,
+		};
+
+		if (Number(status) === 9) {
+			let ovTime = (overTime && Number(overTime) > 0) ? Number(overTime) : this._timestamp;
+			updateData.FOOD_OVER_TIME = ovTime;
+		}
+
+		await FoodModel.edit(id, updateData);
+
+		return { id };
 	}
 
 	/** 删除 */
 	async delFood(userId, id) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		if (!id) this.AppError('id不能为空');
+
+		let food = await FoodModel.getOne(id);
+		if (!food) this.AppError('订单不存在');
+		if (food.FOOD_USER_ID !== userId) this.AppError('只能删除自己发布的订单');
+
+		await FoodModel.del(id);
+
+		return { id };
 	}
 
 	/** 插入 */
 	async insertFood(userId, {
-	 
+		forms,
+		cateId,
+		totalFee = 0
 	}) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		const orderId = 'FOOD' + Date.now() + Math.random().toString(36).substr(2, 9);
+
+		let endTime = 0;
+		if (forms && Array.isArray(forms)) {
+			for (let k = 0; k < forms.length; k++) {
+				if (forms[k].mark === 'formEnd' && forms[k].val) {
+					endTime = timeUtil.time2Timestamp(forms[k].val);
+					break;
+				}
+			}
+		}
+		// 如果没有截止时间，默认3天后
+		if (!endTime) endTime = this._timestamp + 86400 * 3 * 1000;
+
+		let data = {
+			FOOD_ID: orderId,
+			FOOD_STATUS: 0,
+			FOOD_PAY_STATUS: 0,
+			FOOD_PAY_TIME: 0,
+			FOOD_TOTAL_FEE: Math.round(totalFee * 100),
+			FOOD_USER_ID: userId,
+			FOOD_CATE_ID: cateId,
+			FOOD_FORMS: forms,
+			FOOD_OBJ: this.getFormObj(forms),
+			FOOD_END_TIME: endTime,
+			FOOD_ADD_TIME: this._timestamp,
+			FOOD_EDIT_TIME: this._timestamp,
+		};
+
+		if (cateId) {
+			try {
+				const projectSetting = require('../public/project_setting.js');
+				const cateList = projectSetting.FOOD_CATE || [];
+				for (let k = 0; k < cateList.length; k++) {
+					let cat = cateList[k];
+					if (cat.id == cateId || cat.id === Number(cateId)) {
+						data.FOOD_CATE_NAME = cat.title;
+						break;
+					}
+				}
+			} catch (e) {
+				console.error('获取分类名称失败', e);
+			}
+		}
+
+		let ret = await FoodModel.insert(data);
+
+		return { id: orderId, _id: ret, fee: totalFee };
+	}
+
+	/** 从forms获取对象数据 */
+	getFormObj(forms) {
+		let obj = {};
+		for (let k = 0; k < forms.length; k++) {
+			let item = forms[k];
+			if (item.type === 'image') {
+				obj.imgUrl = item.val;
+			} else if (item.title) {
+				obj[item.mark] = item.val;
+			}
+		}
+		return obj;
 	}
 
 	/** 修改 */
 	async editFood(userId, {
-		 
+		id,
+		forms,
+		cateId
 	}) {
+		if (!id) this.AppError('id不能为空');
 
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let food = await FoodModel.getOne(id);
+		if (!food) this.AppError('订单不存在');
+		if (food.FOOD_USER_ID !== userId) this.AppError('只能修改自己发布的订单');
+
+		let endTime = 0;
+		if (forms && Array.isArray(forms)) {
+			for (let k = 0; k < forms.length; k++) {
+				if (forms[k].mark === 'formEnd' && forms[k].val) {
+					endTime = timeUtil.time2Timestamp(forms[k].val);
+					break;
+				}
+			}
+		}
+
+		let data = {
+			FOOD_CATE_ID: cateId || food.FOOD_CATE_ID,
+			FOOD_FORMS: forms,
+			FOOD_OBJ: this.getFormObj(forms),
+			FOOD_END_TIME: endTime || food.FOOD_END_TIME,
+			FOOD_EDIT_TIME: this._timestamp,
+		};
+
+		if (cateId) {
+			try {
+				const projectSetting = require('../public/project_setting.js');
+				const cateList = projectSetting.FOOD_CATE || [];
+				for (let k = 0; k < cateList.length; k++) {
+					let cat = cateList[k];
+					if (cat.id == cateId || cat.id === Number(cateId)) {
+						data.FOOD_CATE_NAME = cat.title;
+						break;
+					}
+				}
+			} catch (e) {
+				console.error('获取分类名称失败', e);
+			}
+		}
+
+		await FoodModel.edit(id, data);
+
+		return { id };
 	}
 
 	/** 更新forms信息 */
@@ -87,7 +260,10 @@ class FoodService extends BaseProjectService {
 		id,
 		hasImageForms
 	}) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		if (!id) this.AppError('id不能为空');
+		if (!hasImageForms || !Array.isArray(hasImageForms) || hasImageForms.length === 0) return;
+
+		await FoodModel.editForms(id, 'FOOD_FORMS', 'FOOD_OBJ', hasImageForms);
 	}
 
 	/** 列表与搜索 */
@@ -105,7 +281,7 @@ class FoodService extends BaseProjectService {
 			'FOOD_ORDER': 'asc',
 			'FOOD_ADD_TIME': 'desc'
 		};
-		let fields = 'FOOD_ACCEPT_USER_ID,FOOD_END_TIME,FOOD_STATUS,FOOD_ADD_TIME,FOOD_USER_ID,FOOD_OBJ';
+		let fields = '_id,FOOD_ACCEPT_USER_ID,FOOD_END_TIME,FOOD_STATUS,FOOD_ADD_TIME,FOOD_USER_ID,FOOD_OBJ';
 
 		let where = {};
 		where.and = {
@@ -161,7 +337,17 @@ class FoodService extends BaseProjectService {
 			}
 		}
 
-		return await FoodModel.getList(where, fields, orderBy, page, size, isTotal, oldTotal);
+		let result = await FoodModel.getList(where, fields, orderBy, page, size, isTotal, oldTotal);
+
+		// 标记 mypost/myaccept
+		if (result && result.list && userId) {
+			for (let k = 0; k < result.list.length; k++) {
+				result.list[k].mypost = result.list[k].FOOD_USER_ID === userId;
+				result.list[k].myaccept = result.list[k].FOOD_ACCEPT_USER_ID === userId;
+			}
+		}
+
+		return result;
 
 	}
 

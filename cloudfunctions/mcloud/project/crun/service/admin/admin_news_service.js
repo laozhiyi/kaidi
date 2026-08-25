@@ -16,18 +16,45 @@ class AdminNewsService extends BaseProjectAdminService {
 
 	/**添加资讯 */
 	async insertNews({
-	 
+		title,
+		desc,
+		cateId,
+		cateName,
+		order = 9999,
+		forms,
+		content,
+		qr
 	}) {
+		if (!title) this.AppError('标题不能为空');
 
+		const newsId = 'NEWS' + Date.now() + Math.random().toString(36).substr(2, 9);
 
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let data = {
+			NEWS_ID: newsId,
+			NEWS_TITLE: title,
+			NEWS_DESC: desc || '',
+			NEWS_CATE_ID: cateId || '0',
+			NEWS_CATE_NAME: cateName || '',
+			NEWS_ORDER: order,
+			NEWS_STATUS: 1,
+			NEWS_VOUCH: 0,
+			NEWS_QR: qr || '',
+			NEWS_FORMS: forms || [],
+			NEWS_OBJ: dataUtil.dbForms2Obj(forms || []),
+			NEWS_CONTENT: content || [],
+			NEWS_ADD_TIME: this._timestamp,
+			NEWS_EDIT_TIME: this._timestamp,
+		};
+
+		await NewsModel.insert(data);
+		return { id: newsId };
 	}
 
 	/**删除资讯数据 */
 	async delNews(id) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
-
-
+		if (!id) this.AppError('id不能为空');
+		await NewsModel.del(id);
+		return { id };
 	}
 
 	/**获取资讯信息 */
@@ -48,7 +75,10 @@ class AdminNewsService extends BaseProjectAdminService {
 		id,
 		hasImageForms
 	}) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		if (!id) this.AppError('id不能为空');
+		if (!hasImageForms || !Array.isArray(hasImageForms) || hasImageForms.length === 0) return;
+
+		await NewsModel.editForms(id, 'NEWS_FORMS', 'NEWS_OBJ', hasImageForms);
 
 	}
 
@@ -61,9 +91,9 @@ class AdminNewsService extends BaseProjectAdminService {
 		id,
 		content // 富文本数组
 	}) {
-
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
-
+		if (!id) this.AppError('id不能为空');
+		await NewsModel.edit(id, { NEWS_CONTENT: content || [] });
+		return { id };
 	}
 
 	/**
@@ -71,20 +101,44 @@ class AdminNewsService extends BaseProjectAdminService {
 	 * @returns 返回 urls数组 [url1, url2, url3, ...]
 	 */
 	async updateNewsPic({
-		 
+		id,
+		imgList
 	}) {
-
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
-
+		if (!id) this.AppError('id不能为空');
+		await NewsModel.edit(id, { NEWS_PIC: imgList || [] });
+		return { id };
 	}
 
 
 	/**更新资讯数据 */
 	async editNews({
-		 
+		id,
+		title,
+		desc,
+		cateId,
+		cateName,
+		order,
+		forms,
+		qr
 	}) {
+		if (!id) this.AppError('id不能为空');
 
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let data = {
+			NEWS_EDIT_TIME: this._timestamp,
+		};
+		if (title !== undefined) data.NEWS_TITLE = title;
+		if (desc !== undefined) data.NEWS_DESC = desc;
+		if (cateId !== undefined) data.NEWS_CATE_ID = cateId;
+		if (cateName !== undefined) data.NEWS_CATE_NAME = cateName;
+		if (order !== undefined) data.NEWS_ORDER = order;
+		if (qr !== undefined) data.NEWS_QR = qr;
+		if (forms !== undefined) {
+			data.NEWS_FORMS = forms;
+			data.NEWS_OBJ = dataUtil.dbForms2Obj(forms);
+		}
+
+		await NewsModel.edit(id, data);
+		return { id };
 	}
 
 	/**取得资讯分页列表 */
@@ -144,12 +198,16 @@ class AdminNewsService extends BaseProjectAdminService {
 
 	/**修改资讯状态 */
 	async statusNews(id, status) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		if (!id) this.AppError('id不能为空');
+		await NewsModel.edit(id, { NEWS_STATUS: Number(status), NEWS_EDIT_TIME: this._timestamp });
+		return { id };
 	}
 
 	/**置顶与排序设定 */
 	async sortNews(id, sort) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		if (!id) this.AppError('id不能为空');
+		await NewsModel.edit(id, { NEWS_ORDER: Number(sort), NEWS_EDIT_TIME: this._timestamp });
+		return { id };
 	}
 }
 

@@ -108,6 +108,24 @@ Page({
 		if (!forms) return;
 		data.forms = forms;
 
+		// 注入 formEnd 到 forms 中
+		if (data.formEnd) {
+			let hasFormEnd = false;
+			for (let k = 0; k < forms.length; k++) {
+				if (forms[k].mark === 'formEnd') { hasFormEnd = true; break; }
+			}
+			if (!hasFormEnd) {
+				forms.push({
+					mark: 'formEnd',
+					title: '接单截止时间',
+					type: 'date',
+					val: data.formEnd
+				});
+			}
+		}
+
+		data.cateName = MailBiz.getCateName(data.cateId);
+
 		data.cateName = MailBiz.getCateName(data.cateId);
 
 		try {
@@ -125,7 +143,7 @@ Page({
 					let node = {
 						'status': res.data.statusDesc,
 						'MAIL_CATE_ID': data.cateId,
-						'end': data.end,
+						'end': data.formEnd,
 						'MAIL_OBJ': {
 							'title': dataHelper.getDataByKey(data.forms, 'mark', 'title').val,
 							'price': dataHelper.getDataByKey(data.forms, 'mark', 'price').val,

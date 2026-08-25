@@ -32,6 +32,7 @@ FollowModel.DB_STRUCTURE = {
 
 	FOLLOW_ACCEPT_USER_ID: 'string|false|comment=接单用户ID',
 	FOLLOW_ACCEPT_USER_NAME: 'string|false|comment=接单用户名',
+	FOLLOW_ACCEPT_PAY_PIC: 'string|false|comment=接单者收款码',
 	FOLLOW_ACCEPT_TIME: 'int|true|default=0',   
  
 	FOLLOW_OVER_TIME: 'int|true|default=0',   
@@ -46,6 +47,12 @@ FollowModel.DB_STRUCTURE = {
 	FOLLOW_VIEW_CNT: 'int|true|default=0',   
 
 	FOLLOW_QR: 'string|false',
+
+	// ========== 支付相关字段 ==========
+	FOLLOW_PAY_STATUS: 'int|true|default=0|comment=支付状态 0=未支付,1=已支付,2=已退款',
+	FOLLOW_PAY_TIME: 'int|true|default=0|comment=支付时间',
+	FOLLOW_PAY_NO: 'string|false|comment=支付订单号',
+	FOLLOW_TOTAL_FEE: 'int|true|default=0|comment=总费用(分)',
 
 	FOLLOW_ADD_TIME: 'int|true',
 	FOLLOW_EDIT_TIME: 'int|true',

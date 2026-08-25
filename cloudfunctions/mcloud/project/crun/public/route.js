@@ -153,4 +153,9 @@ module.exports = {
 	'admin/follow_data_export': 'admin/admin_follow_controller@followDataExport',
 	'admin/follow_data_del': 'admin/admin_follow_controller@followDataDel',
 
+	// ========== 支付模块 ==========
+	'pay/create': 'pay_controller@createPay',
+	'pay/query': 'pay_controller@queryPay',
+	'pay/refund': 'pay_controller@refund',
+
 }

@@ -97,13 +97,14 @@ class ThingController extends BaseProjectController {
 		let rules = {
 			id: 'must|id',
 			status: 'must|int',
+			overTime: 'int|default=0',
 		};
 
 		// 取得数据
 		let input = this.validateData(rules);
 
 		let service = new ThingService();
-		return await service.statusThing(this._userId, input.id, input.status);
+		return await service.statusThing(this._userId, input.id, input.status, input.overTime);
 
 	}
 
@@ -152,9 +153,11 @@ class ThingController extends BaseProjectController {
 	/** 发布 */
 	async insertThing() {
 
-		// 数据校验 
+		// 数据校验
 		let rules = {
-			 
+			forms: 'array|name=表单数据',
+			cateId: 'string|name=分类',
+			totalFee: 'number|name=支付金额',
 		};
 
 
@@ -174,9 +177,11 @@ class ThingController extends BaseProjectController {
 	/** 修改 */
 	async editThing() {
 
-		// 数据校验 
+		// 数据校验
 		let rules = {
-		 
+			id: 'must|id',
+			forms: 'array|name=表单数据',
+			cateId: 'string|name=分类',
 		};
 
 
@@ -196,7 +201,8 @@ class ThingController extends BaseProjectController {
 
 		// 数据校验
 		let rules = {
-		 
+			id: 'must|string|name=订单ID',
+			hasImageForms: 'array|name=图片表单',
 		};
 
 		// 取得数据

@@ -97,13 +97,14 @@ class MailController extends BaseProjectController {
 		let rules = {
 			id: 'must|id',
 			status: 'must|int',
+			overTime: 'int|default=0',
 		};
 
 		// 取得数据
 		let input = this.validateData(rules);
 
 		let service = new MailService();
-		return await service.statusMail(this._userId, input.id, input.status);
+		return await service.statusMail(this._userId, input.id, input.status, input.overTime);
 
 	}
 
@@ -154,7 +155,9 @@ class MailController extends BaseProjectController {
 
 		// 数据校验 
 		let rules = {
-			 
+			forms: 'array|name=表单数据',
+			cateId: 'string|name=分类',
+			totalFee: 'number|name=支付金额',
 		};
 
 
@@ -196,7 +199,8 @@ class MailController extends BaseProjectController {
 
 		// 数据校验
 		let rules = {
-			 
+			id: 'must|string|name=订单ID',
+			hasImageForms: 'array|name=图片表单',
 		};
 
 		// 取得数据

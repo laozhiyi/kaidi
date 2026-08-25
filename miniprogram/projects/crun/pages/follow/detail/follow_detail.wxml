@@ -28,10 +28,20 @@
 
 			<view class="list">
 
-				<view class="item">
-					<view class="left">接单截止</view>
-					<view class="right text-red">{{follow.end2}}<text class="icon-remind margin-left-xs"></text></view>
-				</view>
+<view class="item">
+				<view class="left">接单截止</view>
+				<view class="right text-red">{{follow.end2}}<text class="icon-remind margin-left-xs"></text></view>
+			</view>
+
+			<view class="item" wx:if="{{follow.FOLLOW_STATUS==9 && follow.FOLLOW_OVER_TIME}}">
+				<view class="left">完成时间</view>
+				<view class="right text-green">{{follow.FOLLOW_OVER_TIME}}</view>
+			</view>
+
+			<view class="item" wx:if="{{follow.FOLLOW_STATUS==1 && follow.FOLLOW_ACCEPT_TIME}}">
+				<view class="left">接单时间</view>
+				<view class="right">{{follow.FOLLOW_ACCEPT_TIME}}</view>
+			</view>
 
 				<view class="item" wx:key="key" wx:for="{{follow.FOLLOW_FORMS}}" wx:if="{{item.type!='line'&&item.mark!='code'&&item.mark!='img'&&item.mark!='tel'}}">
 					<view class="left">{{item.title}}</view>
@@ -79,15 +89,16 @@
 							<view class="right">{{follow.acceptUser.USER_MOBILE}} <text class="icon-phone"></text></view>
 						</view>
 
-						<view class="item" wx:if="{{follow.FOLLOW_STATUS>=1}}">
-							<view class="left">接单时间：</view>
-							<view class="right">{{follow.FOLLOW_ADD_TIME}}</view>
-						</view>
-
-						<view class="item" wx:if="{{follow.FOLLOW_STATUS==9}}">
-							<view class="left">完成时间：</view>
-							<view class="right">{{follow.FOLLOW_OVER_TIME}}</view>
-						</view>
+						<block wx:if="{{follow.FOLLOW_ACCEPT_PAY_PIC && follow.mypost && follow.FOLLOW_STATUS==1}}">
+							<view class="item">
+								<view class="left">收款码：</view>
+								<view class="right text-orange">点击查看大图 →</view>
+							</view>
+							<view class="pay-pic-box" bindtap="bindShowPayPicTap">
+								<image class="pay-pic" src="{{follow.FOLLOW_ACCEPT_PAY_PIC}}" mode="aspectFit" show-menu-by-longpress="{{true}}" />
+								<view class="pay-hint">长按识别收款码转账</view>
+							</view>
+						</block>
 					</view>
 				</block>
 				<view wx:else class="text-s text-grey text-center">仅发起人或者接单人可见</view>
@@ -100,11 +111,20 @@
 
 	<cmpt-detail mode="mode2" topBtnShow="{{topBtnShow}}" tag="{{follow.myaccept&&follow.status=='已接单'?'我已接单':''}}" oid="{{follow._id}}" type="follow" cate="{{follow.FOLLOW_CATE_NAME}}" title="{{follow.FOLLOW_OBJ.type}}" cover="/projects/crun/images/poster/follow.png" qr="{{follow.FOLLOW_QR}}" desc="查看详情" bg="{{skin.PROJECT_COLOR}}">
 		<view class="bottom-line">
-			<view wx:if="{{follow.status=='已过期'}}" class="oprt bg-grey light">已过期</view>
+			<!-- 已完成/已过期/已取消状态 -->
+			<view wx:if="{{follow.status=='已完成'}}" class="oprt bg-grey light">已完成</view>
+			<view wx:elif="{{follow.status=='已过期'}}" class="oprt bg-grey light">已过期</view>
+			<view wx:elif="{{follow.status=='已取消'}}" class="oprt bg-grey light">已取消</view>
+
+			<!-- 接单者的操作 -->
 			<view wx:elif="{{follow.myaccept&&follow.status=='已接单'}}" bind:tap="bindCancelTap" class="oprt bg-grey light">取消该单</view>
 			<view wx:elif="{{follow.myaccept&&follow.status=='已完成'}}" class="oprt bg-green light">我已完成</view>
-			<view wx:elif="{{follow.status=='已完成'}}" class="oprt bg-grey light">已完成</view>
-			<view wx:else bindtap="bindAcceptTap" class="oprt">我要接单</view>
+
+			<!-- 待接单状态：显示"我要接单"按钮 -->
+			<view wx:elif="{{follow.FOLLOW_STATUS==0}}" bindtap="bindAcceptTap" class="oprt">我要接单</view>
+
+			<!-- 发布者操作：已接单时可确认完成 -->
+			<view wx:elif="{{follow.mypost && follow.FOLLOW_STATUS==1}}" bindtap="bindOverTap" class="oprt bg-green">确认完成</view>
 		</view>
 	</cmpt-detail>
 </block>

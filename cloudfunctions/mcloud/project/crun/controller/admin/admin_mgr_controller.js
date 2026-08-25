@@ -41,7 +41,7 @@ class AdminMgrController extends BaseProjectAdminController {
 		let input = this.validateData(rules);
 
 		let service = new AdminMgrService();
-		await service.delMgr(input.id, this._adminId);
+		await service.delMgr(input.id, this._adminId, this._admin);
 
 	}
 
@@ -59,7 +59,7 @@ class AdminMgrController extends BaseProjectAdminController {
 		let input = this.validateData(rules);
 
 		let service = new AdminMgrService();
-		await service.statusMgr(input.id, input.status, this._admin.ADMIN_PHONE);
+		await service.statusMgr(input.id, input.status, this._adminId, this._admin);
 	}
 
 	/** 管理员列表 */
@@ -114,7 +114,7 @@ class AdminMgrController extends BaseProjectAdminController {
 		await contentCheck.checkTextMultiAdmin(input);
 
 		let service = new AdminMgrService();
-		await service.insertMgr(input);
+		await service.insertMgr(input, this._admin);
 	}
 
 	/** 修改管理员 */
@@ -138,7 +138,7 @@ class AdminMgrController extends BaseProjectAdminController {
 		await contentCheck.checkTextMultiAdmin(input);
 
 		let service = new AdminMgrService();
-		await service.editMgr(input.id, input);
+		await service.editMgr(input.id, input, this._admin);
 	}
 
 	/** 修改自己的密码 */
@@ -161,6 +161,9 @@ class AdminMgrController extends BaseProjectAdminController {
 
 		let service = new AdminMgrService();
 		await service.pwdtMgr(this._adminId, input.oldPassword, input.password);
+
+		// 记录日志
+		await this.logSys('修改了自己的密码');
 	}
 
 	/** 获取管理员信息用于编辑修改 */
@@ -184,8 +187,10 @@ class AdminMgrController extends BaseProjectAdminController {
 		await this.isAdmin();
 
 		let service = new AdminMgrService();
-		return await service.clearLog();
+		await service.clearLog();
 
+		// 记录日志
+		await this.logSys('清空了日志');
 	}
 
 	async getLogList() {

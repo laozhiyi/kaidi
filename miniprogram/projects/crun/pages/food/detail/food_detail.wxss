@@ -148,13 +148,35 @@
  	background: linear-gradient(90deg, #ffebb1 0%, #ffdb8f 100%);
  }
 
- .time-item1 {
- 	width: 30rpx;
- 	height: 40rpx;
- 	background: linear-gradient(90deg, #ffebb1 0%, #ffdb8f 100%);
- 	margin: 0 10rpx;
- 	border-radius: 4rpx;
- 	font-size: 24rpx;
- 	text-align: center;
- 	line-height: 40rpx;
- }
+.time-item1 {
+	width: 30rpx;
+	height: 40rpx;
+	background: linear-gradient(90deg, #ffebb1 0%, #ffdb8f 100%);
+	margin: 0 10rpx;
+	border-radius: 4rpx;
+	font-size: 24rpx;
+	text-align: center;
+	line-height: 40rpx;
+}
+
+.pay-pic-box {
+	width: 100%;
+	margin-top: 20rpx;
+	padding: 20rpx;
+	background: #fff8f0;
+	border-radius: 16rpx;
+	border: 2rpx dashed #ffb87a;
+	text-align: center;
+}
+
+.pay-pic {
+	width: 300rpx;
+	height: 450rpx;
+	border-radius: 12rpx;
+}
+
+.pay-hint {
+	font-size: 24rpx;
+	color: #ff6600;
+	margin-top: 16rpx;
+}

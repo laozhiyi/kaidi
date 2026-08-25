@@ -1,3 +1,9 @@
+<view class="form-box shadow-project card-project margin-bottom-xs">
+	<view class="hint-desc text-orange padding-sm">
+		<text class="icon-redpacket_fill"></text> 温馨提示：接单前请先上传收款码（微信/支付宝），方便发布者向你支付报酬
+	</view>
+</view>
+
 <view class="form-box shadow-project card-project">
 	<view class="form-group padding-top-s" wx:if="{{userRegCheck && user.USER_STATUS==8}}">
 		<view wx:if="{{!user.USER_CHECK_REASON}}" class="hint-desc text-red"><text class="icon-notice"></text>审核未通过：请修改资料后重新提交</view>

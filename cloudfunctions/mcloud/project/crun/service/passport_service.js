@@ -44,6 +44,15 @@ class PassportService extends BaseProjectService {
 			USER_FORMS: forms,
 			USER_STATUS: Number(status)
 		}
+		// 提取收款码到独立字段
+		if (forms && Array.isArray(forms)) {
+			for (let k = 0; k < forms.length; k++) {
+				if (forms[k].mark === 'payPic' && forms[k].val) {
+					data.USER_PAY_PIC = forms[k].val;
+					break;
+				}
+			}
+		}
 		await UserModel.insert(data);
 
 		return await this.login(userId);
@@ -69,7 +78,7 @@ class PassportService extends BaseProjectService {
 		let where = {
 			USER_MINI_OPENID: userId
 		}
-		let fields = 'USER_PIC,USER_MOBILE,USER_NAME,USER_FORMS,USER_OBJ,USER_STATUS,USER_CHECK_REASON'
+		let fields = 'USER_PIC,USER_MOBILE,USER_NAME,USER_FORMS,USER_OBJ,USER_STATUS,USER_CHECK_REASON,USER_PAY_PIC'
 		return await UserModel.getOne(where, fields);
 	}
 
@@ -101,6 +110,15 @@ class PassportService extends BaseProjectService {
 			USER_OBJ: dataUtil.dbForms2Obj(forms),
 			USER_FORMS: forms,
 		};
+		// 提取收款码到独立字段
+		if (forms && Array.isArray(forms)) {
+			for (let k = 0; k < forms.length; k++) {
+				if (forms[k].mark === 'payPic' && forms[k].val) {
+					data.USER_PAY_PIC = forms[k].val;
+					break;
+				}
+			}
+		}
 
 		if (user.USER_STATUS == UserModel.STATUS.UNCHECK)
 			data.USER_STATUS = UserModel.STATUS.UNUSE;

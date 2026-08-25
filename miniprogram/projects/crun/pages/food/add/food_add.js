@@ -65,11 +65,21 @@ Page({
 
 		let data = this.data;
 		data = validate.check(data, FoodBiz.CHECK_FORM, this);
-		if (!data) return; 
+		if (!data) return;
 
 		let forms = this.selectComponent("#cmpt-form").getForms(true);
 		if (!forms) return;
-		data.forms = forms; 
+		data.forms = forms;
+
+		// 注入 formEnd 到 forms 中
+		if (data.formEnd) {
+			forms.push({
+				mark: 'formEnd',
+				title: '接单截止时间',
+				type: 'date',
+				val: data.formEnd
+			});
+		}
 
 		data.cateName = FoodBiz.getCateName(data.cateId);
 
@@ -78,14 +88,23 @@ Page({
 			// 创建
 			let result = await cloudHelper.callCloudSumbit('food/insert', data);
 			let foodId = result.data.id;
+			let foodDbId = result.data._id;
 
-			// 图片
-			await cloudHelper.transFormsTempPics(forms, 'food/', foodId, 'food/update_forms');
+			// 图片（用数据库 _id 来定位记录）
+			if (foodDbId) {
+				await cloudHelper.transFormsTempPics(forms, 'food/', foodDbId, 'food/update_forms');
+			}
 
 			let callback = async function () {
 				PublicBiz.removeCacheList('admin-food-list');
 				PublicBiz.removeCacheList('food-list');
-				wx.navigateBack();
+				if (foodDbId) {
+					wx.redirectTo({
+						url: '/pages/food/detail/food_detail?id=' + foodDbId
+					});
+				} else {
+					wx.navigateBack();
+				}
 
 			}
 			pageHelper.showSuccToast('发布成功', 2000, callback);

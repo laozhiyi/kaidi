@@ -23,6 +23,8 @@ UserModel.DB_STRUCTURE = {
 	USER_MOBILE: 'string|false|comment=联系电话',
 	USER_PIC: 'string|false|comment=头像',
 
+	USER_PAY_PIC: 'string|false|comment=收款码',
+
 	USER_FORMS: 'array|true|default=[]',
 	USER_OBJ: 'object|true|default={}',
 

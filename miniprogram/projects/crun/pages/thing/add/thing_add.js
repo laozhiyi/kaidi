@@ -65,11 +65,21 @@ Page({
 
 		let data = this.data;
 		data = validate.check(data, ThingBiz.CHECK_FORM, this);
-		if (!data) return; 
+		if (!data) return;
 
 		let forms = this.selectComponent("#cmpt-form").getForms(true);
 		if (!forms) return;
-		data.forms = forms; 
+		data.forms = forms;
+
+		// 注入 formEnd 到 forms 中
+		if (data.formEnd) {
+			forms.push({
+				mark: 'formEnd',
+				title: '接单截止时间',
+				type: 'date',
+				val: data.formEnd
+			});
+		}
 
 		data.cateName = ThingBiz.getCateName(data.cateId);
 
@@ -78,14 +88,23 @@ Page({
 			// 创建
 			let result = await cloudHelper.callCloudSumbit('thing/insert', data);
 			let thingId = result.data.id;
+			let thingDbId = result.data._id;
 
-			// 图片
-			await cloudHelper.transFormsTempPics(forms, 'thing/', thingId, 'thing/update_forms');
+			// 图片（用数据库 _id 来定位记录）
+			if (thingDbId) {
+				await cloudHelper.transFormsTempPics(forms, 'thing/', thingDbId, 'thing/update_forms');
+			}
 
 			let callback = async function () {
 				PublicBiz.removeCacheList('admin-thing-list');
 				PublicBiz.removeCacheList('thing-list');
-				wx.navigateBack();
+				if (thingDbId) {
+					wx.redirectTo({
+						url: '/pages/thing/detail/thing_detail?id=' + thingDbId
+					});
+				} else {
+					wx.navigateBack();
+				}
 
 			}
 			pageHelper.showSuccToast('发布成功', 2000, callback);
