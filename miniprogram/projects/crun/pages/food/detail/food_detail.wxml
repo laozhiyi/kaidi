@@ -89,7 +89,7 @@
 							<view class="right">{{food.acceptUser.USER_MOBILE}} <text class="icon-phone"></text></view>
 						</view>
 
-						<block wx:if="{{food.FOOD_ACCEPT_PAY_PIC && food.mypost && food.FOOD_STATUS==1}}">
+						<block wx:if="{{food.FOOD_ACCEPT_PAY_PIC && food.mypost && food.FOOD_STATUS>=1 && food.FOOD_STATUS!=0}}">
 							<view class="item">
 								<view class="left">收款码：</view>
 								<view class="right text-orange">点击查看大图 →</view>

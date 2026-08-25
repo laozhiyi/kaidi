@@ -89,7 +89,7 @@
 							<view class="right">{{mail.acceptUser.USER_MOBILE}} <text class="icon-phone"></text></view>
 						</view>
 
-						<block wx:if="{{mail.MAIL_ACCEPT_PAY_PIC && mail.mypost && mail.MAIL_STATUS==1}}">
+						<block wx:if="{{mail.MAIL_ACCEPT_PAY_PIC && mail.mypost && mail.MAIL_STATUS>=1 && mail.MAIL_STATUS!=0}}">
 							<view class="item">
 								<view class="left">收款码：</view>
 								<view class="right text-orange">点击查看大图 →</view>
