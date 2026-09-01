@@ -274,7 +274,30 @@ class MailService extends BaseProjectService {
 		if (!id) this.AppError('id不能为空');
 		if (!hasImageForms || !Array.isArray(hasImageForms) || hasImageForms.length === 0) return;
 
-		await MailModel.editForms(id, 'MAIL_FORMS', 'MAIL_OBJ', hasImageForms);
+		let mail = await MailModel.getOne(id);
+		if (!mail) this.AppError('订单不存在');
+
+		let forms = mail.MAIL_FORMS || [];
+		if (!Array.isArray(forms) || forms.length === 0) return;
+
+		// 合并 hasImageForms 中的图片值（仅匹配 image / content 类型）
+		for (let k = 0; k < hasImageForms.length; k++) {
+			for (let j in forms) {
+				if ((forms[j].type == 'image' || forms[j].type == 'content')
+					&& forms[j].mark == hasImageForms[k].mark
+					&& forms[j].type == hasImageForms[k].type) {
+					forms[j].val = hasImageForms[k].val;
+					break;
+				}
+			}
+		}
+
+		// 与 insertMail / editMail 保持一致：MAIL_OBJ 只保留 imgUrl + 文本字段，
+		// 避免重复存储所有图片字段的 fileID
+		await MailModel.edit(id, {
+			MAIL_FORMS: forms,
+			MAIL_OBJ: this.getFormObj(forms),
+		});
 	}
 
 	/** 列表与搜索 */
@@ -328,12 +351,22 @@ class MailService extends BaseProjectService {
 					break;
 				}
 				case 'status': {
+					// 已接单 / 已完成 —— 仅显示与当前用户相关的（我发布 或 我接单）
 					where.and.MAIL_STATUS = Number(sortVal);
+					where.or = [
+						{ MAIL_USER_ID: userId },
+						{ MAIL_ACCEPT_USER_ID: userId }
+					];
 					break;
 				}
 				case 'timeout': { //过期
+					// 仅显示与当前用户相关的过期单
 					where.and.MAIL_STATUS = 0;
-					where.and.MAIL_END_TIME = ['<', this._timestamp]
+					where.and.MAIL_END_TIME = ['<', this._timestamp];
+					where.or = [
+						{ MAIL_USER_ID: userId },
+						{ MAIL_ACCEPT_USER_ID: userId }
+					];
 					break;
 				}
 				case 'wait': { //待接单

@@ -294,15 +294,21 @@ async function getTempFileURLOne(fileID) {
 }
 
 async function transTempPics(imgList, dir, id, prefix = '') {
-	if (setting.IS_DEMO) return imgList; 
+	if (setting.IS_DEMO) return imgList;
 
 	if (prefix && !prefix.endsWith('_')) prefix += '_';
 	if (!id) id = timeHelper.time('YMD');
 
+	const failedIdx = []; // 记录上传失败的索引
 	for (let i = 0; i < imgList.length; i++) {
 
 		let filePath = imgList[i];
-		let ext = filePath.match(/\.[^.]+?$/)[0];
+		if (!filePath) {
+			failedIdx.push(i);
+			continue;
+		}
+
+		let ext = (filePath.match(/\.[^.]+?$/) || ['.jpg'])[0];
 
 		// 是否为临时文件
 		if (filePath.includes('tmp') || filePath.includes('temp') || filePath.includes('wxfile')) {
@@ -311,19 +317,31 @@ async function transTempPics(imgList, dir, id, prefix = '') {
 			let cloudPath = id ? dir + id + '/' + rd + ext : dir + rd + ext;
 
 			if (pageHelper.getPID())
-			cloudPath = pageHelper.getPID() + '/' + cloudPath;
+				cloudPath = pageHelper.getPID() + '/' + cloudPath;
 
 
-			await wx.cloud.uploadFile({
-				cloudPath,
-				filePath: filePath, // 文件路径
-			}).then(res => {
+			try {
+				let res = await wx.cloud.uploadFile({
+					cloudPath,
+					filePath: filePath, // 文件路径
+				});
 				imgList[i] = res.fileID;
-			}).catch(error => {
-				// handle error TODO:剔除图片
-				console.error(error);
-			})
+			} catch (error) {
+				// 标记失败，从列表中剔除
+				console.error('[transTempPics] 图片上传失败:', error, 'path=', filePath);
+				failedIdx.push(i);
+			}
 		}
+	}
+
+	// 剔除上传失败的项（按索引倒序删除避免错位）
+	for (let i = failedIdx.length - 1; i >= 0; i--) {
+		imgList.splice(failedIdx[i], 1);
+	}
+
+	if (failedIdx.length > 0) {
+		// 抛出错误让调用方感知并提示用户
+		throw new Error(`有 ${failedIdx.length} 张图片上传失败，请检查网络后重试`);
 	}
 
 	return imgList;
@@ -391,34 +409,46 @@ async function transFormsTempPics(forms, dir, id, route) {
 	});
 
 	let hasImageForms = [];
-	for (let k = 0; k < forms.length; k++) {
-		if (forms[k].type == 'image') {
-			forms[k].val = await transTempPics(forms[k].val, dir, id, 'image');
-			hasImageForms.push(forms[k]);
-		}
-		else if (forms[k].type == 'content') {
-			let contentVal = forms[k].val;
-			for (let j in contentVal) {
-				if (contentVal[j].type == 'img') {
-					let ret = await transTempPics([contentVal[j].val], dir, id, 'content');
-					contentVal[j].val = ret[0];
-				}
-			}
-			hasImageForms.push(forms[k]);
-		}
-	}
-
-	if (hasImageForms.length == 0) return;
-
-	let params = {
-		id,
-		hasImageForms
-	}
-
 	try {
+		for (let k = 0; k < forms.length; k++) {
+			if (forms[k].type == 'image') {
+				forms[k].val = await transTempPics(forms[k].val, dir, id, 'image');
+				hasImageForms.push(forms[k]);
+			}
+			else if (forms[k].type == 'content') {
+				let contentVal = forms[k].val;
+				for (let j in contentVal) {
+					if (contentVal[j].type == 'img') {
+						let ret = await transTempPics([contentVal[j].val], dir, id, 'content');
+						if (ret && ret.length > 0) {
+							contentVal[j].val = ret[0];
+						} else {
+							// 上传失败：剔除该图
+							contentVal[j].val = '';
+						}
+					}
+				}
+				// 过滤掉 val 为空的项
+				contentVal = contentVal.filter(item => item.val);
+				forms[k].val = contentVal;
+				hasImageForms.push(forms[k]);
+			}
+		}
+
+		if (hasImageForms.length == 0) return;
+
+		let params = {
+			id,
+			hasImageForms
+		}
+
 		await callCloudSumbit(route, params);
 	} catch (err) {
-		console.error(err);
+		console.error('[transFormsTempPics] 图片处理失败:', err);
+		// 重新抛出，让调用方感知
+		throw err;
+	} finally {
+		wx.hideLoading();
 	}
 }
 

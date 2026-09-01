@@ -39,6 +39,19 @@ class MailController extends BaseProjectController {
 		return await service.cancelMail(this._userId, input.id);
 	}
 
+	/** 完成订单（发布者确认） */
+	async finishMail() {
+		// 数据校验
+		let rules = {
+			id: 'must|id',
+		};
+
+		let input = this.validateData(rules);
+
+		let service = new MailService();
+		return await service.finishMail(this._userId, input.id);
+	}
+
 	/** 获取信息用于编辑修改 */
 	async getMailDetail() {
 

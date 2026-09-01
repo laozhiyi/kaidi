@@ -117,8 +117,8 @@
 			<view wx:elif="{{mail.status=='已取消'}}" class="oprt bg-grey light">已取消</view>
 
 			<!-- 接单者的操作 -->
-			<view wx:elif="{{mail.myaccept&&mail.status=='已接单'}}" bind:tap="bindCancelTap" class="oprt bg-grey light">取消该单</view>
-			<view wx:elif="{{mail.myaccept&&mail.status=='已完成'}}" class="oprt bg-green light">我已完成</view>
+			<view wx:elif="{{mail.myaccept&&mail.status=='已接单'}}" bind:tap="bindOverTap" class="oprt bg-green">确认完成</view>
+			<view wx:elif="{{mail.myaccept&&mail.status=='已接单'&&false}}" bind:tap="bindCancelTap" class="oprt bg-grey light">取消该单</view>
 
 			<!-- 待接单状态：显示"我要接单"按钮 -->
 			<view wx:elif="{{mail.MAIL_STATUS==0}}" bindtap="bindAcceptTap" class="oprt">我要接单</view>

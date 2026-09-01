@@ -269,7 +269,89 @@ MiniRun/
 - **公共组件** 封装了列表、表单、日历、海报、图片上传等复用 UI
 - **云端采用 MVC 架构**：Controller → Service → Model，每层职责清晰
 
- 
+## 图片保存流程
 
+项目使用**微信云开发云存储**保存图片，数据库仅存储 `fileID`，不保存本地路径。
+
+### 核心流程
+
+```
+用户选择图片（本地临时路径）
+    ↓
+图片内容安全校验（content_check_helper）
+    ↓
+wx.cloud.uploadFile() 上传到云存储
+    ↓
+获得 cloud:// 文件 ID
+    ↓
+云函数写入数据库（USER_FORMS / 业务表）
+```
+
+### 关键文件说明
+
+| 文件 | 作用 |
+|------|------|
+| `miniprogram/cmpts/public/img/img_upload_cmpt.js` | 图片选择、预览、删除 |
+| `miniprogram/helper/cloud_helper.js` | 图片上传核心逻辑 |
+| `cloudfunctions/.../passport/edit_base.js` | 个人资料保存（含头像 + 表单图片） |
+
+### cloud_helper.js 核心函数
+
+| 函数 | 说明 |
+|------|------|
+| `transTempPics(imgList, dir, id)` | 批量上传临时图片到云存储，返回 fileID 列表 |
+| `transTempPicOne(img, dir, id)` | 单张图片上传（如头像），内部调用 `transTempPics` |
+| `transFormsTempPics(forms, dir, id)` | 处理表单中所有图片字段（type=image），逐个上传 |
+| `transCoverTempPics(imgList, dir, id)` | 处理封面图片上传 |
+
+### 云存储路径规则
+
+```
+cloudPath = PID + '/' + dir + id + '/' + random + ext
+```
+
+示例：`crun/user/20260901/1234567.jpg`
+
+- `PID`：项目 ID，由 `pageHelper.getPID()` 获取
+- `dir`：目录名，如 `user/`、`mail/`、`thing/` 等
+- `id`：业务记录 ID，日期格式时为 `YYYYMMDD`
+- `random`：随机数（1000000-9999999）
+- `ext`：文件扩展名（`.jpg` / `.png` 等）
+
+### 图片字段配置（单张限制）
+
+在 `projects/crun/public/project_setting.js` 的 `USER_FIELDS` 中，通过 `max` 参数控制上传数量：
+
+```javascript
+{ mark: 'payPic', title: '收款码', type: 'image', must: false, max: 1, ext: { hint: '...' } }
+```
+
+- `max: 1`：仅允许上传 1 张，超出后 `+` 按钮自动隐藏
+- `max: 4`（组件默认值）：允许上传 4 张
+
+### 表单提交时图片处理（my_edit.js 示例）
+
+```javascript
+// 1. 头像：transTempPicOne
+let pic = await cloudHelper.transTempPicOne(this.data.formPic, 'user/', '', false);
+data.pic = pic;
+
+// 2. 表单图片（收款码等）：transFormsTempPics
+let forms = this.selectComponent("#cmpt-form").getForms(true);
+await cloudHelper.transFormsTempPics(forms, 'user/', '');
+
+// 3. 提交到云函数
+await cloudHelper.callCloudSumbit('passport/edit_base', data, opts);
+```
+
+### 数据库存储格式
+
+| 字段 | 存储内容 | 示例 |
+|------|---------|------|
+| `USER_PIC` | 头像 fileID | `cloud://xxx/xxx.jpg` |
+| `USER_FORMS`（payPic） | 收款码 fileID | `cloud://xxx/xxx.jpg` |
+| `THING_FORMS` | 任务表单图片 fileID 数组 | `["cloud://xxx/a.jpg","cloud://xxx/b.jpg"]` |
+
+## 后台管理系统截图
 ## 后台管理系统截图 
 - 后台超级管理员默认账号:admin，密码123456，请登录后台后及时修改密码和创建普通管理员。

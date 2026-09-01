@@ -106,7 +106,7 @@ Page({
 	bindSubmitTap: async function (e) {
 		try {
 			let data = this.data;
-			// 数据校验 
+			// 数据校验
 			data = validate.check(data, projectSetting.USER_CHECK_FORM, this);
 			if (!data) return;
 
@@ -118,6 +118,34 @@ Page({
 			let pic = await cloudHelper.transTempPicOne(this.data.formPic, 'user/', '', false);
 			data.pic = pic;
 			wx.hideLoading();
+
+			// 手工处理表单中的图片（如收款码 payPic）：
+			// 把本地临时路径（wxfile://tmp_xxx.jpg）逐张上传到云存储，
+			// 并把 forms[i].val 数组中的元素替换为 cloud:// fileID，
+			// 否则保存进数据库后，手机端读取会因本地路径不存在而无法显示
+			for (let i = 0; i < forms.length; i++) {
+				if (forms[i].type !== 'image') continue;
+				if (!Array.isArray(forms[i].val)) continue;
+
+				let needUploadIdx = [];
+				for (let k = 0; k < forms[i].val.length; k++) {
+					let p = forms[i].val[k] || '';
+					if (p.includes('tmp') || p.includes('temp') || p.includes('wxfile')) {
+						needUploadIdx.push(k);
+					}
+				}
+				if (needUploadIdx.length === 0) continue;
+
+				wx.showLoading({ title: '图片上传中(' + (forms[i].title || '') + ')' });
+				let imgs = forms[i].val.slice();
+				imgs = await cloudHelper.transTempPics(imgs, 'user/');
+				wx.hideLoading();
+
+				// transTempPics 会原地过滤失败项并返回新的数组，可能比原数组短
+				forms[i].val = imgs;
+			}
+
+			data.forms = forms;
 
 			let opts = {
 				title: '提交中'

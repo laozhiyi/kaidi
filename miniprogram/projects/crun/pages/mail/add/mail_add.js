@@ -114,6 +114,9 @@ Page({
 						await cloudHelper.transFormsTempPics(forms, 'mail/', mailDbId, 'mail/update_forms');
 					} catch (e) {
 						console.error('[mail_add] 图片更新失败', e);
+						wx.hideLoading();
+						wx.showToast({ title: e.message || '图片上传失败', icon: 'none' });
+						throw e; // 中断流程
 					}
 				}
 
@@ -146,9 +149,9 @@ Page({
 						setTimeout(() => {
 							PublicBiz.removeCacheList('admin-mail-list');
 							PublicBiz.removeCacheList('mail-list');
-							// 用数据库 _id 进入详情
+							// 跳转到待接单列表页
 							wx.redirectTo({
-								url: '/pages/mail/detail/mail_detail?id=' + mailDbId
+								url: '/projects/crun/pages/mail/index/mail_index?type=wait&sortType=wait&sortVal=wait'
 							});
 						}, 1500);
 					},
@@ -161,7 +164,7 @@ Page({
 							success: function(res) {
 								if (res.confirm) {
 									wx.redirectTo({
-										url: '/pages/mail/list/mail_list?type=wait'
+										url: '/projects/crun/pages/mail/index/mail_index?type=wait&sortType=wait&sortVal=wait'
 									});
 								} else {
 									wx.navigateBack();
@@ -194,25 +197,24 @@ Page({
 						await cloudHelper.transFormsTempPics(forms, 'mail/', mailDbId, 'mail/update_forms');
 					} catch (e) {
 						console.error('[mail_add] 图片更新失败', e);
+						wx.showToast({ title: e.message || '图片上传失败', icon: 'none' });
+						throw e; // 中断流程，不发布成功 toast
 					}
 				}
 
 				let callback = async function () {
 					PublicBiz.removeCacheList('admin-mail-list');
 					PublicBiz.removeCacheList('mail-list');
-					// 跳转到详情页
-					if (mailDbId) {
-						wx.redirectTo({
-							url: '/pages/mail/detail/mail_detail?id=' + mailDbId
-						});
-					} else {
-						wx.navigateBack();
-					}
+					// 跳转到待接单列表页
+					wx.redirectTo({
+						url: '/projects/crun/pages/mail/index/mail_index?type=wait&sortType=wait&sortVal=wait'
+					});
 				}
 				pageHelper.showSuccToast('发布成功', 2000, callback);
 
 			} catch (err) {
-				console.log(err);
+				console.error(err);
+				wx.showToast({ title: err.message || '发布失败', icon: 'none' });
 			}
 		}
 	},

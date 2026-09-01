@@ -45,8 +45,6 @@
 
 					<!--<view bindtap="url" data-url="../detail/mail_detail?id={{item._id}}"><text class="icon-attention"></text>详情</view>-->
 
-					<view class="bg-pink light" bindtap="bindStatusTap" data-id="{{item._id}}"><text class="icon-settings"></text>状态设定</view>
-
 					<view class="bg-blue light" bindtap="url" data-url="../edit/mail_edit?id={{item._id}}"><text class="icon-edit"></text>编辑</view>
 
 					<view class="bg-orange light" bindtap="bindDelTap" data-id="{{item._id}}"><text class="icon-delete"></text>删除</view>
