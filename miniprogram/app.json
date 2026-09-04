@@ -33,6 +33,7 @@
 		"projects/crun/pages/mail/add/mail_add",
 		"projects/crun/pages/mail/edit/mail_edit",
 		"projects/crun/pages/mail/detail/mail_detail",
+		"projects/crun/pages/orders/index/orders_index",
 		"projects/crun/pages/admin/mail/list/admin_mail_list",
 		"projects/crun/pages/admin/mail/export/admin_mail_export",
 		"projects/crun/pages/thing/index/thing_index",
@@ -61,15 +62,15 @@
 	"window": {
 		"backgroundColor": "#f1f1f1",
 		"backgroundTextStyle": "dark",
-		"navigationBarBackgroundColor": "#FED202",
+		"navigationBarBackgroundColor": "#397BC8",
 		"navigationBarTitleText": "校园跑腿小程序",
-		"navigationBarTextStyle": "black"
+		"navigationBarTextStyle": "white"
 	},
 	"tabBar": {
 		"custom": false,
 		"backgroundColor": "#FFFFFF",
-		"color": "#999999",
-		"selectedColor": "#6A3906",
+		"color": "#7A8AA6",
+		"selectedColor": "#397BC8",
 		"list": [
 			{
 				"pagePath": "projects/crun/pages/default/index/default_index",
@@ -78,10 +79,10 @@
 				"selectedIconPath": "/projects/crun/images/tabbar/home_cur.png"
 			},
 			{
-				"pagePath": "projects/crun/pages/news/index/news_index",
-				"text": "公告通知",
-				"iconPath": "/projects/crun/images/tabbar/news.png",
-				"selectedIconPath": "/projects/crun/images/tabbar/news_cur.png"
+				"pagePath": "projects/crun/pages/orders/index/orders_index",
+				"text": "订单",
+				"iconPath": "/projects/crun/images/tabbar/order.png",
+				"selectedIconPath": "/projects/crun/images/tabbar/order_cur.png"
 			}, 
 			{
 				"pagePath": "projects/crun/pages/my/index/my_index",

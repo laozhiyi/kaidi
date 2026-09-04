@@ -1,7 +1,7 @@
 module.exports = { //crun
-	PROJECT_COLOR: '#FED202',
-	NAV_COLOR: '#000000',
-	NAV_BG: '#FED202',
+	PROJECT_COLOR: '#397BC8',
+	NAV_COLOR: '#FFFFFF',
+	NAV_BG: '#397BC8',
 
 	// setup
 	SETUP_CONTENT_ITEMS: [

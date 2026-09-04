@@ -1,0 +1,45 @@
+<view wx:if="{{!isLoad}}" class="margin-top load loading text-l load-project"></view>
+
+<block wx:if="{{isLoad}}">
+	<view class="orders-page">
+		<!-- 类型切换 -->
+		<view class="type-tabs">
+			<view class="type-tab {{type==='all'?'cur':''}}" bindtap="bindTypeTap" data-type="all">全部</view>
+			<view class="type-tab {{type==='post'?'cur':''}}" bindtap="bindTypeTap" data-type="post">我发布的</view>
+			<view class="type-tab {{type==='accept'?'cur':''}}" bindtap="bindTypeTap" data-type="accept">我接的</view>
+		</view>
+
+		<!-- 状态筛选 -->
+		<view class="status-bar">
+			<view class="status-item {{status===''?'cur':''}}" bindtap="bindStatusTap" data-status="">全部</view>
+			<view class="status-item {{status==='0'?'cur':''}}" bindtap="bindStatusTap" data-status="0">待接单</view>
+			<view class="status-item {{status==='1'?'cur':''}}" bindtap="bindStatusTap" data-status="1">已接单</view>
+			<view class="status-item {{status==='9'?'cur':''}}" bindtap="bindStatusTap" data-status="9">已完成</view>
+		</view>
+
+		<!-- 列表 -->
+		<view class="orders-list">
+			<view wx:if="{{dataList.length===0}}" class="empty">暂无订单</view>
+
+			<view wx:for="{{dataList}}" wx:key="id" class="order-card" bindtap="bindOrderTap" data-id="{{item.id}}" data-url="{{item.url}}">
+				<view class="order-head">
+					<view class="order-type">{{item.typeLabel}}</view>
+					<view class="order-status status-{{item.statusKey}}">{{item.statusLabel}}</view>
+				</view>
+				<view class="order-title text-cut">{{item.title}}</view>
+				<view class="order-row">
+					<text class="order-label">取件</text>
+					<text class="order-value text-cut">{{item.from}}</text>
+				</view>
+				<view class="order-row">
+					<text class="order-label">送达</text>
+					<text class="order-value text-cut">{{item.to}}</text>
+				</view>
+				<view class="order-foot">
+					<view class="order-time">{{item.time}}</view>
+					<view class="order-price">¥<text class="order-price-num">{{item.price}}</text></view>
+				</view>
+			</view>
+		</view>
+	</view>
+</block>

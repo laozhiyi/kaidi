@@ -1,0 +1,179 @@
+@import "../../../style/skin.wxss";
+
+page {
+	background-color: #f1f6ff;
+}
+
+.orders-page {
+	width: 100%;
+	min-height: 100vh;
+	padding: 20rpx 24rpx 60rpx;
+	box-sizing: border-box;
+}
+
+.type-tabs {
+	display: flex;
+	background-color: #fff;
+	border-radius: 22rpx;
+	padding: 8rpx;
+	box-shadow: 0 6rpx 18rpx rgba(60, 110, 200, .08);
+}
+
+.type-tab {
+	flex: 1;
+	text-align: center;
+	font-size: 28rpx;
+	color: #5b6b86;
+	padding: 18rpx 0;
+	border-radius: 16rpx;
+}
+
+.type-tab.cur {
+	background-color: #397bc8;
+	color: #fff;
+	font-weight: 600;
+}
+
+.status-bar {
+	display: flex;
+	justify-content: space-between;
+	margin-top: 24rpx;
+	padding: 0 8rpx;
+}
+
+.status-item {
+	font-size: 26rpx;
+	color: #5b6b86;
+	padding: 12rpx 0;
+	position: relative;
+}
+
+.status-item.cur {
+	color: #397bc8;
+	font-weight: 600;
+}
+
+.status-item.cur::after {
+	content: '';
+	position: absolute;
+	left: 50%;
+	bottom: 0;
+	transform: translateX(-50%);
+	width: 36rpx;
+	height: 6rpx;
+	border-radius: 4rpx;
+	background-color: #397bc8;
+}
+
+.orders-list {
+	margin-top: 16rpx;
+	display: flex;
+	flex-direction: column;
+}
+
+.empty {
+	text-align: center;
+	color: #95a5c2;
+	padding: 80rpx 0;
+	font-size: 26rpx;
+}
+
+.order-card {
+	background-color: #fff;
+	border-radius: 22rpx;
+	padding: 26rpx 26rpx 24rpx;
+	margin-bottom: 22rpx;
+	box-shadow: 0 8rpx 22rpx rgba(94, 128, 184, .08);
+}
+
+.order-head {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-size: 24rpx;
+	margin-bottom: 12rpx;
+}
+
+.order-type {
+	color: #397bc8;
+	background-color: #eaf2fc;
+	padding: 6rpx 16rpx;
+	border-radius: 12rpx;
+}
+
+.order-status {
+	padding: 6rpx 16rpx;
+	border-radius: 12rpx;
+	font-size: 22rpx;
+}
+
+.status-wait {
+	color: #c87a14;
+	background-color: #fff3e0;
+}
+
+.status-accepted {
+	color: #1d6dba;
+	background-color: #e3f0fc;
+}
+
+.status-done {
+	color: #2a9d6a;
+	background-color: #e3f7ec;
+}
+
+.status-default {
+	color: #5b6b86;
+	background-color: #eef1f6;
+}
+
+.order-title {
+	font-size: 30rpx;
+	font-weight: 600;
+	color: #1f2a44;
+	margin-bottom: 14rpx;
+}
+
+.order-row {
+	display: flex;
+	align-items: center;
+	font-size: 24rpx;
+	color: #5b6b86;
+	margin-bottom: 8rpx;
+}
+
+.order-label {
+	flex-shrink: 0;
+	width: 80rpx;
+	color: #95a5c2;
+}
+
+.order-value {
+	flex: 1;
+	min-width: 0;
+}
+
+.order-foot {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-top: 16rpx;
+	padding-top: 16rpx;
+	border-top: 1rpx solid #eef1f6;
+}
+
+.order-time {
+	font-size: 22rpx;
+	color: #95a5c2;
+}
+
+.order-price {
+	color: #ff5a3c;
+	font-size: 24rpx;
+}
+
+.order-price-num {
+	font-size: 32rpx;
+	font-weight: 700;
+	margin-left: 4rpx;
+}

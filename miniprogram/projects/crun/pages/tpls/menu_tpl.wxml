@@ -11,9 +11,9 @@
 			<view class="tab-text {{curMenu=='home_index'?'menu-project':''}}">首页</view>
 		</view>
 
-		<view class="tab-bar-item" bindtap="url" data-type="relaunch" data-url="/projects/crun/pages/news/index/news_index">
-			<image class="tab-icon" src="/projects/crun/images/tabbar/news{{curMenu=='news_index'?'_cur':''}}.png"></image>
-			<view class="tab-text {{curMenu=='news_index'?'menu-project':''}}">公告</view>
+		<view class="tab-bar-item" bindtap="url" data-type="relaunch" data-url="/projects/crun/pages/orders/index/orders_index">
+			<image class="tab-icon" src="/projects/crun/images/tabbar/order{{curMenu=='orders_index'?'_cur':''}}.png"></image>
+			<view class="tab-text {{curMenu=='orders_index'?'menu-project':''}}">订单</view>
 		</view> 
 	 
 		<view class="tab-bar-item" bindtap="url" data-type="relaunch" data-url="/projects/crun/pages/my/index/my_index">

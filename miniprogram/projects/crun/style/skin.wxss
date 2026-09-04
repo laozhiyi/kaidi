@@ -1,19 +1,20 @@
 @import "../../../cmpts/public/calendar/calendar_comm/din.wxss";
 
 page {
-	background-color: #f8f8f8;
+	background-color: #f1f6ff;
 
-	--projectColor: #FED202;
-	--projectColorLight: #FED202;
-	--projectCompareColor: #6A3906;
+	--projectColor: #397BC8;
+	--projectColorLight: #5C9BEA;
+	--projectCompareColor: #FFFFFF;
+	--projectTextColor: #1F2A44;
 
 	/*#### 父组件日历颜色定义*/
 	/* 整体颜色 */
 	--calendarPageColor: #fff;
 	/* 加重颜色*/
-	--calendarMainColor: #FED202 !important;
+	--calendarMainColor: #397BC8 !important;
 	/* 加重的亮颜色 用于选中日期的数据小圆点 */
-	--calendarLightColor: #FED202;
+	--calendarLightColor: #5C9BEA;
 }
 
 .bg-admin {
