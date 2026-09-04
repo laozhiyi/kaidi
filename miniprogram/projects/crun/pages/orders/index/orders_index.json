@@ -1,5 +1,7 @@
 {
-	"usingComponents": {},
+	"usingComponents": {
+		"cmpt-picker": "/cmpts/public/picker/picker_cmpt"
+	},
 	"disableScroll": true,
 	"navigationBarTitleText": "订单"
 }

@@ -2,19 +2,23 @@
 
 <block wx:if="{{isLoad}}">
 	<view class="orders-page">
-		<!-- 类型切换 -->
+		<!-- 一级：类型切换 -->
 		<view class="type-tabs">
 			<view class="type-tab {{type==='all'?'cur':''}}" bindtap="bindTypeTap" data-type="all">全部</view>
 			<view class="type-tab {{type==='post'?'cur':''}}" bindtap="bindTypeTap" data-type="post">我发布的</view>
 			<view class="type-tab {{type==='accept'?'cur':''}}" bindtap="bindTypeTap" data-type="accept">我接的</view>
 		</view>
 
-		<!-- 状态筛选 -->
-		<view class="status-bar">
-			<view class="status-item {{status===''?'cur':''}}" bindtap="bindStatusTap" data-status="">全部</view>
-			<view class="status-item {{status==='0'?'cur':''}}" bindtap="bindStatusTap" data-status="0">待接单</view>
-			<view class="status-item {{status==='1'?'cur':''}}" bindtap="bindStatusTap" data-status="1">已接单</view>
-			<view class="status-item {{status==='9'?'cur':''}}" bindtap="bindStatusTap" data-status="9">已完成</view>
+		<!-- 二级：服务 / 地点 下拉选项 -->
+		<view class="filter-row">
+			<view class="filter-cell">
+				<view class="filter-label">服务</view>
+				<cmpt-picker mark="service" style="flex:1" model:item="{{service}}" sourceData="{{serviceOptions}}" bind:select="bindServiceSelect" />
+			</view>
+			<view class="filter-cell">
+				<view class="filter-label">地点</view>
+				<cmpt-picker mark="location" style="flex:1" model:item="{{location}}" sourceData="{{locationOptions}}" bind:select="bindLocationSelect" />
+			</view>
 		</view>
 
 		<!-- 列表 -->

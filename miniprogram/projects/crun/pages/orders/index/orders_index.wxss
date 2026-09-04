@@ -34,35 +34,34 @@ page {
 	font-weight: 600;
 }
 
-.status-bar {
+.filter-row {
 	display: flex;
-	justify-content: space-between;
-	margin-top: 24rpx;
-	padding: 0 8rpx;
+	gap: 16rpx;
+	margin-top: 22rpx;
 }
 
-.status-item {
+.filter-cell {
+	flex: 1;
+	background-color: #fff;
+	border-radius: 18rpx;
+	padding: 18rpx 22rpx;
+	box-shadow: 0 6rpx 18rpx rgba(60, 110, 200, .06);
+	display: flex;
+	align-items: center;
+	min-height: 80rpx;
+	box-sizing: border-box;
+}
+
+.filter-label {
+	flex-shrink: 0;
 	font-size: 26rpx;
 	color: #5b6b86;
-	padding: 12rpx 0;
-	position: relative;
+	margin-right: 12rpx;
 }
 
-.status-item.cur {
-	color: #397bc8;
-	font-weight: 600;
-}
-
-.status-item.cur::after {
-	content: '';
-	position: absolute;
-	left: 50%;
-	bottom: 0;
-	transform: translateX(-50%);
-	width: 36rpx;
-	height: 6rpx;
-	border-radius: 4rpx;
-	background-color: #397bc8;
+.filter-cell cmpt-picker {
+	flex: 1;
+	min-width: 0;
 }
 
 .orders-list {

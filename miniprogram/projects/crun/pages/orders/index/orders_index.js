@@ -2,11 +2,36 @@ const pageHelper = require('../../../../../helper/page_helper.js');
 const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 
+// 服务下拉选项：目前只接入「快递代取」
+const SERVICE_OPTIONS = [
+	{ label: '快递代取', val: 'mail' },
+];
+
+// 地点下拉选项
+const LOCATION_OPTIONS = [
+	'一期宿舍',
+	'二期宿舍',
+	'三期宿舍',
+	'四期宿舍',
+	'五期宿舍',
+];
+
+// 服务 -> 云函数 list 与详情页
+const SERVICE_MAP = {
+	mail: { name: 'mail', label: '快递代取', list: 'mail/list', detailBase: '../../mail/detail/mail_detail' },
+};
+
 Page({
 	data: {
 		isLoad: false,
 		type: 'all', // all | post | accept
-		status: '',
+
+		// 二级下拉
+		serviceOptions: SERVICE_OPTIONS,
+		service: 'mail',
+		locationOptions: LOCATION_OPTIONS,
+		location: '',
+
 		dataList: [],
 		loading: false,
 	},
@@ -33,9 +58,15 @@ Page({
 		await this._loadList();
 	},
 
-	bindStatusTap: async function (e) {
-		const status = String(pageHelper.dataset(e, 'status'));
-		this.setData({ status, dataList: [] });
+	bindServiceSelect: async function (e) {
+		const val = (e && e.detail !== undefined) ? e.detail : e;
+		this.setData({ service: val, dataList: [] });
+		await this._loadList();
+	},
+
+	bindLocationSelect: async function (e) {
+		const val = (e && e.detail !== undefined) ? e.detail : e;
+		this.setData({ location: val, dataList: [] });
 		await this._loadList();
 	},
 
@@ -49,51 +80,50 @@ Page({
 		if (this.data.loading) return;
 		this.setData({ loading: true });
 
-		const { type, status } = this.data;
-
-		// 各业务模块的 list 接口都按 sortType/status 服务端过滤，
-		// 这里通过各 list 返回 mypost/myaccept 标志 + sortType='status' 把"我的"过滤交给后端
-		const calls = [
-			{ name: 'mail', label: '快递代取', list: 'mail/list', detailBase: '../../mail/detail/mail_detail' },
-			{ name: 'thing', label: '急事代办', list: 'thing/list', detailBase: '../../thing/detail/thing_detail' },
-			{ name: 'food', label: '代买', list: 'food/list', detailBase: '../../food/detail/food_detail' },
-			{ name: 'follow', label: '陪替', list: 'follow/list', detailBase: '../../follow/detail/follow_detail' },
-		];
+		const { type, service, location } = this.data;
+		const c = SERVICE_MAP[service];
+		if (!c) {
+			this.setData({ dataList: [], loading: false });
+			return;
+		}
 
 		const collected = [];
-		await Promise.all(calls.map(async c => {
-			try {
-				const params = {
-					page: 1,
-					size: 30,
-					isTotal: false,
-				};
-				if (status !== '') {
-					// 'status' 模式后端仅返回与当前用户相关
-					params.sortType = 'status';
-					params.sortVal = status;
-				}
+		try {
+			const params = {
+				page: 1,
+				size: 50,
+				isTotal: false,
+				sortType: 'status',
+				sortVal: 0, // 默认只看"待接单"以保证是当前用户相关的订单；如需全部可调整
+			};
+			const res = await cloudHelper.callCloudSumbit(c.list, params, { title: 'bar' });
+			const list = (res && res.data && res.data.list) || [];
+			list.forEach(it => {
+				if (type === 'post' && !it.mypost) return;
+				if (type === 'accept' && !it.myaccept) return;
+				if (type === 'all' && !it.mypost && !it.myaccept) return;
+				collected.push(this._formatItem(it, c));
+			});
+		} catch (err) {
+			console.warn('订单加载失败', service, err);
+		}
 
-				const res = await cloudHelper.callCloudSumbit(c.list, params, { title: 'bar' });
-				const list = (res && res.data && res.data.list) || [];
-				list.forEach(it => {
-					if (type === 'post' && !it.mypost) return;
-					if (type === 'accept' && !it.myaccept) return;
-					if (type === 'all' && !it.mypost && !it.myaccept) return;
-					collected.push(this._formatItem(it, c));
-				});
-			} catch (err) {
-				console.warn('订单加载失败', c.name, err);
-			}
-		}));
+		// 地点筛选（客户端按取/送地址子串匹配）
+		let filtered = collected;
+		if (location) {
+			filtered = collected.filter(it => {
+				return (it.from && it.from.indexOf(location) !== -1)
+					|| (it.to && it.to.indexOf(location) !== -1);
+			});
+		}
 
-		collected.sort((a, b) => (b.timeStamp || 0) - (a.timeStamp || 0));
+		filtered.sort((a, b) => (b.timeStamp || 0) - (a.timeStamp || 0));
 
-		this.setData({ dataList: collected, loading: false });
+		this.setData({ dataList: filtered, loading: false });
 	},
 
 	_formatItem: function (it, c) {
-		const obj = it.MAIL_OBJ || it.THING_OBJ || it.FOOD_OBJ || it.FOLLOW_OBJ || {};
+		const obj = it.MAIL_OBJ || {};
 		const statusMap = {
 			'0': { key: 'wait', label: '待接单' },
 			'1': { key: 'accepted', label: '已接单' },
@@ -112,7 +142,7 @@ Page({
 			title: obj.title || obj.address1 || '(无标题)',
 			from: obj.address1 || '-',
 			to: obj.address2 || '-',
-			time: it.MAIL_ADD_TIME || it.THING_ADD_TIME || it.FOOD_ADD_TIME || it.FOLLOW_ADD_TIME || '',
+			time: it.MAIL_ADD_TIME || '',
 			price: obj.price || 0,
 			timeStamp: 0,
 			url: c.detailBase + '?id=' + it._id,
