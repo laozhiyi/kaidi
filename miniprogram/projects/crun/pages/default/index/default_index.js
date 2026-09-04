@@ -10,23 +10,6 @@ Page({
 		isLoad: false,
 		serviceItems: [
 			{ title: '快递代取', icon: '../../../images/menu/mail.png', url: '../../mail/index/mail_index' },
-			{ title: '校园跑腿', icon: '../../../images/follow/order.png', url: '../../follow/index/follow_index' },
-			{ title: '快递代寄', icon: '../../../images/menu/mail.png', url: '../../mail/index/mail_index' },
-			{ title: '代替服务', icon: '../../../images/menu/partner.png', url: '../../follow/index/follow_index' },
-			{ title: '外卖代拿', icon: '../../../images/menu/food.png', url: '../../food/index/food_index' },
-			{ title: '楼栋社群', icon: '../../../images/follow/seat.png', url: '../../follow/index/follow_index' },
-		],
-		foodCategories: [
-			{ title: '名烟名酒', icon: '../../../images/menu/food.png', url: '../../food/index/food_index' },
-			{ title: '饮品甜品', icon: '../../../images/menu/food.png', url: '../../food/index/food_index' },
-			{ title: '看病买药', icon: '../../../images/follow/study.png', url: '../../follow/index/follow_index' },
-			{ title: '超市打印', icon: '../../../images/menu/food.png', url: '../../food/index/food_index' },
-		],
-		merchantCategories: [
-			{ title: '精选商家', icon: '../../../images/follow/game.png', url: '../../food/index/food_index' },
-			{ title: '特惠商家', icon: '../../../images/menu/food.png', url: '../../food/index/food_index' },
-			{ title: '爱心商家', icon: '../../../images/menu/partner.png', url: '../../food/index/food_index' },
-			{ title: '连锁商家', icon: '../../../images/follow/bag.png', url: '../../food/index/food_index' },
 		],
 	},
 

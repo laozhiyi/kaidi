@@ -101,6 +101,16 @@ page {
 	row-gap: 0;
 }
 
+.service-grid.service-grid-single .service-item {
+	width: 50%;
+	margin: 0 auto;
+}
+
+.service-grid.service-grid-single .service-item image {
+	width: 96rpx;
+	height: 96rpx;
+}
+
 .service-item, .category-item {
 	box-sizing: border-box;
 	min-width: 0;

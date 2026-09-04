@@ -10,7 +10,7 @@
 	</view>
 
 	<view class="section service-panel">
-		<view class="service-grid">
+		<view class="service-grid service-grid-single">
 			<view class="service-item" wx:for="{{serviceItems}}" wx:key="title" bindtap="handleFeatureTap" data-title="{{item.title}}" data-url="{{item.url}}">
 				<image src="{{item.icon}}" mode="aspectFit" />
 				<text>{{item.title}}</text>
@@ -18,22 +18,6 @@
 		</view>
 	</view>
 
-	<view class="section category-panel">
-		<view class="section-title"><text></text>菜品分类</view>
-		<view class="category-grid">
-			<view class="category-item" wx:for="{{foodCategories}}" wx:key="title" bindtap="handleFeatureTap" data-title="{{item.title}}" data-url="{{item.url}}">
-				<image src="{{item.icon}}" mode="aspectFit" />
-				<text>{{item.title}}</text>
-			</view>
-		</view>
-		<view class="section-title merchant-title"><text></text>商户分类</view>
-		<view class="category-grid">
-			<view class="category-item" wx:for="{{merchantCategories}}" wx:key="title" bindtap="handleFeatureTap" data-title="{{item.title}}" data-url="{{item.url}}">
-				<image src="{{item.icon}}" mode="aspectFit" />
-				<text>{{item.title}}</text>
-			</view>
-		</view>
-	</view>
 	<view style="height: 100rpx;"></view>
 </view>
 
