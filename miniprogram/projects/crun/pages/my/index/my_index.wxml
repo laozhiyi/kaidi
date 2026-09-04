@@ -7,9 +7,9 @@
 			<view class="detail">
 				<view class="name text-cut">{{user?user.USER_NAME:'欢迎回来~~~'}}</view>
 				<view class="desc">
-					<view wx:if="{{user&&user.USER_STATUS==9}}" class="tag small radius bg-purple light">已禁用</view>
-					<view wx:elif="{{user&&user.USER_STATUS==0}}" class="tag small radius bg-orange light">已注册，待审核</view>
-					<view wx:elif="{{user&&user.USER_STATUS==8}}" class="tag small radius bg-red light">审核未通过，请修改资料</view>
+					<view wx:if="{{user&&user.USER_STATUS==9}}" class="tag small radius bg-blue light">已禁用</view>
+					<view wx:elif="{{user&&user.USER_STATUS==0}}" class="tag small radius bg-blue light">已注册，待审核</view>
+					<view wx:elif="{{user&&user.USER_STATUS==8}}" class="tag small radius bg-blue light">审核未通过，请修改资料</view>
 					<view wx:else class="text-cut">{{user?'欢迎回来~~~':'马上注册，使用更多功能'}}</view>
 				</view>
 			</view>
@@ -24,21 +24,21 @@
 	<!--down area begin-->
 	<view class="down padding-project">
 		<view class="record card-project shadow-project">
-			<view class="title"><text class="icon-circlefill margin-right-xs text-brown"></text>我的记录</view>
+			<view class="title"><text class="icon-circlefill margin-right-xs text-blue"></text>我的记录</view>
 			<view class="list">
 			
 				<view class="item" bind:tap="bindMyPostTap">
-					<view class="line1"><text class="icon-forwardfill text-yellow"></text></view>
+					<view class="line1"><text class="icon-forwardfill text-blue"></text></view>
 					<view class="line2">我的发布</view>
 				</view>
 
 				<view class="item" bind:tap="bindMyAcceptTap">
-					<view class="line1"><text class="icon-formfill text-olive"></text></view>
+					<view class="line1"><text class="icon-formfill text-blue"></text></view>
 					<view class="line2">我的接单</view>
 				</view>
 
 				<view class="item" bind:tap="bindMyFavTap">
-					<view class="line1"><text class="icon-favorfill text-red"></text></view>
+					<view class="line1"><text class="icon-favorfill text-blue"></text></view>
 					<view class="line2">我的收藏</view>
 				</view>
 
@@ -62,7 +62,7 @@
 			<view wx:if="{{skin.IS_SUB}}" class="item arrow" bindtap="bindSetTap">
 				<view class="content">
 					<text class="icon-settings my-icon-project"></text>
-					<text class="text-red text-bold ">系统后台管理<text class="text-grey text-normal">（点击试用）</text></text>
+					<text class="text-blue text-bold ">系统后台管理<text class="text-grey text-normal">（点击试用）</text></text>
 				</view>
 			</view>
 
@@ -71,7 +71,7 @@
 			<view wx:if="{{skin.IS_SUB}}" class="item arrow" bindtap="url" data-url="/pages/home/about/home_about">
 				<view class="content">
 					<text class="icon-phone my-icon-project"></text>
-					<text class="text-orange">联系作者了解更多详情</text>
+					<text class="text-blue">联系作者了解更多详情</text>
 				</view>
 			</view>
 

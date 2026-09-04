@@ -1,0 +1,7 @@
+{
+	"usingComponents": {},
+	"navigationStyle": "default",
+	"navigationBarTitleText": "订单中心",
+	"navigationBarBackgroundColor": "#397BC8",
+	"navigationBarTextStyle": "white"
+}

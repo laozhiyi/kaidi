@@ -9,12 +9,17 @@
 		<text class="notice-arrow">></text>
 	</view>
 
-	<view class="section service-panel">
-		<view class="service-grid service-grid-single">
-			<view class="service-item" wx:for="{{serviceItems}}" wx:key="title" bindtap="handleFeatureTap" data-title="{{item.title}}" data-url="{{item.url}}">
-				<image src="{{item.icon}}" mode="aspectFit" />
-				<text>{{item.title}}</text>
+	<!-- 快递代取：进入操作选择页 -->
+	<view class="express-card" wx:if="{{isLoad}}" bindtap="bindExpressTap">
+		<view class="express-card-head">
+			<view class="express-card-icon">
+				<image src="../../../images/menu/mail.png" mode="aspectFit" />
 			</view>
+			<view class="express-card-copy">
+				<view class="express-card-title">快递代取</view>
+				<view class="express-card-subtitle">发布订单或接单</view>
+			</view>
+			<view class="express-card-arrow">›</view>
 		</view>
 	</view>
 

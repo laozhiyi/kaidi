@@ -1,0 +1,148 @@
+<view wx:if="{{!isLoad}}" class="margin-top load loading text-l load-project"></view>
+<block wx:if="{{isLoad}}">
+	<!-- 胶囊式筛选行 -->
+	<view class="filter-bar">
+		<view id="filter-pill-orderType" class="filter-pill-wrap" data-type="orderType">
+			<view class="filter-pill {{curTabIndex===0?'active':''}}" bindtap="bindFilterTap" data-type="orderType" data-index="0">
+				<text class="filter-label">{{orderTypeOptions[curTabIndex].label}}</text>
+				<text class="filter-arrow">▾</text>
+			</view>
+		</view>
+		<view id="filter-pill-serviceType" class="filter-pill-wrap" data-type="serviceType">
+			<view class="filter-pill {{curServiceTypeIndex>0?'active':''}}" bindtap="bindFilterTap" data-type="serviceType">
+				<text class="filter-label">{{serviceTypeOptions[curServiceTypeIndex].label}}</text>
+				<text class="filter-arrow">▾</text>
+			</view>
+		</view>
+		<view id="filter-pill-location" class="filter-pill-wrap" data-type="location">
+			<view class="filter-pill {{curLocationIndex>0?'active':''}}" bindtap="bindFilterTap" data-type="location">
+				<text class="filter-label">{{locationOptions[curLocationIndex].label}}</text>
+				<text class="filter-arrow">▾</text>
+			</view>
+		</view>
+	</view>
+
+	<!-- 下拉弹层：定位到点击胶囊正下方 -->
+	<block wx:if="{{filterShow}}">
+		<view class="filter-mask" bindtap="bindFilterMaskTap"></view>
+		<view class="filter-dropdown" style="left:{{dropdownLeft}}px; top:{{dropdownTop}}px; width:{{dropdownWidth}}px;">
+			<view
+				class="filter-option {{curTabIndex===index?'cur':''}}"
+				wx:for="{{orderTypeOptions}}"
+				wx:key="val"
+				wx:if="{{filterType==='orderType'}}"
+				bindtap="bindFilterOptionTap"
+				data-type="orderType"
+				data-index="{{index}}"
+			>{{item.label}}</view>
+			<view
+				class="filter-option {{curServiceTypeIndex===index?'cur':''}}"
+				wx:for="{{serviceTypeOptions}}"
+				wx:key="val"
+				wx:if="{{filterType==='serviceType'}}"
+				bindtap="bindFilterOptionTap"
+				data-type="serviceType"
+				data-index="{{index}}"
+			>{{item.label}}</view>
+			<view
+				class="filter-option {{curLocationIndex===index?'cur':''}}"
+				wx:for="{{locationOptions}}"
+				wx:key="val"
+				wx:if="{{filterType==='location'}}"
+				bindtap="bindFilterOptionTap"
+				data-type="location"
+				data-index="{{index}}"
+			>{{item.label}}</view>
+		</view>
+	</block>
+
+	<!-- 订单列表 -->
+	<scroll-view scroll-y="true" class="order-scroll" bindscrolltolower="bindReachBottom" refresher-enabled="true" refresher-triggered="{{refresherTriggered}}" bindrefresherrefresh="bindPullDownRefresh">
+		<view class="order-list" wx:if="{{dataList.list.length > 0}}">
+			<block wx:for="{{dataList.list}}" wx:key="_id">
+				<view class="order-card shadow-project" bindtap="url" data-url="{{item.type === 'mail' ? '../../mail/detail/mail_detail' : '../../thing/detail/thing_detail'}}?id={{item._id}}">
+					<view class="card-head">
+						<view class="head-left">
+							<image wx:if="{{item.userPic}}" class="avatar avatar-image" src="{{item.userPic}}" mode="aspectFill" />
+							<view wx:else class="avatar {{item.type === 'mail' ? 'avatar-mail' : 'avatar-thing'}}">{{item.type === 'mail' ? '邮' : '送' }}</view>
+							<view class="head-info">
+								<text class="head-title">{{item.typeLabel}}</text>
+								<view class="head-meta">
+									<text class="head-time">{{item.timeText || item.timeAgo}}</text>
+									<text class="head-role" wx:if="{{item.mypost}}">我发布</text>
+									<text class="head-role head-role-accept" wx:elif="{{item.myaccept}}">我接单</text>
+								</view>
+							</view>
+						</view>
+						<view class="status-badge {{item.status === '已完成' ? 'status-done' : (item.status === '已接单' ? 'status-progress' : ((item.status === '已取消' || item.status === '已过期') ? 'status-muted' : 'status-wait'))}}">{{item.status}}</view>
+					</view>
+
+					<view class="card-title">
+						<text class="title-name content-cut-one">{{item.title}}</text>
+						<text class="title-qty" wx:if="{{item.type === 'mail'}}">x{{item.quantity}}</text>
+					</view>
+
+					<view class="card-meta" wx:if="{{item.poster}}">
+						<text class="meta-label">联系人</text>
+						<text class="meta-value content-cut-one">{{item.poster}}</text>
+					</view>
+					<view class="card-meta card-meta-deadline" wx:if="{{item.endTime}}">
+						<text class="meta-label">接单截止</text>
+						<text class="meta-value content-cut-one">{{item.endTime}}</text>
+					</view>
+
+					<view class="card-remark" wx:if="{{item.remark}}">
+						<text class="remark-text">{{item.remark}}</text>
+					</view>
+
+					<block wx:if="{{item.type === 'thing'}}">
+						<view class="addr-row" wx:if="{{item.address1}}">
+							<view class="addr-dot addr-start">起</view>
+							<text class="addr-text">{{item.address1}}</text>
+						</view>
+						<view class="addr-row" wx:if="{{item.address2}}">
+							<view class="addr-dot addr-end">终</view>
+							<text class="addr-text">{{item.address2}}</text>
+						</view>
+					</block>
+					<block wx:else>
+						<view class="addr-row" wx:if="{{item.address1}}">
+							<view class="addr-dot addr-start">取</view>
+							<text class="addr-text">{{item.address1}}</text>
+						</view>
+						<view class="addr-row" wx:if="{{item.address2}}">
+							<view class="addr-dot addr-end">送</view>
+							<text class="addr-text">{{item.address2}}</text>
+						</view>
+					</block>
+
+					<view class="card-divider"></view>
+
+					<view class="card-foot">
+						<view class="fee-line">
+							<text class="fee-label">{{item.type === 'mail' ? '配送费' : '跑腿费'}}</text>
+							<text class="fee-value">¥<text class="fee-num">{{item.price}}</text></text>
+						</view>
+						<view class="foot-actions" wx:if="{{!item.myaccept && item.status === '待接单'}}">
+							<view class="btn btn-fav" catchtap="bindFavTap" data-id="{{item._id}}" data-type="{{item.type}}">收藏</view>
+							<view class="btn btn-accept" catchtap="bindAcceptTap" data-id="{{item._id}}" data-type="{{item.type}}">接单</view>
+						</view>
+					</view>
+				</view>
+			</block>
+		</view>
+
+		<view class="empty-state" wx:else>
+			<view class="empty-icon">📋</view>
+			<text class="empty-text">暂无相关订单</text>
+			<text class="empty-hint">试试切换筛选条件</text>
+		</view>
+
+		<view class="load-more" wx:if="{{dataList.list.length > 0}}">
+			<text wx:if="{{dataList.loading}}" class="loading-text">加载中...</text>
+			<text wx:elif="{{!dataList.hasMore}}" class="no-more">— 没有更多了 —</text>
+		</view>
+	</scroll-view>
+
+	<view style="height: 100rpx;"></view>
+</block>

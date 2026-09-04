@@ -8,9 +8,6 @@ Page({
 	 */
 	data: {
 		isLoad: false,
-		serviceItems: [
-			{ title: '快递代取', icon: '../../../images/menu/mail.png', url: '../../mail/index/mail_index' },
-		],
 	},
 
 	/**
@@ -48,14 +45,17 @@ Page({
 		}
 		try {
 			let res = await cloudHelper.callCloudSumbit('home/list', {}, opts);
+			if (!res || !res.data) res = { data: { list: [], cnt: 0 } };
+			if (typeof res.data.cnt === 'undefined') res.data.cnt = (res.data.list || []).length;
 			this.setData({
 				...res.data
 			}, () => {
 				this.setData({ isLoad: true });
-				this.setDM(res.data.list);
+				if (res.data.list && res.data.list.length) this.setDM(res.data.list);
 			});
 		} catch (err) {
 			console.error('加载首页列表失败', err);
+			this.setData({ isLoad: true, cnt: 0 });
 		}
 	},
 
@@ -92,8 +92,14 @@ Page({
 
 	handleFeatureTap: function (e) {
 		const title = e.currentTarget.dataset.title;
-		if (title === '快递代取') {
+		const url = e.currentTarget.dataset.url;
+		if (url) {
 			this.url(e);
+			return;
+		}
+		if (title === '公告通知') {
+			// 公告区暂无详情页，直接提示
+			wx.showToast({ title: '公告详情待上线', icon: 'none' });
 			return;
 		}
 		wx.showToast({
@@ -111,6 +117,15 @@ Page({
 	bindCurTap: function (e) {
 		let cur = pageHelper.dataset(e, 'cur');
 		this.setData({ cur });
+	},
+
+	/**
+	 * 快递代取入口：先选择发布订单或接单
+	 */
+	bindExpressTap: function () {
+		wx.navigateTo({
+			url: '/projects/crun/pages/mail/choose/mail_choose'
+		});
 	},
 
 	/**
