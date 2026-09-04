@@ -1,0 +1,6 @@
+{
+	"usingComponents": {
+		"cmpt-img-upload": "/cmpts/public/img/img_upload_cmpt"
+	},
+	"navigationBarTitleText": "确认完成"
+}

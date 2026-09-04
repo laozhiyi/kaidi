@@ -1,0 +1,44 @@
+<view class="main">
+	<view class="hero">
+		<image mode="aspectFill" src="../../../images/home.jpg" />
+	</view>
+
+	<view class="notice" wx:if="{{isLoad}}" bindtap="handleFeatureTap" data-title="公告通知">
+		<text class="notice-icon icon-noticefill"></text>
+		<view class="notice-text">跑乐达校园服务平台，已有{{cnt}}个需求等待接单</view>
+		<text class="notice-arrow">></text>
+	</view>
+
+	<view class="section service-panel">
+		<view class="service-grid">
+			<view class="service-item" wx:for="{{serviceItems}}" wx:key="title" bindtap="handleFeatureTap" data-title="{{item.title}}" data-url="{{item.url}}">
+				<image src="{{item.icon}}" mode="aspectFit" />
+				<text>{{item.title}}</text>
+			</view>
+		</view>
+	</view>
+
+	<view class="section category-panel">
+		<view class="section-title"><text></text>菜品分类</view>
+		<view class="category-grid">
+			<view class="category-item" wx:for="{{foodCategories}}" wx:key="title" bindtap="handleFeatureTap" data-title="{{item.title}}" data-url="{{item.url}}">
+				<image src="{{item.icon}}" mode="aspectFit" />
+				<text>{{item.title}}</text>
+			</view>
+		</view>
+		<view class="section-title merchant-title"><text></text>商户分类</view>
+		<view class="category-grid">
+			<view class="category-item" wx:for="{{merchantCategories}}" wx:key="title" bindtap="handleFeatureTap" data-title="{{item.title}}" data-url="{{item.url}}">
+				<image src="{{item.icon}}" mode="aspectFit" />
+				<text>{{item.title}}</text>
+			</view>
+		</view>
+	</view>
+	<view style="height: 100rpx;"></view>
+</view>
+
+
+<block wx:if="{{skin.IS_SUB}}">
+	<import src="../../tpls/menu_tpl.wxml" />
+	<template is="menuTpl" data="{{curMenu:'home_index',returnHome:false}}" />
+</block>

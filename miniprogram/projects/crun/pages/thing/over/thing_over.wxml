@@ -1,0 +1,222 @@
+<view wx:if="{{isLoad===null}}" class="margin-top load notexist text-l load-project"></view>
+<view wx:if="{{isLoad===false}}" class="margin-top load loading text-l load-project"></view>
+
+<block wx:if="{{isLoad}}">
+	<view class="page">
+		<!-- 顶部标题区 -->
+		<view class="header">
+			<!-- 顶部状态标签：完成 → 待接单 → 已接单 → 已过期 顺序 -->
+		<block wx:if="{{thing.THING_STATUS==9}}">
+			<view class="status-tag status-done">
+				<text class="icon-roundcheck"></text>
+				<text>已完成</text>
+			</view>
+		</block>
+		<block wx:elif="{{thing.THING_STATUS==0 && !(isExpired || (thing.THING_END_TIME && thing.THING_END_TIME < nowMs))}}">
+			<view class="status-tag status-wait">
+				<text class="icon-activity"></text>
+				<text>待接单</text>
+			</view>
+		</block>
+		<block wx:elif="{{thing.THING_STATUS==1}}">
+			<view class="status-tag status-going">
+				<text class="icon-people"></text>
+				<text>已接单</text>
+			</view>
+		</block>
+		<block wx:else>
+			<view class="status-tag status-expire">
+				<text class="icon-remind"></text>
+				<text>已过期</text>
+			</view>
+		</block>
+			<view class="title">{{thing.THING_OBJ.title || '—'}}</view>
+			<view class="meta">
+				<text class="cate-name" wx:if="{{thing.THING_CATE_NAME}}">{{thing.THING_CATE_NAME}}</text>
+				<text class="time" wx:if="{{thing.THING_ADD_TIME}}">{{thing.THING_ADD_TIME}}发布</text>
+			</view>
+		</view>
+
+		<!-- 发布信息 -->
+		<view class="card">
+			<view class="card-title">
+				<text class="dot"></text>
+				<text>发布信息</text>
+			</view>
+			<view class="row-2col">
+				<view class="cell">
+					<view class="cell-label">分类</view>
+					<view class="cell-value">{{thing.THING_CATE_NAME || '—'}}</view>
+				</view>
+				<view class="cell">
+					<view class="cell-label">接单截止</view>
+					<view class="cell-value text-red">{{thing.end2 || '—'}}</view>
+				</view>
+			</view>
+			<view class="row-2col">
+				<view class="cell">
+					<view class="cell-label">发布人</view>
+					<view class="cell-value">{{postInfo.USER_NAME || thing.THING_USER_NAME || '—'}}</view>
+				</view>
+				<view class="cell">
+					<view class="cell-label">联系电话</view>
+					<view class="cell-value text-link" bind:tap="bindCallPhone" data-phone="{{postInfo.USER_MOBILE}}">{{postInfo.USER_MOBILE || '—'}}</view>
+				</view>
+			</view>
+			<!-- 动态表单字段（非图片/隐藏字段，两列自动配对） -->
+			<block wx:if="{{simpleForms && simpleForms.length>0}}">
+				<view wx:for="{{formRows}}" wx:for-item="row" wx:key="idx" class="row-2col">
+					<view class="cell" wx:for="{{row}}" wx:for-item="cellItem" wx:key="mark">
+						<view class="cell-label">{{cellItem.title}}</view>
+						<view class="cell-value single-line">{{cellItem.text}}</view>
+					</view>
+					<!-- 占位：如果只剩一列，第二个格子仍占位 -->
+					<view wx:if="{{row.length < 2}}" class="cell">
+						<view class="cell-label">&nbsp;</view>
+						<view class="cell-value">&nbsp;</view>
+					</view>
+				</view>
+			</block>
+		</view>
+
+		<!-- 接收人信息：任何有接单人的状态下都展示 -->
+		<view class="card" wx:if="{{acceptInfo.USER_NAME}}">
+			<view class="card-title">
+				<text class="dot"></text>
+				<text>接收人信息</text>
+			</view>
+			<view class="row-2col">
+				<view class="cell">
+					<view class="cell-label">姓名</view>
+					<view class="cell-value">{{acceptInfo.USER_NAME}}</view>
+				</view>
+				<view class="cell">
+					<view class="cell-label">联系电话</view>
+					<view class="cell-value text-link" bind:tap="bindCallPhone" data-phone="{{acceptInfo.USER_MOBILE}}">{{acceptInfo.USER_MOBILE}}</view>
+				</view>
+			</view>
+			<view class="row-2col">
+				<view class="cell">
+					<view class="cell-label">接单时间</view>
+					<view class="cell-value">{{thing.THING_ACCEPT_TIME || '—'}}</view>
+				</view>
+				<view class="cell">
+					<view class="cell-label">完成时间</view>
+					<view class="cell-value text-green" wx:if="{{thing.THING_OVER_TIME && thing.THING_OVER_TIME!=='未设置'}}">{{thing.THING_OVER_TIME}}</view>
+					<view class="cell-value text-grey" wx:else>—</view>
+				</view>
+			</view>
+			<view class="row-full" wx:if="{{thing.THING_ACCEPT_PAY_PIC && thing.mypost}}">
+				<view class="cell">
+					<view class="cell-label">收款码</view>
+					<view class="cell-value">
+						<view class="pay-pic-box" bindtap="bindShowPayPicTap">
+							<image class="pay-pic" src="{{thing.THING_ACCEPT_PAY_PIC}}" mode="aspectFit" show-menu-by-longpress="{{true}}" />
+							<view class="pay-hint">长按识别收款码转账</view>
+						</view>
+					</view>
+				</view>
+			</view>
+		</view>
+
+		<!-- 完成凭证：已完成 / 已过期 展示接单人的凭证；已接单 由接单人上传 -->
+		<view class="card card-proof" wx:if="{{thing.THING_STATUS==1 || thing.THING_STATUS==9 || isExpired}}">
+			<view class="card-title">
+				<text class="dot"></text>
+				<text>完成凭证</text>
+				<text class="card-title-tag" wx:if="{{!isRecipient && thing.THING_STATUS==1}}">由接单人提交</text>
+			</view>
+
+			<block wx:if="{{isRecipient && thing.THING_STATUS==1}}">
+				<!-- 接单人上传照片 -->
+				<view class="proof-block">
+					<view class="proof-label"><text class="text-red">*</text> 取件照片<text class="text-grey text-mini">（{{pickupPicList.length}}/3）</text></view>
+					<cmpt-img-upload imgMax="{{3}}" title="取件照片" isCheck="{{true}}" imgUploadSize="{{10}}" imgList="{{pickupPicList}}" bind:upload="bindPickupPicUploadCmpt" />
+				</view>
+
+				<view class="proof-block">
+					<view class="proof-label"><text class="text-red">*</text> 接收照片<text class="text-grey text-mini">（{{deliverPicList.length}}/3）</text></view>
+					<cmpt-img-upload imgMax="{{3}}" title="接收照片" isCheck="{{true}}" imgUploadSize="{{10}}" imgList="{{deliverPicList}}" bind:upload="bindDeliverPicUploadCmpt" />
+				</view>
+
+				<view class="proof-block">
+					<view class="proof-label">补充说明<text class="text-grey text-mini">（选填，至多200字）</text></view>
+					<textarea class="text-input" placeholder="例如物品状态、转交地点等" maxlength="200" model:value="{{overDesc}}" auto-height="true" />
+					<view class="char-count">{{overDesc.length}}/200</view>
+				</view>
+
+				<view class="proof-block">
+					<view class="proof-label">补充说明照片<text class="text-grey text-mini">（{{overDescPicList.length}}/3，选填）</text></view>
+					<cmpt-img-upload imgMax="{{3}}" title="补充说明照片" isCheck="{{false}}" imgUploadSize="{{10}}" imgList="{{overDescPicList}}" bind:upload="bindOverDescPicUploadCmpt" />
+				</view>
+			</block>
+
+			<block wx:else>
+				<!-- 仅展示 -->
+				<view class="proof-block">
+					<view class="proof-label">取件照片<text class="text-grey text-mini">（{{(thing.THING_PICKUP_PIC && thing.THING_PICKUP_PIC.length) || 0}}）</text></view>
+					<block wx:if="{{thing.THING_PICKUP_PIC && thing.THING_PICKUP_PIC.length>0}}">
+						<view class="proof-imgs">
+							<image wx:for="{{thing.THING_PICKUP_PIC}}" wx:key="*this" src="{{item}}" mode="aspectFill" class="proof-img" bindtap="bindPreviewImgTap" data-url="{{item}}" data-list="{{thing.THING_PICKUP_PIC}}" />
+						</view>
+					</block>
+					<view wx:else class="text-grey text-mini empty-tip">暂无照片</view>
+				</view>
+
+				<view class="proof-block">
+					<view class="proof-label">接收照片<text class="text-grey text-mini">（{{(thing.THING_DELIVER_PIC && thing.THING_DELIVER_PIC.length) || 0}}）</text></view>
+					<block wx:if="{{thing.THING_DELIVER_PIC && thing.THING_DELIVER_PIC.length>0}}">
+						<view class="proof-imgs">
+							<image wx:for="{{thing.THING_DELIVER_PIC}}" wx:key="*this" src="{{item}}" mode="aspectFill" class="proof-img" bindtap="bindPreviewImgTap" data-url="{{item}}" data-list="{{thing.THING_DELIVER_PIC}}" />
+						</view>
+					</block>
+					<view wx:else class="text-grey text-mini empty-tip">暂无照片</view>
+				</view>
+
+				<view class="proof-block">
+					<view class="proof-label">补充说明</view>
+					<view class="proof-text" wx:if="{{thing.THING_OVER_DESC}}">{{thing.THING_OVER_DESC}}</view>
+					<view class="text-grey text-mini empty-tip" wx:else>暂无补充说明</view>
+				</view>
+
+				<view class="proof-block" wx:if="{{thing.THING_OVER_DESC_PIC && thing.THING_OVER_DESC_PIC.length>0}}">
+					<view class="proof-label">补充说明照片</view>
+					<view class="proof-imgs">
+						<image wx:for="{{thing.THING_OVER_DESC_PIC}}" wx:key="*this" src="{{item}}" mode="aspectFill" class="proof-img" bindtap="bindPreviewImgTap" data-url="{{item}}" data-list="{{thing.THING_OVER_DESC_PIC}}" />
+					</view>
+				</view>
+			</block>
+		</view>
+
+		<!-- 底部：所有状态共用同一布局，仅按钮/文案不同 -->
+		<view class="btn-fixed">
+			<!-- 完成 -->
+			<block wx:if="{{thing.THING_STATUS==9}}">
+				<view class="btn-done">订单已完成</view>
+			</block>
+
+			<!-- 已过期：任何角色都不可操作 -->
+			<block wx:elif="{{isExpired || (thing.THING_STATUS==0 && thing.THING_END_TIME && thing.THING_END_TIME < nowMs)}}">
+				<view class="btn-done">订单已过期</view>
+			</block>
+
+			<!-- 待接单：非发布人显示"我要接单"；发布人显示等待中 -->
+			<block wx:elif="{{thing.THING_STATUS==0}}">
+				<view wx:if="{{isPublisher}}" class="btn-done">等待接单</view>
+				<view wx:else bindtap="bindAcceptTap" class="btn-primary">我要接单</view>
+			</block>
+
+			<!-- 已接单 -->
+			<block wx:elif="{{thing.THING_STATUS==1}}">
+				<view wx:if="{{isRecipient}}" class="btn-cancel" bindtap="bindCancelOrderTap">取消</view>
+				<view class="btn-primary {{submitting ? 'btn-disabled' : ''}}" bindtap="bindSubmitTap">
+					{{submitting ? '提交中…' : (isRecipient ? '提交并确认完成' : '确认完成')}}
+				</view>
+			</block>
+
+			<block wx:else>
+				<view class="btn-done">订单已结束</view>
+			</block>
+		</view>
+	</view>
+</block>
