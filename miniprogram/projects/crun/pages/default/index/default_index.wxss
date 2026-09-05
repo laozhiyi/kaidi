@@ -17,6 +17,89 @@ page {
 	justify-content: flex-start;
 }
 
+.notice {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	min-height: 92rpx;
+	margin: 0 0 18rpx;
+	padding: 14rpx 18rpx;
+	box-sizing: border-box;
+	background-color: #fff;
+	border: 1rpx solid #f8e5bd;
+	border-left: 6rpx solid #f0ad3d;
+	border-radius: 16rpx;
+	box-shadow: 0 8rpx 24rpx rgba(94, 128, 184, .08);
+	transition: background-color .2s ease;
+}
+
+.notice-hover {
+	background-color: #fffaf1;
+}
+
+.notice-badge {
+	flex-shrink: 0;
+	width: 56rpx;
+	height: 56rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background-color: #fff3d9;
+}
+
+.notice-icon {
+	font-size: 32rpx;
+	line-height: 1;
+	color: #e99a26;
+}
+
+.notice-content {
+	flex: 1;
+	min-width: 0;
+	margin-left: 16rpx;
+}
+
+.notice-label {
+	font-size: 26rpx;
+	font-weight: 600;
+	line-height: 34rpx;
+	color: #1f2a44;
+}
+
+.notice-text {
+	width: 100%;
+	margin-top: 2rpx;
+	font-size: 22rpx;
+	line-height: 30rpx;
+	color: #7b8799;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.notice-count {
+	font-size: 26rpx;
+	font-weight: 700;
+	color: #397bc8;
+}
+
+.notice-action {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	margin-left: 12rpx;
+	font-size: 22rpx;
+	line-height: 32rpx;
+	color: #397bc8;
+}
+
+.notice-arrow {
+	margin-left: 2rpx;
+	font-size: 26rpx;
+	line-height: 1;
+}
+
 .hero {
 	width: 100%;
 	/* Keep the banner ratio stable on phones from 320px to large screens. */
@@ -36,46 +119,6 @@ page {
 	width: 100%;
 	height: 100%;
 	display: block;
-}
-
-.notice {
-	display: flex;
-	align-items: center;
-	width: 100%;
-	min-height: 80rpx;
-	margin: 16rpx 0 20rpx;
-	padding: 0 20rpx;
-	box-sizing: border-box;
-	background-color: #fff;
-	border-radius: 18rpx;
-	box-shadow: 0 8rpx 24rpx rgba(94, 128, 184, .08);
-}
-
-.notice-icon {
-	flex-shrink: 0;
-	font-size: 38rpx;
-	color: #397bc8;
-}
-
-.notice-text {
-	flex: 1;
-	min-width: 0;
-	height: 44rpx;
-	line-height: 44rpx;
-	margin-left: 14rpx;
-	font-size: 24rpx;
-	color: #333;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.notice-arrow {
-	flex-shrink: 0;
-	margin-left: 12rpx;
-	font-size: 34rpx;
-	line-height: 1;
-	color: #aeb6c0;
 }
 
 .express-card {

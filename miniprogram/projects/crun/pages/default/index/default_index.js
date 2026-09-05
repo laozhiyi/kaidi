@@ -91,15 +91,9 @@ Page({
 	},
 
 	handleFeatureTap: function (e) {
-		const title = e.currentTarget.dataset.title;
 		const url = e.currentTarget.dataset.url;
 		if (url) {
 			this.url(e);
-			return;
-		}
-		if (title === '公告通知') {
-			// 公告区暂无详情页，直接提示
-			wx.showToast({ title: '公告详情待上线', icon: 'none' });
 			return;
 		}
 		wx.showToast({

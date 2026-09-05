@@ -1,12 +1,17 @@
 <view class="main">
-	<view class="hero">
-		<image mode="aspectFill" src="../../../images/home.jpg" />
+	<view class="notice" wx:if="{{isLoad}}" bindtap="handleFeatureTap" data-title="公告通知" data-url="/projects/crun/pages/news/index/news_index" hover-class="notice-hover">
+		<view class="notice-badge">
+			<text class="notice-icon icon-noticefill"></text>
+		</view>
+		<view class="notice-content">
+			<view class="notice-label">通知公告</view>
+			<view class="notice-text">平台当前有 <text class="notice-count">{{cnt}}</text> 个需求等待接单</view>
+		</view>
+		<view class="notice-action">查看<text class="notice-arrow icon-right"></text></view>
 	</view>
 
-	<view class="notice" wx:if="{{isLoad}}" bindtap="handleFeatureTap" data-title="公告通知">
-		<text class="notice-icon icon-noticefill"></text>
-		<view class="notice-text">跑乐达校园服务平台，已有{{cnt}}个需求等待接单</view>
-		<text class="notice-arrow">></text>
+	<view class="hero">
+		<image mode="aspectFill" src="../../../images/home.jpg" />
 	</view>
 
 	<!-- 快递代取：进入操作选择页 -->
