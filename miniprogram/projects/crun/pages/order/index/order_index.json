@@ -1,7 +1,12 @@
 {
-	"usingComponents": {},
-	"navigationStyle": "default",
-	"navigationBarTitleText": "订单中心",
+	"navigationBarTitleText": "快递代取",
 	"navigationBarBackgroundColor": "#397BC8",
-	"navigationBarTextStyle": "white"
+	"navigationBarTextStyle": "white",
+	"backgroundColor": "#f1f6ff",
+	"enablePullDownRefresh": false,
+	"usingComponents": {
+		"cmpt-comm-list": "/cmpts/public/list/comm_list_cmpt",
+		"cmpt-picker": "/cmpts/public/picker/picker_cmpt",
+		"cmpt-modal": "/cmpts/public/modal/modal_cmpt"
+	}
 }

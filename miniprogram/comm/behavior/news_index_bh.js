@@ -1,4 +1,4 @@
-﻿const BaseBiz = require('../../comm/biz/base_biz.js');
+﻿const BaseBiz = require('../biz/base_biz.js');
 const pageHelper = require('../../helper/page_helper.js');
 module.exports = Behavior({
 	/**

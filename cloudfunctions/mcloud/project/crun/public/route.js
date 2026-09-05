@@ -6,8 +6,6 @@
  */
 
 module.exports = {
-	'test/test': 'test/test_controller@test',
-
 	'home/setup_get': 'home_controller@getSetup',
 
 	'passport/login': 'passport_controller@login',
@@ -15,6 +13,7 @@ module.exports = {
 	'passport/my_detail': 'passport_controller@getMyDetail',
 	'passport/register': 'passport_controller@register',
 	'passport/edit_base': 'passport_controller@editBase',
+	'check/img': 'check_controller@checkImg',
 
 	// 收藏
 	'fav/update': 'fav_controller@updateFav',
@@ -79,6 +78,7 @@ module.exports = {
 	'mail/view': 'mail_controller@viewMail',
 	'mail/accept': 'mail_controller@acceptMail',
 	'mail/cancel': 'mail_controller@cancelMail',
+	'mail/finish': 'mail_controller@finishMail',
 	'mail/detail': 'mail_controller@getMailDetail',
 
 	'admin/mail_detail': 'admin/admin_mail_controller@getAdminMailDetail',
@@ -91,67 +91,13 @@ module.exports = {
 	'admin/mail_data_del': 'admin/admin_mail_controller@mailDataDel',
 
 	// 急事代办
-	'thing/list': 'thing_controller@getThingList',
-	'thing/insert': 'thing_controller@insertThing',
-	'thing/edit': 'thing_controller@editThing',
-	'thing/status': 'thing_controller@statusThing',
-	'thing/update_forms': 'thing_controller@updateThingForms',
-	'thing/del': 'thing_controller@delThing',
-	'thing/view': 'thing_controller@viewThing',
-	'thing/accept': 'thing_controller@acceptThing',
-	'thing/cancel': 'thing_controller@cancelThing',
-	'thing/detail': 'thing_controller@getThingDetail',
 
-	'admin/thing_detail': 'admin/admin_thing_controller@getAdminThingDetail',
-	'admin/thing_list': 'admin/admin_thing_controller@getAdminThingList',
-	'admin/thing_status': 'admin/admin_thing_controller@statusThing#demo',
-	'admin/thing_del': 'admin/admin_thing_controller@delThing#demo',
-	'admin/thing_sort': 'admin/admin_thing_controller@sortThing#demo',
-	'admin/thing_data_get': 'admin/admin_thing_controller@thingDataGet',
-	'admin/thing_data_export': 'admin/admin_thing_controller@thingDataExport',
-	'admin/thing_data_del': 'admin/admin_thing_controller@thingDataDel',
 
 	// 外卖代取
-	'food/list': 'food_controller@getFoodList',
-	'food/insert': 'food_controller@insertFood',
-	'food/edit': 'food_controller@editFood',
-	'food/status': 'food_controller@statusFood',
-	'food/update_forms': 'food_controller@updateFoodForms',
-	'food/del': 'food_controller@delFood',
-	'food/view': 'food_controller@viewFood',
-	'food/accept': 'food_controller@acceptFood',
-	'food/cancel': 'food_controller@cancelFood',
-	'food/detail': 'food_controller@getFoodDetail',
 
-	'admin/food_detail': 'admin/admin_food_controller@getAdminFoodDetail',
-	'admin/food_list': 'admin/admin_food_controller@getAdminFoodList',
-	'admin/food_status': 'admin/admin_food_controller@statusFood#demo',
-	'admin/food_del': 'admin/admin_food_controller@delFood#demo',
-	'admin/food_sort': 'admin/admin_food_controller@sortFood#demo',
-	'admin/food_data_get': 'admin/admin_food_controller@foodDataGet',
-	'admin/food_data_export': 'admin/admin_food_controller@foodDataExport',
-	'admin/food_data_del': 'admin/admin_food_controller@foodDataDel',
 
 	// 陪替服务
-	'follow/list': 'follow_controller@getFollowList',
-	'follow/insert': 'follow_controller@insertFollow',
-	'follow/edit': 'follow_controller@editFollow',
-	'follow/status': 'follow_controller@statusFollow',
-	'follow/update_forms': 'follow_controller@updateFollowForms',
-	'follow/del': 'follow_controller@delFollow',
-	'follow/view': 'follow_controller@viewFollow',
-	'follow/accept': 'follow_controller@acceptFollow',
-	'follow/cancel': 'follow_controller@cancelFollow',
-	'follow/detail': 'follow_controller@getFollowDetail',
 
-	'admin/follow_detail': 'admin/admin_follow_controller@getAdminFollowDetail',
-	'admin/follow_list': 'admin/admin_follow_controller@getAdminFollowList',
-	'admin/follow_status': 'admin/admin_follow_controller@statusFollow#demo',
-	'admin/follow_del': 'admin/admin_follow_controller@delFollow#demo',
-	'admin/follow_sort': 'admin/admin_follow_controller@sortFollow#demo',
-	'admin/follow_data_get': 'admin/admin_follow_controller@followDataGet',
-	'admin/follow_data_export': 'admin/admin_follow_controller@followDataExport',
-	'admin/follow_data_del': 'admin/admin_follow_controller@followDataDel',
 
 	// ========== 支付模块 ==========
 	'pay/create': 'pay_controller@createPay',

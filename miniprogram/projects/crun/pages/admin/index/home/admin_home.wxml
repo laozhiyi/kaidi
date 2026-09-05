@@ -38,14 +38,6 @@
 		<view class="item" bindtap="url" data-url="../../mail/list/admin_mail_list"> <text class="icon-cartfill text-blue"></text> <text class="text-black">快递代取</text>
 		</view>
 
-		<view class="item" bindtap="url" data-url="../../thing/list/admin_thing_list"> <text class="icon-forwardfill text-red"></text> <text class="text-black">急事代办</text>
-		</view>
-
-		<view class="item" bindtap="url" data-url="../../food/list/admin_food_list"> <text class="icon-goodsfill text-brown"></text> <text class="text-black">代买服务</text>
-		</view>
-
-		<view class="item" bindtap="url" data-url="../../follow/list/admin_follow_list"> <text class="icon-group text-cyan"></text> <text class="text-black">陪替服务</text>
-		</view>
 	 
 	</view>
 

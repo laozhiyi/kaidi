@@ -19,6 +19,16 @@ class PayController extends BaseProjectController {
 
 		// 取得数据
 		let input = this.validateData(rules);
+		const order = await this._getOrderById(input.orderId);
+		if (!order) this.AppError('订单不存在');
+		if (order.ownerId && order.ownerId !== this._userId) this.AppError('无权支付该订单');
+		if (order.payStatus === 1) this.AppError('订单已支付');
+		if (!(Number(order.totalFee) > 0)) this.AppError('该订单无需支付');
+		if (order.PREFIX === 'MAIL_' && order.status !== 0) this.AppError('当前订单状态不能支付');
+		if (order.PREFIX === 'MAIL_' && order.endTime && Number(order.endTime) <= Date.now()) this.AppError('订单已过期，无法支付');
+		if (Number(order.totalFee) > 0 && Math.round(Number(input.totalFee) * 100) !== Number(order.totalFee)) {
+			this.AppError('支付金额与订单不一致');
+		}
 		const cloud = cloudBase.getCloud();
 
 		try {
@@ -54,6 +64,7 @@ class PayController extends BaseProjectController {
 
 		const order = await this._getOrderById(input.orderId);
 		if (!order) this.AppError('订单不存在');
+		if (order.ownerId && order.ownerId !== this._userId) this.AppError('无权查询该订单');
 
 		return {
 			payStatus: order.payStatus,
@@ -77,8 +88,9 @@ class PayController extends BaseProjectController {
 		if (order.payStatus !== 1) {
 			this.AppError('该订单未支付，无法退款');
 		}
+		if (order.ownerId && order.ownerId !== this._userId) this.AppError('无权退款该订单');
 
-		if (order.status === 2 || order.status === 3) {
+		if (order.PREFIX === 'MAIL_' && order.status !== 0) {
 			this.AppError('订单已开始处理，无法退款');
 		}
 
@@ -96,7 +108,7 @@ class PayController extends BaseProjectController {
 			// 更新订单状态
 			await order.Model.edit(order._id, {
 				[order.PREFIX + 'PAY_STATUS']: 2,
-				[order.PREFIX + 'STATUS']: 9,
+				[order.PREFIX + 'STATUS']: order.PREFIX === 'MAIL_' ? 99 : 9,
 			});
 
 			return { success: true, msg: '退款申请已提交' };
@@ -112,9 +124,6 @@ class PayController extends BaseProjectController {
 	 */
 	async _getOrderById(orderId) {
 		const MailModel = require('../model/mail_model.js');
-		const ThingModel = require('../model/thing_model.js');
-		const FoodModel = require('../model/food_model.js');
-		const FollowModel = require('../model/follow_model.js');
 
 		if (typeof orderId !== 'string') return null;
 
@@ -126,37 +135,8 @@ class PayController extends BaseProjectController {
 				Model: MailModel, PREFIX: 'MAIL_', _id: mail._id,
 				status: mail.MAIL_STATUS, payStatus: mail.MAIL_PAY_STATUS,
 				payTime: mail.MAIL_PAY_TIME, payNo: mail.MAIL_PAY_NO,
-				totalFee: mail.MAIL_TOTAL_FEE
-			};
-		}
-		if (orderId.startsWith('THING')) {
-			const thing = await ThingModel.getOne({ THING_ID: orderId });
-			if (!thing) return null;
-			return {
-				Model: ThingModel, PREFIX: 'THING_', _id: thing._id,
-				status: thing.THING_STATUS, payStatus: thing.THING_PAY_STATUS,
-				payTime: thing.THING_PAY_TIME, payNo: thing.THING_PAY_NO,
-				totalFee: thing.THING_TOTAL_FEE
-			};
-		}
-		if (orderId.startsWith('FOOD')) {
-			const food = await FoodModel.getOne({ FOOD_ID: orderId });
-			if (!food) return null;
-			return {
-				Model: FoodModel, PREFIX: 'FOOD_', _id: food._id,
-				status: food.FOOD_STATUS, payStatus: food.FOOD_PAY_STATUS,
-				payTime: food.FOOD_PAY_TIME, payNo: food.FOOD_PAY_NO,
-				totalFee: food.FOOD_TOTAL_FEE
-			};
-		}
-		if (orderId.startsWith('FOLLOW')) {
-			const follow = await FollowModel.getOne({ FOLLOW_ID: orderId });
-			if (!follow) return null;
-			return {
-				Model: FollowModel, PREFIX: 'FOLLOW_', _id: follow._id,
-				status: follow.FOLLOW_STATUS, payStatus: follow.FOLLOW_PAY_STATUS,
-				payTime: follow.FOLLOW_PAY_TIME, payNo: follow.FOLLOW_PAY_NO,
-				totalFee: follow.FOLLOW_TOTAL_FEE
+				totalFee: mail.MAIL_TOTAL_FEE, ownerId: mail.MAIL_USER_ID,
+				endTime: mail.MAIL_END_TIME
 			};
 		}
 		return null;

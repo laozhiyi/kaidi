@@ -13,7 +13,7 @@
 					<view wx:else class="text-cut">{{user?'欢迎回来~~~':'马上注册，使用更多功能'}}</view>
 				</view>
 			</view>
-			<view class="avatar" wx:if="{{!user.USER_PIC}}">
+			<view class="avatar" wx:if="{{!user || !user.USER_PIC}}">
 				<image mode="aspectFit" src="../../../images/tabbar/my_cur.png" />
 			</view>
 			<image wx:else src="{{user.USER_PIC}}" class="avatar loading" mode="aspectFill" />
@@ -68,7 +68,7 @@
 
 
 
-			<view wx:if="{{skin.IS_SUB}}" class="item arrow" bindtap="url" data-url="/pages/home/about/home_about">
+			<view wx:if="{{skin.IS_SUB}}" class="item arrow" bindtap="url" data-url="/projects/crun/pages/about/index/about_index">
 				<view class="content">
 					<text class="icon-phone my-icon-project"></text>
 					<text class="text-blue">联系作者了解更多详情</text>

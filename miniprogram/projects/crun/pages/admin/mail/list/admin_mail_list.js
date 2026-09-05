@@ -125,7 +125,7 @@ Page({
 					case 0: { //预览
 						let id = pageHelper.dataset(e, 'id');
 						wx.navigateTo({
-							url: '../../../mail/detail/mail_detail?id=' + id,
+							url: '../../../mail/add/mail_add?id=' + id,
 						});
 						break;
 					}

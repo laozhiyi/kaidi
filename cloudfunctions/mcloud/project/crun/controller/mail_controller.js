@@ -64,7 +64,7 @@ class MailController extends BaseProjectController {
 		let input = this.validateData(rules);
 
 		let service = new MailService();
-		let mail = await service.getMailDetail(input.id);
+		let mail = await service.getMailDetail(this._userId, input.id);
 		if (mail) {
 			mail.MAIL_END_TIME = timeUtil.timestamp2Time(mail.MAIL_END_TIME, 'Y-M-D h:m');
 		}
@@ -84,7 +84,7 @@ class MailController extends BaseProjectController {
 		let input = this.validateData(rules);
 
 		let service = new MailService();
-		let mail = await service.viewMail(input.id);
+		let mail = await service.viewMail(this._userId, input.id);
 
 		if (mail) { 
 			mail.end = timeUtil.timestamp2Time(mail.MAIL_END_TIME, 'Y/M/D h:m:s');
@@ -130,6 +130,7 @@ class MailController extends BaseProjectController {
 			sortType: 'string|name=搜索类型',
 			sortVal: 'name=搜索类型值',
 			orderBy: 'object|name=排序',
+			whereEx: 'object|name=附加查询条件',
 			page: 'must|int|default=1',
 			size: 'int',
 			isTotal: 'bool',
@@ -146,10 +147,16 @@ class MailController extends BaseProjectController {
 		let list = result.list;
 
 		for (let k = 0; k < list.length; k++) {
+			if (!list[k].MAIL_OBJ || typeof list[k].MAIL_OBJ !== 'object') list[k].MAIL_OBJ = {};
 			list[k].status = service.getStatusDesc(list[k]);
 
 			list[k].MAIL_ADD_TIME = timeUtil.timestamp2Time(list[k].MAIL_ADD_TIME, 'Y-M-D h:m');
 			list[k].end = timeUtil.timestamp2Time(list[k].MAIL_END_TIME, 'M月D日 h:m');
+			const leftMs = Number(list[k].MAIL_END_TIME) - Date.now();
+			if (leftMs <= 0) list[k].MAIL_OBJ.leftTimeLabel = '已截止';
+			else if (leftMs < 60 * 60 * 1000) list[k].MAIL_OBJ.leftTimeLabel = Math.max(1, Math.ceil(leftMs / 60000)) + '分钟';
+			else if (leftMs < 24 * 60 * 60 * 1000) list[k].MAIL_OBJ.leftTimeLabel = Math.ceil(leftMs / 3600000) + '小时';
+			else list[k].MAIL_OBJ.leftTimeLabel = Math.ceil(leftMs / 86400000) + '天';
 
 			// 删除冗余
 			if (list[k].MAIL_OBJ.content) delete list[k].MAIL_OBJ.content;
@@ -223,7 +230,7 @@ class MailController extends BaseProjectController {
 		await contentCheck.checkTextMultiClient(input);
 
 		let service = new MailService();
-		return await service.updateMailForms(input);
+		return await service.updateMailForms(this._userId, input);
 	}
 
 	/** 删除 */

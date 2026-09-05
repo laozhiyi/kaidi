@@ -11,6 +11,26 @@ page {
 	box-sizing: border-box;
 }
 
+@media (max-width: 360px) {
+	.choose-page {
+		padding-left: 16rpx;
+		padding-right: 16rpx;
+	}
+
+	.choose-option {
+		padding-left: 20rpx;
+		padding-right: 20rpx;
+	}
+
+	.option-title {
+		font-size: 28rpx;
+	}
+
+	.option-desc {
+		font-size: 22rpx;
+	}
+}
+
 .choose-intro {
 	display: flex;
 	align-items: center;

@@ -61,8 +61,8 @@ Page({
 			try {
 				await cloudHelper.callCloudSumbit('admin/log_clear').then(res => {
 					let cb = () =>{
-						wx.redirectTo({
-						  url: 'admin_log_list',
+						wx.reLaunch({
+						  url: '/projects/crun/pages/admin/mgr/log/admin_log_list',
 						})
 					}
 					pageHelper.showSuccToast('清空完成', 1500, cb);

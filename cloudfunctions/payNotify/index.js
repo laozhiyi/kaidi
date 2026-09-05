@@ -16,7 +16,7 @@ exports.main = async (event, context) => {
   if (payResult && payResult.resultCode === 'SUCCESS') {
     try {
       // 查询订单
-      const orderList = await db.collection('mail')
+      const orderList = await db.collection('bx_mail')
         .where({ MAIL_ID: outTradeNo })
         .limit(1)
         .get();
@@ -31,14 +31,13 @@ exports.main = async (event, context) => {
         }
 
         // 更新订单状态
-        await db.collection('mail')
+        await db.collection('bx_mail')
           .doc(order._id)
           .update({
             data: {
               MAIL_PAY_STATUS: 1,        // 已支付
               MAIL_PAY_TIME: Date.now(), // 支付时间
               MAIL_PAY_NO: transactionId, // 微信交易号
-              MAIL_STATUS: 1,           // 状态改为待接单
             }
           });
 
@@ -49,7 +48,7 @@ exports.main = async (event, context) => {
           await cloud.openapi.subscribeMessage.send({
             touser: order.MAIL_USER_ID,
             templateId: 'AT0001', // 替换为你的模板ID
-            page: `/pages/mail/detail/mail_detail?id=${outTradeNo}`,
+            page: `/projects/crun/pages/mail/my_detail/mail_my_detail?id=${order._id}`,
             data: {
               keyword1: { value: '跑腿服务' },
               keyword2: { value: '已支付' },

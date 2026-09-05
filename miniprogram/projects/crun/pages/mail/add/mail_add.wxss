@@ -261,6 +261,38 @@ page {
 	color: #30353d;
 }
 
+.station-row {
+	transition: background-color .15s ease;
+}
+
+.station-row-tap,
+.chip-tap {
+	background: #eef3fa;
+}
+
+.station-value {
+	flex: 1;
+	min-width: 0;
+	padding-right: 4rpx;
+	font-size: 28rpx;
+	line-height: 42rpx;
+	color: #30353d;
+	text-align: right;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.station-value.selected {
+	color: #252b35;
+	font-weight: 600;
+}
+
+.station-placeholder {
+	color: #aeb3ba;
+	font-weight: 400;
+}
+
 .row-arrow {
 	flex-shrink: 0;
 	margin-left: 14rpx;
@@ -462,4 +494,211 @@ page {
 	.publish-btn {
 		width: 220rpx;
 	}
+
+	.phase-chip {
+		min-width: 116rpx;
+		padding: 12rpx 22rpx;
+		font-size: 26rpx;
+	}
+
+	.sheet-title {
+		font-size: 32rpx;
+	}
+
+	.phase-name {
+		font-size: 30rpx;
+	}
+}
+
+.pick-station-mask {
+	position: fixed;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	z-index: 60;
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	background: rgba(20, 28, 45, .45);
+}
+
+.pick-station-sheet {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 680rpx;
+	max-height: 86vh;
+	padding: 18rpx 28rpx 0;
+	background: #fff;
+	border-top-left-radius: 32rpx;
+	border-top-right-radius: 32rpx;
+	box-shadow: 0 -12rpx 36rpx rgba(15, 30, 60, .18);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.sheet-handle {
+	box-sizing: border-box;
+	width: 80rpx;
+	height: 8rpx;
+	margin: 0 auto 18rpx;
+	border-radius: 4rpx;
+	background: #d8dde6;
+}
+
+.sheet-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	padding: 6rpx 4rpx 22rpx;
+}
+
+.sheet-head-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.sheet-title {
+	font-size: 36rpx;
+	font-weight: 700;
+	line-height: 48rpx;
+	color: #20252c;
+}
+
+.sheet-sub {
+	margin-top: 6rpx;
+	font-size: 25rpx;
+	line-height: 36rpx;
+	color: #8a93a1;
+}
+
+.sheet-close {
+	flex-shrink: 0;
+	box-sizing: border-box;
+	width: 56rpx;
+	height: 56rpx;
+	margin-left: 16rpx;
+	border-radius: 50%;
+	background: #f1f6ff;
+	font-size: 36rpx;
+	line-height: 52rpx;
+	text-align: center;
+	color: #8a93a1;
+}
+
+.sheet-body {
+	box-sizing: border-box;
+	max-height: 56vh;
+	padding: 6rpx 4rpx 24rpx;
+}
+
+.phase-card {
+	box-sizing: border-box;
+	padding: 22rpx 24rpx 26rpx;
+	margin-bottom: 18rpx;
+	background: linear-gradient(180deg, #f1f6ff 0%, #eaf1fb 100%);
+	border-radius: 22rpx;
+}
+
+.phase-card:last-child {
+	margin-bottom: 0;
+}
+
+.phase-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 20rpx;
+}
+
+.phase-name-wrap {
+	display: flex;
+	align-items: center;
+}
+
+.phase-dot {
+	width: 12rpx;
+	height: 12rpx;
+	margin-right: 12rpx;
+	border-radius: 50%;
+	background: #397bc8;
+	box-shadow: 0 0 0 6rpx rgba(57, 123, 200, .15);
+}
+
+.phase-name {
+	font-size: 32rpx;
+	font-weight: 700;
+	color: #20252c;
+	letter-spacing: 1rpx;
+}
+
+.phase-count {
+	font-size: 23rpx;
+	color: #8a93a1;
+}
+
+.phase-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 14rpx;
+}
+
+.phase-chip {
+	box-sizing: border-box;
+	min-width: 138rpx;
+	padding: 14rpx 28rpx;
+	border: 2rpx solid transparent;
+	border-radius: 32rpx;
+	background: #fff;
+	font-size: 28rpx;
+	font-weight: 500;
+	line-height: 1.2;
+	text-align: center;
+	color: #30353d;
+	transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .15s ease;
+}
+
+.phase-chip.active {
+	border-color: #397bc8;
+	background: #397bc8;
+	color: #fff;
+	font-weight: 600;
+	box-shadow: 0 6rpx 16rpx rgba(57, 123, 200, .28);
+	transform: translateY(-1rpx);
+}
+
+.sheet-foot {
+	box-sizing: border-box;
+	padding: 18rpx 4rpx calc(20rpx + env(safe-area-inset-bottom));
+	border-top: 2rpx solid #f0f1f3;
+	background: #fff;
+}
+
+.sheet-confirm {
+	width: 100%;
+	height: 92rpx;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 22rpx;
+	background: #c6d2e0;
+	font-size: 32rpx;
+	font-weight: 600;
+	line-height: 92rpx;
+	color: #fff;
+	transition: background-color .15s ease;
+}
+
+.sheet-confirm::after {
+	border: 0;
+}
+
+.sheet-confirm.ready {
+	background: #397bc8;
+	box-shadow: 0 6rpx 18rpx rgba(57, 123, 200, .3);
+}
+
+.sheet-confirm.idle {
+	background: #c6d2e0;
 }

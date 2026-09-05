@@ -128,21 +128,19 @@ Page({
 
 
 	bindMyAcceptTap: function (e) {
-		wx.navigateTo({
-			url: '../../mail/index/mail_index?search=我的接单',
-		});
+		wx.setStorageSync('crun-order-tab', 1);
+		wx.switchTab({ url: '/projects/crun/pages/order/index/order_index' });
 	},
 
 	bindMyFavTap: function (e) {
 		wx.navigateTo({
-			url: '../../mail/index/mail_index?search=我的收藏',
+			url: '../fav/my_fav',
 		});
 	},
 
 
 	bindMyPostTap: function (e) {
-		wx.navigateTo({
-			url: '../../mail/index/mail_index?search=我的发布',
-		});
+		wx.setStorageSync('crun-order-tab', 2);
+		wx.switchTab({ url: '/projects/crun/pages/order/index/order_index' });
 	}
 })

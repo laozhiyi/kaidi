@@ -24,7 +24,7 @@ class AdminMailController extends BaseProjectAdminController {
 		let input = this.validateData(rules);
 
 		let service = new MailService();
-		return await service.getMailDetail(input.id);
+		return await service.getMailDetail(null, input.id);
 
 	}
 

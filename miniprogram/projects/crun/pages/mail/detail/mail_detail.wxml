@@ -1,130 +1,142 @@
-<view wx:if="{{isLoad===null}}" class="margin-top load notexist text-l load-project"></view>
-<view wx:if="{{isLoad===false}}" class="margin-top load loading text-l load-project"></view>
+<!-- 加载中 -->
+<view wx:if="{{isLoad===null}}" class="mail-loading load loading text-l text-grey"></view>
 
-<block wx:if="{{isLoad}}">
-	<view class="main padding-project">
-		<!---time begin---->
-		<view wx:if="{{mail.status=='待接单'}}" class="flex-row j_c time-box card-project shadow-project">
-			<view class="time-item">{{left_time_list[0]}}</view>天
-			<view class="time-item">{{left_time_list[1]}}</view>时
-			<view class="time-item">{{left_time_list[2]}}</view>分
-			<view class="time-item">{{left_time_list[3]}}</view>秒
+<!-- 不存在 -->
+<view wx:if="{{isLoad==='notexist'}}" class="margin-top load notexist text-l text-grey">订单不存在或已删除</view>
+
+<!-- 加载失败 -->
+<view wx:if="{{isLoad===false}}" class="margin-top load loading text-l text-grey">加载失败，下拉重试</view>
+
+<!-- 主体 -->
+<block wx:if="{{isLoad && mail}}">
+	<view class="mail-detail-page">
+
+		<!-- 顶部状态条 -->
+		<view class="status-bar status-{{mail.MAIL_STATUS}}">
+			<view class="status-bar-main">
+				<text class="status-bar-title">{{mail.statusDesc || '待接单'}}</text>
+				<text class="status-bar-sub" wx:if="{{mail.MAIL_STATUS===0}}">剩余 {{mail.MAIL_OBJ.leftTimeLabel || '查看详情'}}</text>
+				<text class="status-bar-sub" wx:elif="{{mail.MAIL_STATUS===1}}">请尽快前往快递点取件</text>
+				<text class="status-bar-sub" wx:elif="{{mail.MAIL_STATUS===9}}">订单已完成</text>
+				<text class="status-bar-sub" wx:else>订单已关闭</text>
+			</view>
+			<text wx:if="{{mail.urgent}}" class="urgent-pill">加急</text>
 		</view>
-		<!---time END---->
 
-		<!-- article content begin -->
-		<view class="article card-project shadow-project margin-top-xs">
-			<view class="mark-status bg-green light" wx:if="{{mail.status=='已完成'}}"><text class="icon-roundcheck"></text>{{mail.status}}</view>
-			<view class="mark-status bg-blue light" wx:elif="{{mail.status=='已接单'}}"><text class="icon-people"></text>{{mail.status}}</view>
-			<view class="mark-status bg-grey light" wx:elif="{{mail.status=='已过期'}}"><text class="icon-remind"></text>{{mail.status}}</view>
-			<view class="mark-status bg-orange light" wx:else><text class="icon-activity"></text>{{mail.status}}</view>
-
-			<view class="title"><text user-select="true">{{mail.MAIL_OBJ.title}}</text></view>
-			<view class="time">
-				<text><text class="icon-calendar margin-right-xxs" />{{mail.MAIL_ADD_TIME}}发布</text>
-				<text> {{mail.MAIL_CATE_NAME}} </text>
-				<text><text class="icon-attention margin-right-xxxs" />{{mail.MAIL_VIEW_CNT}}</text>
+		<!-- 卡片1：金额 -->
+		<view class="card money-card">
+			<view class="money-left">
+				<text class="symbol">¥</text>
+				<text class="num">{{mail.price}}</text>
+				<text class="tip">含打赏</text>
 			</view>
-
-			<view class="list">
-
-			<view class="item">
-				<view class="left">接单截止</view>
-				<view class="right text-red">{{mail.end2}}<text class="icon-remind margin-left-xs"></text></view>
+			<view class="money-right">
+				<view class="kv"><text class="k">分类</text><text class="v">{{mail.MAIL_CATE_NAME || '快递代取'}}</text></view>
+				<view class="kv"><text class="k">浏览</text><text class="v">{{mail.viewCnt || 0}} 次</text></view>
 			</view>
+		</view>
 
-			<view class="item" wx:if="{{mail.MAIL_STATUS==9 && mail.MAIL_OVER_TIME}}">
-				<view class="left">完成时间</view>
-				<view class="right text-green">{{mail.MAIL_OVER_TIME}}</view>
-			</view>
+		<!-- 卡片2：快递信息 -->
+		<view class="card info-card">
+			<view class="card-heading">快递信息</view>
 
-			<view class="item" wx:if="{{mail.MAIL_STATUS==1 && mail.MAIL_ACCEPT_TIME}}">
-				<view class="left">接单时间</view>
-				<view class="right">{{mail.MAIL_ACCEPT_TIME}}</view>
-			</view>
-
-				<view class="item" wx:key="key" wx:for="{{mail.MAIL_FORMS}}" wx:if="{{item.type!='line'&&item.mark!='code'&&item.mark!='tel'&&item.mark!='img'}}">
-					<view class="left">{{item.title}}</view>
-					<view wx:if="{{item.type=='image'}}" class="right pics">
-						<image wx:for="{{item.val}}" wx:for-item="itm" wx:key="key1" bindtap="url" data-type="image" data-url="{{itm}}" src="{{itm}}" mode="aspectFill" class="loading" show-menu-by-longpress="{{true}}" />
-					</view>
-					<view wx:elif="{{item.type=='switch'}}" class="right">{{item.val===true?'是':'否'}} </view>
-					<view wx:else class="right" bind:tap="url" data-type="copy" data-url="{{item.val}}">{{item.val}} </view>
+			<view wx:if="{{mail.canSeeCode}}" class="info-row code-row">
+				<text class="lbl">取件码</text>
+				<view class="val-wrap">
+					<text class="code-text">{{mail.code || '接单后获取'}}</text>
+					<view wx:if="{{mail.code}}" class="copy-btn" bindtap="bindCopyCodeTap">复制</view>
 				</view>
-
-				<block wx:if="{{ mail.myaccept || mail.mypost}}">
-					<view class="item" wx:key="key" wx:for="{{mail.MAIL_FORMS}}" wx:if="{{item.mark=='code'||item.mark=='img'||item.mark=='tel'}}">
-						<view class="left">{{item.title}}</view>
-						<view wx:if="{{item.type=='image'}}" class="right pics">
-							<image wx:for="{{item.val}}" wx:for-item="itm" wx:key="key1" bindtap="url" data-type="image" data-url="{{itm}}" src="{{itm}}" mode="aspectFill" class="loading" show-menu-by-longpress="{{true}}" />
-						</view>
-						<view wx:elif="{{item.type=='switch'}}" class="right">{{item.val===true?'是':'否'}} </view>
-						<view wx:else class="right" bind:tap="url" data-type="copy" data-url="{{item.val}}">{{item.val}} </view>
-					</view>
-				</block>
-
-				<block wx:if="{{ !mail.myaccept && !mail.mypost}}">
-					<view class="item" wx:key="key" wx:for="{{mail.MAIL_FORMS}}" wx:if="{{item.mark=='code'||item.mark=='img'||item.mark=='tel'}}">
-						<view class="left">{{item.title}}</view>
-						<view class="right text-grey">****** (仅接单人或发起人可见) </view>
-					</view>
-				</block>
-
 			</view>
 
+			<view wx:if="{{mail.imgUrls && mail.imgUrls.length}}" class="info-row image-row">
+				<text class="lbl">取件截图</text>
+				<view class="proof-list">
+					<image wx:for="{{mail.imgUrls}}" wx:key="*this" class="proof-img" src="{{item}}" mode="aspectFill" data-url="{{item}}" bindtap="bindPreviewImageTap"></image>
+				</view>
+			</view>
+
+			<view class="info-row">
+				<text class="lbl">快递点</text>
+				<text class="val">{{mail.address1 || '—'}}</text>
+			</view>
+			<view class="info-row">
+				<text class="lbl">送达地址</text>
+				<text class="val">{{mail.address2 || '—'}}</text>
+			</view>
+			<view wx:if="{{mail.rider}}" class="info-row">
+				<text class="lbl">指定骑手</text>
+				<text class="val">{{mail.rider}}</text>
+			</view>
+			<view class="info-row">
+				<text class="lbl">类型</text>
+				<view class="val tag-list">
+					<text wx:if="{{mail.small}}" class="tag tag-blue">小件×{{mail.small}}</text>
+					<text wx:if="{{mail.medium}}" class="tag tag-orange">中件×{{mail.medium}}</text>
+					<text wx:if="{{mail.large}}" class="tag tag-red">大件×{{mail.large}}</text>
+				</view>
+			</view>
+			<view wx:if="{{mail.desc}}" class="info-row">
+				<text class="lbl">备注</text>
+				<text class="val multi">{{mail.desc}}</text>
+			</view>
+			<view class="info-row">
+				<text class="lbl">截止时间</text>
+				<text class="val">{{mail.MAIL_END_TIME || '—'}}</text>
+			</view>
+			<view class="info-row">
+				<text class="lbl">发布时间</text>
+				<text class="val">{{mail.MAIL_ADD_TIME || '—'}}</text>
+			</view>
 		</view>
-		<!-- article content end -->
 
-		<block wx:if="{{mail.MAIL_STATUS > 0 && mail.acceptUser}}">
-			<view class="accept-line">接单人信息</view>
-			<view class="article card-project shadow-project">
-				<block wx:if="{{mail.acceptUser && (mail.myaccept||mail.mypost)}}">
-					<view class="list">
-						<view class="item">
-							<view class="left">接单人：</view>
-							<view class="right">{{mail.acceptUser.USER_NAME}}</view>
-						</view>
-						<view class="item" bind:tap="url" data-url="{{mail.acceptUser.USER_MOBILE}}" data-type="phone">
-							<view class="left">接单人电话：</view>
-							<view class="right">{{mail.acceptUser.USER_MOBILE}} <text class="icon-phone"></text></view>
-						</view>
-
-						<block wx:if="{{mail.MAIL_ACCEPT_PAY_PIC && mail.mypost && mail.MAIL_STATUS>=1 && mail.MAIL_STATUS!=0}}">
-							<view class="item">
-								<view class="left">收款码：</view>
-								<view class="right text-orange">点击查看大图 →</view>
-							</view>
-							<view class="pay-pic-box" bindtap="bindShowPayPicTap">
-								<image class="pay-pic" src="{{mail.MAIL_ACCEPT_PAY_PIC}}" mode="aspectFit" show-menu-by-longpress="{{true}}" />
-								<view class="pay-hint">长按识别收款码转账</view>
-							</view>
-						</block>
-					</view>
-				</block>
-				<view wx:else class="text-s text-grey text-center">仅发起人或者接单人可见</view>
+		<!-- 卡片3：发单人信息 -->
+		<view class="card user-card">
+			<view class="card-heading">发单人</view>
+			<view class="user-row">
+				<image class="avatar" src="{{mail.posterPic || '/projects/crun/images/menu/mail.png'}}" mode="aspectFill"></image>
+				<view class="user-meta">
+					<view class="nick">{{mail.poster}}</view>
+					<view class="sub">{{mail.tel || '接单后可见联系方式'}}</view>
+				</view>
 			</view>
+		</view>
 
+		<!-- 卡片4：接单人（仅已接单状态） -->
+		<view wx:if="{{mail.MAIL_STATUS > 0 && mail.acceptUser}}" class="card user-card">
+			<view class="card-heading">接单人</view>
+			<view class="user-row">
+				<image class="avatar" src="/projects/crun/images/menu/mail.png" mode="aspectFill"></image>
+				<view class="user-meta">
+					<view class="nick">{{mail.acceptUser.USER_NAME || '匿名骑手'}}</view>
+					<view class="sub">{{mail.acceptUser.USER_MOBILE || ''}}</view>
+				</view>
+			</view>
+		</view>
+
+		<!-- 卡片5：温馨提示 -->
+		<view class="card tip-card">
+			<view class="tip-title">温馨提示</view>
+			<view class="tip-line">· 请确认快递点和收件地址准确，避免跑错</view>
+			<view class="tip-line">· 接单后请尽快取件，超时可能影响信用</view>
+			<view class="tip-line">· 送达后请在订单中点击「完成」</view>
+		</view>
+
+		<view style="height: 160rpx;"></view>
+
+		<!-- 底部操作栏：只有已支付且未过期的公开订单可接单 -->
+		<block wx:if="{{mail.canAccept}}">
+			<view class="footer-bar safe-bottom">
+				<button class="btn-ghost" bindtap="bindCallTap" wx:if="{{mail.tel}}">联系发单</button>
+				<button class="btn-ghost" wx:else disabled>暂无联系方式</button>
+				<button class="btn-primary" bindtap="bindAcceptTap">立即接单</button>
+			</view>
+		</block>
+		<block wx:else>
+			<view class="footer-bar safe-bottom footer-secondary">
+				<button class="btn-ghost" bindtap="bindCallTap" wx:if="{{mail.tel}}">联系发单</button>
+				<view class="footer-tip">{{mail.MAIL_STATUS===0 ? (mail.MAIL_PAY_STATUS===0 ? '等待发布者完成支付' : '订单已过期或不可接单') : '该订单已被接'}}</view>
+			</view>
 		</block>
 
-
 	</view>
-
-	<cmpt-detail mode="mode2" topBtnShow="{{topBtnShow}}" tag="{{mail.myaccept&&mail.status=='已接单'?'我已接单':''}}" oid="{{mail._id}}" type="mail" cate="{{mail.MAIL_CATE_NAME}}" title="{{mail.MAIL_OBJ.title}}" cover="/projects/crun/images/poster/mail.png" qr="{{mail.MAIL_QR}}" desc="查看详情" bg="{{skin.PROJECT_COLOR}}">
-		<view class="bottom-line">
-			<!-- 已完成/已过期/已取消状态 -->
-			<view wx:if="{{mail.status=='已完成'}}" class="oprt bg-grey light">已完成</view>
-			<view wx:elif="{{mail.status=='已过期'}}" class="oprt bg-grey light">已过期</view>
-			<view wx:elif="{{mail.status=='已取消'}}" class="oprt bg-grey light">已取消</view>
-
-			<!-- 接单者的操作 -->
-			<view wx:elif="{{mail.myaccept&&mail.status=='已接单'}}" bind:tap="bindOverTap" class="oprt bg-green">确认完成</view>
-			<view wx:elif="{{mail.myaccept&&mail.status=='已接单'&&false}}" bind:tap="bindCancelTap" class="oprt bg-grey light">取消该单</view>
-
-			<!-- 待接单状态：显示"我要接单"按钮 -->
-			<view wx:elif="{{mail.MAIL_STATUS==0}}" bindtap="bindAcceptTap" class="oprt">我要接单</view>
-
-			<!-- 发布者操作：已接单时可确认完成 -->
-			<view wx:elif="{{mail.mypost && mail.MAIL_STATUS==1}}" bindtap="bindOverTap" class="oprt bg-green">确认完成</view>
-		</view>
-	</cmpt-detail>
 </block>

@@ -1,413 +1,333 @@
-let behavior = require('../../../biz/project_index_bh.js');
 const pageHelper = require('../../../../../helper/page_helper.js');
 const cloudHelper = require('../../../../../helper/cloud_helper.js');
+const ProjectBiz = require('../../../biz/project_biz.js');
+const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
+const PublicBiz = require('../../../../../comm/biz/public_biz.js');
 
+/**
+ * 快递代取 - 接单/订单 Tab 页
+ * 四个分段：
+ *   0 可接单（浏览全部待接订单）    mail/list + sortType='wait'
+ *   1 我接的（已接单未完成）        mail/list + search='我的接单' + sortType='status',sortVal='1'
+ *   2 我发布的（全部状态）          mail/list + sortType='my_post'
+ *   3 已完成                       mail/list + sortType='my_done'
+ */
 Page({
-
-	behaviors: [behavior],
-
-	/**
-	 * 页面的初始数据
-	 */
 	data: {
-		type: 'order',
-		curTab: 'all', // 当前订单类型: all-全部, wait-待接单, done-已完成
-		curServiceType: '', // 当前服务类型: ''-全部, mail-快递, thing-代办
-		curLocation: '', // 当前地点筛选
-		curTabIndex: 0,
-		curServiceTypeIndex: 0,
-		curLocationIndex: 0,
-
-		filterShow: false,
-		filterType: '',
-
-		orderTypeOptions: [
-			{ label: '全部订单', val: 'all', sortType: 'all', sortVal: '' },
-			{ label: '待接单', val: 'wait', sortType: 'wait', sortVal: 'wait' },
-			{ label: '已完成', val: 'done', sortType: 'status', sortVal: '9' }
-		],
-		serviceTypeOptions: [
-			{ label: '全部服务', val: '' },
-			{ label: '快递代取', val: 'mail' },
-			{ label: '急事代办', val: 'thing' }
-		],
-		locationOptions: [
-			{ label: '全部地点', val: '' },
-			{ label: '校园内', val: 'campus' },
-			{ label: '校外', val: 'offcampus' }
-		],
-
-		dataList: {
-			list: [],
-			loading: false,
-			hasMore: true
-		},
-		refresherTriggered: false,
 		isLoad: false,
+		tabIndex: 0,
 
-		dropdownLeft: 24, // 下拉弹层 left (px)
-		dropdownTop: 0, // 下拉弹层 top (px)
-		dropdownWidth: 0, // 下拉弹层 width (px)
+		// 各 Tab 的查询参数，注入到 cmpt-comm-list 的 _params 中
+		listParams: {
+			take: { sortType: 'wait' },
+			mine: { sortType: 'my_accept' },
+			posted: { sortType: 'my_post' },
+			done: { sortType: 'my_done' },
+		},
+
+		// 筛选条 - 附加排序（合并到 takeParams.orderBy，不影响 sortType）
+		sortVal: '',
+
+		// 地点筛选（一期/二期/三期/四期/五期/全部）
+		phaseOptions: [
+			{ label: '全部', value: '' },
+			{ label: '一期', value: '一期' },
+			{ label: '二期', value: '二期' },
+			{ label: '三期', value: '三期' },
+			{ label: '四期', value: '四期' },
+			{ label: '五期', value: '五期' },
+		],
+		phaseVal: '',
+		phasePickerVisible: false,
+
+		// 列表数据（cmpt-comm-list 通过 bind:list 回填）
+		dataList: null,
 	},
 
-	/**
-	 * 初始化搜索菜单 - 由 behavior:_onLoad 调用
-	 */
-	_getSearchMenu: function () {
-		this.setData({
-			_params: {
-				sortType: 'all',
-				sortVal: ''
-			},
-			sortMenus: [
-				{ label: '全部', type: 'all', value: '' }
-			],
-			sortItems: []
-		});
-	},
+	onLoad: async function (options) {
+		ProjectBiz.initPage(this);
 
-	/**
-	 * 生命周期函数--监听页面加载
-	 */
-	onLoad: function (options) {
-		this._onLoad(options);
+		// 支持 ?tab=1/2 直接进入对应分段
+		const tab = Number(options && options.tab);
+		if (tab === 1 || tab === 2 || tab === 3) {
+			this.setData({ tabIndex: tab });
+		}
+		if (tab === 1 || tab === 2 || tab === 3) wx.removeStorageSync('crun-order-tab');
+
 		this.setData({ isLoad: true });
-		this._getList(1);
+
+		// 每次进入都清掉缓存列表，强制刷新一次
+		PublicBiz.removeCacheList('order-mail-take');
+		PublicBiz.removeCacheList('order-mail-mine');
+		PublicBiz.removeCacheList('order-mail-posted');
+		PublicBiz.removeCacheList('order-mail-done');
 	},
 
 	onShow: function () {
-		wx.setNavigationBarTitle({ title: '订单中心' });
-		if (this.data.isLoad) {
-			this._getList(1);
+		const pendingTab = wx.getStorageSync('crun-order-tab');
+		if (pendingTab !== '' && pendingTab !== null && pendingTab !== undefined) {
+			wx.removeStorageSync('crun-order-tab');
+			const idx = Number(pendingTab);
+			if (idx >= 0 && idx <= 3 && idx !== this.data.tabIndex) {
+				this.setData({ tabIndex: idx, dataList: null }, () => this._reloadActiveList());
+				return;
+			}
+		}
+		this._reloadActiveList();
+	},
+
+	_reloadActiveList: function () {
+		// 切回页面时刷新当前分段
+		const ids = ['#cmpt-list-take', '#cmpt-list-mine', '#cmpt-list-posted', '#cmpt-list-done'];
+		const list = this.selectComponent(ids[this.data.tabIndex]);
+		if (list && typeof list.reload === 'function') {
+			list.reload();
 		}
 	},
 
-	onPullDownRefresh: function () {
-		this._getList(1, () => {
-			wx.stopPullDownRefresh();
+	onPullDownRefresh: async function () {
+		wx.stopPullDownRefresh();
+	},
+
+	/**
+	 * cmpt-comm-list 回传列表数据
+	 */
+	bindCommListCmpt: function (e) {
+		pageHelper.commListListener(this, e);
+	},
+
+	/**
+	 * 顶部 tab 切换
+	 */
+	bindTabTap: function (e) {
+		const idx = Number(e.currentTarget.dataset.idx);
+		if (idx === this.data.tabIndex) return;
+		// 切换分段时清掉旧列表，避免新组件加载期间短暂显示上一分段内容。
+		this.setData({
+			tabIndex: idx,
+			dataList: null,
 		});
 	},
 
-	onReachBottom: function () {
-		if (this.data.dataList.loading || !this.data.dataList.hasMore) return;
-		this._getList(this.data.dataList.page + 1);
+	_buildTakeParams: function (sortVal, phaseVal) {
+		const params = Object.assign({}, this.data.listParams.take);
+		delete params.orderBy;
+		delete params.whereEx;
+
+		if (sortVal === 'price_desc') {
+			params.orderBy = { 'MAIL_OBJ.price': 'desc' };
+		} else if (sortVal === 'urgent') {
+			params.whereEx = { 'MAIL_OBJ.urgent': true };
+		}
+
+		if (phaseVal) {
+			params.whereEx = Object.assign({}, params.whereEx, {
+				'MAIL_OBJ.address1': ['like', phaseVal],
+			});
+		}
+		return params;
 	},
 
 	/**
-	 * 获取订单列表 - 合并 mail/list 和 thing/list
+	 * 筛选条 - 通过 orderBy 注入排序，不影响 tab 的 sortType/sortVal
 	 */
-	_getList: async function (page, callback) {
-		this.setData({ 'dataList.loading': true });
+	bindSortTap: function (e) {
+		let val = e.currentTarget.dataset.val || '';
+		if (val === this.data.sortVal) val = '';
 
-		const orderOpt = this.data.orderTypeOptions[this.data.curTabIndex];
-		const sortType = orderOpt.sortType;
-		const sortVal = orderOpt.sortVal;
-		const serviceType = this.data.curServiceType;
+		const takeParams = this._buildTakeParams(val, this.data.phaseVal);
 
-		// 根据服务类型筛选决定要调用哪些云函数
-		const calls = [];
-		if (!serviceType || serviceType === 'mail') {
-			calls.push(this._fetchByType('mail', page, sortType, sortVal));
-		}
-		if (!serviceType || serviceType === 'thing') {
-			calls.push(this._fetchByType('thing', page, sortType, sortVal));
-		}
-
-		try {
-			const results = await Promise.all(calls);
-			let merged = [];
-			let hasMore = false;
-			results.forEach(r => {
-				if (r && r.list) {
-					merged = merged.concat(r.list);
-					if (r.hasMore) hasMore = true;
-				}
-			});
-
-			// 按时间倒序
-			merged.sort((a, b) => {
-				const ta = new Date(a.timeAgoStr || 0).getTime();
-				const tb = new Date(b.timeAgoStr || 0).getTime();
-				return tb - ta;
-			});
-
-			// 补充显示字段
-			merged.forEach(item => {
-				item.timeAgo = this._formatTimeAgo(item.timeAgoStr);
-				item.title = item.title || (item.type === 'mail' ? '代取快递' : '急事代办');
-				item.price = item.price || 0;
-			});
-
-			if (page === 1) {
-				this.setData({
-					'dataList.list': merged,
-					'dataList.page': page,
-					'dataList.hasMore': hasMore,
-					'dataList.loading': false
-				});
-			} else {
-				this.setData({
-					'dataList.list': [...this.data.dataList.list, ...merged],
-					'dataList.page': page,
-					'dataList.hasMore': hasMore,
-					'dataList.loading': false
-				});
-			}
-
-			if (callback) callback();
-		} catch (e) {
-			console.error('订单列表加载失败', e);
-			if (page === 1) {
-				this.setData({
-					'dataList.list': [],
-					'dataList.page': page,
-					'dataList.hasMore': false,
-					'dataList.loading': false
-				});
-			} else {
-				this.setData({
-					'dataList.loading': false,
-					'dataList.hasMore': false
-				});
-			}
-			if (callback) callback();
-		}
+		const listParams = Object.assign({}, this.data.listParams, { take: takeParams });
+		this.setData({ sortVal: val, listParams });
 	},
 
 	/**
-	 * 调用指定类型的列表云函数并归一化字段
+	 * 地点筛选弹层
 	 */
-	_fetchByType: async function (type, page, sortType, sortVal) {
-		const params = {
-			page: page,
-			size: 10,
-			sortType: sortType || 'all',
-			sortVal: sortVal || '',
-			isTotal: false
-		};
-
-		try {
-			const res = await cloudHelper.callCloudSumbit(type + '/list', params, { title: '', hint: false });
-			const list = (res && res.data && res.data.list) ? res.data.list : [];
-			const normalized = list.map(it => this._normalizeItem(it, type));
-			return {
-				list: normalized,
-				hasMore: list.length >= 10
-			};
-		} catch (e) {
-			console.error(type + '/list 加载失败', e);
-			return { list: [], hasMore: false };
-		}
+	bindOpenPhasePicker: function () {
+		this.setData({ phasePickerVisible: true });
 	},
 
-	/**
-	 * 将 mail 或 thing 列表项归一化为统一字段
-	 * 统一输出: _id, type, status, title, price, address1, address2, remark, timeAgoStr
-	 */
-	_normalizeItem: function (it, type) {
-		const OBJ = type === 'mail' ? it.MAIL_OBJ : it.THING_OBJ;
-		const TIME_FIELD = type === 'mail' ? 'MAIL_ADD_TIME' : 'THING_ADD_TIME';
-		const STATUS_FIELD = type === 'mail' ? 'MAIL_STATUS' : 'THING_STATUS';
-		const END_FIELD = type === 'mail' ? 'MAIL_END_TIME' : 'THING_END_TIME';
-		const rawStatus = Number(it[STATUS_FIELD]);
-		let status = it.status;
-		if (!status) {
-			if (rawStatus === 0 && Number(it[END_FIELD]) > 0 && Number(it[END_FIELD]) < Date.now()) status = '已过期';
-			else if (rawStatus === 3 || rawStatus === 9) status = '已完成';
-			else if (rawStatus === 99) status = '已取消';
-			else if (rawStatus === 1 || rawStatus === 2) status = '已接单';
-			else status = '待接单';
-		}
-		const addTime = it[TIME_FIELD] || '';
-		return {
-			_id: it._id,
-			type: type,
-			status: status,
-			typeLabel: type === 'mail' ? '快递代取' : '急事代办',
-			title: OBJ ? (OBJ.title || (type === 'mail' ? '代取快递' : '急事代办')) : '',
-			price: OBJ ? (OBJ.price || 0) : 0,
-			quantity: OBJ && type === 'mail' ? (Number(OBJ.num) || 1) : 1,
-			poster: OBJ ? (OBJ.poster || '') : '',
-			userPic: it.user ? (it.user.USER_PIC || '') : '',
-			address1: OBJ ? (OBJ.address1 || '') : '',
-			address2: OBJ ? (OBJ.address2 || '') : '',
-			remark: OBJ ? (OBJ.desc || OBJ.remark || '') : '',
-			endTime: it.end || '',
-			timeAgoStr: addTime,
-			timeText: addTime,
-			myaccept: !!it.myaccept,
-			mypost: !!it.mypost
-		};
+	bindClosePhasePicker: function () {
+		this.setData({ phasePickerVisible: false });
 	},
 
-	/**
-	 * 格式化时间显示
-	 */
-	_formatTimeAgo: function (timestamp) {
-		if (!timestamp) return '';
-		let date;
-		if (typeof timestamp === 'string') {
-			date = new Date(timestamp.replace(/-/g, '/'));
-		} else {
-			date = new Date(timestamp);
-		}
-		if (isNaN(date.getTime())) return '';
-
-		const now = Date.now();
-		const diff = now - date.getTime();
-		const minute = 60 * 1000;
-		const hour = 60 * minute;
-		const day = 24 * hour;
-
-		if (diff < minute) {
-			return '刚刚';
-		} else if (diff < hour) {
-			return Math.floor(diff / minute) + '分钟前';
-		} else if (diff < day) {
-			return Math.floor(diff / hour) + '小时前';
-		} else if (diff < 7 * day) {
-			return Math.floor(diff / day) + '天前';
-		} else {
-			return `${date.getMonth() + 1}-${date.getDate()}`;
-		}
-	},
-
-	/**
-	 * 点击筛选按钮 - 打开对应下拉（弹层精确定位到胶囊正下方）
-	 */
-	bindFilterTap: function (e) {
-		const type = e.currentTarget.dataset.type;
-		const newType = this.data.filterType === type ? '' : type;
-
-		if (newType) {
-			// 获取胶囊在视口中的位置，让下拉层紧贴其正下方
-			const query = wx.createSelectorQuery();
-			query.select('#filter-pill-' + type).boundingClientRect();
-			query.exec(rects => {
-				const rect = rects && rects[0];
-				if (rect) {
-					this.setData({
-						filterShow: true,
-						filterType: newType,
-						dropdownLeft: rect.left,
-						dropdownTop: rect.bottom + 8,
-						dropdownWidth: rect.width
-					});
-				} else {
-					this.setData({
-						filterShow: true,
-						filterType: newType,
-						dropdownWidth: 0
-					});
-				}
-			});
-		} else {
-			this.setData({
-				filterShow: false,
-				filterType: ''
-			});
-		}
-	},
-
-	/**
-	 * 点击遮罩关闭下拉
-	 */
-	bindFilterMaskTap: function () {
-		this.setData({ filterShow: false, filterType: '' });
-	},
-
-	/**
-	 * 选择筛选选项
-	 */
-	bindFilterOptionTap: function (e) {
-		const type = e.currentTarget.dataset.type;
-		const idx = parseInt(e.currentTarget.dataset.index);
-
-		if (type === 'orderType') {
-			this.setData({
-				curTabIndex: idx,
-				curTab: this.data.orderTypeOptions[idx].val,
-				filterShow: false,
-				filterType: '',
-				'dataList.list': [],
-				'dataList.page': 0,
-				'dataList.hasMore': true
-			});
-		} else if (type === 'serviceType') {
-			this.setData({
-				curServiceTypeIndex: idx,
-				curServiceType: this.data.serviceTypeOptions[idx].val,
-				filterShow: false,
-				filterType: '',
-				'dataList.list': [],
-				'dataList.page': 0,
-				'dataList.hasMore': true
-			});
-		} else if (type === 'location') {
-			this.setData({
-				curLocationIndex: idx,
-				curLocation: this.data.locationOptions[idx].val,
-				filterShow: false,
-				filterType: '',
-				'dataList.list': [],
-				'dataList.page': 0,
-				'dataList.hasMore': true
-			});
+	bindPhaseSelect: function (e) {
+		const value = e.currentTarget.dataset.value || '';
+		const label = e.currentTarget.dataset.label || '全部';
+		if (value === this.data.phaseVal) {
+			this.setData({ phasePickerVisible: false });
+			return;
 		}
 
-		this._getList(1);
-	},
-
-	bindPullDownRefresh: function () {
-		this.setData({ refresherTriggered: true });
-		this._getList(1, () => {
-			this.setData({ refresherTriggered: false });
+		const takeParams = this._buildTakeParams(this.data.sortVal, value);
+		const listParams = Object.assign({}, this.data.listParams, { take: takeParams });
+		this.setData({
+			phaseVal: value,
+			phaseLabel: label,
+			phasePickerVisible: false,
+			listParams,
 		});
 	},
 
-	bindReachBottom: function () {
-		if (this.data.dataList.loading || !this.data.dataList.hasMore) return;
-		this._getList(this.data.dataList.page + 1);
+	/**
+	 * 跳转到详情页
+	 * - 可接单 Tab（status=0）：用 mail_detail（接单详情页），底部显示「立即接单」
+	 * - 我接的 / 已完成 Tab：用 mail_my_detail（我的订单详情页），按角色显示操作
+	 */
+	bindDetailTap: function (e) {
+		const id = e.currentTarget.dataset.id;
+		if (!id) return;
+		const tab = this.data.tabIndex;
+		if (tab === 0) {
+			wx.navigateTo({
+				url: pageHelper.fmtURLByPID('/pages/mail/detail/mail_detail?id=' + id),
+			});
+		} else {
+			wx.navigateTo({
+				url: pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id=' + id),
+			});
+		}
 	},
 
 	/**
-	 * 接单操作
+	 * 立即接单 - mail/accept（已存在）
 	 */
 	bindAcceptTap: async function (e) {
 		const id = e.currentTarget.dataset.id;
-		const type = e.currentTarget.dataset.type;
+		if (!id) return;
 
-		wx.showModal({
-			title: '确认接单',
-			content: '确定要接下这个订单吗？',
-			success: async res => {
-				if (res.confirm) {
-					try {
-						await cloudHelper.callCloudSumbit(type + '/accept', { id }).then(res => {
-							pageHelper.showSuccToast('接单成功');
-							this._getList(1);
-						});
-					} catch (err) {
-						pageHelper.showNoneToast('接单失败，请稍后再试');
-					}
-				}
+		if (!await PassportBiz.loginMustCancelWin(this)) return;
+
+		const confirm = await pageHelper.showConfirm('确认接单后请尽快前往快递点取件，是否继续？');
+		if (!confirm) return;
+
+		try {
+			wx.showLoading({ title: '接单中...' });
+			const res = await cloudHelper.callCloudSumbit('mail/accept', { id });
+			wx.hideLoading();
+
+			if (res && res.data && res.data.id) {
+				pageHelper.showSuccToast('接单成功');
+				PublicBiz.removeCacheList('order-mail-take');
+				setTimeout(() => wx.redirectTo({
+					url: pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id=' + id),
+				}), 700);
+			} else {
+				pageHelper.showNoneToast('手慢了，订单已被接走');
 			}
+		} catch (err) {
+			wx.hideLoading();
+			pageHelper.showNoneToast(err.message || '接单失败');
+		}
+	},
+
+	/** 为尚未支付的自有订单发起支付，并在成功后刷新发布列表。 */
+	bindPayTap: async function (e) {
+		const id = e.currentTarget.dataset.id;
+		const index = Number(e.currentTarget.dataset.index);
+		const list = this.data.dataList && this.data.dataList.list;
+		const order = list && list[index];
+		if (!id || !order) return;
+		if (!await PassportBiz.loginMustCancelWin(this)) return;
+
+		const cents = Number(order.MAIL_TOTAL_FEE || 0);
+		const totalFee = cents > 0 ? cents / 100 : Number(order.MAIL_OBJ && order.MAIL_OBJ.price);
+		if (!(totalFee > 0)) {
+			pageHelper.showNoneToast('订单金额无效');
+			return;
+		}
+		try {
+			wx.showLoading({ title: '获取支付信息...' });
+			const payRes = await cloudHelper.callCloudSumbit('pay/create', {
+				orderId: order.MAIL_ID || id,
+				totalFee,
+				description: '快递代取服务费',
+			});
+			wx.hideLoading();
+			if (!payRes || !payRes.data) {
+				pageHelper.showNoneToast('获取支付参数失败');
+				return;
+			}
+			await new Promise((resolve, reject) => {
+				wx.requestPayment({
+					timeStamp: payRes.data.timeStamp,
+					nonceStr: payRes.data.nonceStr,
+					package: payRes.data.package,
+					signType: 'MD5',
+					paySign: payRes.data.paySign,
+					success: resolve,
+					fail: reject,
+				});
+			});
+			pageHelper.showSuccToast('支付成功');
+			PublicBiz.removeCacheList('order-mail-posted');
+			const postedList = this.selectComponent('#cmpt-list-posted');
+			if (postedList && typeof postedList.reload === 'function') {
+				setTimeout(() => postedList.reload(), 1000);
+			}
+		} catch (err) {
+			wx.hideLoading();
+			if (err && err.errMsg && err.errMsg.indexOf('cancel') >= 0) return;
+			pageHelper.showNoneToast((err && err.message) || '支付失败，请稍后重试');
+		}
+	},
+
+	/**
+	 * 联系发单人（拨打电话）
+	 */
+	bindCallTap: function (e) {
+		const tel = e.currentTarget.dataset.tel;
+		if (!tel) {
+			pageHelper.showNoneToast('暂无联系方式');
+			return;
+		}
+		wx.makePhoneCall({ phoneNumber: String(tel) });
+	},
+
+	/**
+	 * 完成订单 - 发布者或接单人确认配送完成
+	 */
+	bindOverTap: async function (e) {
+		const id = e.currentTarget.dataset.id;
+		if (!id) return;
+
+		const confirm = await pageHelper.showConfirm('确认已送达并将订单标记完成？');
+		if (!confirm) return;
+
+		try {
+			wx.showLoading({ title: '提交中...' });
+			const res = await cloudHelper.callCloudSumbit('mail/finish', { id });
+			wx.hideLoading();
+			if (res && res.data && res.data.id) {
+				pageHelper.showSuccToast('已完成');
+				// 刷新当前 tab
+				const list = this.selectComponent('#cmpt-list-mine');
+				if (list && typeof list.reload === 'function') list.reload();
+			} else {
+				pageHelper.showNoneToast('操作失败，请稍后再试');
+			}
+		} catch (err) {
+			wx.hideLoading();
+			pageHelper.showNoneToast(err.message || '操作失败');
+		}
+	},
+
+	/**
+	 * 跳转到发布订单
+	 */
+	bindPublishTap: function () {
+		wx.navigateTo({
+			url: '/projects/crun/pages/mail/add/mail_add',
 		});
 	},
 
 	/**
-	 * 收藏操作
+	 * 阻止事件冒泡（卡片点击区域内，actions 区按钮不希望触发卡片 tap）
 	 */
-	bindFavTap: async function (e) {
-		const id = e.currentTarget.dataset.id;
-		const type = e.currentTarget.dataset.type;
-		try {
-			await cloudHelper.callCloudSumbit('fav/update', { oid: id, type: type === 'mail' ? 'mail' : 'thing' }).then(res => {
-				pageHelper.showSuccToast(res.data && res.data.isFav === 1 ? '收藏成功' : '已取消收藏');
-			});
-		} catch (err) {
-			pageHelper.showNoneToast('收藏失败，请稍后再试');
-		}
-	},
+	bindStop: function () {},
 
-})
+	url: function (e) {
+		pageHelper.url(e, this);
+	},
+});

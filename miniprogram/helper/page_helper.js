@@ -413,19 +413,28 @@ function formHint(that, formName, hint) {
 
 // 二次确认操作 
 function showConfirm(title = '确定要删除吗？', yes, no) {
-	return wx.showModal({
+	const options = {
 		title: '',
 		content: title,
 		cancelText: '取消',
 		confirmText: '确定',
-		success: res => {
-			if (res.confirm) {
-				yes && yes();
-			} else if (res.cancel) {
-				no && no();
-			}
-		}
-	})
+	};
+
+	// 兼容原有回调调用，同时允许 `await showConfirm()` 得到布尔结果。
+	if (typeof yes === 'function' || typeof no === 'function') {
+		options.success = res => {
+			if (res.confirm) yes && yes();
+			else if (res.cancel) no && no();
+		};
+		return wx.showModal(options);
+	}
+
+	return new Promise(resolve => {
+		wx.showModal(Object.assign({}, options, {
+			success: res => resolve(!!res.confirm),
+			fail: () => resolve(false),
+		}));
+	});
 }
 
 function showModal(content, title = '温馨提示', callback = null, confirmText = null) {

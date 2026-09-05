@@ -93,6 +93,72 @@ page {
 	margin-bottom: 18rpx;
 }
 
+/* ===== 进度条 ===== */
+.progress-card {
+	padding: 32rpx 28rpx 24rpx;
+}
+
+.progress-line {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 6rpx;
+}
+
+.progress-dot {
+	position: relative;
+	flex-shrink: 0;
+	box-sizing: border-box;
+	width: 52rpx;
+	height: 52rpx;
+	border-radius: 50%;
+	background: #eef0f4;
+	font-size: 26rpx;
+	line-height: 52rpx;
+	color: #94a3b8;
+	text-align: center;
+	font-weight: 600;
+	transition: background .2s ease;
+}
+
+.progress-dot.on {
+	background: #397bc8;
+	color: #fff;
+	box-shadow: 0 4rpx 12rpx rgba(57, 123, 200, .35);
+}
+
+.progress-bar {
+	flex: 1;
+	height: 6rpx;
+	background: #eef0f4;
+	margin: 0 6rpx;
+	border-radius: 4rpx;
+	transition: background .2s ease;
+}
+
+.progress-bar.on {
+	background: linear-gradient(90deg, #5C9BEA 0%, #397BC8 100%);
+}
+
+.dot-num {
+	line-height: 52rpx;
+}
+
+.progress-label {
+	display: flex;
+	justify-content: space-between;
+	margin-top: 14rpx;
+	padding: 0 4rpx;
+	font-size: 24rpx;
+	color: #94a3b8;
+	line-height: 34rpx;
+}
+
+.progress-label .on {
+	color: #397bc8;
+	font-weight: 600;
+}
+
 /* ===== 金额卡片 ===== */
 .money-card {
 	display: flex;
@@ -166,7 +232,7 @@ page {
 
 .info-row .lbl {
 	flex-shrink: 0;
-	width: 110rpx;
+	width: 120rpx;
 	color: #94a3b8;
 	font-size: 26rpx;
 }
@@ -352,6 +418,8 @@ page {
 }
 
 .footer-bar button {
+	flex: 1 1 0;
+	min-width: 0;
 	margin: 0;
 	padding: 0;
 	border-radius: 36rpx;
@@ -366,14 +434,14 @@ page {
 }
 
 .footer-bar .btn-ghost {
-	flex: 0 0 220rpx;
 	height: 80rpx;
 	line-height: 80rpx;
 	background: #f1f4f8;
 	color: #51607a;
 	border: 0;
-	margin-right: 18rpx;
 	font-weight: 500;
+	padding: 0 28rpx;
+	margin-right: 14rpx;
 }
 
 .footer-bar .btn-ghost[disabled] {
@@ -392,11 +460,7 @@ page {
 }
 
 .footer-secondary {
-	justify-content: space-between;
-}
-
-.footer-secondary .btn-ghost {
-	flex: 0 0 200rpx;
+	justify-content: center;
 }
 
 .footer-tip {
@@ -422,10 +486,15 @@ page {
 	}
 
 	.info-row .lbl {
-		width: 96rpx;
+		width: 100rpx;
 	}
 
 	.footer-bar .btn-ghost {
-		flex-basis: 180rpx;
+		padding: 0 14rpx;
+		font-size: 25rpx;
+	}
+
+	.footer-bar .btn-primary {
+		font-size: 26rpx;
 	}
 }

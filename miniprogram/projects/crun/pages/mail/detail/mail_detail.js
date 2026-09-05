@@ -1,303 +1,160 @@
-const cloudHelper = require('../../../../../helper/cloud_helper.js');
+// 接单详情页：浏览全部待接订单的详情
 const pageHelper = require('../../../../../helper/page_helper.js');
+const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
 
 Page({
-	/**
-	 * 页面的初始数据
-	 */
 	data: {
-		isLoad: false,
+		isLoad: null, // null=加载中, true=已加载, false=加载失败, 'notexist'=不存在
+		id: '',
+		mail: null,
 
-		left_time_list: [],//剩余时间转换，天时分秒
-		left_time_list_date: [],//在拆分
-		timer: '',//定时器
+		// 接单人是否能看到取件码（仅接单成功后可见）
+		isAcceptant: false,
 	},
 
-	/**
-	 * 生命周期函数--监听页面加载
-	 */
 	onLoad: async function (options) {
 		ProjectBiz.initPage(this);
-
-		if (!pageHelper.getOptions(this, options)) return;
-
-		this._loadDetail();
-
-	},
-
-	_loadDetail: async function () {
-		let id = this.data.id;
-		if (!id) return;
-
-		let params = {
-			id,
-		};
-		let opt = {
-			title: 'bar'
-		};
-		let mail = await cloudHelper.callCloudData('mail/view', params, opt);
-		if (!mail) {
-			this.setData({
-				isLoad: null
-			})
+		const id = (options && options.id) || '';
+		if (!id) {
+			this.setData({ isLoad: 'notexist' });
 			return;
 		}
-
-		this.setData({
-			isLoad: true,
-			mail,
-		},()=>{
-			this.getLeftTime();
-		});
-
+		this.setData({ id });
+		await this._loadDetail();
 	},
 
-	/**
-	 * 生命周期函数--监听页面初次渲染完成
-	 */
-	onReady: function () { },
+	onShow: function () {},
 
-	/**
-	 * 生命周期函数--监听页面显示
-	 */
-	onShow: function () { 
-		this.getLeftTime();
-	},
-
-	/**
-	 * 生命周期函数--监听页面隐藏
-	 */
-	onHide: function () {
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面卸载
-	 */
-	onUnload: function () {
-		if (this.data.timer) {
-			console.log('销毁定时器')
-			clearInterval(this.data.timer);
-		}
-	},
-
-	/**
-	 * 页面相关事件处理函数--监听用户下拉动作
-	 */
 	onPullDownRefresh: async function () {
 		await this._loadDetail();
 		wx.stopPullDownRefresh();
 	},
 
-	/**
-	 * 页面上拉触底事件的处理函数
-	 */
-	onReachBottom: function () {
+	_loadDetail: async function () {
+		try {
+			wx.showLoading({ title: '加载中...' });
+			const res = await cloudHelper.callCloudSumbit('mail/view', { id: this.data.id });
+			wx.hideLoading();
+			const mail = res && res.data ? res.data : null;
+			if (!mail || !mail._id) {
+				this.setData({ isLoad: 'notexist' });
+				return;
+			}
 
+			// 兼容：MAIL_OBJ 中读取业务字段；个别字段模型冗余在 mail 顶层
+			const obj = mail.MAIL_OBJ || {};
+			const endTimestamp = Number(mail.MAIL_END_TIME || 0);
+			const imgUrls = Array.isArray(obj.imgUrls) ? obj.imgUrls.filter(Boolean)
+				: (obj.imgUrl ? [obj.imgUrl] : []);
+			const merged = {
+				_id: mail._id,
+				MAIL_ID: mail.MAIL_ID,
+				MAIL_STATUS: mail.MAIL_STATUS,
+				MAIL_PAY_STATUS: Number(mail.MAIL_PAY_STATUS || 0),
+				MAIL_TOTAL_FEE: Number(mail.MAIL_TOTAL_FEE || 0),
+				endTimestamp,
+				MAIL_END_TIME: mail.end2 || obj.end || '',
+				MAIL_ADD_TIME: mail.MAIL_ADD_TIME,
+				MAIL_OBJ: obj,
+				MAIL_CATE_NAME: mail.MAIL_CATE_NAME || '',
+				MAIL_USER_NAME: mail.MAIL_USER_NAME || obj.poster || '匿名用户',
+				posterPic: obj.posterPic || '',
+				poster: obj.poster || '匿名用户',
+				tel: obj.tel || '',
+				address1: obj.address1 || '',
+				address2: obj.address2 || '',
+				code: obj.code || '',
+				desc: obj.desc || '',
+				price: obj.price || '',
+				rider: obj.rider || '',
+				urgent: !!obj.urgent,
+				imgUrl: imgUrls[0] || '',
+				imgUrls,
+				small: obj.small || 0,
+				medium: obj.medium || 0,
+				large: obj.large || 0,
+				viewCnt: mail.MAIL_VIEW_CNT || 0,
+				acceptUser: mail.acceptUser || null,
+				statusDesc: mail.status || '',
+				myaccept: !!mail.myaccept,
+				mypost: !!mail.mypost,
+				// 是否展示取件码：仅接单成功后可见
+				canSeeCode: mail.MAIL_STATUS > 0 && mail.MAIL_ACCEPT_USER_ID,
+				canAccept: !mail.mypost
+					&& Number(mail.MAIL_STATUS) === 0
+					&& (Number(mail.MAIL_TOTAL_FEE || 0) <= 0 || Number(mail.MAIL_PAY_STATUS || 0) === 1)
+					&& (!endTimestamp || endTimestamp >= Date.now()),
+			};
+
+			this.setData({ mail: merged, isLoad: true });
+		} catch (err) {
+			wx.hideLoading();
+			console.error('[mail_detail]', err);
+			this.setData({ isLoad: false });
+		}
+	},
+
+	/** 立即接单 */
+	bindAcceptTap: async function () {
+		const mail = this.data.mail;
+		if (!mail || !mail._id) return;
+		if (!await PassportBiz.loginMustCancelWin(this)) return;
+
+		const confirm = await pageHelper.showConfirm('确认接单后请尽快前往快递点取件，是否继续？');
+		if (!confirm) return;
+
+		try {
+			wx.showLoading({ title: '接单中...' });
+			const res = await cloudHelper.callCloudSumbit('mail/accept', { id: mail._id });
+			wx.hideLoading();
+
+			if (res && res.data && res.data.id) {
+				pageHelper.showSuccToast('接单成功');
+				setTimeout(() => {
+					wx.redirectTo({
+						url: pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id=' + mail._id),
+					});
+				}, 800);
+			} else {
+				pageHelper.showNoneToast('手慢了，订单已被接走');
+			}
+		} catch (err) {
+			wx.hideLoading();
+			pageHelper.showNoneToast(err.message || '接单失败');
+		}
+	},
+
+	/** 联系发单人 */
+	bindCallTap: function () {
+		const tel = this.data.mail && this.data.mail.tel;
+		if (!tel) {
+			pageHelper.showNoneToast('暂无联系方式');
+			return;
+		}
+		wx.makePhoneCall({ phoneNumber: String(tel) });
+	},
+
+	/** 复制取件码（接单后） */
+	bindCopyCodeTap: function () {
+		const code = this.data.mail && this.data.mail.code;
+		if (!code) return;
+		wx.setClipboardData({
+			data: String(code),
+			success: () => pageHelper.showSuccToast('取件码已复制'),
+		});
+	},
+
+	/** 预览截图 */
+	bindPreviewImageTap: function (e) {
+		const url = e.currentTarget.dataset.url;
+		if (!url) return;
+		const urls = (this.data.mail && this.data.mail.imgUrls) || [url];
+		wx.previewImage({ urls, current: url });
 	},
 
 	url: function (e) {
 		pageHelper.url(e, this);
 	},
-
-	onPageScroll: function (e) {
-		// 回页首按钮
-		pageHelper.showTopBtn(e, this);
-
-	},
-
-	bindAcceptTap: async function (e) {
-		if (!await PassportBiz.loginMustBackWin(this)) return;
-
-		let id = this.data.id;
-
-		let cb = async () => {
-			try {
-				let params = {
-					id
-				}
-
-				await cloudHelper.callCloudSumbit('mail/accept', params, {}).then(res => {
-					let cb = () => {
-						wx.redirectTo({
-							url: 'mail_detail?id=' + this.data.id,
-						});
-					}
-					pageHelper.showSuccToast('接单成功', 1500, cb);
-
-				});
-			}
-			catch (err) {
-				console.error(err);
-			}
-		}
-		pageHelper.showConfirm('您确认接单？', cb);
-	},
-
-	bindCancelTap: async function (e) {
-		if (!await PassportBiz.loginMustBackWin(this)) return;
-
-		let id = this.data.id;
-
-		let cb = async () => {
-			try {
-
-				let params = {
-					id
-				}
-
-				await cloudHelper.callCloudSumbit('mail/cancel', params, {}).then(res => {
-					let callback = () => {
-						wx.redirectTo({
-							url: 'mail_detail?id=' + this.data.id,
-						});
-					}
-					pageHelper.showSuccToast('取消成功', 1500, callback);
-
-				});
-			}
-			catch (err) {
-				console.error(err);
-			}
-		}
-		pageHelper.showConfirm('您确认取消？', cb);
-
-	},
-
-	/**
-	 * 确认完成（发布者/接单者皆可触发）
-	 */
-	bindOverTap: async function (e) {
-		if (!await PassportBiz.loginMustBackWin(this)) return;
-
-		let id = this.data.id;
-
-		let cb = async () => {
-			try {
-				let params = {
-					id,
-					status: 9, // 已完成
-					overTime: Date.now() // 当前时间作为完成时间
-				};
-
-				await cloudHelper.callCloudSumbit('mail/status', params, {}).then(res => {
-					let callback = () => {
-						wx.redirectTo({
-							url: 'mail_detail?id=' + this.data.id,
-						});
-					}
-					pageHelper.showSuccToast('已确认完成', 1500, callback);
-
-				});
-			}
-			catch (err) {
-				console.error(err);
-			}
-		}
-		pageHelper.showConfirm('请确认订单已完成？完成后将记录当前时间为完成时间。', cb);
-	},
-
-	// ========== 支付相关 ==========
-
-	/**
-	 * 用户点击右上角分享
-	 */
-	onShareAppMessage: function (res) {
-		return {
-			title: this.data.mail.MAIL_TITLE,
-			imageUrl: this.data.mail.MAIL_PIC[0]
-		}
-	},
-
-	/**
-  * 计算剩余时间
-  * @param {*} end_time
-  */
-	getLeftTime() {
-		if (!this.data.isLoad) return;
-		if (this.data.timer) return;
-
-		let end_time = this.data.mail.end;
-
-		// 获取剩余秒数
-		let left_time = this.getTimestap(end_time);
-		this.initDate(left_time);
-		this.data.timer = setInterval(() => {
-			if (left_time-- === 0) {
-				this.setData({
-					left_time_list: this.formateSeconds(0)
-				})
-				clearInterval(this.data.timer)
-			} else {
-				this.initDate(left_time)
-			}
-		}, 1000)
-	},
-	/**
-	 * 初始化数据
-	 * @param {*} e 
-	 */
-	initDate(e) {
-		let left_time_list = this.formateSeconds(e),
-			left_time_list_date = this.formatDate(JSON.stringify(left_time_list))
-		this.setData({
-			left_time_list, left_time_list_date
-		})
-	},
-	/**
-	 * 天-时-分-秒
-	 * @param {*} e 
-	 */
-	formateSeconds(e) {
-		let time = [],
-			day = parseInt(e / 86400),
-			hour = parseInt((e % 86400) / 3600),
-			min = parseInt(((e % 86400) % 3600) / 60),
-			sec = parseInt(((e % 86400) % 3600) % 60);
-		time[0] = day > 0 ? this.addZero(day) : this.addZero(0);
-		time[1] = hour > 0 ? this.addZero(hour) : this.addZero(0);
-		time[2] = min > 0 ? this.addZero(min) : this.addZero(0);
-		time[3] = sec > 0 ? this.addZero(sec) : this.addZero(0);
-		return time;
-	},
-	/**
-	 * 添0
-	 * @param {*} num 
-	 */
-	addZero(num) {
-		return num < 10 ? '0' + num : num;
-	},
-	/**
-	 * 获取指定时间-当前时间的描述
-	 * @param {*} end_time 
-	 */
-	getTimestap(end_time) {
-		// 当前时间
-		let currentTime = parseInt(new Date().getTime() / 1000);
-		// 指定时间
-		let futureTime = parseInt(new Date(end_time.replace(/-/g, '/')).getTime() / 1000);
-		return futureTime <= currentTime ? 0 : futureTime - currentTime;
-	},
-	/**
-	 * 格式化日期
-	 * @param {*} e 
-	 */
-	formatDate(e) {
-		let list = JSON.parse(e);
-		for (let i = 0; i < list.length; i++) {
-			list[i] = list[i].toString().split('')
-		}
-		return list;
-	},
-
-	// 查看收款码大图
-	bindShowPayPicTap: function (e) {
-		if (!this.data.mail || !this.data.mail.MAIL_ACCEPT_PAY_PIC) return;
-		wx.previewImage({
-			urls: [this.data.mail.MAIL_ACCEPT_PAY_PIC],
-			current: this.data.mail.MAIL_ACCEPT_PAY_PIC
-		});
-	},
-})
+});

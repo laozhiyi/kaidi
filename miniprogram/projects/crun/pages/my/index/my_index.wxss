@@ -30,7 +30,8 @@
 	justify-content: space-between;
 	align-items: flex-start;
 	z-index: 9999;
-	padding: 0 50rpx;
+	padding: 0 32rpx;
+	box-sizing: border-box;
 }
 
 .main .upside .user-bar .avatar {
@@ -53,9 +54,10 @@
 }
 
 .main .upside .user-bar .detail {
-	width: 400rpx;
+	flex: 1;
+	min-width: 0;
 	margin-left: 0rpx;
-	margin-right: 40rpx;
+	margin-right: 24rpx;
 	display: flex;
 	flex-direction: column;
 	justify-content: flex-start;

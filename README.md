@@ -82,41 +82,16 @@ MiniRun/
 | 关于我们 | `projects/crun/pages/about/index/about_index` | 关于页面 |
 | 全局搜索 | `projects/crun/pages/search/search` | 搜索页 |
 
-#### 用户端 — 任务 (thing)
-
-| 页面名称 | 路径 | 功能说明 |
-|---|---|---|
-| 任务大厅 | `projects/crun/pages/thing/index/thing_index` | 任务列表/大厅首页 |
-| 发布任务 | `projects/crun/pages/thing/add/thing_add` | 发布新任务 |
-| 编辑任务 | `projects/crun/pages/thing/edit/thing_edit` | 编辑已有任务 |
-| 任务详情 | `projects/crun/pages/thing/detail/thing_detail` | 任务详情页 |
-
 #### 用户端 — 快递 (mail)
 
 | 页面名称 | 路径 | 功能说明 |
 |---|---|---|
-| 快递大厅 | `projects/crun/pages/mail/index/mail_index` | 快递任务列表 |
-| 添加快递 | `projects/crun/pages/mail/add/mail_add` | 发布快递任务 |
+| 操作选择 | `projects/crun/pages/mail/choose/mail_choose` | 选择发布订单或接单 |
+| 发布快递 | `projects/crun/pages/mail/add/mail_add` | 填写并发布快递代取订单 |
 | 编辑快递 | `projects/crun/pages/mail/edit/mail_edit` | 编辑快递任务 |
-| 快递详情 | `projects/crun/pages/mail/detail/mail_detail` | 快递详情页 |
-
-#### 用户端 — 代购 (food)
-
-| 页面名称 | 路径 | 功能说明 |
-|---|---|---|
-| 代购大厅 | `projects/crun/pages/food/index/food_index` | 代购任务列表 |
-| 添加代购 | `projects/crun/pages/food/add/food_add` | 发布代购任务 |
-| 编辑代购 | `projects/crun/pages/food/edit/food_edit` | 编辑代购任务 |
-| 代购详情 | `projects/crun/pages/food/detail/food_detail` | 代购详情页 |
-
-#### 用户端 — 跑腿 (follow)
-
-| 页面名称 | 路径 | 功能说明 |
-|---|---|---|
-| 跑腿大厅 | `projects/crun/pages/follow/index/follow_index` | 跑腿任务列表 |
-| 添加跑腿 | `projects/crun/pages/follow/add/follow_add` | 发布跑腿任务 |
-| 编辑跑腿 | `projects/crun/pages/follow/edit/follow_edit` | 编辑跑腿任务 |
-| 跑腿详情 | `projects/crun/pages/follow/detail/follow_detail` | 跑腿详情页 |
+| 接单详情 | `projects/crun/pages/mail/detail/mail_detail` | 浏览并接单 |
+| 我的订单详情 | `projects/crun/pages/mail/my_detail/mail_my_detail` | 管理自己发布或接取的订单 |
+| 订单中心 | `projects/crun/pages/order/index/order_index` | 可接单、我的接单、我的发布、已完成 |
 
 #### 用户端 — 个人中心 (my)
 

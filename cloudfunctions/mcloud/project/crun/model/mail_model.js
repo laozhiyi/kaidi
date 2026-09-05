@@ -19,7 +19,7 @@ MailModel.DB_STRUCTURE = {
 
 	MAIL_ID: 'string|true',
 
-	MAIL_STATUS: 'int|true|default=0|comment=状态 0=待付款,1=待接单,2=接单中,3=已完成,9=已取消',
+	MAIL_STATUS: 'int|true|default=0|comment=状态 0=待接单,1=配送中,9=已完成,99=已取消',
 	MAIL_END_TIME: 'int|false|default=0|comment=截止时间',
 
 	MAIL_CATE_ID: 'string|true|default=0|comment=分类',

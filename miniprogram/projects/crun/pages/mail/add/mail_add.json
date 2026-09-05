@@ -4,5 +4,5 @@
 		"cmpt-picker-time": "/cmpts/public/picker_time/picker_time_cmpt"
 	},
 	"enablePullDownRefresh": true,
-	"navigationBarTitleText": "发布快递代取"
+	"navigationBarTitleText": "快递代取"
 }

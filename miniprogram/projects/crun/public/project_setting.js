@@ -53,49 +53,4 @@ module.exports = { //crun
 		{ mark: 'img', title: '相关图片', type: 'image', ext: { hint: '请放心上传，仅接单后可见' }, min: 0, max: 8, must: false },
 	],
 
-	THING_NAME: '急事代办',
-	THING_CATE: [
-		{ id: 1, title: '急事代办', style: 'leftbig1' },
-
-	],
-	THING_FIELDS: [
-		{ mark: 'title', title: '代办事宜', type: 'text', max: 50, must: true },
-		{ mark: 'price', title: '打赏金额(元)', type: 'digit', must: true },
-		{ mark: 'level', title: '紧急程度', type: 'select', selectOptions: ['特急', '紧急', '一般'], must: true },
-		{ mark: 'poster', title: '联系人', type: 'text', must: true },
-		{ mark: 'tel', title: '联系人电话', type: 'mobile', ext: { hint: '请放心填写电话，仅接单后可见' }, must: true },
-		{ mark: 'desc', title: '详细描述', type: 'textarea', must: true },
-		{ mark: 'img', title: '相关图片', type: 'image', ext: { hint: '请放心上传，仅接单后可见' }, min: 0, max: 8, must: false },
-	],
-
-	FOOD_NAME: '代买服务',
-	FOOD_CATE: [
-		{ id: 1, title: '代买服务', style: 'leftbig1' },
-
-	],
-	FOOD_FIELDS: [
-		{ mark: 'title', title: '商品', type: 'text', must: true },
-		{ mark: 'price', title: '打赏金额(元)', type: 'digit', must: true },
-		{ mark: 'address1', title: '商家地址', type: 'textarea', must: true },
-		{ mark: 'address2', title: '送货地址', type: 'textarea', must: true },
-		{ mark: 'poster', title: '联系人', type: 'text', must: true },
-		{ mark: 'tel', title: '联系人电话', type: 'mobile', ext: { hint: '请放心填写电话，仅接单后可见' }, must: true },
-		{ mark: 'desc', title: '详细描述', type: 'textarea', must: true },
-		{ mark: 'img', title: '相关图片', type: 'image', ext: { hint: '请放心上传，仅接单后可见' }, min: 0, max: 8, must: false },
-	],
-
-	FOLLOW_NAME: '陪替服务',
-	FOLLOW_CATE: [
-		{ id: 1, title: '陪替服务', style: 'leftbig1' },
-
-	],
-	FOLLOW_FIELDS: [
-		{ mark: 'type', title: '服务类型', type: 'select', selectOptions: ['游戏代练', '替占座位', '替代排队', '学习指导', '行李搬运', '其他'], must: true },
-		{ mark: 'price', title: '打赏金额(元)', type: 'digit', must: true },
-		{ mark: 'poster', title: '联系人', type: 'text', must: true },
-		{ mark: 'tel', title: '联系人电话', type: 'mobile', ext: { hint: '请放心填写电话，仅接单后可见' }, must: true },
-		{ mark: 'desc', title: '详细描述', type: 'textarea', must: true },
-		{ mark: 'img', title: '相关图片', type: 'image', ext: { hint: '请放心上传，仅接单后可见' }, min: 0, max: 8, must: false },
-	],
-
 }

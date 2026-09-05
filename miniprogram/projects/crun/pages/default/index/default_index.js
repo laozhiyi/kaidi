@@ -118,7 +118,7 @@ Page({
 	 */
 	bindExpressTap: function () {
 		wx.navigateTo({
-			url: '/projects/crun/pages/mail/choose/mail_choose'
+			url: pageHelper.fmtURLByPID('/pages/mail/choose/mail_choose')
 		});
 	},
 

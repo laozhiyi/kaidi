@@ -8,9 +8,6 @@ const BaseProjectAdminService = require('./base_project_admin_service.js');
 const UserModel = require('../../model/user_model.js');
 const NewsModel = require('../../model/news_model.js');
 const MailModel = require('../../model/mail_model.js'); 
-const ThingModel = require('../../model/thing_model.js'); 
-const FoodModel = require('../../model/food_model.js'); 
-const FollowModel = require('../../model/follow_model.js'); 
 const constants = require('../../public/constants.js');
 const setupUtil = require('../../../../framework/utils/setup/setup_util.js');
 
@@ -26,18 +23,11 @@ class AdminHomeService extends BaseProjectAdminService {
 		let newsCnt = await NewsModel.count(where);
  
 		let mailCnt = await MailModel.count(where); 
-		let thingCnt = await ThingModel.count(where); 
-		let foodCnt = await FoodModel.count(where); 
-		let followCnt = await FollowModel.count(where); 
-
 		return [
 			{ title: '用户数', cnt: userCnt },
 			{ title: '公告数', cnt: newsCnt },
  
 			{ title: '代取数', cnt: mailCnt }, 
-			{ title: '急事数', cnt: thingCnt }, 
-			{ title: '代买数', cnt: foodCnt }, 
-			{ title: '陪替数', cnt: followCnt }, 
 		]
 	}
 

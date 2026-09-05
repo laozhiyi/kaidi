@@ -1,4 +1,4 @@
-const SearchBiz = require('../../comm/biz/search_biz.js');
+const SearchBiz = require('../biz/search_biz.js');
 const pageHelper = require('../../helper/page_helper.js');
 
 module.exports = Behavior({
