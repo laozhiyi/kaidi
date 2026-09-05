@@ -1,0 +1,24 @@
+<view class="select-container">
+	<!-- 服务选择框 -->
+	<view class="select-box" bindtap="toggle">
+		<text class="label">{{label || '服务'}}</text>
+		<view class="divider"></view>
+		<text class="placeholder {{curIndex===-1?'':'selected'}}">
+			{{curIndex===-1 ? (unselectedHint || '未选择') : curLabel}}
+		</text>
+		<view class="arrow-icon"></view>
+	</view>
+</view>
+
+<block wx:if="{{show}}">
+	<view class="dropdown-cover" bindtap="close"></view>
+	<view class="dropdown-panel">
+		<view
+			class="dropdown-option {{curIndex===index?'cur':''}}"
+			wx:for="{{options}}"
+			wx:key="index"
+			bindtap="bindSelect"
+			data-index="{{index}}"
+		>{{item.label !== undefined ? item.label : item}}</view>
+	</view>
+</block>

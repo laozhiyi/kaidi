@@ -1,6 +1,106 @@
-<view wx:if="{{!isLoad}}" class="margin-top load loading text-l text-grey"></view>
-<view class="main" wx:if="{{isLoad}}">
+<view wx:if="{{!isLoad}}" class="mail-loading load loading text-l text-grey"></view>
 
-	<include src="mail_form_tpl.wxml" />
-	<button bindtap="bindFormSubmit" class="btn-base btn-project">提交</button>
+<view wx:if="{{isLoad}}" class="mail-add-page">
+	<view class="mail-add-content">
+		<view class="package-card mail-card">
+			<view class="package-list">
+				<view class="package-item {{item.count > 0 ? 'active' : ''}}" wx:for="{{packageTypes}}" wx:key="mark">
+					<view class="package-name">{{item.label}} <text>¥{{item.price}}</text></view>
+					<view class="package-counter">
+						<view class="counter-btn" bindtap="bindPackageTap" data-index="{{index}}" data-step="-1">−</view>
+						<text class="counter-value">{{item.count}}</text>
+						<view class="counter-btn" bindtap="bindPackageTap" data-index="{{index}}" data-step="1">＋</view>
+					</view>
+				</view>
+			</view>
+		</view>
+
+		<view class="mail-card pickup-card">
+			<view class="section-heading">
+				<view><text class="required-mark">*</text>取件信息</view>
+				<text class="section-hint">取件码或截图，二选一即可</text>
+			</view>
+			<view class="code-editor">
+				<textarea value="{{mailValues.code}}" maxlength="200" auto-height="true" placeholder="取件码（仅您的接单员可见）" placeholder-class="mail-placeholder" bindinput="bindMailInput" data-mark="code"></textarea>
+				<view class="paste-btn" bindtap="bindPasteCode">粘贴取件码</view>
+			</view>
+			<view class="or-line"><view></view><text>或</text><view></view></view>
+			<view class="proof-upload" bindtap="bindUploadImageTap">
+				<text class="upload-icon">＋</text>
+				<text>上传截图</text>
+			</view>
+			<view class="proof-list" wx:if="{{proofImages.length}}">
+				<view class="proof-item" wx:for="{{proofImages}}" wx:key="*this" bindtap="bindPreviewImage" data-index="{{index}}">
+					<image src="{{item}}" mode="aspectFill"></image>
+					<view class="proof-remove" catchtap="bindRemoveImage" data-index="{{index}}">×</view>
+				</view>
+			</view>
+		</view>
+
+		<view class="mail-card address-card">
+			<view class="address-row">
+				<view class="address-label"><text class="required-mark">*</text>收件地址</view>
+				<input class="address-input" value="{{mailValues.address2}}" maxlength="200" placeholder="请选择收件地址" placeholder-class="mail-placeholder" bindinput="bindMailInput" data-mark="address2" />
+				<text class="row-arrow">›</text>
+			</view>
+			<view class="address-row">
+				<view class="address-label"><text class="required-mark">*</text>快递点</view>
+				<input class="address-input" value="{{mailValues.address1}}" maxlength="200" placeholder="请选择快递点" placeholder-class="mail-placeholder" bindinput="bindMailInput" data-mark="address1" />
+				<text class="row-arrow">›</text>
+			</view>
+			<view class="address-row optional-row">
+				<view class="address-label rider-label">指定骑手</view>
+				<input class="address-input" value="{{mailValues.rider}}" maxlength="30" placeholder="可指定骑手配送" placeholder-class="mail-placeholder" bindinput="bindMailInput" data-mark="rider" />
+				<text class="row-arrow">›</text>
+			</view>
+		</view>
+
+		<view class="mail-card more-card">
+			<view class="more-row">
+				<text class="more-title">更多要求</text>
+				<switch checked="{{moreRequirements}}" color="#397BC8" bindchange="bindMoreChange" />
+			</view>
+			<view wx:if="{{moreRequirements}}" class="more-body">
+				<textarea value="{{mailValues.desc}}" maxlength="500" auto-height="true" placeholder="请输入配送时间、放置位置等要求" placeholder-class="mail-placeholder" bindinput="bindMailInput" data-mark="desc"></textarea>
+			</view>
+		</view>
+
+		<view class="mail-card tip-card">
+			<text>提示1：请确认快递点和收件地址准确，方便骑手快速取送</text>
+		</view>
+
+		<view class="mail-card contact-card">
+			<view class="card-title">联系人信息</view>
+			<view class="contact-row">
+				<text class="contact-label">联系人</text>
+				<input value="{{mailValues.poster}}" maxlength="30" placeholder="请输入联系人" placeholder-class="mail-placeholder" bindinput="bindMailInput" data-mark="poster" />
+			</view>
+			<view class="contact-row">
+				<text class="contact-label">手机号</text>
+				<input type="number" maxlength="11" value="{{mailValues.tel}}" placeholder="请输入手机号" placeholder-class="mail-placeholder" bindinput="bindMailInput" data-mark="tel" />
+			</view>
+		</view>
+
+		<view class="mail-card deadline-card">
+			<view class="deadline-label"><text class="required-mark">*</text>接单截止时间</view>
+			<cmpt-picker-time mark="formEnd" mode="fullminute" timeModeStep="5" bind:select="bindEndSelect" endYear="2035" item="{{formEnd}}">
+				<view class="deadline-value {{formEnd ? 'selected' : ''}}">{{formEnd || '请选择截止时间'}} <text class="row-arrow">›</text></view>
+			</cmpt-picker-time>
+		</view>
+		<view wx:if="{{formEndFocus}}" class="mail-error">{{formEndFocus}}</view>
+	</view>
+
+	<view class="mail-submit-bar safe-bottom">
+		<view class="fee-summary">
+			<text>需支付</text>
+			<text class="fee-value">¥{{totalFee}}</text>
+			<text class="fee-caret">⌃</text>
+		</view>
+		<view class="count-summary">总件：{{totalCount}}</view>
+		<button class="publish-btn" bindtap="bindFormSubmit">立即发布</button>
+	</view>
+
+	<view class="mail-form-engine">
+		<cmpt-form-show id="cmpt-form" mark="mail-add-engine" isCacheMatch="{{false}}" fields="{{fields}}" forms="{{formForms}}" isDefMatch="{{true}}"></cmpt-form-show>
+	</view>
 </view>
