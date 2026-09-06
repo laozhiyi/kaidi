@@ -104,4 +104,32 @@ module.exports = {
 	'pay/query': 'pay_controller@queryPay',
 	'pay/refund': 'pay_controller@refund',
 
+	// ========== 校区客服 ==========
+	'campus_service/list': 'campus_service_controller@getCampusServiceList',
+	'campus_service/detail': 'campus_service_controller@getCampusServiceDetail',
+
+	// ========== 后台校区客服管理 ==========
+	'admin/campus_service_list': 'admin/admin_campus_service_controller@getAdminCampusServiceList',
+	'admin/campus_service_detail': 'admin/admin_campus_service_controller@getAdminCampusServiceDetail',
+	'admin/campus_service_insert': 'admin/admin_campus_service_controller@insertCampusService#demo',
+	'admin/campus_service_update': 'admin/admin_campus_service_controller@updateCampusService#demo',
+	'admin/campus_service_del': 'admin/admin_campus_service_controller@delCampusService#demo',
+
+	// ========== 反馈投诉 ==========
+	'feedback/insert': 'feedback_controller@insertFeedback',
+	'feedback/my_list': 'feedback_controller@getMyFeedbackList',
+	'feedback/my_detail': 'feedback_controller@getMyFeedbackDetail',
+
+	// ========== 邀请好友 ==========
+	'invite/my_code': 'invite_controller@getMyInviteCode',
+	'invite/my_list': 'invite_controller@getMyInviteList',
+	'invite/my_stat': 'invite_controller@getMyInviteStat',
+	'invite/accept': 'invite_controller@acceptInvite',
+
+	// ========== 后台反馈管理 ==========
+	'admin/feedback_list': 'admin/admin_feedback_controller@getAdminFeedbackList',
+	'admin/feedback_reply': 'admin/admin_feedback_controller@replyFeedback#demo',
+	'admin/feedback_status': 'admin/admin_feedback_controller@statusFeedback#demo',
+	'admin/feedback_del': 'admin/admin_feedback_controller@delFeedback#demo',
+
 }

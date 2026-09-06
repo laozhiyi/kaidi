@@ -23,7 +23,7 @@ class BaseProjectService extends BaseService {
 	async initSetup() {
 		let F = (c) => 'bx_' + c;
 		const INSTALL_CL = 'setup_crun';
-		const COLLECTIONS = ['setup', 'admin', 'log', 'news', 'mail', 'follow', 'thing', 'food', 'fav', 'user'];
+		const COLLECTIONS = ['setup', 'admin', 'log', 'news', 'mail', 'follow', 'thing', 'food', 'fav', 'user', 'campus_service', 'feedback', 'invite'];
 		const CONST_PIC = '/images/cover.gif';
 
 
@@ -33,6 +33,17 @@ class BaseProjectService extends BaseService {
 
 
 		if (await dbUtil.isExistCollection(F(INSTALL_CL))) {
+			// 已初始化过，仅补齐可能新增的集合（用于版本升级场景）
+			let arrExisting = COLLECTIONS;
+			for (let k = 0; k < arrExisting.length; k++) {
+				if (!await dbUtil.isExistCollection(F(arrExisting[k]))) {
+					try {
+						await dbUtil.createCollection(F(arrExisting[k]));
+					} catch (ex) {
+						console.warn('create collection failed:', arrExisting[k], ex.message);
+					}
+				}
+			}
 			return;
 		}
 

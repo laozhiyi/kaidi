@@ -1,0 +1,215 @@
+@import "../../../style/skin.wxss";
+
+/* ============================================================
+   反馈详情页（左右贴边、宽度撑满屏幕）
+   ============================================================ */
+
+.page {
+	min-height: 100vh;
+	background-color: #f5f7fb;
+	padding: 0 0 60rpx;
+	box-sizing: border-box;
+	width: 100%;
+}
+
+/* ============================================================
+   状态栏：左右贴边、撑满屏幕、无圆角
+   ============================================================ */
+.status-bar {
+	width: 100%;
+	background-color: #fff;
+	border-radius: 0;
+	padding: 24rpx;
+	margin: 0 0 20rpx;
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+	box-sizing: border-box;
+}
+
+.status-pill {
+	font-size: 24rpx;
+	padding: 6rpx 20rpx;
+	border-radius: 20rpx;
+}
+
+.status-time {
+	font-size: 24rpx;
+	color: #94a3b8;
+}
+
+/* ============================================================
+   卡片：左右贴边、撑满屏幕、无圆角、无外边距
+   ============================================================ */
+.card {
+	width: 100%;
+	background-color: #fff;
+	border-radius: 0;
+	padding: 30rpx 24rpx;
+	margin: 0 0 20rpx;
+	box-sizing: border-box;
+}
+
+.card-head {
+	margin-bottom: 20rpx;
+}
+
+.type-tag {
+	display: inline-block;
+	font-size: 22rpx;
+	color: #397bc8;
+	background-color: rgba(57, 123, 200, 0.1);
+	padding: 4rpx 16rpx;
+	border-radius: 20rpx;
+	margin-bottom: 12rpx;
+}
+
+.title {
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #1f2a44;
+	line-height: 44rpx;
+}
+
+.content {
+	font-size: 28rpx;
+	color: #4a5b7c;
+	line-height: 44rpx;
+	margin-bottom: 20rpx;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.img-list {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: 12rpx;
+	margin-bottom: 20rpx;
+}
+
+.img {
+	width: 200rpx;
+	height: 200rpx;
+	border-radius: 12rpx;
+	background-color: #f1f6ff;
+}
+
+/* 联系方式 */
+.contact-row {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	padding: 16rpx 20rpx;
+	background-color: #f1f6ff;
+	border-radius: 12rpx;
+	margin-top: 10rpx;
+}
+
+.contact-label {
+	font-size: 26rpx;
+	color: #94a3b8;
+	margin-right: 16rpx;
+	flex-shrink: 0;
+}
+
+.contact-value {
+	font-size: 28rpx;
+	color: #1f2a44;
+	flex: 1;
+	word-break: break-all;
+}
+
+/* ============================================================
+   客服回复卡片
+   ============================================================ */
+.reply-card {
+	border-top: 2rpx solid rgba(57, 123, 200, 0.3);
+}
+
+.reply-head {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	margin-bottom: 20rpx;
+	padding-bottom: 20rpx;
+	border-bottom: 2rpx solid #f1f4fa;
+}
+
+.reply-avatar {
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 50%;
+	background: linear-gradient(135deg, #4a8fe0, #397bc8);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #fff;
+	font-size: 32rpx;
+	font-weight: bold;
+	margin-right: 20rpx;
+	flex-shrink: 0;
+}
+
+.reply-info {
+	flex: 1;
+}
+
+.reply-name {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #1f2a44;
+}
+
+.reply-time {
+	font-size: 22rpx;
+	color: #94a3b8;
+	margin-top: 4rpx;
+}
+
+.reply-content {
+	font-size: 28rpx;
+	color: #1f2a44;
+	line-height: 44rpx;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+/* ============================================================
+   待回复占位
+   ============================================================ */
+.reply-wait {
+	width: 100%;
+	background-color: #fff;
+	border-radius: 0;
+	padding: 60rpx 24rpx;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	box-sizing: border-box;
+}
+
+.reply-wait-icon {
+	font-size: 80rpx;
+	margin-bottom: 20rpx;
+}
+
+.reply-wait-text {
+	font-size: 28rpx;
+	color: #94a3b8;
+}
+
+/* ============================================================
+   空状态
+   ============================================================ */
+.empty {
+	padding: 200rpx 24rpx;
+	text-align: center;
+}
+
+.empty-text {
+	color: #94a3b8;
+	font-size: 28rpx;
+}

@@ -142,5 +142,29 @@ Page({
 	bindMyPostTap: function (e) {
 		wx.setStorageSync('crun-order-tab', 2);
 		wx.switchTab({ url: '/projects/crun/pages/order/index/order_index' });
+	},
+
+	bindAboutTap: function (e) {
+		wx.navigateTo({
+			url: '/projects/crun/pages/about/static/about_static',
+		});
+	},
+
+	bindCampusServiceTap: function (e) {
+		wx.navigateTo({
+			url: '/projects/crun/pages/campus_service/list/campus_service_list',
+		});
+	},
+
+	bindFeedbackTap: function (e) {
+		wx.navigateTo({
+			url: '/projects/crun/pages/feedback/my_list/feedback_my_list',
+		});
+	},
+
+	bindInviteTap: function (e) {
+		wx.navigateTo({
+			url: '/projects/crun/pages/invite/index/invite_index',
+		});
 	}
 })

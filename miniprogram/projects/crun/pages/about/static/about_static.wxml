@@ -1,0 +1,67 @@
+<view class="page">
+
+	<!-- 顶部 logo 卡片 -->
+	<view class="logo-card">
+		<view class="logo-circle">
+			<text class="logo-icon">跑</text>
+		</view>
+		<view class="app-name">校园跑腿</view>
+		<view class="app-slogan">校园生活 一键搞定</view>
+		<view class="app-version">v1.0.0</view>
+	</view>
+
+	<!-- 平台介绍 -->
+	<view class="card">
+		<view class="card-title">平台介绍</view>
+		<view class="card-text">校园跑腿小程序致力于为同学提供便捷的生活服务，帮你在校园里轻松解决代取快递、代购物品、搬运等各类琐事，让互助变得更简单、更温暖。</view>
+	</view>
+
+	<!-- 核心理念 -->
+	<view class="card">
+		<view class="card-title">核心理念</view>
+		<view class="card-text">我们致力于解决校园生活中的燃眉之急，让每一份需求都能被看见，让每一位同学都能成为彼此的"小帮手"，构建有温度的校园互助社区。</view>
+	</view>
+
+	<!-- 我们提供 -->
+	<view class="card">
+		<view class="card-title">我们提供</view>
+		<view class="feature-list">
+			<view class="feature-item">
+				<view class="feature-tag">公告</view>
+				<view class="feature-text">实时推送校园新闻、通知与课表信息，让你不再错过任何校园动态。</view>
+			</view>
+			<view class="feature-item">
+				<view class="feature-tag">发布</view>
+				<view class="feature-text">代取快递、代购物品、文件打印等需求一键发布，描述任务、地点、时间即可。</view>
+			</view>
+			<view class="feature-item">
+				<view class="feature-tag">接单</view>
+				<view class="feature-text">空闲时间随手接单，赚取零花钱，与发布者在线沟通任务细节。</view>
+			</view>
+			<view class="feature-item">
+				<view class="feature-tag">分类</view>
+				<view class="feature-text">代购、快递、搬运等多类目清晰分类，快速找到你所需的服务。</view>
+			</view>
+		</view>
+	</view>
+
+	<!-- 联系我们 -->
+	<view class="card">
+		<view class="card-title">联系我们</view>
+		<view class="contact-row">
+			<text class="contact-label">反馈邮箱</text>
+			<text class="contact-value">support@example.com</text>
+		</view>
+		<view class="contact-row">
+			<text class="contact-label">客服电话</text>
+			<text class="contact-value">400-000-0000</text>
+		</view>
+		<view class="contact-row">
+			<text class="contact-label">工作时间</text>
+			<text class="contact-value">周一至周日 8:00 - 22:00</text>
+		</view>
+	</view>
+
+	<view class="copyright">Copyright © 校园跑腿小程序</view>
+
+</view>

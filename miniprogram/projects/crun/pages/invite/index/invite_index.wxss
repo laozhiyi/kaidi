@@ -1,0 +1,252 @@
+@import "../../../style/skin.wxss";
+
+.page {
+	min-height: 100vh;
+	background-color: #f1f6ff;
+	padding: 0 25rpx 60rpx;
+	box-sizing: border-box;
+}
+
+/* banner */
+.banner {
+	background: linear-gradient(135deg, #4a8fe0 0%, #397bc8 50%, #2f69b3 100%);
+	padding: 50rpx 40rpx 90rpx;
+	color: #fff;
+	border-bottom-left-radius: 30rpx;
+	border-bottom-right-radius: 30rpx;
+	margin: 0 -25rpx 25rpx;
+	position: relative;
+}
+
+.banner-title {
+	font-size: 44rpx;
+	font-weight: bold;
+	margin-bottom: 8rpx;
+}
+
+.banner-sub {
+	font-size: 26rpx;
+	opacity: 0.85;
+	margin-bottom: 30rpx;
+	letter-spacing: 4rpx;
+}
+
+.stat-grid {
+	background-color: rgba(255, 255, 255, 0.15);
+	border-radius: 20rpx;
+	padding: 30rpx 0;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	backdrop-filter: blur(10rpx);
+}
+
+.stat-cell {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.stat-num {
+	font-size: 48rpx;
+	font-weight: bold;
+	color: #fff;
+	line-height: 1.1;
+}
+
+.stat-label {
+	font-size: 24rpx;
+	color: rgba(255, 255, 255, 0.85);
+	margin-top: 8rpx;
+}
+
+.stat-divider {
+	width: 2rpx;
+	height: 60rpx;
+	background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* 卡片 */
+.card {
+	background-color: #fff;
+	border-radius: 24rpx;
+	padding: 30rpx;
+	margin-bottom: 25rpx;
+	box-shadow: 6rpx 6rpx 20rpx rgba(216, 220, 223, 0.5);
+}
+
+/* 邀请码 */
+.code-card {
+	margin-top: -50rpx;
+	position: relative;
+	z-index: 10;
+}
+
+.code-title {
+	font-size: 26rpx;
+	color: #94a3b8;
+	margin-bottom: 12rpx;
+}
+
+.code-value {
+	font-size: 64rpx;
+	font-weight: bold;
+	color: #397bc8;
+	letter-spacing: 12rpx;
+	text-align: center;
+	padding: 30rpx 0;
+	font-family: 'din', monospace;
+	background: linear-gradient(180deg, rgba(57, 123, 200, 0.05), rgba(57, 123, 200, 0.1));
+	border-radius: 16rpx;
+	margin-bottom: 16rpx;
+}
+
+.code-tip {
+	font-size: 24rpx;
+	color: #94a3b8;
+	text-align: center;
+	line-height: 36rpx;
+}
+
+.code-btn-row {
+	display: flex;
+	flex-direction: row;
+	gap: 16rpx;
+	margin-top: 24rpx;
+}
+
+.btn {
+	flex: 1;
+	height: 80rpx;
+	line-height: 80rpx;
+	border-radius: 40rpx;
+	text-align: center;
+	font-size: 28rpx;
+	border: none;
+}
+
+.btn-default {
+	background-color: #f1f6ff;
+	color: #397bc8;
+	border: 2rpx solid #397bc8;
+}
+
+.btn-primary {
+	background: linear-gradient(135deg, #4a8fe0, #397bc8);
+	color: #fff;
+}
+
+/* 列表 */
+.list-card {
+	padding-bottom: 10rpx;
+}
+
+.list-title {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: baseline;
+	font-size: 30rpx;
+	font-weight: 600;
+	color: #1f2a44;
+	margin-bottom: 20rpx;
+	padding-bottom: 16rpx;
+	border-bottom: 2rpx solid #f1f4fa;
+}
+
+.list-count {
+	font-size: 24rpx;
+	color: #94a3b8;
+	font-weight: normal;
+}
+
+.list-item {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	padding: 24rpx 0;
+	border-bottom: 2rpx solid #f1f4fa;
+}
+
+.list-item:last-child {
+	border-bottom: none;
+}
+
+.list-avatar {
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 50%;
+	background-color: #f1f6ff;
+	color: #397bc8;
+	font-size: 32rpx;
+	font-weight: bold;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 20rpx;
+}
+
+.list-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.list-name {
+	font-size: 28rpx;
+	color: #1f2a44;
+	margin-bottom: 6rpx;
+}
+
+.list-time {
+	font-size: 22rpx;
+	color: #94a3b8;
+}
+
+.status {
+	font-size: 22rpx;
+	padding: 6rpx 18rpx;
+	border-radius: 20rpx;
+}
+
+.status-accept {
+	color: #2dc87a;
+	background-color: rgba(45, 200, 122, 0.1);
+}
+
+.status-pending {
+	color: #f59e0b;
+	background-color: rgba(245, 158, 11, 0.1);
+}
+
+.empty {
+	padding: 50rpx 0;
+	text-align: center;
+}
+
+.empty-text {
+	color: #94a3b8;
+	font-size: 26rpx;
+}
+
+/* 规则 */
+.rules {
+	background-color: #fff;
+	border-radius: 24rpx;
+	padding: 30rpx;
+	box-shadow: 6rpx 6rpx 20rpx rgba(216, 220, 223, 0.5);
+}
+
+.rules-title {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #1f2a44;
+	margin-bottom: 16rpx;
+}
+
+.rules-item {
+	font-size: 24rpx;
+	color: #94a3b8;
+	line-height: 40rpx;
+}

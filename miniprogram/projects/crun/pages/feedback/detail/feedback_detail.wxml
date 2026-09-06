@@ -1,0 +1,52 @@
+<view class="page" wx:if="{{isLoad && detail}}">
+	<!-- 头部状态 -->
+	<view class="status-bar">
+		<view class="status-pill" style="color:{{detail._statusDesc.color}};background-color:{{detail._statusDesc.bgColor}};">
+			{{detail._statusDesc.label}}
+		</view>
+		<view class="status-time">提交时间：{{detail.FB_ADD_TIME}}</view>
+	</view>
+
+	<!-- 反馈内容 -->
+	<view class="card">
+		<view class="card-head">
+			<view class="type-tag">{{detail._typeDesc}}</view>
+			<view class="title">{{detail.FB_TITLE}}</view>
+		</view>
+		<view class="content">{{detail.FB_CONTENT}}</view>
+
+		<view wx:if="{{detail.FB_IMG && detail.FB_IMG.length}}" class="img-list">
+			<image wx:for="{{detail.FB_IMG}}" wx:key="*this"
+				class="img" src="{{item}}" mode="aspectFill"
+				bindtap="bindPreviewImage" data-url="{{item}}">
+			</image>
+		</view>
+
+		<!-- 联系方式 -->
+		<view wx:if="{{detail.FB_CONTACT}}" class="contact-row">
+			<text class="contact-label">联系方式</text>
+			<text class="contact-value">{{detail.FB_CONTACT}}</text>
+		</view>
+	</view>
+
+	<!-- 回复 -->
+	<view wx:if="{{detail.FB_REPLY}}" class="card reply-card">
+		<view class="reply-head">
+			<view class="reply-avatar">客</view>
+			<view class="reply-info">
+				<view class="reply-name">官方客服</view>
+				<view class="reply-time">{{detail.FB_REPLY_TIME}}</view>
+			</view>
+		</view>
+		<view class="reply-content">{{detail.FB_REPLY}}</view>
+	</view>
+
+	<view wx:else class="reply-wait">
+		<view class="reply-wait-icon">⏳</view>
+		<view class="reply-wait-text">客服正在加急处理中，请耐心等待</view>
+	</view>
+</view>
+
+<view wx:elif="{{isLoad}}" class="empty">
+	<view class="empty-text">反馈记录不存在或已被删除</view>
+</view>

@@ -1,0 +1,75 @@
+<view class="page">
+
+	<!-- 顶部说明 -->
+	<view class="header">
+		<view class="header-title">选择你的校区</view>
+		<view class="header-desc">遇到问题请联系我们对应校区的客服，第一时间为你解决</view>
+	</view>
+
+	<!-- 列表 -->
+	<view class="list">
+		<view wx:if="{{isLoad && list.length==0}}" class="empty">
+			<view class="empty-icon">📭</view>
+			<view class="empty-text">暂无校区客服，请稍后再试</view>
+		</view>
+
+		<view wx:for="{{list}}" wx:key="_id" class="service-card card">
+			<view class="card-head">
+				<view class="campus">{{item.CS_CAMPUS}}</view>
+				<view class="status" wx:if="{{item.CS_STATUS==1}}">在线</view>
+				<view class="status status-offline" wx:else>离线</view>
+			</view>
+
+			<view class="info-row">
+				<text class="info-label">负责人</text>
+				<text class="info-value">{{item.CS_NAME}}</text>
+			</view>
+
+			<view class="info-row" wx:if="{{item.CS_WORK_TIME}}">
+				<text class="info-label">工作时间</text>
+				<text class="info-value">{{item.CS_WORK_TIME}}</text>
+			</view>
+
+			<!-- 联系电话(可点击拨打) -->
+			<view class="info-row" wx:if="{{item.CS_MOBILE}}">
+				<text class="info-label">联系电话</text>
+				<text class="info-value phone" bindtap="bindCallTap" data-mobile="{{item.CS_MOBILE}}">{{item.CS_MOBILE}}</text>
+			</view>
+
+			<!-- 微信号(点击复制) -->
+			<view class="info-row" wx:if="{{item.CS_WECHAT}}">
+				<text class="info-label">微信号</text>
+				<view class="info-value wechat-value" bindtap="bindCopyWechat" data-wechat="{{item.CS_WECHAT}}">
+					<text class="wechat-text">{{item.CS_WECHAT}}</text>
+					<text class="wechat-copy-icon">复制</text>
+				</view>
+			</view>
+
+			<!-- QQ(点击复制) -->
+			<view class="info-row" wx:if="{{item.CS_QQ}}">
+				<text class="info-label">QQ</text>
+				<view class="info-value wechat-value" bindtap="bindCopyQQ" data-qq="{{item.CS_QQ}}">
+					<text class="wechat-text">{{item.CS_QQ}}</text>
+					<text class="wechat-copy-icon">复制</text>
+				</view>
+			</view>
+
+			<!-- 操作按钮行 -->
+			<view class="btn-row">
+				<view class="btn btn-primary" bindtap="bindCallTap" data-mobile="{{item.CS_MOBILE}}">
+					<text>📞</text>
+					<text class="btn-text">电话咨询</text>
+				</view>
+				<view class="btn btn-wechat" wx:if="{{item.CS_WECHAT}}" bindtap="bindCopyWechat" data-wechat="{{item.CS_WECHAT}}">
+					<text>💬</text>
+					<text class="btn-text">复制微信</text>
+				</view>
+				<view class="btn btn-qq" wx:if="{{item.CS_QQ}}" bindtap="bindCopyQQ" data-qq="{{item.CS_QQ}}">
+					<text>🐧</text>
+					<text class="btn-text">复制QQ</text>
+				</view>
+			</view>
+		</view>
+	</view>
+
+</view>

@@ -1,66 +1,87 @@
 @import "../../../style/skin.wxss";
 
+/* ============================================================
+   我的页面整体布局（左右贴边、宽度撑满屏幕）
+   - 顶部用户区、订单宫格、常用服务宫格、设置列表
+     全部左右贴边、宽度撑满屏幕
+   - 内容文字相对屏幕保留 24rpx 内边距
+   ============================================================ */
 
 .main {
 	padding: 0;
+	background-color: #f1f6ff;
+	width: 100%;
+	box-sizing: border-box;
 }
 
+/* ============================================================
+   顶部用户区域（蓝色渐变条，左右贴边）
+   ============================================================ */
 .main .upside {
 	background: linear-gradient(135deg, #4a8fe0 0%, #397bc8 50%, #2f69b3 100%);
-	height: 360rpx;
 	width: 100%;
+	height: 280rpx;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	position: relative;
 	overflow: hidden;
-	padding-top: 30rpx;
+	padding: 50rpx 32rpx 60rpx;
+	box-sizing: border-box;
 	border-bottom-left-radius: 30rpx;
 	border-bottom-right-radius: 30rpx;
 	box-shadow: 0 8rpx 20rpx rgba(57, 123, 200, .25);
 }
 
-.main .upside .upImg {
-	display: none;
+.main .upside .up-bg {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	opacity: .18;
+	background-image:
+		radial-gradient(circle at 18% 28%, rgba(255, 255, 255, .55) 0%, transparent 35%),
+		radial-gradient(circle at 82% 72%, rgba(255, 255, 255, .45) 0%, transparent 45%);
+	pointer-events: none;
 }
 
 .main .upside .user-bar {
 	width: 100%;
 	display: flex;
 	justify-content: space-between;
-	align-items: flex-start;
-	z-index: 9999;
-	padding: 0 32rpx;
-	box-sizing: border-box;
+	align-items: center;
+	z-index: 99;
+	position: relative;
 }
 
 .main .upside .user-bar .avatar {
-	height: 120rpx;
 	width: 120rpx;
-	border: 4rpx solid rgba(255, 255, 255, .9);
-	font-size: 80rpx;
+	height: 120rpx;
+	border: 4rpx solid rgba(255, 255, 255, .95);
 	border-radius: 50%;
-	background-color: rgba(255, 255, 255, .9);
+	background-color: rgba(255, 255, 255, .95);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, .15);
 	overflow: hidden;
+	flex-shrink: 0;
 }
 
 .main .upside .user-bar .avatar image {
-	height: 70rpx;
 	width: 70rpx;
+	height: 70rpx;
 }
 
 .main .upside .user-bar .detail {
 	flex: 1;
 	min-width: 0;
-	margin-left: 0rpx;
-	margin-right: 24rpx;
+	margin-left: 24rpx;
+	margin-right: 16rpx;
 	display: flex;
 	flex-direction: column;
-	justify-content: flex-start;
+	justify-content: center;
 	align-items: flex-start;
 	box-sizing: border-box;
 }
@@ -76,10 +97,10 @@
 
 .main .upside .user-bar .detail .desc {
 	width: 100%;
-	font-size: 26rpx;
-	margin-top: 12rpx;
+	font-size: 24rpx;
+	margin-top: 8rpx;
 	color: rgba(255, 255, 255, .92);
-	line-height: 36rpx;
+	line-height: 34rpx;
 }
 
 .main .upside .user-bar .detail .desc .tag {
@@ -87,115 +108,330 @@
 	color: #397bc8 !important;
 }
 
-.main .down {
-	box-sizing: border-box;
+.main .upside .upside-arrow {
+	position: absolute;
+	right: 32rpx;
+	top: 50%;
+	transform: translateY(-50%);
+	color: rgba(255, 255, 255, .75);
+	font-size: 32rpx;
+	z-index: 99;
+}
+
+/* ============================================================
+   全局：宫格区域、设置列表 —— 左右贴边、宽度撑满
+   ============================================================ */
+.order-section,
+.service-section,
+.comm-list.menu.card-project {
 	width: 100%;
+	margin-left: 0 !important;
+	margin-right: 0 !important;
+	border-radius: 0 !important;
+	box-sizing: border-box;
+}
+
+/* ============================================================
+   订单宫格：白色块，左右贴边，向上顶入渐变条
+   ============================================================ */
+.order-section {
+	margin-top: -40rpx;
+	padding: 28rpx 0 32rpx;
+	position: relative;
+	z-index: 10;
+	background-color: #fff;
+	box-shadow: 0 4rpx 16rpx rgba(216, 220, 223, .35);
+}
+
+.order-section .section-head {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0 24rpx;
+	margin-bottom: 28rpx;
+}
+
+.order-section .section-title {
+	font-size: 30rpx;
+	font-weight: 600;
+	color: #1f2a44;
+	position: relative;
+	padding-left: 20rpx;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+
+.order-section .section-title .head-icon {
+	font-size: 28rpx;
+	margin-right: 6rpx;
+	font-style: normal;
+}
+
+.order-section .section-title::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 8rpx;
+	bottom: 8rpx;
+	width: 6rpx;
+	background-color: #397bc8;
+	border-radius: 4rpx;
+}
+
+.order-section .section-more {
+	font-size: 24rpx;
+	color: #94a3b8;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+
+.order-section .section-more .icon-right {
+	margin-left: 4rpx;
+	font-size: 22rpx;
+}
+
+.order-section .order-grid {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	padding: 0;
+}
+
+.order-section .order-item {
+	flex: 1;
 	display: flex;
 	flex-direction: column;
+	align-items: center;
+	padding: 8rpx 0;
+}
+
+.order-section .order-icon {
+	width: 92rpx;
+	height: 92rpx;
+	border-radius: 50%;
+	background-color: rgba(57, 123, 200, .1);
+	display: flex;
+	align-items: center;
 	justify-content: center;
-	padding: 20rpx 20rpx !important;
-	margin-top: -90rpx;
+	margin-bottom: 16rpx;
 	position: relative;
 }
 
+.order-section .order-icon::before {
+	content: '';
+	width: 44rpx;
+	height: 44rpx;
+	background-color: #397bc8;
+	display: block;
+	mask-position: center;
+	mask-size: contain;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	-webkit-mask-size: contain;
+	-webkit-mask-repeat: no-repeat;
+}
 
-.main .down .data {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	height: 150rpx;
-	padding: 0rpx 40rpx 0rpx 40rpx;
-	width: 100%;
+.order-section .order-icon.icon-post::before {
+	mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M3 4h18v2H3V4zm0 4h18v12H3V8zm2 2v8h14v-8H5zm2 2h10v2H7v-2z'/></svg>");
+	-webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M3 4h18v2H3V4zm0 4h18v12H3V8zm2 2v8h14v-8H5zm2 2h10v2H7v-2z'/></svg>");
+}
+
+.order-section .order-icon.icon-accept::before {
+	mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/></svg>");
+	-webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/></svg>");
+}
+
+.order-section .order-icon.icon-fav::before {
+	mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/></svg>");
+	-webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/></svg>");
+}
+
+.order-section .order-icon.icon-foot::before {
+	mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z'/></svg>");
+	-webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z'/></svg>");
+}
+
+.order-section .order-label {
+	font-size: 26rpx;
+	color: #1f2a44;
+}
+
+/* ============================================================
+   常用服务区：左右贴边、宽度撑满屏幕
+   ============================================================ */
+.service-section {
+	margin-top: 20rpx;
+	padding: 28rpx 0 32rpx;
 	background-color: #fff;
 }
 
-.main .down .data view {
-	width: 150rpx;
+.service-section .section-title-row {
+	font-size: 30rpx;
+	font-weight: 600;
+	color: #1f2a44;
+	margin-bottom: 24rpx;
+	position: relative;
+	padding-left: 20rpx;
+	margin-left: 24rpx;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+
+.service-section .section-title-row .head-icon {
+	font-size: 28rpx;
+	margin-right: 6rpx;
+	font-style: normal;
+}
+
+.service-section .section-title-row::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 8rpx;
+	bottom: 8rpx;
+	width: 6rpx;
+	background-color: #397bc8;
+	border-radius: 4rpx;
+}
+
+.service-section .service-grid {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	padding: 0;
+}
+
+.service-section .service-item {
+	flex: 1;
 	display: flex;
 	flex-direction: column;
+	align-items: center;
+}
+
+.service-section .service-icon {
+	width: 90rpx;
+	height: 90rpx;
+	border-radius: 24rpx;
+	display: flex;
 	align-items: center;
 	justify-content: center;
+	font-size: 46rpx;
+	color: #fff;
+	margin-bottom: 14rpx;
+	box-shadow: 0 6rpx 14rpx rgba(57, 123, 200, .15);
 }
 
-.main .down .data view .num {
-	font-size: 32rpx;
-	font-weight: bold;
+.service-section .service-icon-service {
+	background: linear-gradient(135deg, #4a8fe0, #397bc8);
 }
 
-.main .down .data view .txt {
-	font-size: 24rpx;
-	color: #94a3b8;
+.service-section .service-icon-feedback {
+	background: linear-gradient(135deg, #f59e0b, #ed8936);
 }
 
-/* 列表小箭头 / 左侧图标 - 改为蓝色 */
-.main .comm-list .item.arrow::before,
-.main .comm-list .item .content .item-icon {
-	color: #397bc8 !important;
+.service-section .service-icon-invite {
+	background: linear-gradient(135deg, #ff6b9d, #ee5a6f);
 }
 
-.record {
+.service-section .service-icon-about {
+	background: linear-gradient(135deg, #2dc87a, #1aa05f);
+}
+
+.service-section .service-icon .iconfont {
+	font-size: 52rpx;
+	color: #fff;
+	font-style: normal;
+}
+
+.service-section .service-label {
+	font-size: 26rpx;
+	color: #1f2a44;
+}
+
+/* ============================================================
+   设置列表：左右贴边、宽度撑满屏幕
+   ============================================================ */
+.comm-list.menu.card-project {
+	margin-top: 20rpx;
+	padding: 0;
 	background-color: #fff;
-	min-height: 200rpx;
-	margin-bottom: 20rpx;
-	padding: 30rpx 30rpx 40rpx;
-	display: flex;
-	flex-direction: column;
-	border-radius: 20rpx;
+	box-shadow: none;
 }
 
-.record .title {
-	font-size: 30rpx;
-	color: #1f2a44;
-	font-weight: 600;
+.comm-list .item {
+	border-bottom: 2rpx solid #f1f4fa;
+	padding: 28rpx 24rpx;
 }
 
-.record .list {
-	width: 100%;
-	display: flex;
-	justify-content: space-between;
-	margin-top: 40rpx;
+.comm-list .item:last-child {
+	border-bottom: none;
 }
 
-.record .list .item {
-	width: 25%;
+.comm-list .item .content {
 	display: flex;
-	flex-direction: column;
+	flex-direction: row;
 	align-items: center;
-}
-
-.record .list .item .line1 {
-	font-size: 50rpx;
-	color: #397bc8;
-}
-
-.record .list .item .line1 text {
-	color: #397bc8;
-}
-
-.record .list .item .line2 {
-	font-size: 24rpx;
-	margin-top: 10rpx;
-	color: #4a5b7c;
-} 
-
-.main .site-footer {
-	width: 100%;
-	align-self: flex-end;
-}
-
-.main .upside-shadow {
-	box-shadow: 0 8rpx 20rpx rgba(57, 123, 200, .25);
-}
-
-.down .comm-list.menu.card-project {
-	border-radius: 20rpx !important;
-}
-
-/* 设置项文字色调整 */
-.main .down .comm-list .item .content text {
+	font-size: 28rpx;
 	color: #1f2a44;
 }
 
-.main .down .comm-list .item .content text.text-grey {
-	color: #94a3b8 !important;
+.comm-list .item .content .left-icon {
+	width: 38rpx;
+	height: 38rpx;
+	background-color: #397bc8;
+	mask-position: center;
+	mask-size: contain;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	-webkit-mask-size: contain;
+	-webkit-mask-repeat: no-repeat;
+	margin-right: 18rpx;
+	flex-shrink: 0;
+}
+
+.left-icon.icon-edit {
+	mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/></svg>");
+	-webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/></svg>");
+}
+
+.left-icon.icon-feedback {
+	mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 12h-2v-2h2v2zm0-4h-2V6h2v4z'/></svg>");
+	-webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 12h-2v-2h2v2zm0-4h-2V6h2v4z'/></svg>");
+}
+
+.left-icon.icon-service {
+	mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z'/></svg>");
+	-webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z'/></svg>");
+}
+
+.left-icon.icon-invite {
+	mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z'/></svg>");
+	-webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z'/></svg>");
+}
+
+.left-icon.icon-about {
+	mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM11 9h2V7h-2v2z'/></svg>");
+	-webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM11 9h2V7h-2v2z'/></svg>");
+}
+
+.left-icon.icon-set {
+	mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z'/></svg>");
+	-webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z'/></svg>");
+}
+
+.left-icon.icon-phone {
+	mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z'/></svg>");
+	-webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z'/></svg>");
+}
+
+/* ============================================================
+   列表项右侧箭头（继承自全局皮肤样式，此处覆盖定位）
+   ============================================================ */
+.comm-list .item.arrow::before {
+	right: 24rpx !important;
+	color: #cbd5e1 !important;
 }

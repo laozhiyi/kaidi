@@ -1,0 +1,69 @@
+<view class="page">
+
+	<!-- 顶部 banner -->
+	<view class="banner">
+		<view class="banner-title">邀请好友</view>
+		<view class="banner-sub">一起赚积分 / 现金奖励</view>
+
+		<!-- 统计卡片 -->
+		<view class="stat-grid">
+			<view class="stat-cell">
+				<view class="stat-num">{{stat.total}}</view>
+				<view class="stat-label">已邀请</view>
+			</view>
+			<view class="stat-divider"></view>
+			<view class="stat-cell">
+				<view class="stat-num">{{stat.accepted}}</view>
+				<view class="stat-label">已注册</view>
+			</view>
+			<view class="stat-divider"></view>
+			<view class="stat-cell">
+				<view class="stat-num">{{stat.reward}}</view>
+				<view class="stat-label">已返利</view>
+			</view>
+		</view>
+	</view>
+
+	<!-- 邀请码卡片 -->
+	<view class="card code-card">
+		<view class="code-title">我的专属邀请码</view>
+		<view class="code-value">{{code || '加载中…'}}</view>
+		<view class="code-tip">好友注册时填写你的邀请码，双方都可获得奖励</view>
+
+		<view class="code-btn-row">
+			<view class="btn btn-default" bindtap="bindCopyCode">复制邀请码</view>
+			<button class="btn btn-primary" open-type="share">立即邀请</button>
+		</view>
+	</view>
+
+	<!-- 邀请记录 -->
+	<view class="card list-card">
+		<view class="list-title">
+			<text>邀请记录</text>
+			<text class="list-count">共 {{stat.total}} 条</text>
+		</view>
+
+		<view wx:if="{{list.length==0}}" class="empty">
+			<view class="empty-text">还没有邀请记录，快去分享给好友吧</view>
+		</view>
+
+		<view wx:for="{{list}}" wx:key="_id" class="list-item">
+			<view class="list-avatar">友</view>
+			<view class="list-info">
+				<view class="list-name">{{item.INV_ACCEPT_USER_NAME || '待注册用户'}}</view>
+				<view class="list-time">{{item.INV_ADD_TIME}}</view>
+			</view>
+			<view wx:if="{{item.INV_STATUS==1}}" class="status status-accept">已注册</view>
+			<view wx:else class="status status-pending">待注册</view>
+		</view>
+	</view>
+
+	<view class="rules">
+		<view class="rules-title">活动规则</view>
+		<view class="rules-item">1. 分享邀请码或小程序给好友</view>
+		<view class="rules-item">2. 好友通过你分享的链接进入并完成注册</view>
+		<view class="rules-item">3. 系统自动建立邀请关系并发放奖励</view>
+		<view class="rules-item">4. 具体奖励以平台公告为准</view>
+	</view>
+
+</view>

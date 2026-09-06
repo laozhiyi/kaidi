@@ -1,0 +1,87 @@
+<view class="page">
+
+	<!-- 顶部蓝色导航条（带返回箭头） -->
+	<view class="header">
+		<view class="header-back" bindtap="bindBackTap">
+			<text class="header-back-arrow">‹</text>
+		</view>
+		<view class="header-title">反馈投诉</view>
+		<view class="header-desc">您的建议和投诉是我们改进的动力</view>
+	</view>
+
+	<view class="form-wrap">
+
+		<!-- 选择投诉对象 -->
+		<view class="card">
+			<view class="card-title">
+				<text class="card-title-text">投诉对象</text>
+				<text class="card-title-required">*</text>
+			</view>
+			<view class="tag-row">
+				<view wx:for="{{targetArr}}" wx:key="val"
+					class="tag-item {{targetIdx==index?'tag-active':''}}"
+					bindtap="bindTargetTap" data-idx="{{index}}">
+					<text class="tag-label">{{item.label}}</text>
+				</view>
+				<view class="tag-item tag-custom {{targetIdx==-1?'tag-active':''}}"
+					bindtap="bindCustomTap">
+					<text class="tag-label">自定义</text>
+				</view>
+			</view>
+
+			<!-- 自定义输入框 -->
+			<view wx:if="{{customShow}}" class="custom-input-wrap">
+				<input class="custom-input" maxlength="20" placeholder="请输入投诉对象"
+					value="{{customTarget}}" bindinput="bindCustomInput" />
+			</view>
+		</view>
+
+		<!-- 写投诉内容 -->
+		<view class="card">
+			<view class="card-title">
+				<text class="card-title-text">投诉内容</text>
+				<text class="card-title-required">*</text>
+			</view>
+			<textarea class="textarea" maxlength="500"
+				placeholder="请详细描述您遇到的问题，便于我们快速处理…"
+				value="{{content}}" bindinput="bindContentInput">
+			</textarea>
+			<view class="input-counter">{{content.length}}/500</view>
+		</view>
+
+		<!-- 上传凭证 -->
+		<view class="card">
+			<view class="card-title">
+				<text class="card-title-text">上传凭证</text>
+				<text class="card-title-required">*</text>
+				<text class="card-title-sub">（最多9张，已上传 {{img.length}}/9）</text>
+			</view>
+			<view class="img-list">
+				<view wx:for="{{img}}" wx:key="*this" class="img-item">
+					<image class="img" src="{{item}}" mode="aspectFill"
+						bindtap="bindPreviewImage" data-url="{{item}}"></image>
+					<view class="img-del" bindtap="bindDelImage" data-idx="{{index}}">×</view>
+				</view>
+				<view wx:if="{{img.length<9}}" class="img-add" bindtap="bindChooseImage">
+					<view class="add-icon">+</view>
+					<view class="add-label">添加图片</view>
+				</view>
+			</view>
+		</view>
+
+		<!-- 温馨提示 -->
+		<view class="tips">
+			<view>· 请文明用语，共同维护良好的反馈环境</view>
+			<view>· 我们会在 1-3 个工作日内处理，请耐心等待</view>
+		</view>
+
+	</view>
+
+	<!-- 底部固定提交按钮 -->
+	<view class="footer">
+		<view class="btn-submit {{isSubmit?'btn-disabled':''}}" bindtap="bindSubmitTap">
+			<text>{{isSubmit ? '提交中…' : '提交反馈'}}</text>
+		</view>
+	</view>
+
+</view>

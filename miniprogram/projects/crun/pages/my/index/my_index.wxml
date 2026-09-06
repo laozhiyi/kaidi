@@ -1,8 +1,8 @@
 <view class="main {{skin.IS_SUB?'sub-margin-bottom':''}}">
 
-	<!--top area begin-->
+	<!--顶部背景区 begin-->
 	<view class="upside upside-shadow" bindtap="url" data-url="{{user?'../edit/my_edit':'../reg/my_reg'}}">
-		<image mode="aspectFill" lazy-load class="upImg loading" src="../../../images/my.jpg" />
+		<view class="up-bg"></view>
 		<view class="user-bar">
 			<view class="detail">
 				<view class="name text-cut">{{user?user.USER_NAME:'欢迎回来~~~'}}</view>
@@ -10,7 +10,7 @@
 					<view wx:if="{{user&&user.USER_STATUS==9}}" class="tag small radius bg-blue light">已禁用</view>
 					<view wx:elif="{{user&&user.USER_STATUS==0}}" class="tag small radius bg-blue light">已注册，待审核</view>
 					<view wx:elif="{{user&&user.USER_STATUS==8}}" class="tag small radius bg-blue light">审核未通过，请修改资料</view>
-					<view wx:else class="text-cut">{{user?'欢迎回来~~~':'马上注册，使用更多功能'}}</view>
+					<view wx:else class="text-cut">{{user?'欢迎回来~~~':'点击登录/注册账号'}}</view>
 				</view>
 			</view>
 			<view class="avatar" wx:if="{{!user || !user.USER_PIC}}">
@@ -18,80 +18,139 @@
 			</view>
 			<image wx:else src="{{user.USER_PIC}}" class="avatar loading" mode="aspectFill" />
 		</view>
+		<view class="upside-arrow">
+			<text class="icon-right"></text>
+		</view>
 	</view>
-	<!--top area end-->
+	<!--顶部背景区 end-->
 
-	<!--down area begin-->
-	<view class="down padding-project">
-		<view class="record card-project shadow-project">
-			<view class="title"><text class="icon-circlefill margin-right-xs text-blue"></text>我的记录</view>
-			<view class="list">
-			
-				<view class="item" bind:tap="bindMyPostTap">
-					<view class="line1"><text class="icon-forwardfill text-blue"></text></view>
-					<view class="line2">我的发布</view>
-				</view>
+	<!--我的订单宫格 begin-->
+	<view class="order-section">
+		<view class="section-head">
+			<view class="section-title">
+				<text>我的订单</text>
+			</view>
+			<view class="section-more" bind:tap="bindMyPostTap">查看全部 <text class="icon-right">›</text></view>
+		</view>
+		<view class="order-grid">
+			<view class="order-item" bind:tap="bindMyPostTap">
+				<view class="order-icon icon-post"></view>
+				<view class="order-label">我的发布</view>
+			</view>
+			<view class="order-item" bind:tap="bindMyAcceptTap">
+				<view class="order-icon icon-accept"></view>
+				<view class="order-label">我的接单</view>
+			</view>
+			<view class="order-item" bind:tap="bindMyFavTap">
+				<view class="order-icon icon-fav"></view>
+				<view class="order-label">我的收藏</view>
+			</view>
+			<view class="order-item" bind:tap="url" data-url="../foot/my_foot">
+				<view class="order-icon icon-foot"></view>
+				<view class="order-label">浏览历史</view>
+			</view>
+		</view>
+	</view>
+	<!--我的订单宫格 end-->
 
-				<view class="item" bind:tap="bindMyAcceptTap">
-					<view class="line1"><text class="icon-formfill text-blue"></text></view>
-					<view class="line2">我的接单</view>
+	<!--服务入口 begin-->
+	<view class="service-section card-project shadow-project">
+		<view class="section-title-row">
+			<text>常用服务</text>
+		</view>
+		<view class="service-grid">
+			<view class="service-item" bindtap="bindCampusServiceTap">
+				<view class="service-icon service-icon-service">
+					<text class="iconfont icon-service">☎</text>
 				</view>
+				<view class="service-label">校区客服</view>
+			</view>
+			<view class="service-item" bindtap="bindFeedbackTap">
+				<view class="service-icon service-icon-feedback">
+					<text class="iconfont">✉</text>
+				</view>
+				<view class="service-label">反馈投诉</view>
+			</view>
+			<view class="service-item" bindtap="bindInviteTap">
+				<view class="service-icon service-icon-invite">
+					<text class="iconfont">♡</text>
+				</view>
+				<view class="service-label">邀请好友</view>
+			</view>
+			<view class="service-item" bindtap="bindAboutTap">
+				<view class="service-icon service-icon-about">
+					<text class="iconfont">ℹ</text>
+				</view>
+				<view class="service-label">关于我们</view>
+			</view>
+		</view>
+	</view>
+	<!--服务入口 end-->
 
-				<view class="item" bind:tap="bindMyFavTap">
-					<view class="line1"><text class="icon-favorfill text-blue"></text></view>
-					<view class="line2">我的收藏</view>
-				</view>
+	<!--设置列表 begin-->
+	<view class="comm-list menu card-project shadow-project">
 
-				<view class="item" bind:tap="url" data-url="../foot/my_foot">
-					<view class="line1"><text class="icon-attentionfill text-blue"></text></view>
-					<view class="line2">我的浏览</view>
-				</view>
-			
+		<view wx:if="{{user&&user.USER_STATUS!=9}}" class="item arrow" bindtap="url" data-url="../edit/my_edit">
+			<view class="content">
+				<view class="left-icon icon-edit"></view>
+				<text class="text-black">修改个人资料</text>
 			</view>
 		</view>
 
-		<!--base begin -->
-		<view class="comm-list menu card-project shadow-project">
-			<view wx:if="{{user&&user.USER_STATUS!=9}}" class="item arrow" bindtap="url" data-url="../edit/my_edit">
-				<view class="content">
-					<text class="icon-form my-icon-project"></text>
-					<text class="text-black">修改我的个人资料</text>
-				</view>
-			</view> 
-
-			<view wx:if="{{skin.IS_SUB}}" class="item arrow" bindtap="bindSetTap">
-				<view class="content">
-					<text class="icon-settings my-icon-project"></text>
-					<text class="text-blue text-bold ">系统后台管理<text class="text-grey text-normal">（点击试用）</text></text>
-				</view>
+		<view class="item arrow" bindtap="bindFeedbackTap">
+			<view class="content">
+				<view class="left-icon icon-feedback"></view>
+				<text class="text-black">我的反馈</text>
 			</view>
-
-
-
-			<view wx:if="{{skin.IS_SUB}}" class="item arrow" bindtap="url" data-url="/projects/crun/pages/about/index/about_index">
-				<view class="content">
-					<text class="icon-phone my-icon-project"></text>
-					<text class="text-blue">联系作者了解更多详情</text>
-				</view>
-			</view>
-
-			<view wx:if="{{!skin.IS_SUB}}" class="item arrow" bindtap="bindSetTap">
-				<view class="content">
-					<text class="icon-settings my-icon-project"></text>
-					<text class="text-black">设置</text>
-				</view>
-			</view>
-
 		</view>
-		<!--sys end -->
+
+		<view class="item arrow" bindtap="bindCampusServiceTap">
+			<view class="content">
+				<view class="left-icon icon-service"></view>
+				<text class="text-black">联系校区客服</text>
+			</view>
+		</view>
+
+		<view class="item arrow" bindtap="bindInviteTap">
+			<view class="content">
+				<view class="left-icon icon-invite"></view>
+				<text class="text-black">邀请好友得奖励</text>
+			</view>
+		</view>
+
+		<view wx:if="{{skin.IS_SUB}}" class="item arrow" bindtap="bindSetTap">
+			<view class="content">
+				<view class="left-icon icon-set"></view>
+				<text class="text-blue text-bold ">系统后台管理<text class="text-grey text-normal">（点击试用）</text></text>
+			</view>
+		</view>
+
+		<view wx:if="{{skin.IS_SUB}}" class="item arrow" bindtap="url" data-url="/projects/crun/pages/about/index/about_index">
+			<view class="content">
+				<view class="left-icon icon-phone"></view>
+				<text class="text-blue">联系作者了解更多详情</text>
+			</view>
+		</view>
+
+		<view wx:if="{{!skin.IS_SUB}}" class="item arrow" bindtap="bindSetTap">
+			<view class="content">
+				<view class="left-icon icon-set"></view>
+				<text class="text-black">设置</text>
+			</view>
+		</view>
+
+		<view class="item arrow" bindtap="bindAboutTap">
+			<view class="content">
+				<view class="left-icon icon-about"></view>
+				<text class="text-black">关于我们</text>
+			</view>
+		</view>
 
 	</view>
-	<!--down area end-->
+	<!--设置列表 end-->
 
 </view>
-<view style="height:100rpx"></view>
-
-
+<view style="height:120rpx"></view>
 
 <block wx:if="{{skin.IS_SUB}}">
 	<import src="../../tpls/menu_tpl.wxml" />

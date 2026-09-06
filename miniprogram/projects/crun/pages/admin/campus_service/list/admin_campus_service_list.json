@@ -1,0 +1,7 @@
+{
+	"usingComponents": {
+		"cmpt-comm-list": "/cmpts/public/list/comm_list_cmpt"
+	},
+	"enablePullDownRefresh": true,
+	"navigationBarTitleText": "校区客服管理"
+}

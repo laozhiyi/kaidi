@@ -1,0 +1,38 @@
+<view class="form-box shadow">
+	<view class="form-group">
+		<view class="title must">校区名称</view>
+		<input placeholder="例如：广州大学城校区" placeholder-class="phc" model:value="{{formCampus}}" maxlength="50"></input>
+	</view>
+
+	<view class="form-group">
+		<view class="title must">负责人姓名</view>
+		<input placeholder="请输入负责人姓名" placeholder-class="phc" model:value="{{formName}}" maxlength="30"></input>
+	</view>
+
+	<view class="form-group">
+		<view class="title must">手机号</view>
+		<input placeholder="请输入联系电话" type="number" placeholder-class="phc" model:value="{{formMobile}}" maxlength="11"></input>
+	</view>
+
+	<view class="form-group">
+		<view class="title">微信号</view>
+		<input placeholder="选填，请输入微信号" placeholder-class="phc" model:value="{{formWechat}}" maxlength="40"></input>
+	</view>
+
+	<view class="form-group">
+		<view class="title">QQ号</view>
+		<input placeholder="选填，请输入QQ号" type="number" placeholder-class="phc" model:value="{{formQQ}}" maxlength="20"></input>
+	</view>
+
+	<view class="form-group">
+		<view class="title">工作时间</view>
+		<input placeholder="例如：周一至周五 9:00-18:00" placeholder-class="phc" model:value="{{formWorkTime}}" maxlength="50"></input>
+	</view>
+
+	<view class="form-group">
+		<view class="title">排序号</view>
+		<input placeholder="小的先显示，默认9999" type="number" placeholder-class="phc" model:value="{{formOrder}}" maxlength="6"></input>
+	</view>
+</view>
+
+<button bindtap="bindFormSubmit" class="btn-admin margin-top-xs">保存修改</button>
