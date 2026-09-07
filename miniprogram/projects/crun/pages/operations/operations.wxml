@@ -1,0 +1,59 @@
+<view class="op-page">
+  <view class="op-tabs op-tabs-equal">
+    <view class="op-tab {{tab==='messages'?'active':''}}" data-tab="messages" bindtap="bindTab">消息中心</view>
+    <view class="op-tab {{tab==='rider'?'active':''}}" data-tab="rider" bindtap="bindTab">骑手资格</view>
+  </view>
+  <view wx:if="{{error}}" class="op-card op-state">
+    <view>加载失败，请检查网络后重试</view>
+    <button class="op-button-secondary" bindtap="load">重新加载</button>
+  </view>
+  <view wx:if="{{loading}}" class="op-state op-muted">正在加载…</view>
+
+  <block wx:if="{{tab==='messages'}}">
+    <view class="op-card">
+      <view class="op-title">订单动态与处理通知</view>
+      <view class="op-muted">微信提醒需要主动订阅，不能替代查看订单。未读消息以蓝点标记，点击查看详情。</view>
+      <button wx:if="{{config.templateId}}" class="op-button-primary" bindtap="bindSubscribe">订阅下一次订单通知</button>
+    </view>
+    <view class="op-card op-message" wx:for="{{list}}" wx:key="_id" data-id="{{item._id}}" bindtap="bindRead">
+      <view class="op-card-head">
+        <view class="op-message-title"><text wx:if="{{!item.read}}" class="op-unread"></text><text>{{item.title}}</text></view>
+        <text class="op-badge {{item.read?'op-badge-neutral':''}}">{{item.read?'已读':'未读'}}</text>
+      </view>
+      <view class="op-message-content">{{item.content}}</view>
+      <view class="op-card-foot"><text>{{item.time}}</text><text wx:if="{{item.orderId || item.feedbackId}}">查看详情 ›</text></view>
+    </view>
+    <view wx:if="{{!loading && !error && !list.length}}" class="op-card op-state">
+      <view class="op-title">暂无消息</view><view class="op-muted">订单进展、骑手审核和反馈处理结果会显示在这里</view>
+    </view>
+    <button wx:if="{{hasMore}}" class="op-button-secondary" bindtap="bindMore" loading="{{loading}}" disabled="{{loading}}">加载更多消息</button>
+    <view wx:if="{{list.length && !hasMore && !loading && !error}}" class="op-state op-muted">已显示全部消息</view>
+  </block>
+
+  <block wx:if="{{tab==='rider' && config && user}}">
+    <view class="op-card">
+      <view class="op-card-head"><view class="op-title">我的骑手资格</view>
+        <text class="op-badge">{{user.USER_RIDER_STATUS===1?'已通过':user.USER_RIDER_STATUS===2?'审核中':user.USER_RIDER_STATUS===8?'未通过':user.USER_RIDER_STATUS===9?'已停用':'未申请'}}</text>
+      </view>
+      <view wx:if="{{user.USER_RIDER_CAMPUS}}" class="op-row"><text class="op-muted">申请校区</text><text>{{user.USER_RIDER_CAMPUS}}</text></view>
+      <view wx:if="{{user.USER_RIDER_REASON}}" class="op-notice">审核说明：{{user.USER_RIDER_REASON}}</view>
+      <view wx:if="{{user.USER_RIDER_STATUS===2}}" class="op-muted">申请已提交，请等待校区运营人员审核，无需重复申请。</view>
+      <view wx:if="{{user.USER_RIDER_STATUS===9}}" class="op-warning">资格已停用。如需了解原因，请联系校区客服。</view>
+      <block wx:if="{{!user.USER_RIDER_STATUS || user.USER_RIDER_STATUS===8}}">
+        <view class="op-field-label">选择申请校区</view>
+        <picker wx:if="{{config.campuses.length}}" range="{{config.campuses}}" value="{{campusIndex}}" bindchange="bindCampus">
+          <view class="op-picker"><text>{{config.campuses[campusIndex]}}</text><text class="op-muted">更换 ›</text></view>
+        </picker>
+        <view wx:else class="op-warning">暂无开放校区，请联系校区客服。</view>
+        <button class="op-button-primary" bindtap="bindApply" loading="{{busy}}" disabled="{{busy || loading || !config.campuses.length}}">{{user.USER_RIDER_STATUS===8?'重新申请骑手资格':'提交骑手申请'}}</button>
+      </block>
+    </view>
+    <view class="op-card">
+      <view class="op-title">接单规则</view>
+      <view class="op-row"><text class="op-muted">同时接单上限</text><text>{{config.maxActiveOrders}} 单</text></view>
+      <view class="op-row"><text class="op-muted">普通单预计时效</text><text>{{config.deliveryMinutes}} 分钟</text></view>
+      <view class="op-row"><text class="op-muted">加急单预计时效</text><text>{{config.urgentEnabled?config.urgentMinutes+' 分钟':'暂未开放'}}</text></view>
+      <view class="op-notice">审核由校区运营人员核验身份后完成。请遵守取件授权、物品保管、隐私保护和线下结算约定，不得转发取件信息给第三方。</view>
+    </view>
+  </block>
+</view>

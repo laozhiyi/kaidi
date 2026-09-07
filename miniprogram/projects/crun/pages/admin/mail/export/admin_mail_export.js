@@ -9,7 +9,7 @@ Page({
 	/**
 	 * 页面的初始数据
 	 */
-	data: {
+	data: { endYear: new Date().getFullYear() + 1,
 		title: '',
 		url: '',
 		time: '',

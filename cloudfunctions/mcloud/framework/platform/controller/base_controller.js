@@ -14,6 +14,8 @@ const appCode = require('../../core/app_code.js');
 
 class BaseController {
 
+ AppError(message, code = appCode.LOGIC) { throw new AppError(message, code); }
+
 	constructor(route, openId, event) {
 
 		this._route = route; // 路由
@@ -36,7 +38,7 @@ class BaseController {
 		let time = timeUtil.time('Y-M-D h:m:s');
 
 		console.log('------------------------');
-		console.log(`【${time}】【Request -- ↘↘↘】\n【↘Token = ${this._token}】\n【↘USER-ID = ${userId}】\n【↘↘IN DATA】=\n`, JSON.stringify(this._request, null, 4));
+		console.log('request', {route:this._route,at:time});
 
 	}
 

@@ -50,9 +50,9 @@ Page({
 	// 预览图片
 	bindPreviewImage: function (e) {
 		let url = pageHelper.dataset(e, 'url');
-		if (!this.data.detail || !this.data.detail.FB_IMG) return;
+		if (!this.data.detail || !this.data.detail.FB_IMG_PREVIEW) return;
 		wx.previewImage({
-			urls: this.data.detail.FB_IMG,
+			urls: this.data.detail.FB_IMG_PREVIEW,
 			current: url
 		});
 	},

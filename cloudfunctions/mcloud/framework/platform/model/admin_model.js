@@ -28,6 +28,7 @@ AdminModel.DB_STRUCTURE = {
 	ADMIN_TYPE: 'int|true|default=0|comment=类型 0=普通管理员 1=超级管理员',
 
 	ADMIN_TOKEN: 'string|false|comment=当前登录token',
+	ADMIN_TOKEN_USER: 'string|false',
 	ADMIN_TOKEN_TIME: 'int|true|default=0|comment=当前登录token time',
 
 	ADMIN_ADD_TIME: 'int|true',

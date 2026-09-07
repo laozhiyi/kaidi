@@ -10,6 +10,7 @@ class PayController extends BaseProjectController {
 
 	/** 创建支付订单 */
 	async createPay() {
+		this.AppError('当前版本仅支持线下结算，未开通微信支付');
 		// 数据校验
 		let rules = {
 			orderId: 'must|string|name=订单ID',
@@ -76,6 +77,7 @@ class PayController extends BaseProjectController {
 
 	/** 申请退款（统一接口） */
 	async refund() {
+		this.AppError('当前版本不执行退款；历史支付订单请由运营核对原支付渠道处理');
 		let rules = {
 			orderId: 'must|string|name=订单ID',
 			reason: 'string|name=退款原因',

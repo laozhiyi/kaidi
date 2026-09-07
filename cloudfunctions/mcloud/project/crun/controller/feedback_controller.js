@@ -18,13 +18,18 @@ class FeedbackController extends BaseProjectController {
 			title: 'must|string|min:1|max:60|name=反馈标题',
 			content: 'must|string|min:1|max:1000|name=反馈内容',
 			contact: 'string|min:1|max:40|name=联系方式',
-			img: 'array|name=图片'
+			img: 'array|name=图片',
+			orderId: 'string|max:100', requestId: 'must|string|min:16|max:100'
 		};
 
 		let input = this.validateData(rules);
 
-		// 内容审核
+		// 在调用外部审核及归档前限流。
+  await require('../service/operation_store.js').limit('crun',this._userId,'feedback_audit',10,60000);
+  // 内容审核
 		await contentCheck.checkTextMultiClient(input);
+		const images=require('../service/order_rules.js').images(input.img || []);input.img=[];
+		for(const id of images)input.img.push(await contentCheck.checkCloudImage(id));
 
 		let service = new FeedbackService();
 		return await service.insertFeedback(this._userId, input);

@@ -180,7 +180,7 @@
 							</view>
 							<view class="actions" catchtap="bindStop">
 								<button class="btn-ghost" catchtap="bindCallTap" data-tel="{{order.MAIL_OBJ.tel}}">联系</button>
-								<button class="btn-primary" catchtap="bindOverTap" data-id="{{order._id}}" data-idx="{{index}}">完成</button>
+								<button class="btn-primary" catchtap="bindOverTap" data-id="{{order._id}}" data-idx="{{index}}">处理订单</button>
 							</view>
 						</view>
 					</view>
@@ -209,7 +209,7 @@
 								<image class="avatar" src="/projects/crun/images/menu/mail.png" mode="aspectFill"></image>
 								<view class="user-meta"><view class="nick-line"><text class="nick">{{order.MAIL_OBJ.title || '快递代取'}}</text></view><text class="sub">{{order.MAIL_ADD_TIME}}</text></view>
 							</view>
-							<text class="status-tag {{order.MAIL_PAY_STATUS===0 ? 'status-unpaid' : 'status-taking'}}">{{order.MAIL_PAY_STATUS===0 ? '待支付' : (order.status || '待接单')}}</text>
+							<text class="status-tag status-taking">{{order.status || '待接单'}}</text>
 						</view>
 						<view class="card-divider"></view>
 						<view class="card-mid">
@@ -217,7 +217,7 @@
 							<view class="info-row"><text class="lbl">送达</text><text class="val">{{order.MAIL_OBJ.address2}}</text></view>
 						</view>
 						<view class="card-divider"></view>
-						<view class="card-bot"><view class="price-block"><text class="symbol">¥</text><text class="num">{{order.MAIL_OBJ.price}}</text></view><view class="actions"><button class="btn-ghost" catchtap="bindDetailTap" data-id="{{order._id}}">查看详情</button><button wx:if="{{order.MAIL_PAY_STATUS===0 && order.MAIL_TOTAL_FEE>0}}" class="btn-primary" catchtap="bindPayTap" data-id="{{order._id}}" data-index="{{index}}">去支付</button></view></view>
+						<view class="card-bot"><view class="price-block"><text class="symbol">¥</text><text class="num">{{order.MAIL_OBJ.price}}</text></view><view class="actions"><button class="btn-ghost" catchtap="bindDetailTap" data-id="{{order._id}}">查看详情</button><text class="sub">线下结算</text></view></view>
 					</view>
 				</view>
 				<view wx:elif="{{dataList && dataList.total === 0}}" class="empty"><image class="empty-img" src="/projects/crun/images/follow/bag.png" mode="aspectFit"></image><view class="empty-title">还没有发布过订单</view><view class="empty-sub">点击右下角发布一个新订单</view></view>

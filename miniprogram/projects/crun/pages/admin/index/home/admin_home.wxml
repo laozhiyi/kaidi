@@ -1,102 +1,44 @@
 <view wx:if="{{!isLoad}}" class="margin-top load loading text-l text-admin"></view>
-
 <view class="main-admin" wx:if="{{isLoad && isAdmin}}">
+  <view class="admin-info bg-admin">
+    <view class="pic"><text class="icon-profilefill"></text></view>
+    <view class="right">
+      <view class="name">{{admin.name}}</view>
+      <view class="admin-role">{{isSuperAdmin?'超级管理员':'一般管理员'}}</view>
+      <view class="desc">共登录 {{admin.cnt}} 次 · 上次 {{admin.last}}</view>
+    </view>
+  </view>
+  <view class="home-stats"><view wx:for="{{stat}}" wx:key="key" class="home-stat"><view class="home-stat-count">{{item.cnt || 0}}</view><view>{{item.title}}</view></view></view>
 
-	<view class="admin-info bg-admin">
-		<view class="pic"><text class="icon-profilefill"></text></view>
-		<view class="right">
-			<view class="name">
-				<text class="text-xl">{{admin.name}}</text>
+  <view class="home-section">
+    <view class="home-section-title">业务处理</view><view class="home-section-desc">订单、骑手与投诉在同一工作台处理</view>
+    <view class="workbench-entry" bindtap="url" data-url="/projects/crun/pages/admin/operations/admin_operations">
+      <view><view class="workbench-title">运营工作台</view><view class="workbench-desc">概况 · 订单 · 骑手 · 投诉 · 配置</view></view><text>›</text>
+    </view>
+    <view class="home-grid">
+      <view class="home-grid-item" bindtap="url" data-url="../../user/list/admin_user_list"><text class="icon-group_fill text-green"></text><view>用户管理</view></view>
+      <view class="home-grid-item" bindtap="url" data-url="../../campus_service/chat_list/admin_campus_chat_list"><text class="icon-messagefill text-blue"></text><view>客服对话</view></view>
+      <view class="home-grid-item" bindtap="url" data-url="../../campus_service/list/admin_campus_service_list"><text class="icon-formfill text-cyan"></text><view>客服配置</view></view>
+    </view>
+  </view>
 
-				<text wx:if="{{admin.type==1}}" class="tag small bg-orange light radius margin-left-s">超级管理员</text>
-				<text wx:if="{{admin.type==0}}" class="tag small bg-green radius margin-left-s">一般管理员</text>
+  <view class="home-section">
+    <view class="home-section-title">内容与展示</view>
+    <view class="home-grid">
+      <view class="home-grid-item" bindtap="url" data-url="../../news/list/admin_news_list"><text class="icon-formfill text-darkgreen"></text><view>公告管理</view></view>
+      <view class="home-grid-item" bindtap="url" data-url="../../setup/about_list/admin_setup_about_list"><text class="icon-edit text-blue"></text><view>关于与联系</view></view>
+      <view class="home-grid-item" bindtap="url" data-url="../../setup/qr/admin_setup_qr"><text class="icon-qr_code text-mauve"></text><view>小程序码</view></view>
+    </view>
+  </view>
 
-			</view>
-			<view class="desc text-s">共登录{{admin.cnt}}次，上次{{admin.last}}</view>
-		</view>
-		<view class="exit-admin" bindtap="bindExitTap"><text class="icon-exit"></text></view>
-	</view>
-
-
-	<view class="comm-list grid col-{{stat.length}}">
-		<view wx:for="{{stat}}" wx:key="key" class="item">{{item.cnt||'0'}}<text class="text-black">{{item.title}}</text></view>
-
-	</view>
-
-	<view class="bar bg-white solid-bottom margin-top-s ">
-		<view class="action">
-			<text class="icon-title"></text>功能管理
-		</view>
-	</view>
-
-	<view class="comm-list grid col-4">
-		<view class="item" bindtap="url" data-url="../../user/list/admin_user_list"> <text class="icon-group_fill text-green"></text> <text class="text-black">用户管理</text>
-		</view>
-		<view class="item" bindtap="url" data-url="../../news/list/admin_news_list"> <text class="icon-formfill text-darkgreen"></text> <text class="text-black">公告管理</text>
-		</view>
-
-		<view class="item" bindtap="url" data-url="../../mail/list/admin_mail_list"> <text class="icon-cartfill text-blue"></text> <text class="text-black">快递代取</text>
-		</view>
-		<view class="item" bindtap="url" data-url="../../campus_service/list/admin_campus_service_list"> <text class="icon-formfill text-cyan"></text> <text class="text-black">校区客服管理</text>
-		</view>
-	</view>
-
-
-	<!-- BOTTOM begin -->
-	<view class="comm-list menu  margin-top">
-
-		<view class="item arrow" bindtap="url" data-url="../../setup/about_list/admin_setup_about_list">
-			<view class="content">
-				<text class="icon-edit text-darkgreen"></text>
-				<text class="text-black">编辑 - 关于我们</text>
-			</view>
-		</view>
-
-
-		<view class="item arrow" bindtap="url" data-url="../../setup/qr/admin_setup_qr">
-			<view class="content">
-				<text class="icon-qr_code text-mauve"></text>
-				<text class="text-black">小程序二维码</text>
-			</view>
-		</view>
-
-		<view class="item arrow" bindtap="url" data-url="../../campus_service/chat_list/admin_campus_chat_list">
-			<view class="content">
-				<text class="icon-messagefill text-blue"></text>
-				<text class="text-black">客服对话与回复</text>
-			</view>
-		</view>
-	</view>
-
-	<view class="comm-list menu">
-		<view wx:if="{{isSuperAdmin}}" class="item arrow" bindtap="url" data-url="../../mgr/list/admin_mgr_list">
-			<view class="content">
-				<text class="icon-profile text-red"></text>
-				<text class="text-black">系统管理员管理</text>
-			</view>
-		</view>
-		<view class="item arrow" bindtap="url" data-url="../../mgr/pwd/admin_mgr_pwd">
-			<view class="content">
-				<text class="icon-lock text-orange"></text>
-				<text class="text-black">修改我的管理员密码</text>
-			</view>
-		</view>
-		<view class="item arrow" bindtap="url" data-url="../../mgr/log/admin_log_list">
-			<view class="content">
-				<text class="icon-footprint text-brown"></text>
-				<text class="text-black">管理员操作日志</text>
-			</view>
-		</view>
-
-	</view>
-
- 
-
-	<!-- BOTTOM END -->
-	<button bindtap="bindExitTap" class="btn-admin margin-top">退出登录</button>
-
-	<view class="foot-bottom">
-		<cmpt-foot />
-	</view>
-
+  <view class="home-section">
+    <view class="home-section-title">账号与安全</view>
+    <view class="comm-list menu">
+      <view wx:if="{{isSuperAdmin}}" class="item arrow" bindtap="url" data-url="../../mgr/list/admin_mgr_list"><view class="content"><text class="icon-profile text-red"></text><text>管理员账号</text></view></view>
+      <view class="item arrow" bindtap="url" data-url="../../mgr/pwd/admin_mgr_pwd"><view class="content"><text class="icon-lock text-orange"></text><text>修改我的密码</text></view></view>
+      <view class="item arrow" bindtap="url" data-url="../../mgr/log/admin_log_list"><view class="content"><text class="icon-footprint text-brown"></text><text>操作日志</text></view></view>
+    </view>
+  </view>
+  <button bindtap="bindExitTap" class="home-logout">退出后台登录</button>
+  <view class="foot-bottom"><cmpt-foot /></view>
 </view>

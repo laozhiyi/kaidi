@@ -41,9 +41,9 @@ class AdminBiz extends BaseBiz {
 			return;
 		}
 
-		if (pwd.length < 5 || pwd.length > 30) {
+		if (pwd.length < 12 || pwd.length > 128) {
 			wx.showToast({
-				title: '密码输入错误(5-30位)',
+				title: '密码须为12至128位字母数字组合',
 				icon: 'none'
 			});
 			return;
@@ -161,7 +161,7 @@ AdminBiz.CHECK_FORM_MGR_ADD = {
 	name: 'formName|must|string|min:5|max:30|name=账号',
 	desc: 'formDesc|must|string|max:30|name=姓名',
 	phone: 'formPhone|string|len:11|name=手机',
-	password: 'formPassword|must|string|min:6|max:30|name=密码',
+	password: 'formPassword|must|string|min:12|max:128|name=密码',
 };
 
 AdminBiz.CHECK_FORM_MGR_EDIT = {
@@ -169,13 +169,13 @@ AdminBiz.CHECK_FORM_MGR_EDIT = {
 	name: 'formName|must|string|min:5|max:30|name=账号',
 	desc: 'formDesc|must|string|max:30|name=姓名',
 	phone: 'formPhone|string|len:11|name=手机',
-	password: 'formPassword|string|min:6|max:30|name=新密码',
+	password: 'formPassword|string|min:12|max:128|name=新密码',
 };
 
 AdminBiz.CHECK_FORM_MGR_PWD = {
-	oldPassword: 'formOldPassword|must|string|min:6|max:30|name=旧密码',
-	password: 'formPassword|must|string|min:6|max:30|name=新密码',
-	password2: 'formPassword2|must|string|min:6|max:30|name=新密码再次填写',
+	oldPassword: 'formOldPassword|must|string|min:12|max:128|name=旧密码',
+	password: 'formPassword|must|string|min:12|max:128|name=新密码',
+	password2: 'formPassword2|must|string|min:12|max:128|name=新密码再次填写',
 };
 
 

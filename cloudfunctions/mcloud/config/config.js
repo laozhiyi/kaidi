@@ -1,7 +1,7 @@
 module.exports = {
 
 	//### 环境相关 
-	CLOUD_ID: 'cloud1-9gfnj8ofd648ad67', //你的云环境id
+	CLOUD_ID: process.env.CLOUD_ENV_ID || process.env.TCB_ENV || '', //你的云环境id
 
 	// ##################################################################   
 	COLLECTION_PRFIX: 'bx_',
@@ -10,12 +10,12 @@ module.exports = {
 	// ##################################################################
 	// #### 调试相关 
 	TEST_MODE: false, // 测试模式 涉及小程序码生成路径， 用以下 TEST_TOKEN_ID openid.. 
-	TEST_TOKEN_ID: 'oD58U5Ej-gK0BjqSspqjQEPgXuQQ',
+	TEST_TOKEN_ID: '',
  
 
 	// #### 内容安全
-	CLIENT_CHECK_CONTENT: false, //前台图片文字是否校验
-	ADMIN_CHECK_CONTENT: false, //后台图片文字是否校验     
+	CLIENT_CHECK_CONTENT: process.env.CONTENT_CHECK_DISABLED !== 'true', //前台图片文字是否校验
+	ADMIN_CHECK_CONTENT: process.env.CONTENT_CHECK_DISABLED !== 'true', //后台图片文字是否校验
 
 	// ### 后台业务相关
 	ADMIN_LOGIN_EXPIRE: 86400, //管理员token过期时间 (秒) 

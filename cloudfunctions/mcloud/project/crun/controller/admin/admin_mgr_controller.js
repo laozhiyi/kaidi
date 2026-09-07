@@ -18,14 +18,14 @@ class AdminMgrController extends BaseProjectAdminController {
 		// 数据校验
 		let rules = {
 			name: 'must|string|min:5|max:30|name=管理员名',
-			pwd: 'must|string|min:5|max:30|name=密码',
+			pwd: 'must|string|min:12|max:128|name=密码',
 		};
 
 		// 取得数据
 		let input = this.validateData(rules);
 
 		let service = new AdminMgrService();
-		return await service.adminLogin(input.name, input.pwd);
+		return await service.adminLogin(input.name, input.pwd, this._userId);
 	}
 
 	/** 删除管理员 */
@@ -104,7 +104,7 @@ class AdminMgrController extends BaseProjectAdminController {
 			name: 'must|string|min:5|max:30|name=账号',
 			desc: 'must|string|max:30|name=姓名',
 			phone: 'string|len:11|name=手机',
-			password: 'must|string|min:6|max:30|name=密码',
+			password: 'must|string|min:12|max:128|name=密码',
 		};
 
 		// 取得数据

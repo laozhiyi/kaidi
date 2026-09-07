@@ -40,8 +40,8 @@ Page({
 	onShow: async function () {
 		const tabBar = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
 		if (tabBar) tabBar.setData({ selected: 2 });
-		PassportBiz.loginSilenceMust(this);
-		this._loadUser();
+		await PassportBiz.loginSilenceMust(this);
+		await this._loadUser();
 	},
 
 	/**
@@ -148,7 +148,7 @@ Page({
 
 	bindAboutTap: function (e) {
 		wx.navigateTo({
-			url: '/projects/crun/pages/about/static/about_static',
+			url: '/projects/crun/pages/about/index/about_index',
 		});
 	},
 

@@ -19,16 +19,8 @@ Page({
 	onLoad: function (options) {
 		AdminBiz.clearAdminToken();
 
-		// 记住密码 
-		let pwd = cacheHelper.get('admin-pwd');
-		if (pwd) {
-			this.setData({
-				name: pwd.name,
-				pwd: pwd.pwd,
-				remember: true
-			});
-		}
-
+		// 清理旧版本保存的明文密码，只保留登录会话。
+		cacheHelper.remove('admin-pwd');
 	},
 
 	/**
@@ -46,9 +38,7 @@ Page({
 	/**
 	 * 生命周期函数--监听页面隐藏
 	 */
-	onHide: function () {
-
-	},
+	onHide: function () {this.setData({pwd:''});},
 
 	/**
 	 * 生命周期函数--监听页面卸载
@@ -68,15 +58,8 @@ Page({
 	},
 
 	bindLoginTap: async function (e) {
-		// 记住密码
-		if (this.data.remember) {
-			cacheHelper.set('admin-pwd', { pwd: this.data.pwd, name: this.data.name }, 86400 * 30);
-		}
-		else {
-			cacheHelper.clear('admin-pwd');
-		}
-
-		return AdminBiz.adminLogin(this, this.data.name, this.data.pwd);
+		if(this._loggingIn)return;this._loggingIn=true;
+		try{return await AdminBiz.adminLogin(this,this.data.name,this.data.pwd);}finally{this._loggingIn=false;this.setData({pwd:''});}
 	},
 
 	bindRememberTap: function (e) {

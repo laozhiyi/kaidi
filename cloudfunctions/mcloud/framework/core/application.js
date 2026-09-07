@@ -41,7 +41,8 @@ async function app(event, context) {
 			return appUtil.handlerSvrErr();
 		}
 
-		PID = event.PID.trim();
+		PID = typeof event.PID === 'string' ? event.PID.trim() : '';
+		if (PID !== 'crun') return appUtil.handlerSvrErr();
 		if (!PID) {
 			showEvent(event);
 			console.error('PID Is NULL]');
@@ -50,7 +51,7 @@ async function app(event, context) {
 		global.PID = PID;
 
 		// 路由不存在
-		routes = require('project/' + PID + '/public/route.js');
+		const routes = require('project/' + PID + '/public/route.js');
 		if (!util.isDefined(routes[r])) {
 			showEvent(event);
 			console.error('Route [' + r + '] Is Not Exist');
@@ -79,11 +80,9 @@ async function app(event, context) {
 		let openId = wxContext.OPENID;
 
 		console.log('▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤');
-		console.log(`【↘${time} ENV (${config.CLOUD_ID})】【Request Base↘↘↘】\n【↘Route =***${r}】\n【↘Controller = ${controllerName}】\n【↘Action = ${actionName}】\n【↘OPENID = ${openId}】\n【↘PID = ${global.PID}】`);
+		console.log('request metadata', {route:r});
 
-		// 测试模式
-		if (config.TEST_MODE)
-			openId = config.TEST_TOKEN_ID; 
+		// Production identity always comes from trusted WX context, never a debug token.
 
 		if (!openId && r != 'job/timer') {
 			console.error('OPENID is unfined');
@@ -114,7 +113,7 @@ async function app(event, context) {
 		console.log('------');
 		time = timeUtil.time('Y-M-D h:m:s');
 		timeTicks = timeUtil.time() - timeTicks;
-		console.log(`【${time}】【Return Base↗↗↗】\n【↗Route =***${r}】\n【↗Duration = ${timeTicks}ms】\n【↗↗OUT DATA】= `, result);
+		console.log('request metadata', {route:r});
 		console.log('▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦▦');
 		console.log('');
 		console.log('');
@@ -172,7 +171,7 @@ function beforeApp(method) {
 
 // 展示当前输入数据
 function showEvent(event) {
-	console.log(event);
+	console.log('invalid request');
 }
 
 module.exports = {

@@ -88,8 +88,9 @@ class AdminUserService extends BaseProjectAdminService {
 
 	async statusUser(id, status, reason) {
 		if (!id) this.AppError('id不能为空');
+		if (![0,1,8,9].includes(Number(status))) this.AppError('用户状态无效');
 		let data = { USER_STATUS: Number(status) };
-		if (reason) data.USER_STATUS_REASON = reason;
+		if (reason) data.USER_CHECK_REASON = reason;
 		await UserModel.edit(id, data);
 		return { id };
 	}
@@ -97,7 +98,7 @@ class AdminUserService extends BaseProjectAdminService {
 	/**删除用户 */
 	async delUser(id) {
 		if (!id) this.AppError('id不能为空');
-		await UserModel.del(id);
+		await UserModel.edit(id, { USER_STATUS:9, USER_CHECK_REASON:'管理员停用（保留履约记录）' });
 		return { id };
 	}
 

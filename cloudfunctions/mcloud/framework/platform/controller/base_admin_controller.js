@@ -27,7 +27,7 @@ class BaseAdminController extends BaseController {
 	async isAdmin() {
 		// 判断是否管理员
 		let service = new BaseAdminService();
-		let admin = await service.isAdmin(this._token);
+		let admin = await service.isAdmin(this._token, this._userId);
 		this._admin = admin;
 		this._adminId = admin._id;
 	}
@@ -36,7 +36,7 @@ class BaseAdminController extends BaseController {
 	async isSuperAdmin() {
 		// 判断是否管理员
 		let service = new BaseAdminService();
-		let admin = await service.isSuperAdmin(this._token);
+		let admin = await service.isSuperAdmin(this._token, this._userId);
 		this._admin = admin;
 		this._adminId = admin._id;
 	}

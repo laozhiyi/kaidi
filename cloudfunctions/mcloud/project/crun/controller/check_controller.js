@@ -5,7 +5,7 @@
  */
 
 const BaseProjectController = require('./base_project_controller.js');
-const contentCheck = require('../../framework/validate/content_check.js');
+const contentCheck = require('../../../framework/validate/content_check.js');
 
 class CheckController extends BaseProjectController {
 
@@ -16,13 +16,14 @@ class CheckController extends BaseProjectController {
 
 		// 数据校验
 		let rules = {
-			img: 'name=img',
+			img: 'must|string|max:1400000|name=img',
 			mine: 'must|default=jpg',
 		};
 
 		// 取得数据
 		let input = this.validateData(rules);
 
+		await require('../service/operation_store.js').limit('crun',this._userId,'image_audit',20,60000);
 		return await contentCheck.checkImg(input.img, 'jpg');
 
 	}

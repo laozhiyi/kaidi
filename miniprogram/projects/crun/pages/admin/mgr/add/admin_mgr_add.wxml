@@ -21,7 +21,7 @@
 
 		<view class="form-group">
 			<view class="title must">密码</view>
-			<input maxlength="30" type="password" placeholder="请填写密码" model:value="{{formPassword}}" focus="{{formPasswordFocus}}"></input>
+			<input maxlength="128" type="password" placeholder="12至128位，含字母和数字" model:value="{{formPassword}}" focus="{{formPasswordFocus}}"></input>
 		</view>
 		<view wx:if="{{formPasswordFocus}}" class="hint-desc error">{{formPasswordFocus}}</view>
 

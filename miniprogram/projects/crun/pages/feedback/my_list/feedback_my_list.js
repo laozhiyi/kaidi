@@ -5,13 +5,13 @@ const ProjectBiz = require('../../../biz/project_biz.js');
 const STATUS_DESC = {
 	0: { label: '待处理', color: '#397bc8', bgColor: 'rgba(57, 123, 200, .12)' },
 	1: { label: '已处理', color: '#2dc87a', bgColor: 'rgba(45, 200, 122, .12)' },
-	2: { label: '已忽略', color: '#94a3b8', bgColor: 'rgba(148, 163, 184, .14)' }
+	2: { label: '不予处理', color: '#94a3b8', bgColor: 'rgba(148, 163, 184, .14)' }
 };
 
 Page({
 	data: {
 		list: [],
-		isLoad: false
+		isLoad: false, page:0, hasMore:false, loading:false, error:false
 	},
 
 	onLoad: function (options) {
@@ -19,7 +19,7 @@ Page({
 	},
 
 	onShow: async function () {
-		await this._loadList();
+		await this._loadList(true);
 	},
 
 	onPullDownRefresh: async function () {
@@ -27,9 +27,12 @@ Page({
 		wx.stopPullDownRefresh();
 	},
 
-	_loadList: async function () {
+	_loadList: async function (reset = true) {
+ if(this.data.loading)return;this.setData({loading:true,error:false});
+ const page=reset?1:this.data.page+1;
+ try {
 		let opts = { title: 'bar' };
-		let res = await cloudHelper.callCloudData('feedback/my_list', { page: 1, size: 50 }, opts);
+		let res = await cloudHelper.callCloudData('feedback/my_list', { page, size:20 }, opts);
 		let list = [];
 		if (res && Array.isArray(res.list)) {
 			list = res.list.map(item => ({
@@ -39,9 +42,13 @@ Page({
 				_statusDesc: STATUS_DESC[item.FB_STATUS] || STATUS_DESC[0]
 			}));
 		}
-		this.setData({ list, isLoad: true });
+		if(!res)throw new Error('加载失败');
+ this.setData({ list:reset?list:this.data.list.concat(list),isLoad:true,page,hasMore:!!res.hasMore });
+ } catch(e){this.setData({error:true});}finally{this.setData({loading:false});}
 	},
 
+ bindMore: function(){if(this.data.hasMore)this._loadList(false);},
+ onReachBottom: function(){this.bindMore();},
 	bindItemTap: function (e) {
 		let id = pageHelper.dataset(e, 'id');
 		wx.navigateTo({

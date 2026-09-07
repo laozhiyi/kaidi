@@ -1,1 +1,19 @@
-<include src="../../../../../tpls/project/about_tpl.wxml" />
+<view class="op-page">
+  <view class="op-card about-header">
+    <view class="about-mark">跑</view><view class="about-name">校园跑腿</view><view class="op-muted">校园生活，便捷互助</view>
+  </view>
+  <view class="op-card">
+    <view class="op-title">{{title}}</view>
+    <view wx:if="{{loading}}" class="op-state op-muted">正在加载…</view>
+    <view wx:elif="{{error}}" class="op-state"><view>内容加载失败</view><button class="op-button-secondary" bindtap="load">重试</button></view>
+    <block wx:else>
+      <block wx:for="{{about}}" wx:key="index">
+        <view wx:if="{{item.type==='text'}}" class="about-content"><text user-select>{{item.val}}</text></view>
+        <image wx:elif="{{item.type==='img'}}" class="about-image" mode="widthFix" src="{{item.val}}" data-url="{{item.val}}" bindtap="bindImage" show-menu-by-longpress />
+      </block>
+      <view wx:if="{{!about.length}}" class="op-muted">{{key==='SETUP_CONTENT_ABOUT'?'校园跑腿提供校区内的快递代取与互助服务。具体开放校区和服务规则以平台当前配置为准。':'联系方式尚未配置，如需帮助，请通过校区客服联系运营人员。'}}</view>
+    </block>
+  </view>
+  <button wx:if="{{key==='SETUP_CONTENT_ABOUT'}}" class="op-button-secondary" bindtap="bindContact">联系我们</button>
+  <button class="op-button-primary" bindtap="bindService">联系校区客服</button>
+</view>

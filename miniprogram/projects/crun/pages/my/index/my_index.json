@@ -2,7 +2,7 @@
 	"usingComponents": {
 
 	},
-	"navigationStyle": "custom",
+	"navigationStyle": "default",
 	"enablePullDownRefresh": true,
 	"navigationBarTitleText": "我的"
 }

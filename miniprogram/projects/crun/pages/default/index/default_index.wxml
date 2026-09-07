@@ -20,7 +20,7 @@
 			<view class="express-card-icon icon-mail"></view>
 			<view class="express-card-copy">
 				<view class="express-card-title">快递代取</view>
-				<view class="express-card-subtitle">发布订单或接单</view>
+				<view class="express-card-subtitle">填写信息，发布代取订单</view>
 			</view>
 			<view class="express-card-arrow">›</view>
 		</view>

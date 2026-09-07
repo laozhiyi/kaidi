@@ -10,31 +10,35 @@ const dataUtil = require('../../../../framework/utils/data_util.js');
 const timeUtil = require('../../../../framework/utils/time_util.js');
 const AdminModel = require('../../../../framework/platform/model/admin_model.js');
 const LogModel = require('../../../../framework/platform/model/log_model.js');
-const md5Lib = require('../../../../framework/lib/md5_lib.js');
+const passwordUtil = require('../../../../framework/utils/password_util.js');
+const crypto = require('crypto');
+const store = require('../operation_store.js');
 
 class AdminMgrService extends BaseProjectAdminService {
 
 	//**管理员登录  */
-	async adminLogin(name, password) {
+	async adminLogin(name, password, userId) {
+		await store.limit(this.getProjectId(),userId,'admin_login',10,900000);
+		await store.limit(this.getProjectId(),name,'admin_account_login',30,900000);
 
 		// 判断是否存在
 		let where = {
 			ADMIN_STATUS: 1,
-			ADMIN_NAME: name,
-			ADMIN_PASSWORD: md5Lib.md5(password)
+			ADMIN_NAME: name
 		}
-		let fields = 'ADMIN_ID,ADMIN_NAME,ADMIN_DESC,ADMIN_TYPE,ADMIN_LOGIN_TIME,ADMIN_LOGIN_CNT';
+		let fields = '*';
 		let admin = await AdminModel.getOne(where, fields);
-		if (!admin)
+		if (!admin || !passwordUtil.verify(password, admin.ADMIN_PASSWORD))
 			this.AppError('管理员不存在或者已停用');
 
 		let cnt = admin.ADMIN_LOGIN_CNT;
 
 		// 生成token
-		let token = dataUtil.genRandomString(32);
+		let token = crypto.randomBytes(32).toString('hex');
 		let tokenTime = timeUtil.time();
 		let data = {
 			ADMIN_TOKEN: token,
+			ADMIN_TOKEN_USER: userId,
 			ADMIN_TOKEN_TIME: tokenTime,
 			ADMIN_LOGIN_TIME: timeUtil.time(),
 			ADMIN_LOGIN_CNT: cnt + 1
@@ -195,7 +199,7 @@ class AdminMgrService extends BaseProjectAdminService {
 			ADMIN_NAME: name,
 			ADMIN_DESC: desc,
 			ADMIN_PHONE: phone || '',
-			ADMIN_PASSWORD: md5Lib.md5(password),
+			ADMIN_PASSWORD: passwordUtil.hash(password),
 			ADMIN_STATUS: 1,
 			ADMIN_TYPE: 0, // 默认普通管理员
 			ADMIN_LOGIN_CNT: 0,
@@ -253,6 +257,7 @@ class AdminMgrService extends BaseProjectAdminService {
 		let mgr = await AdminModel.getOne(where, fields);
 		if (!mgr) return null;
 
+		if (mgr) { delete mgr.ADMIN_PASSWORD; delete mgr.ADMIN_TOKEN; delete mgr.ADMIN_TOKEN_USER; }
 		return mgr;
 	}
 
@@ -279,7 +284,8 @@ class AdminMgrService extends BaseProjectAdminService {
 
 		// 如果传入了密码则更新密码
 		if (password && password.length >= 6) {
-			data.ADMIN_PASSWORD = md5Lib.md5(password);
+			data.ADMIN_PASSWORD = passwordUtil.hash(password);
+			data.ADMIN_TOKEN = ''; data.ADMIN_TOKEN_USER = ''; data.ADMIN_TOKEN_TIME = 0;
 		}
 
 		await AdminModel.edit(id, data);
@@ -296,12 +302,13 @@ class AdminMgrService extends BaseProjectAdminService {
 		}
 
 		// 验证旧密码
-		if (admin.ADMIN_PASSWORD !== md5Lib.md5(oldPassword)) {
+		if (!passwordUtil.verify(oldPassword, admin.ADMIN_PASSWORD)) {
 			this.AppError('旧密码不正确');
 		}
 
 		await AdminModel.edit(adminId, {
-			ADMIN_PASSWORD: md5Lib.md5(password),
+			ADMIN_PASSWORD: passwordUtil.hash(password),
+			ADMIN_TOKEN: '', ADMIN_TOKEN_USER: '', ADMIN_TOKEN_TIME: 0,
 			ADMIN_EDIT_TIME: this._timestamp,
 			ADMIN_EDIT_IP: this._ip || '',
 		});

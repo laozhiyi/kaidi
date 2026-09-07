@@ -68,7 +68,8 @@ Page({
 		try {
 			await cloudHelper.callCloudSumbit('admin/mgr_pwd', data).then(res => {
 				let callback = () => {
-					wx.navigateBack();
+					AdminBiz.clearAdminToken();
+					wx.reLaunch({url:'/projects/crun/pages/admin/index/login/admin_login'});
 				}
 				pageHelper.showSuccToast('修改成功', 1500, callback);
 			});

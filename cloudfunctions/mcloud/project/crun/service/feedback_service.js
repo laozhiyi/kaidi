@@ -1,190 +1,37 @@
-/**
- * Notes: 反馈投诉模块业务逻辑
- * Ver : CCMiniCloud Framework 2.0.1
- * Date: 2026-09-06
- */
-
-const BaseProjectService = require('./base_project_service.js');
-const util = require('../../../framework/utils/util.js');
-const timeUtil = require('../../../framework/utils/time_util.js');
-const FeedbackModel = require('../model/feedback_model.js');
-const UserModel = require('../model/user_model.js');
-
-class FeedbackService extends BaseProjectService {
-
-	/** 提交反馈 */
-	async insertFeedback(userId, {
-		type,
-		title,
-		content,
-		contact,
-		img
-	}) {
-		if (!title) this.AppError('请填写反馈标题');
-		if (!content) this.AppError('请填写反馈内容');
-		if (!type) this.AppError('请选择反馈类型');
-
-		// 取用户信息
-		let userWhere = { USER_MINI_OPENID: userId };
-		let user = await UserModel.getOne(userWhere, 'USER_NAME,USER_MOBILE');
-
-		const fbId = 'FB' + Date.now() + Math.random().toString(36).substr(2, 9);
-
-		let data = {
-			FB_ID: fbId,
-			FB_USER_ID: userId,
-			FB_USER_NAME: user ? user.USER_NAME : '',
-			FB_USER_MOBILE: user ? user.USER_MOBILE : '',
-			FB_TYPE: type,
-			FB_TITLE: title,
-			FB_CONTENT: content,
-			FB_CONTACT: (contact || '').trim(),
-			FB_IMG: img || [],
-			FB_STATUS: FeedbackModel.STATUS.PENDING,
-			FB_REPLY: '',
-			FB_REPLY_TIME: 0,
-			FB_ADD_TIME: this._timestamp,
-			FB_EDIT_TIME: this._timestamp,
-		};
-		await FeedbackModel.insert(data);
-		return { id: fbId };
-	}
-
-	/** 我的反馈列表 */
-	async getMyFeedbackList(userId, {
-		search,
-		sortType,
-		sortVal,
-		orderBy,
-		page,
-		size,
-		isTotal = true,
-		oldTotal
-	}) {
-
-		orderBy = orderBy || {
-			'FB_ADD_TIME': 'desc'
-		};
-		let fields = 'FB_TYPE,FB_TITLE,FB_CONTENT,FB_CONTACT,FB_IMG,FB_STATUS,FB_REPLY,FB_REPLY_TIME,FB_ADD_TIME';
-
-		let where = {};
-		where.and = {
-			_pid: this.getProjectId(),
-			FB_USER_ID: userId
-		};
-
-		if (util.isDefined(search) && search) {
-			where.or = [
-				{ FB_TITLE: ['like', search] },
-				{ FB_CONTENT: ['like', search] }
-			];
-		}
-
-		return await FeedbackModel.getList(where, fields, orderBy, page, size, isTotal, oldTotal);
-	}
-
-	/** 我的反馈详情 */
-	async getMyFeedbackDetail(userId, id) {
-		let where = {
-			_id: id,
-			FB_USER_ID: userId
-		};
-		let feedback = await FeedbackModel.getOne(where, '*');
-		if (feedback && feedback.FB_REPLY_TIME > 0) {
-			feedback.FB_REPLY_TIME = timeUtil.timestamp2Time(feedback.FB_REPLY_TIME, 'Y-M-D h:m');
-		}
-		return feedback;
-	}
-
-	/** 取得反馈分页列表（管理端） */
-	async getAdminFeedbackList({
-		search,
-		sortType,
-		sortVal,
-		orderBy,
-		whereEx,
-		page,
-		size,
-		isTotal = true,
-		oldTotal
-	}) {
-
-		orderBy = orderBy || {
-			'FB_ADD_TIME': 'desc'
-		};
-		let fields = 'FB_USER_ID,FB_USER_NAME,FB_USER_MOBILE,FB_TYPE,FB_TITLE,FB_CONTENT,FB_CONTACT,FB_IMG,FB_STATUS,FB_REPLY,FB_REPLY_TIME,FB_ADD_TIME';
-
-		let where = {};
-		where.and = {
-			_pid: this.getProjectId()
-		};
-
-		if (util.isDefined(search) && search) {
-			where.or = [
-				{ FB_TITLE: ['like', search] },
-				{ FB_CONTENT: ['like', search] },
-				{ FB_USER_NAME: ['like', search] }
-			];
-		} else if (sortType && util.isDefined(sortVal)) {
-			switch (sortType) {
-				case 'status': {
-					where.and.FB_STATUS = Number(sortVal);
-					break;
-				}
-				case 'type': {
-					where.and.FB_TYPE = String(sortVal);
-					break;
-				}
-			}
-		}
-
-		if (whereEx && typeof whereEx === 'object') {
-			for (let k in whereEx) {
-				where.and[k] = whereEx[k];
-			}
-		}
-
-		let result = await FeedbackModel.getList(where, fields, orderBy, page, size, isTotal, oldTotal);
-
-		// 格式化
-		let list = result.list || [];
-		for (let k = 0; k < list.length; k++) {
-			list[k].FB_ADD_TIME = timeUtil.timestamp2Time(list[k].FB_ADD_TIME, 'Y-M-D h:m');
-			if (list[k].FB_REPLY_TIME > 0)
-				list[k].FB_REPLY_TIME = timeUtil.timestamp2Time(list[k].FB_REPLY_TIME, 'Y-M-D h:m');
-		}
-		result.list = list;
-		return result;
-	}
-
-	/** 回复反馈 */
-	async replyFeedback(id, reply) {
-		if (!id) this.AppError('id不能为空');
-		await FeedbackModel.edit(id, {
-			FB_STATUS: FeedbackModel.STATUS.DONE,
-			FB_REPLY: reply || '',
-			FB_REPLY_TIME: this._timestamp,
-			FB_EDIT_TIME: this._timestamp
-		});
-		return { id };
-	}
-
-	/** 修改状态 */
-	async statusFeedback(id, status) {
-		if (!id) this.AppError('id不能为空');
-		await FeedbackModel.edit(id, {
-			FB_STATUS: Number(status),
-			FB_EDIT_TIME: this._timestamp
-		});
-		return { id };
-	}
-
-	/** 删除反馈 */
-	async delFeedback(id) {
-		if (!id) this.AppError('id不能为空');
-		await FeedbackModel.del(id);
-		return { id };
-	}
+'use strict';
+const Base = require('./base_project_service.js');
+const store = require('./operation_store.js');
+const Mail = require('./mail_service.js');
+const rules = require('./order_rules.js');
+const media = require('./private_media_service.js');
+const Operations = require('./operations_service.js');
+class FeedbackService extends Base {
+ async insertFeedback(userId,p) {
+  const user=await new Mail()._user(userId);new Mail()._request(p.requestId);rules.text(p.title,'反馈标题',60,true);rules.text(p.content,'反馈内容',1000,true);rules.text(p.type,'反馈类型',30,true);rules.images(p.img||[]);
+  await store.limit(this.getProjectId(),userId,'feedback',5,3600000);
+  const id=store.key(this.getProjectId(),userId,p.requestId);
+  await store.transaction(async tx=>{await new Mail()._actor(tx,{userId,user});const old=await store.get(tx,'feedback',id);if(old){if(old.FB_FINGERPRINT!==store.key(p))this.AppError('相同请求标识不能提交不同内容');return;}
+   if(p.orderId){const mail=await store.get(tx,'mail',p.orderId);if(!mail||mail._pid!==this.getProjectId()||![mail.MAIL_USER_ID,mail.MAIL_ACCEPT_USER_ID].includes(userId))this.AppError('只能关联本人参与的订单');}
+   await store.set(tx,'feedback',id,{_pid:this.getProjectId(),FB_ID:id,FB_FINGERPRINT:store.key(p),FB_USER_ID:userId,FB_USER_NAME:user.USER_NAME,FB_USER_MOBILE:user.USER_MOBILE,FB_TYPE:p.type,FB_TITLE:p.title,FB_CONTENT:p.content,FB_CONTACT:p.contact||'',FB_IMG:p.img||[],FB_ORDER_ID:p.orderId||'',FB_STATUS:0,FB_REPLY:'',FB_REPLY_TIME:0,FB_ADD_TIME:Date.now(),FB_EDIT_TIME:Date.now(),FB_VERSION:0,FB_HISTORY:[]});
+  });return {id};
+ }
+ async getMyFeedbackList(userId,p){await new Mail()._user(userId);const result=await new Operations().list('feedback',{FB_USER_ID:userId},p.page||1,'FB_ADD_TIME');return result;}
+ async getMyFeedbackDetail(userId,id){await new Mail()._user(userId);const row=await store.get(store.database(),'feedback',id);if(!row||row._pid!==this.getProjectId()||row.FB_USER_ID!==userId)this.AppError('反馈不存在');return media.feedback(row);}
+ async getAdminFeedbackList(p){return new Operations().list('feedback',{},p.page||1,'FB_ADD_TIME');}
+ async getAdminFeedbackDetail(id){const row=await store.get(store.database(),'feedback',id);if(!row||row._pid!==this.getProjectId())this.AppError('反馈不存在');return media.feedback(row);}
+ async replyFeedback(id,reply,adminId,version,requestId,status=1){
+  rules.text(reply,'处理说明',500,true);new Mail()._request(requestId);if(![0,1,2].includes(status))this.AppError('反馈状态无效');
+  await store.transaction(async tx=>{await new Mail()._actor(tx,{adminId});const row=await store.get(tx,'feedback',id);if(!row||row._pid!==this.getProjectId())this.AppError('反馈不存在');
+   const key=store.key(this.getProjectId(),adminId,requestId);const seen=await store.get(tx,'feedback_request',key);if(seen){if(seen.id!==id || seen.fingerprint!==store.key(reply,version,status))this.AppError('请求标识已被使用');return;}
+   if(Number(row.FB_VERSION||0)!==version)this.AppError('反馈已被其他管理员更新，请刷新');
+   const now=Date.now(), event={adminId,reply,status,at:now};
+   await store.set(tx,'feedback',id,{...row,FB_STATUS:status,FB_REPLY:reply,FB_REPLY_TIME:now,FB_EDIT_TIME:now,FB_VERSION:version+1,FB_HANDLER:adminId,FB_HISTORY:[...(row.FB_HISTORY||[]),event].slice(-100)});
+   await store.set(tx,'feedback_request',key,{_pid:this.getProjectId(),id,fingerprint:store.key(reply,version,status),createdAt:now});
+   await store.set(tx,'operation_audit',key,{_pid:this.getProjectId(),action:'feedback_reply',feedbackId:id,...event});
+   await store.set(tx,'notification',key,{_pid:this.getProjectId(),userId:row.FB_USER_ID,feedbackId:id,title:'投诉反馈有新回复',content:'请查看处理结果',createdAt:now,read:false,delivery:'skipped',attempts:0,nextAttemptAt:0});
+  });return {id};
+ }
+ async statusFeedback(){this.AppError('请附带处理说明后更新反馈');}
+ async delFeedback(){this.AppError('反馈及处理凭证不可删除');}
 }
-
-module.exports = FeedbackService;
+module.exports=FeedbackService;

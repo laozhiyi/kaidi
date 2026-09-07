@@ -71,7 +71,7 @@ class AdminMailController extends BaseProjectAdminController {
 		let input = this.validateData(rules);
 
 		let service = new MailService();
-		await service.delMail(null, input.id);
+		this.AppError('订单凭证不可删除，请使用异常处理工作台');
 
 	}
 

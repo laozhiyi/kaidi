@@ -62,7 +62,7 @@ class PassportBiz extends BaseBiz {
 	static getStatus() {
 		let token = cacheHelper.get(constants.CACHE_TOKEN);
 		if (!token) return -1;
-		return token.status || -1;
+		return typeof token.status === 'number' ? token.status : -1;
 	}
 
 	// 是否登录 

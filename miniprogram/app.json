@@ -1,100 +1,91 @@
 {
-	"pages": [
-		"projects/crun/pages/default/index/default_index",
-		"projects/crun/pages/order/index/order_index",
-		"projects/crun/pages/about/index/about_index",
-		"projects/crun/pages/about/static/about_static",
-		"projects/crun/pages/campus_service/list/campus_service_list",
-		"projects/crun/pages/campus_service/chat/campus_service_chat",
-		"projects/crun/pages/feedback/index/feedback_index",
-		"projects/crun/pages/feedback/my_list/feedback_my_list",
-		"projects/crun/pages/feedback/detail/feedback_detail",
-		"projects/crun/pages/invite/index/invite_index",
-		"projects/crun/pages/search/search",
-		"projects/crun/pages/my/index/my_index",
-		"projects/crun/pages/my/reg/my_reg",
-		"projects/crun/pages/my/edit/my_edit",
-		"projects/crun/pages/my/foot/my_foot",
-		"projects/crun/pages/my/fav/my_fav",
-		"projects/crun/pages/news/index/news_index",
-		"projects/crun/pages/news/detail/news_detail",
-		"projects/crun/pages/news/cate1/news_cate1",
-		"projects/crun/pages/admin/news/list/admin_news_list",
-		"projects/crun/pages/admin/news/add/admin_news_add",
-		"projects/crun/pages/admin/news/edit/admin_news_edit",
-		"projects/crun/pages/admin/setup/about/admin_setup_about",
-		"projects/crun/pages/admin/setup/about_list/admin_setup_about_list",
-		"projects/crun/pages/admin/setup/qr/admin_setup_qr",
-		"projects/crun/pages/admin/index/home/admin_home",
-		"projects/crun/pages/admin/index/login/admin_login",
-		"projects/crun/pages/admin/content/admin_content",
-		"projects/crun/pages/admin/preview/admin_preview",
-		"projects/crun/pages/admin/mgr/log/admin_log_list",
-		"projects/crun/pages/admin/mgr/edit/admin_mgr_edit",
-		"projects/crun/pages/admin/mgr/list/admin_mgr_list",
-		"projects/crun/pages/admin/mgr/add/admin_mgr_add",
-		"projects/crun/pages/admin/mgr/pwd/admin_mgr_pwd",
-		"projects/crun/pages/admin/user/list/admin_user_list",
-		"projects/crun/pages/admin/user/detail/admin_user_detail",
-		"projects/crun/pages/admin/user/export/admin_user_export",
-		"projects/crun/pages/admin/campus_service/list/admin_campus_service_list",
-		"projects/crun/pages/admin/campus_service/add/admin_campus_service_add",
-		"projects/crun/pages/admin/campus_service/edit/admin_campus_service_edit",
-		"projects/crun/pages/admin/campus_service/chat_list/admin_campus_chat_list",
-		"projects/crun/pages/admin/campus_service/chat_detail/admin_campus_chat_detail",
-		"projects/crun/pages/mail/choose/mail_choose",
-		"projects/crun/pages/mail/add/mail_add",
-		"projects/crun/pages/mail/edit/mail_edit",
-		"projects/crun/pages/mail/detail/mail_detail",
-		"projects/crun/pages/mail/my_detail/mail_my_detail",
-		"projects/crun/pages/admin/mail/list/admin_mail_list",
-		"projects/crun/pages/admin/mail/export/admin_mail_export",
-		"cmpts/public/form/form_set/field/form_set_field",
-		"cmpts/public/form/form_show/content/form_show_content",
-		"pages/test1/test1"
-	],
-	"window": {
-		"backgroundColor": "#f1f1f1",
-		"backgroundTextStyle": "dark",
-		"navigationBarBackgroundColor": "#397BC8",
-		"navigationBarTitleText": "校园跑腿小程序",
-		"navigationBarTextStyle": "white"
-	},
-	"tabBar": {
-		"custom": true,
-		"backgroundColor": "#FFFFFF",
-		"color": "#7A8AA6",
-		"selectedColor": "#397BC8",
-		"list": [
-			{
-				"pagePath": "projects/crun/pages/default/index/default_index",
-				"text": "首页",
-				"iconPath": "projects/crun/images/tabbar/home.png",
-				"selectedIconPath": "projects/crun/images/tabbar/home_cur.png"
-			},
-			{
-				"pagePath": "projects/crun/pages/order/index/order_index",
-				"text": "订单",
-				"iconPath": "projects/crun/images/tabbar/order.png",
-				"selectedIconPath": "projects/crun/images/tabbar/order_cur.png"
-			},
-			{
-				"pagePath": "projects/crun/pages/my/index/my_index",
-				"text": "我的",
-				"iconPath": "projects/crun/images/tabbar/my.png",
-				"selectedIconPath": "projects/crun/images/tabbar/my_cur.png"
-			}
-		]
-	},
-	"permission": {
-		"scope.userLocation": {
-			"desc": "获取你当前位置信息用于小程序位置接口的效果展示"
-		}
-	},
-	"usingComponents": {
-		"cmpt-comm-list": "/cmpts/public/list/comm_list_cmpt",
-		"cmpt-picker": "/cmpts/public/picker/picker_cmpt",
-		"cmpt-modal": "/cmpts/public/modal/modal_cmpt"
-	},
-	"sitemapLocation": "sitemap.json"
+  "pages": [
+    "projects/crun/pages/default/index/default_index",
+    "projects/crun/pages/order/index/order_index",
+    "projects/crun/pages/about/index/about_index",
+    "projects/crun/pages/campus_service/list/campus_service_list",
+    "projects/crun/pages/campus_service/chat/campus_service_chat",
+    "projects/crun/pages/feedback/index/feedback_index",
+    "projects/crun/pages/feedback/my_list/feedback_my_list",
+    "projects/crun/pages/feedback/detail/feedback_detail",
+    "projects/crun/pages/invite/index/invite_index",
+    "projects/crun/pages/search/search",
+    "projects/crun/pages/my/index/my_index",
+    "projects/crun/pages/operations/operations",
+    "projects/crun/pages/my/reg/my_reg",
+    "projects/crun/pages/my/edit/my_edit",
+    "projects/crun/pages/my/foot/my_foot",
+    "projects/crun/pages/my/fav/my_fav",
+    "projects/crun/pages/news/index/news_index",
+    "projects/crun/pages/news/detail/news_detail",
+    "projects/crun/pages/admin/news/list/admin_news_list",
+    "projects/crun/pages/admin/news/add/admin_news_add",
+    "projects/crun/pages/admin/news/edit/admin_news_edit",
+    "projects/crun/pages/admin/setup/about/admin_setup_about",
+    "projects/crun/pages/admin/setup/about_list/admin_setup_about_list",
+    "projects/crun/pages/admin/setup/qr/admin_setup_qr",
+    "projects/crun/pages/admin/index/home/admin_home",
+    "projects/crun/pages/admin/operations/admin_operations",
+    "projects/crun/pages/admin/index/login/admin_login",
+    "projects/crun/pages/admin/content/admin_content",
+    "projects/crun/pages/admin/mgr/log/admin_log_list",
+    "projects/crun/pages/admin/mgr/edit/admin_mgr_edit",
+    "projects/crun/pages/admin/mgr/list/admin_mgr_list",
+    "projects/crun/pages/admin/mgr/add/admin_mgr_add",
+    "projects/crun/pages/admin/mgr/pwd/admin_mgr_pwd",
+    "projects/crun/pages/admin/user/list/admin_user_list",
+    "projects/crun/pages/admin/user/detail/admin_user_detail",
+    "projects/crun/pages/admin/user/export/admin_user_export",
+    "projects/crun/pages/admin/campus_service/list/admin_campus_service_list",
+    "projects/crun/pages/admin/campus_service/add/admin_campus_service_add",
+    "projects/crun/pages/admin/campus_service/edit/admin_campus_service_edit",
+    "projects/crun/pages/admin/campus_service/chat_list/admin_campus_chat_list",
+    "projects/crun/pages/admin/campus_service/chat_detail/admin_campus_chat_detail",
+    "projects/crun/pages/mail/add/mail_add",
+    "projects/crun/pages/mail/edit/mail_edit",
+    "projects/crun/pages/mail/detail/mail_detail",
+    "projects/crun/pages/mail/my_detail/mail_my_detail",
+    "projects/crun/pages/admin/mail/export/admin_mail_export",
+    "cmpts/public/form/form_set/field/form_set_field",
+    "cmpts/public/form/form_show/content/form_show_content"
+  ],
+  "window": {
+    "backgroundColor": "#f1f1f1",
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#397BC8",
+    "navigationBarTitleText": "校园跑腿小程序",
+    "navigationBarTextStyle": "white"
+  },
+  "tabBar": {
+    "custom": true,
+    "backgroundColor": "#FFFFFF",
+    "color": "#7A8AA6",
+    "selectedColor": "#397BC8",
+    "list": [
+      {
+        "pagePath": "projects/crun/pages/default/index/default_index",
+        "text": "首页",
+        "iconPath": "projects/crun/images/tabbar/home.png",
+        "selectedIconPath": "projects/crun/images/tabbar/home_cur.png"
+      },
+      {
+        "pagePath": "projects/crun/pages/order/index/order_index",
+        "text": "订单",
+        "iconPath": "projects/crun/images/tabbar/order.png",
+        "selectedIconPath": "projects/crun/images/tabbar/order_cur.png"
+      },
+      {
+        "pagePath": "projects/crun/pages/my/index/my_index",
+        "text": "我的",
+        "iconPath": "projects/crun/images/tabbar/my.png",
+        "selectedIconPath": "projects/crun/images/tabbar/my_cur.png"
+      }
+    ]
+  },
+  "usingComponents": {
+    "cmpt-comm-list": "/cmpts/public/list/comm_list_cmpt",
+    "cmpt-picker": "/cmpts/public/picker/picker_cmpt",
+    "cmpt-modal": "/cmpts/public/modal/modal_cmpt"
+  },
+  "sitemapLocation": "sitemap.json"
 }

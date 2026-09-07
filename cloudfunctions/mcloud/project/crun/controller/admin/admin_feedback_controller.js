@@ -9,6 +9,7 @@ const FeedbackService = require('../../service/feedback_service.js');
 const contentCheck = require('../../../../framework/validate/content_check.js');
 
 class AdminFeedbackController extends BaseProjectAdminController {
+ async getAdminFeedbackDetail(){await this.isAdmin();const p=this.validateData({id:'must|id'});return new FeedbackService().getAdminFeedbackDetail(p.id);}
 
 	/** 反馈列表 */
 	async getAdminFeedbackList() {
@@ -39,6 +40,7 @@ class AdminFeedbackController extends BaseProjectAdminController {
 		let rules = {
 			id: 'must|id',
 			reply: 'must|string|min:1|max:500|name=回复内容',
+			version:'must|int', requestId:'must|string|min:16|max:100', status:'int|default=1',
 		};
 
 		let input = this.validateData(rules);
@@ -47,7 +49,7 @@ class AdminFeedbackController extends BaseProjectAdminController {
 		await contentCheck.checkTextMultiAdmin(input);
 
 		let service = new FeedbackService();
-		return await service.replyFeedback(input.id, input.reply);
+		return await service.replyFeedback(input.id, input.reply, this._adminId, input.version, input.requestId, input.status);
 	}
 
 	/** 修改状态 */

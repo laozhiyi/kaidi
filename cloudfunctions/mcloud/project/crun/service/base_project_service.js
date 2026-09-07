@@ -7,6 +7,7 @@ const dbUtil = require('../../../framework/database/db_util.js');
 const util = require('../../../framework/utils/util.js');
 const AdminModel = require('../../../framework/platform/model/admin_model.js');
 const NewsModel = require('../model/news_model.js');
+let setupPromise;
 const BaseService = require('../../../framework/platform/service/base_service.js');
 
 class BaseProjectService extends BaseService {
@@ -21,9 +22,25 @@ class BaseProjectService extends BaseService {
 	}
 
 	async initSetup() {
+ if (!setupPromise) setupPromise=this._initSetup().catch(e=>{setupPromise=null;throw e;});
+ return setupPromise;
+ }
+ async _ensureCollection(name) {
+  if (await dbUtil.isExistCollection(name)) return;
+  let created = false;
+  try { created = await dbUtil.createCollection(name); }
+  catch (e) { console.error('[initSetup] create failed', { collection: name, code: e.code || e.errCode }); }
+  // The legacy database helper returns false instead of throwing. Also tolerate
+  // another cold-start instance creating the same collection concurrently.
+  if (!created && !await dbUtil.isExistCollection(name)) {
+   console.error('[initSetup] collection unavailable', { collection: name });
+   this.AppError('数据服务初始化未完成，请联系管理员检查云数据库集合与权限');
+  }
+ }
+ async _initSetup() {
 		let F = (c) => 'bx_' + c;
 		const INSTALL_CL = 'setup_crun';
-		const COLLECTIONS = ['setup', 'admin', 'log', 'news', 'mail', 'follow', 'thing', 'food', 'fav', 'user', 'campus_service', 'campus_service_message', 'feedback', 'invite'];
+		const COLLECTIONS = ['identity_unique', 'operation_config', 'operation_audit', 'operation_limit', 'order_quota', 'order_event', 'order_request', 'notification', 'subscription', 'feedback_request','setup', 'admin', 'log', 'news', 'mail', 'follow', 'thing', 'food', 'fav', 'user', 'campus_service', 'campus_service_message', 'feedback', 'invite'];
 		const CONST_PIC = '/images/cover.gif';
 
 
@@ -34,34 +51,21 @@ class BaseProjectService extends BaseService {
 
 		if (await dbUtil.isExistCollection(F(INSTALL_CL))) {
 			// 已初始化过，仅补齐可能新增的集合（用于版本升级场景）
-			let arrExisting = COLLECTIONS;
-			for (let k = 0; k < arrExisting.length; k++) {
-				if (!await dbUtil.isExistCollection(F(arrExisting[k]))) {
-					try {
-						await dbUtil.createCollection(F(arrExisting[k]));
-					} catch (ex) {
-						console.warn('create collection failed:', arrExisting[k], ex.message);
-					}
-				}
-			}
+			for (const name of COLLECTIONS) await this._ensureCollection(F(name));
 			return;
 		}
 
 		console.log('### initSetup...');
 
-		let arr = COLLECTIONS;
-		for (let k = 0; k < arr.length; k++) {
-			if (!await dbUtil.isExistCollection(F(arr[k]))) {
-				await dbUtil.createCollection(F(arr[k]));
-			}
-		}
+		for (const name of COLLECTIONS) await this._ensureCollection(F(name));
 
 		if (await dbUtil.isExistCollection(F('admin'))) {
 			let adminCnt = await AdminModel.count({});
 			if (adminCnt == 0) {
 				let data = {};
-				data.ADMIN_NAME = 'admin';
-				data.ADMIN_PASSWORD = 'e10adc3949ba59abbe56e057f20f883e';
+				if (!process.env.INIT_ADMIN_PASSWORD) throw new Error('首次部署请配置 INIT_ADMIN_PASSWORD（12位以上字母数字密码）');
+				data.ADMIN_NAME = process.env.INIT_ADMIN_NAME || 'admin';
+				data.ADMIN_PASSWORD = require('../../../framework/utils/password_util.js').hash(process.env.INIT_ADMIN_PASSWORD);
 				data.ADMIN_DESC = '超管';
 				data.ADMIN_TYPE = 1;
 				await AdminModel.insert(data);
@@ -90,9 +94,7 @@ class BaseProjectService extends BaseService {
 			}
 		}
 
-		if (!await dbUtil.isExistCollection(F(INSTALL_CL))) {
-			await dbUtil.createCollection(F(INSTALL_CL));
-		}
+		await this._ensureCollection(F(INSTALL_CL));
 	}
 
 }

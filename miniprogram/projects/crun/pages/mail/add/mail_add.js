@@ -1,3 +1,5 @@
+const MailUI = require('../../../biz/mail_ui_biz.js');
+const Ops = require('../../../biz/operations_biz.js');
 const pageHelper = require('../../../../../helper/page_helper.js');
 const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const contentCheckHelper = require('../../../../../helper/content_check_helper.js');
@@ -7,17 +9,14 @@ const PublicBiz = require('../../../../../comm/biz/public_biz.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
 
-// 快递代取价格档：自定价，单位元
-// 小件：日常小包裹/信封文件，¥1.50
-// 中件：常规尺寸纸箱，¥3.00
-// 大件：体积较大或较重的纸箱，¥5.00
-const MAIL_PRICES = [1.5, 3.0, 5.0];
+// 展示与提交费用使用服务端配置，不在配置失败时套用本地价格。
 // 与价格档对应的预估重量(kg)，仅用于表单中"预估重量"字段
 const MAIL_WEIGHTS = [1, 3, 5];
 
 Page({
 	data: {
 		isLoad: false,
+		serviceState: { kind: 'loading', canPublish: false }, campusIndex: 0,
 		packageTypes: [
 			{ mark: 'small', label: '小件', price: '1.50', count: 1 },
 			{ mark: 'medium', label: '中件', price: '3.00', count: 0 },
@@ -27,7 +26,8 @@ Page({
 		totalFee: '1.50',
 		moreRequirements: false,
 		urgent: false,
-		proofImages: [],
+		config:null,campuses:[],campus:'',configError:false,loadError:'',pageLoading:false,submitting:false,
+		proofImages: [], proofPreview:{},
 		mailValues: {
 			code: '',
 			address1: '',
@@ -63,10 +63,12 @@ Page({
 		formData.fields = formData.fields.map((field) => {
 			const copy = Object.assign({}, field, { ext: Object.assign({}, field.ext || {}) });
 			if (copy.mark === 'code') copy.must = false;
+            if (copy.mark === 'img') copy.max = 6;
+            if (copy.mark === 'price') copy.title = '代取费用(元)';
 			return copy;
 		});
 		formData.fields.push(
-			{ mark: 'rider', title: '指定骑手', type: 'text', max: 30, must: false },
+			{ mark: 'rider', title: '骑手备注', type: 'text', max: 30, must: false },
 			{ mark: 'small', title: '小件数量', type: 'int', must: false },
 			{ mark: 'medium', title: '中件数量', type: 'int', must: false },
 			{ mark: 'large', title: '大件数量', type: 'int', must: false },
@@ -76,7 +78,7 @@ Page({
 			{ mark: 'title', title: '快递名称', type: 'text', val: '快递代取' },
 			{ mark: 'num', title: '快递件数', type: 'int', val: '1' },
 			{ mark: 'weight', title: '预估重量(kg)', type: 'int', val: '1' },
-			{ mark: 'price', title: '打赏金额(元)', type: 'digit', val: '1.50' },
+			{ mark: 'price', title: '代取费用(元)', type: 'digit', val: '1.50' },
 			{ mark: 'code', title: '取件码', type: 'textarea', val: '' },
 			{ mark: 'img', title: '相关图片', type: 'image', val: [] },
 			{ mark: 'address1', title: '快递点', type: 'text', val: '' },
@@ -84,7 +86,7 @@ Page({
 			{ mark: 'poster', title: '联系人', type: 'text', val: '' },
 			{ mark: 'tel', title: '手机号', type: 'mobile', val: '' },
 			{ mark: 'desc', title: '补充说明', type: 'textarea', val: '' },
-			{ mark: 'rider', title: '指定骑手', type: 'text', val: '' },
+			{ mark: 'rider', title: '骑手备注', type: 'text', val: '' },
 			{ mark: 'small', title: '小件数量', type: 'int', val: '1' },
 			{ mark: 'medium', title: '中件数量', type: 'int', val: '0' },
 			{ mark: 'large', title: '大件数量', type: 'int', val: '0' },
@@ -92,8 +94,8 @@ Page({
 		];
 
 		this.setData(Object.assign(formData, {
-			isLoad: true,
-			formEnd: '',
+			isLoad: false,
+			formEnd: new Date(Date.now()+3*86400000+8*3600000).toISOString().slice(0,16).replace('T',' '),
 		}));
 
 		// 动态设置导航栏标题
@@ -101,24 +103,63 @@ Page({
 			title: editId ? '编辑快递代取' : '发布快递代取',
 		});
 
-		if (editId) {
-			await this._loadForEdit(editId);
-		}
-	},
+		this._formReady = true;
+		await this.bindRetryLoad();
+ },
+ async bindRetryLoad() {
+  if (!this._formReady || this._loadingPage || this._submitting) return;
+  this._loadingPage = true;
+  this.setData({ pageLoading: true, configError: false, loadError: '' });
+  try {
+   const config = await Ops.get('operations/config');
+   const prices = config && [config.smallPrice, config.mediumPrice, config.largePrice];
+   if (!config || typeof config.enabled !== 'boolean' || config.paymentMode !== 'offline'
+    || !prices.every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 100)
+    || !Number.isInteger(config.maxPackages) || config.maxPackages < 1
+    || !Array.isArray(config.campuses) || !config.campuses.length
+    || config.campuses.some(x => typeof x !== 'string' || !x.trim())) {
+    throw new Error('运营配置不完整，请联系管理员检查价格与服务校区');
+   }
+   this._prices = prices;
+   this.setData({ serviceState: MailUI.service(config) });
+   this.setData({ config, campuses: config.campuses,
+    campus: config.campuses.includes(this.data.campus) ? this.data.campus : config.campuses[0],
+    campusIndex: Math.max(0, config.campuses.indexOf(this.data.campus)) });
+   if (this.data.editId && !this._editLoaded) {
+    await this._loadForEdit(this.data.editId);
+    this._editLoaded = true;
+   }
+   this.setData({ packageTypes: this.data.packageTypes.map((x, i) => ({ ...x, price: prices[i].toFixed(2) })) });
+   this._refreshFee();
+   this.setData({ isLoad: true });
+  } catch (e) {
+   console.error('[mail_add] load', e);
+   this.setData({ configError: true, loadError: e && (e.msg || e.message) || '加载失败，请稍后重试' });
+  } finally {
+   this._loadingPage = false;
+   this.setData({ pageLoading: false });
+  }
+ },
+ onShow() { if (this.data.config) this.setData({ serviceState: MailUI.service(this.data.config) }); },
+ bindCampusChange(e) { const campusIndex = Number(e.detail.value); this.setData({ campusIndex, campus: this.data.campuses[campusIndex] }); },
+ bindServiceHelpTap() { wx.navigateTo({ url: '/projects/crun/pages/campus_service/list/campus_service_list' }); },
+ bindSettlementTap() { wx.showModal({ title: '关于线下结算', content: this.data.config.offlineNotice, showCancel: false, confirmText: '我知道了' }); },
+ _refreshFee(){const total=this.data.packageTypes.reduce((sum,x,i)=>sum+x.count*this._prices[i],0);this.setData({totalFee:total.toFixed(2)});this._setFormVal('price',total.toFixed(2));},
 
-	/** 编辑模式：拉取原订单数据回填 */
+ /** 编辑模式：拉取原订单数据回填 */
 	_loadForEdit: async function (id) {
 		try {
-			wx.showLoading({ title: '加载中...' });
-			const res = await cloudHelper.callCloudSumbit('mail/view', { id });
-			wx.hideLoading();
+
+			const res = await cloudHelper.callCloudSumbit('mail/view', { id }, { hint: false });
+
 			const mail = res && res.data ? res.data : null;
 			if (!mail || !mail._id) {
-				wx.showToast({ title: '订单不存在', icon: 'none' });
-				return;
+				throw new Error('订单不存在或已删除');
 			}
 
+			if (!mail.mypost || mail.MAIL_STATUS !== 0) throw new Error('该订单不可编辑，请返回订单详情');
 			const obj = mail.MAIL_OBJ || {};
+			this.setData({campus:obj.campus||this.data.campus,campusIndex:Math.max(0,this.data.campuses.indexOf(obj.campus||this.data.campus))});
 			const storedForms = Array.isArray(mail.MAIL_FORMS) ? mail.MAIL_FORMS : [];
 			const findStoredFormVal = (mark, def) => {
 				for (let k = 0; k < storedForms.length; k++) {
@@ -158,14 +199,14 @@ Page({
 				{ mark: 'poster', title: '联系人', type: 'text', val: String(obj.poster || findFormVal('poster', '')) },
 				{ mark: 'tel', title: '手机号', type: 'mobile', val: String(obj.tel || findFormVal('tel', '')) },
 				{ mark: 'desc', title: '补充说明', type: 'textarea', val: String(obj.desc || findFormVal('desc', '')) },
-				{ mark: 'rider', title: '指定骑手', type: 'text', val: String(obj.rider || findFormVal('rider', '')) },
+				{ mark: 'rider', title: '骑手备注', type: 'text', val: String(obj.rider || findFormVal('rider', '')) },
 				{ mark: 'small', title: '小件数量', type: 'int', val: String(packageTypes[0].count) },
 				{ mark: 'medium', title: '中件数量', type: 'int', val: String(packageTypes[1].count) },
 				{ mark: 'large', title: '大件数量', type: 'int', val: String(packageTypes[2].count) },
 				{ mark: 'urgent', title: '加急订单', type: 'switch', val: !!obj.urgent },
 			];
 
-			// 回填：取件截图本地预览（obj.imgUrl 是云端 fileID，可直接当 image src 渲染）
+			// 原始文件 ID 用于编辑提交；预览使用鉴权后生成的临时地址。
 			let proofImages = [];
 			if (Array.isArray(obj.imgUrls)) proofImages = obj.imgUrls.filter(Boolean);
 			else if (Array.isArray(obj.imgUrl)) proofImages = obj.imgUrl.filter(Boolean);
@@ -199,25 +240,26 @@ Page({
 				mailValues,
 				formForms,
 				proofImages,
+    proofPreview:Object.fromEntries(proofImages.map((id,i)=>[id,mail.MAIL_MEDIA && mail.MAIL_MEDIA.pickup[i] || ''])),
 				formEnd,
 				formCateId,
 				totalCount,
 				totalFee,
 				urgent: !!obj.urgent,
-				moreRequirements: !!obj.desc,
+				moreRequirements: !!(obj.desc || obj.rider),
 			}, () => {
 				// form-show 没有对 forms 属性做自动重载；编辑模式下显式刷新，避免提交时仍使用默认值。
 				const form = this.selectComponent('#cmpt-form');
 				if (form && typeof form.reload === 'function') form.reload();
 			});
 		} catch (err) {
-			wx.hideLoading();
 			console.error('[mail_add] load for edit', err);
-			wx.showToast({ title: '加载原订单失败', icon: 'none' });
+			throw err;
 		}
 	},
 
 	onPullDownRefresh: async function () {
+		await this.bindRetryLoad();
 		wx.stopPullDownRefresh();
 	},
 
@@ -228,6 +270,7 @@ Page({
 	_setFormVal: function (mark, val) {
 		const form = this.selectComponent('#cmpt-form');
 		if (form) form.setOneFormVal(mark, val);
+		if (this.data.formForms) this.setData({ formForms: this.data.formForms.map(item => item.mark === mark ? { ...item, val } : item) });
 		this.setData({ ['mailValues.' + mark]: val });
 	},
 
@@ -245,6 +288,7 @@ Page({
 		const nextCount = Math.max(0, packages[index].count + step);
 		const currentTotal = packages.reduce((sum, item) => sum + item.count, 0);
 		if (step < 0 && currentTotal <= 1) return;
+ if(step>0 && currentTotal>=this.data.config.maxPackages){wx.showToast({title:'已达到每单件数上限',icon:'none'});return;}
 		packages[index] = Object.assign({}, packages[index], { count: nextCount });
 
 		let totalCount = 0;
@@ -252,7 +296,7 @@ Page({
 		let totalWeight = 0;
 		for (let k = 0; k < packages.length; k++) {
 			totalCount += packages[k].count;
-			totalFee += packages[k].count * MAIL_PRICES[k];
+			totalFee += packages[k].count * this._prices[k];
 			totalWeight += packages[k].count * MAIL_WEIGHTS[k];
 		}
 		this.setData({
@@ -283,9 +327,9 @@ Page({
 	},
 
 	bindUploadImageTap: function () {
-		const left = 8 - this.data.proofImages.length;
+		const left = 6 - this.data.proofImages.length;
 		if (left <= 0) {
-			wx.showToast({ title: '最多上传8张截图', icon: 'none' });
+			wx.showToast({ title: '最多上传6张截图', icon: 'none' });
 			return;
 		}
 		wx.chooseMedia({
@@ -307,7 +351,7 @@ Page({
 					}
 					selected.push(file.tempFilePath);
 				}
-				const images = this.data.proofImages.concat(selected).slice(0, 8);
+				const images = this.data.proofImages.concat(selected).slice(0, 6);
 				this.setData({ proofImages: images });
 				this._setFormVal('img', images);
 			},
@@ -316,8 +360,8 @@ Page({
 
 	bindPreviewImage: function (e) {
 		wx.previewImage({
-			urls: this.data.proofImages,
-			current: this.data.proofImages[Number(e.currentTarget.dataset.index)],
+			urls: this.data.proofImages.map(x=>this.data.proofPreview[x]||x),
+			current: this.data.proofPreview[this.data.proofImages[Number(e.currentTarget.dataset.index)]] || this.data.proofImages[Number(e.currentTarget.dataset.index)],
 		});
 	},
 
@@ -331,7 +375,7 @@ Page({
 	bindMoreChange: function (e) {
 		const enabled = !!e.detail.value;
 		this.setData({ moreRequirements: enabled });
-		if (!enabled) this._setFormVal('desc', '');
+		if (!enabled) { this._setFormVal('desc', ''); this._setFormVal('rider', ''); }
 	},
 
 	bindUrgentChange: function (e) {
@@ -383,132 +427,26 @@ Page({
 		pageHelper.showSuccToast('发布成功', 2000, () => this._showMailList());
 	},
 
-	bindFormSubmit: async function () {
-		if (!await PassportBiz.loginMustCancelWin(this)) return;
-
-		let data = validate.check(this.data, MailBiz.CHECK_FORM, this);
-		if (!data) return;
-
-		const form = this.selectComponent('#cmpt-form');
-		const forms = form && form.getForms(true);
-		if (!forms) return;
-
-		const code = String(this._getFormVal(forms, 'code') || '').trim();
-		const images = this._getFormVal(forms, 'img');
-		if (!code && (!Array.isArray(images) || images.length === 0)) {
-			wx.showModal({ title: '提示', content: '请填写取件码或上传取件截图' });
-			return;
-		}
-
-		if (!String(this.data.mailValues.address1 || '').trim()) {
-			wx.showModal({ title: '提示', content: '请选择快递点' });
-			return;
-		}
-		if (!String(this.data.mailValues.address2 || '').trim()) {
-			wx.showModal({ title: '提示', content: '请填写收件地址' });
-			return;
-		}
-		if (!String(this.data.mailValues.poster || '').trim()) {
-			wx.showModal({ title: '提示', content: '请填写联系人' });
-			return;
-		}
-		if (!/^1[1-9]\d{9}$/.test(String(this.data.mailValues.tel || '').trim())) {
-			wx.showModal({ title: '提示', content: '请填写正确的手机号' });
-			return;
-		}
-
-		if (data.formEnd && !forms.some((item) => item.mark === 'formEnd')) {
-			forms.push({ mark: 'formEnd', title: '接单截止时间', type: 'date', val: data.formEnd });
-		}
-		data.forms = forms;
-		data.cateName = MailBiz.getCateName(data.cateId);
-
-		const isEdit = !!this.data.editId;
-
-		let totalFee = parseFloat(this._getFormVal(forms, 'price')) || 0;
-		try {
-			wx.showLoading({ title: isEdit ? '保存中...' : '创建订单中...' });
-
-			if (isEdit) {
-				// 编辑模式：调 mail/edit，不走支付
-				const editRes = await cloudHelper.callCloudSumbit('mail/edit', {
-					id: this.data.editId,
-					forms,
-					cateId: data.cateId,
-				});
-				const ok = editRes && editRes.data && editRes.data.id;
-				if (ok) {
-					await cloudHelper.transFormsTempPics(forms, 'mail/', this.data.editId, 'mail/update_forms');
-					wx.hideLoading();
-					PublicBiz.removeCacheList('admin-mail-list');
-					PublicBiz.removeCacheList('mail-list');
-					pageHelper.showSuccToast('修改成功', 1500, () => {
-						wx.navigateBack();
-					});
-				} else {
-					wx.hideLoading();
-					pageHelper.showNoneToast('修改失败，请稍后重试');
-				}
-				return;
-			}
-
-			// 发布模式
-			const result = await cloudHelper.callCloudSumbit('mail/insert', {
-				forms,
-				cateId: data.cateId,
-				totalFee,
-			});
-			const resultData = result && result.data ? result.data : {};
-			const mailId = resultData.id;
-			const mailDbId = resultData._id || mailId;
-			// 以后端按件数重算的金额为准，避免客户端表单值与支付金额不一致。
-			totalFee = Number(resultData.fee != null ? resultData.fee : totalFee) || 0;
-			// 暂存订单 id，发布完成后跳转到「我的订单详情」
-			this.setData({ mailId: mailDbId });
-
-			if (mailDbId) await cloudHelper.transFormsTempPics(forms, 'mail/', mailDbId, 'mail/update_forms');
-			wx.hideLoading();
-
-			if (totalFee <= 0) {
-				this._submitWithoutPayment();
-				return;
-			}
-
-			const payRes = await cloudHelper.callCloudSumbit('pay/create', {
-				orderId: mailId,
-				totalFee,
-				description: '快递代取服务费',
-			});
-			if (!payRes || !payRes.data) {
-				wx.showToast({ title: '获取支付参数失败', icon: 'none' });
-				return;
-			}
-
-			wx.requestPayment({
-				timeStamp: payRes.data.timeStamp,
-				nonceStr: payRes.data.nonceStr,
-				package: payRes.data.package,
-				signType: 'MD5',
-				paySign: payRes.data.paySign,
-				success: () => {
-					wx.showToast({ title: '支付成功', icon: 'success' });
-					setTimeout(() => this._showMailList(), 1500);
-				},
-				fail: () => {
-					wx.showModal({
-						title: '提示',
-						content: '订单已创建，请在订单列表中完成支付',
-						confirmText: '查看订单',
-						success: (res) => {
-							if (res.confirm) this._showMailList();
-						},
-					});
-				},
-			});
-		} catch (err) {
-			wx.hideLoading();
-			console.error('[mail_add]', err);
-			wx.showToast({ title: err.message || '发布失败', icon: 'none' });
-		}
-	},
+ bindFormSubmit: async function () {
+  const serviceState = MailUI.service(this.data.config);
+  this.setData({ serviceState });
+  if (!this.data.editId && this.data.config && this.data.config.enabled === true && !serviceState.canPublish) { Ops.error(new Error(serviceState.description)); return; }
+  if (!this.data.config || this.data.configError || this.data.pageLoading || (this.data.config.enabled !== true && !this.data.editId)) { Ops.error(new Error('请先加载有效运营配置，并确认服务已开放')); return; }
+  if(this._submitting || !this.data.config)return;
+  if(!await PassportBiz.loginMustCancelWin(this) || this._submitting)return;
+  let data=validate.check(this.data,MailBiz.CHECK_FORM,this);if(!data)return;
+  const form=this.selectComponent('#cmpt-form');const current=form && form.getForms(true);if(!current)return;
+  this._submitting=true;this.setData({submitting:true});
+  try {
+   wx.showLoading({title:'上传并保存中',mask:true});
+   const forms=JSON.parse(JSON.stringify(current)).filter(x=>x.mark!=='campus'&&x.mark!=='formEnd');
+   for(const item of forms)if(item.type==='image')item.val=await Ops.upload(item.val||[]);
+   forms.push({mark:'campus',title:'校区',type:'text',val:this.data.campus});
+   if(data.end)forms.push({mark:'formEnd',title:'接单截止时间',type:'date',val:data.end});
+   const params={forms,cateId:data.cateId};if(this.data.editId)params.id=this.data.editId;
+   const result=await Ops.command(this.data.editId?'mail/edit':'mail/insert',params);
+   this.setData({mailId:result._id||result.id});wx.hideLoading();PublicBiz.removeCacheList('mail-list');
+   wx.showModal({title:this.data.editId?'保存成功':'发布成功',content:this.data.config.offlineNotice,showCancel:false,success:()=>this._showMailList()});
+  }catch(e){wx.hideLoading();Ops.error(e);}finally{this._submitting=false;this.setData({submitting:false});}
+ },
 });

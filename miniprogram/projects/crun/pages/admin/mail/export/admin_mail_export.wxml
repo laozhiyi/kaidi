@@ -7,21 +7,21 @@
 
 		<view class="form-group arrow" id="formStart">
 			<view class="title must">起始时间</view>
-			<cmpt-picker-time mark="formStart" mode="day" bind:select="url" data-type="picker" data-item="formStart" endYear="2025" item="{{formStart}}">
+			<cmpt-picker-time mark="formStart" mode="day" bind:select="url" data-type="picker" data-item="formStart" endYear="{{endYear}}" item="{{formStart}}">
 				<view class="form-text">{{formStart||'请选择'}}</view>
 			</cmpt-picker-time>
 		</view>
 
 		<view class="form-group arrow" id="formEnd">
 			<view class="title must">结束时间</view>
-			<cmpt-picker-time mark="formEnd" mode="day" bind:select="url" data-type="picker" data-item="formEnd" endYear="2025" item="{{formEnd}}">
+			<cmpt-picker-time mark="formEnd" mode="day" bind:select="url" data-type="picker" data-item="formEnd" endYear="{{endYear}}" item="{{formEnd}}">
 				<view class="form-text">{{formEnd||'请选择'}}</view>
 			</cmpt-picker-time>
 		</view>
 
 		<view class="form-group">
 			<view class="title must">状态</view>
-			<cmpt-picker mark="formStatus" style="flex:1" model:item="{{formStatus}}" sourceDataStr="999=所有,1=已接单,9=已完成,0=待接单" />
+			<cmpt-picker mark="formStatus" style="flex:1" model:item="{{formStatus}}" sourceDataStr="999=所有,0=待接单,1=配送中,2=待确认,3=异常中,9=已完成,99=已取消" />
 		</view>
 
 	</view>

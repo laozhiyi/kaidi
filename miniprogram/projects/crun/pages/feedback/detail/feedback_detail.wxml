@@ -15,8 +15,8 @@
 		</view>
 		<view class="content">{{detail.FB_CONTENT}}</view>
 
-		<view wx:if="{{detail.FB_IMG && detail.FB_IMG.length}}" class="img-list">
-			<image wx:for="{{detail.FB_IMG}}" wx:key="*this"
+		<view wx:if="{{detail.FB_IMG_PREVIEW && detail.FB_IMG_PREVIEW.length}}" class="img-list">
+			<image wx:for="{{detail.FB_IMG_PREVIEW}}" wx:key="*this"
 				class="img" src="{{item}}" mode="aspectFill"
 				bindtap="bindPreviewImage" data-url="{{item}}">
 			</image>

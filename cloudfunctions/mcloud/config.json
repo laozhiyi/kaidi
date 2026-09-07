@@ -1,5 +1,18 @@
 {
-	"permissions": {
-		"openapi": ["wxacode.getUnlimited", "security.imgSecCheck", "security.msgSecCheck","serviceMarket.invokeService"]
-	}
+  "permissions": {
+    "openapi": [
+      "wxacode.getUnlimited",
+      "security.imgSecCheck",
+      "security.msgSecCheck",
+      "serviceMarket.invokeService",
+      "subscribeMessage.send"
+    ]
+  },
+  "triggers": [
+    {
+      "name": "operations-minute",
+      "type": "timer",
+      "config": "0 */5 * * * * *"
+    }
+  ]
 }

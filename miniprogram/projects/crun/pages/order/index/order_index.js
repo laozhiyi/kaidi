@@ -1,3 +1,4 @@
+const Ops = require('../../../biz/operations_biz.js');
 const pageHelper = require('../../../../../helper/page_helper.js');
 const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
@@ -8,7 +9,7 @@ const PublicBiz = require('../../../../../comm/biz/public_biz.js');
  * 快递代取 - 接单/订单 Tab 页
  * 四个分段：
  *   0 可接单（浏览全部待接订单）    mail/list + sortType='wait'
- *   1 我接的（已接单未完成）        mail/list + search='我的接单' + sortType='status',sortVal='1'
+ *   1 我接的（含取消与完成历史）        mail/list + search='我的接单' + sortType='status',sortVal='1'
  *   2 我发布的（全部状态）          mail/list + sortType='my_post'
  *   3 已完成                       mail/list + sortType='my_done'
  */
@@ -197,16 +198,17 @@ Page({
 	 */
 	bindAcceptTap: async function (e) {
 		const id = e.currentTarget.dataset.id;
-		if (!id) return;
+		if (!id || this._accepting) return;
 
 		if (!await PassportBiz.loginMustCancelWin(this)) return;
 
 		const confirm = await pageHelper.showConfirm('确认接单后请尽快前往快递点取件，是否继续？');
-		if (!confirm) return;
+		if (!confirm || this._accepting) return;
 
 		try {
 			wx.showLoading({ title: '接单中...' });
-			const res = await cloudHelper.callCloudSumbit('mail/accept', { id });
+			this._accepting=true;
+			const res = {data:await Ops.command('mail/accept', { id })};
 			wx.hideLoading();
 
 			if (res && res.data && res.data.id) {
@@ -220,60 +222,12 @@ Page({
 			}
 		} catch (err) {
 			wx.hideLoading();
-			pageHelper.showNoneToast(err.message || '接单失败');
-		}
+			Ops.error(err);
+		}finally{this._accepting=false;}
 	},
 
 	/** 为尚未支付的自有订单发起支付，并在成功后刷新发布列表。 */
-	bindPayTap: async function (e) {
-		const id = e.currentTarget.dataset.id;
-		const index = Number(e.currentTarget.dataset.index);
-		const list = this.data.dataList && this.data.dataList.list;
-		const order = list && list[index];
-		if (!id || !order) return;
-		if (!await PassportBiz.loginMustCancelWin(this)) return;
-
-		const cents = Number(order.MAIL_TOTAL_FEE || 0);
-		const totalFee = cents > 0 ? cents / 100 : Number(order.MAIL_OBJ && order.MAIL_OBJ.price);
-		if (!(totalFee > 0)) {
-			pageHelper.showNoneToast('订单金额无效');
-			return;
-		}
-		try {
-			wx.showLoading({ title: '获取支付信息...' });
-			const payRes = await cloudHelper.callCloudSumbit('pay/create', {
-				orderId: order.MAIL_ID || id,
-				totalFee,
-				description: '快递代取服务费',
-			});
-			wx.hideLoading();
-			if (!payRes || !payRes.data) {
-				pageHelper.showNoneToast('获取支付参数失败');
-				return;
-			}
-			await new Promise((resolve, reject) => {
-				wx.requestPayment({
-					timeStamp: payRes.data.timeStamp,
-					nonceStr: payRes.data.nonceStr,
-					package: payRes.data.package,
-					signType: 'MD5',
-					paySign: payRes.data.paySign,
-					success: resolve,
-					fail: reject,
-				});
-			});
-			pageHelper.showSuccToast('支付成功');
-			PublicBiz.removeCacheList('order-mail-posted');
-			const postedList = this.selectComponent('#cmpt-list-posted');
-			if (postedList && typeof postedList.reload === 'function') {
-				setTimeout(() => postedList.reload(), 1000);
-			}
-		} catch (err) {
-			wx.hideLoading();
-			if (err && err.errMsg && err.errMsg.indexOf('cancel') >= 0) return;
-			pageHelper.showNoneToast((err && err.message) || '支付失败，请稍后重试');
-		}
-	},
+	bindPayTap: function () { pageHelper.showNoneToast('当前版本仅支持线下结算，不提供微信支付'); },
 
 	/**
 	 * 联系发单人（拨打电话）
@@ -290,30 +244,7 @@ Page({
 	/**
 	 * 完成订单 - 发布者或接单人确认配送完成
 	 */
-	bindOverTap: async function (e) {
-		const id = e.currentTarget.dataset.id;
-		if (!id) return;
-
-		const confirm = await pageHelper.showConfirm('确认已送达并将订单标记完成？');
-		if (!confirm) return;
-
-		try {
-			wx.showLoading({ title: '提交中...' });
-			const res = await cloudHelper.callCloudSumbit('mail/finish', { id });
-			wx.hideLoading();
-			if (res && res.data && res.data.id) {
-				pageHelper.showSuccToast('已完成');
-				// 刷新当前 tab
-				const list = this.selectComponent('#cmpt-list-mine');
-				if (list && typeof list.reload === 'function') list.reload();
-			} else {
-				pageHelper.showNoneToast('操作失败，请稍后再试');
-			}
-		} catch (err) {
-			wx.hideLoading();
-			pageHelper.showNoneToast(err.message || '操作失败');
-		}
-	},
+	bindOverTap: function (e) { this.bindDetailTap(e); },
 
 	/**
 	 * 跳转到发布订单
@@ -328,6 +259,7 @@ Page({
 	 * 阻止事件冒泡（卡片点击区域内，actions 区按钮不希望触发卡片 tap）
 	 */
 	bindStop: function () {},
+ bindStopProp: function () {},
 
 	url: function (e) {
 		pageHelper.url(e, this);

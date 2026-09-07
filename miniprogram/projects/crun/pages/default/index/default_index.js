@@ -116,11 +116,11 @@ Page({
 	},
 
 	/**
-	 * 快递代取入口：先选择发布订单或接单
+	 * 快递代取入口：直接进入发单页
 	 */
 	bindExpressTap: function () {
 		wx.navigateTo({
-			url: pageHelper.fmtURLByPID('/pages/mail/choose/mail_choose')
+			url: pageHelper.fmtURLByPID('/pages/mail/add/mail_add')
 		});
 	},
 

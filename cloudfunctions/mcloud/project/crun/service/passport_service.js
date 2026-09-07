@@ -8,56 +8,47 @@ const BaseProjectService = require('./base_project_service.js');
 const cloudBase = require('../../../framework/cloud/cloud_base.js');
 const UserModel = require('../model/user_model.js');
 const dataUtil = require('../../../framework/utils/data_util.js');
-const cloudUtil = require('../../../framework/cloud/cloud_util.js');
+const store = require('./operation_store.js');
+const rules = require('./order_rules.js');
 
 class PassportService extends BaseProjectService {
 
-	// 注册
-	async register(userId, {
-		mobile,
-		name,
-		pic,
-		forms,
-		status
-	}) {
-		// 判断是否存在
-		let where = {
-			USER_MINI_OPENID: userId
-		}
-		let cnt = await UserModel.count(where);
-		if (cnt > 0)
-			return await this.login(userId);
 
-		where = {
-			USER_MOBILE: mobile
-		}
-		cnt = await UserModel.count(where);
-		if (cnt > 0) this.AppError('该手机已注册');
-
-		// 入库
-		let data = {
-			USER_MINI_OPENID: userId,
-			USER_MOBILE: mobile,
-			USER_NAME: name,
-			USER_PIC: pic,
-			USER_OBJ: dataUtil.dbForms2Obj(forms),
-			USER_FORMS: forms,
-			USER_STATUS: Number(status)
-		}
-		// 提取收款码到独立字段
-		if (forms && Array.isArray(forms)) {
-			for (let k = 0; k < forms.length; k++) {
-				if (forms[k].mark === 'payPic' && forms[k].val) {
-					data.USER_PAY_PIC = forms[k].val;
-					break;
-				}
-			}
-		}
-		await UserModel.insert(data);
-
-		return await this.login(userId);
-	}
-
+ async _saveProfile(userId, input, registering) {
+  if (!userId) this.AppError('请重新登录');
+  const name=rules.text(input.name,'姓名',30,true), mobile=rules.text(input.mobile,'手机',11,true);
+  if (!/^1[3-9][0-9]{9}$/.test(mobile)) this.AppError('手机号格式无效');
+  const pic=rules.text(input.pic,'头像',500,true), forms=input.forms || [];
+  if (!Array.isArray(forms) || forms.length>20 || JSON.stringify(forms).length>10000) this.AppError('资料过长');
+  await store.limit(this.getProjectId(),userId,'profile',10,3600000);
+  const previous=await UserModel.getOne({USER_MINI_OPENID:userId});
+  if(registering && previous) return;
+  if(!registering && !previous) this.AppError('请先注册');
+  // Existing users must be migrated/deduplicated before enabling service.
+  const conflict=await UserModel.getOne({USER_MOBILE:mobile,USER_MINI_OPENID:['<>',userId]},'_id');
+  if(conflict) this.AppError('该联系电话已登记；如非本人登记，请联系客服核实');
+  const cfg=await new (require('./operation_config_service.js'))().getConfig();
+  const id=previous ? previous._id : store.key(this.getProjectId(),'user',userId);
+  await store.transaction(async tx=>{
+   const current=await store.get(tx,'user',id);
+   if(registering && current) return;
+   if(current && current.USER_STATUS===9) this.AppError('账号已停用，请联系客服');
+   const phoneKey=store.key(this.getProjectId(),'phone',mobile), phone=await store.get(tx,'identity_unique',phoneKey);
+   if(phone && phone.userId!==userId) this.AppError('该联系电话已登记，请联系客服核实');
+   if(current && current.USER_MOBILE!==mobile){
+    const oldKey=store.key(this.getProjectId(),'phone',current.USER_MOBILE), old=await store.get(tx,'identity_unique',oldKey);
+    if(old && old.userId===userId) await tx.collection(store.collection('identity_unique')).doc(oldKey).remove();
+   }
+   const now=Date.now();const data=current || {_pid:this.getProjectId(),USER_ID:'USER'+id.slice(0,28),USER_MINI_OPENID:userId,USER_STATUS:cfg.registrationReview?0:1,USER_RIDER_STATUS:0,USER_LOGIN_CNT:0,USER_ADD_TIME:now};
+   if(current && (current.USER_MOBILE!==mobile || current.USER_NAME!==name) && current.USER_RIDER_STATUS===1){data.USER_RIDER_STATUS=2;data.USER_RIDER_REASON='身份或联系方式变更，须重新核实';data.USER_RIDER_APPLIED=now;}
+   if(data.USER_STATUS===8)data.USER_STATUS=0;
+   Object.assign(data,{USER_NAME:name,USER_MOBILE:mobile,USER_MOBILE_VERIFIED:false,USER_PIC:pic,USER_FORMS:forms,USER_OBJ:dataUtil.dbForms2Obj(forms),USER_EDIT_TIME:now});
+   // Self-entered contact details are never represented as verified identity.
+   await store.set(tx,'identity_unique',phoneKey,{_pid:this.getProjectId(),userId,updatedAt:now});
+   await store.set(tx,'user',id,data);
+  });
+ }
+ async register(userId,input){await this._saveProfile(userId,input,true);return this.login(userId);}
 	/** 获取手机号码 */
 	async getPhone(cloudID) {
 		let cloud = cloudBase.getCloud();
@@ -78,54 +69,11 @@ class PassportService extends BaseProjectService {
 		let where = {
 			USER_MINI_OPENID: userId
 		}
-		let fields = 'USER_PIC,USER_MOBILE,USER_NAME,USER_FORMS,USER_OBJ,USER_STATUS,USER_CHECK_REASON,USER_PAY_PIC'
+		let fields = 'USER_PIC,USER_MOBILE,USER_MOBILE_VERIFIED,USER_NAME,USER_FORMS,USER_OBJ,USER_STATUS,USER_CHECK_REASON,USER_PAY_PIC,USER_RIDER_STATUS,USER_RIDER_CAMPUS,USER_RIDER_REASON'
 		return await UserModel.getOne(where, fields);
 	}
 
-	/** 修改用户资料 */
-	async editBase(userId, {
-		mobile,
-		name,
-		pic,
-		forms
-	}) {
-		let whereMobile = {
-			USER_MOBILE: mobile,
-			USER_MINI_OPENID: ['<>', userId]
-		}
-		let cnt = await UserModel.count(whereMobile);
-		if (cnt > 0) this.AppError('该手机已注册');
-
-		let where = {
-			USER_MINI_OPENID: userId
-		}
-
-		let user = await UserModel.getOne(where);
-		if (!user) return; 
-        
-		let data = {
-			USER_MOBILE: mobile,
-			USER_NAME: name,
-			USER_PIC: pic,
-			USER_OBJ: dataUtil.dbForms2Obj(forms),
-			USER_FORMS: forms,
-		};
-		// 提取收款码到独立字段
-		if (forms && Array.isArray(forms)) {
-			for (let k = 0; k < forms.length; k++) {
-				if (forms[k].mark === 'payPic' && forms[k].val) {
-					data.USER_PAY_PIC = forms[k].val;
-					break;
-				}
-			}
-		}
-
-		if (user.USER_STATUS == UserModel.STATUS.UNCHECK)
-			data.USER_STATUS = UserModel.STATUS.UNUSE;
-
-		await UserModel.edit(where, data);
-
-	}
+ async editBase(userId,input){await this._saveProfile(userId,input,false);return {ok:true};}
 
 	/** 登录 */
 	async login(userId) {
@@ -149,8 +97,8 @@ class PassportService extends BaseProjectService {
 			let dataUpdate = {
 				USER_LOGIN_TIME: this._timestamp
 			};
-			UserModel.edit(where, dataUpdate);
-			UserModel.inc(where, 'USER_LOGIN_CNT', 1);
+			await UserModel.edit(where, dataUpdate);
+			await UserModel.inc(where, 'USER_LOGIN_CNT', 1);
 
 		} else
 			token = null;

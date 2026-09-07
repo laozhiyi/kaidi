@@ -43,13 +43,13 @@ async function checkImg(imgData, mine) {
 			}
 
 		})
-		console.log('imgcheck', result);
+
 		if (!result || result.errCode !== 0) {
 			throw new AppError('图片内容不合适，请修改');
 		}
 
 	} catch (err) {
-		console.log('imgcheck ex', err);
+		console.warn('image audit failed', err.errCode || 'AUDIT_FAILED');
 		throw new AppError('图片内容不合适，请修改');
 	}
 
@@ -87,7 +87,8 @@ async function checkTextMulti(input) {
 			txt += JSON.stringify(input[key]);
 	}
 
-	await checkText(txt);
+	if (txt.length > 24000) throw new AppError('提交内容过长');
+ for (let offset=0; offset<txt.length; offset+=1800) await checkText(txt.slice(offset,offset+1800));
 }
 /**
  * 后台校验文字信息
@@ -116,21 +117,40 @@ async function checkText(txt) {
 	let cloud = cloudBase.getCloud();
 	try { 
 		const result = await cloud.openapi.security.msgSecCheck({
-			content: txt
+			content: txt, version: 2, scene: 2, openid: cloud.getWXContext().OPENID
 
 		})
-		if (!result || result.errCode !== 0) {
+		if (!result || result.errCode !== 0 || !result.result || result.result.suggest !== 'pass') {
 			throw new AppError('文字内容不合适，请修改或者重试');
 		}
 
 	} catch (err) {
-		console.log('checkText ex', err);
+		console.warn('text audit failed', err.errCode || 'AUDIT_FAILED');
 		throw new AppError('文字内容不合适，请修改或者重试');
 	}
 
 }
 
+async function checkCloudImage(fileID, allowed = []) {
+ if (typeof fileID !== 'string' || !fileID.startsWith('cloud://')) throw new AppError('图片须先上传');
+ const cloud = cloudBase.getCloud(), openid = cloud.getWXContext().OPENID;
+ const match = /^cloud:\/\/[^/]+\/(.+)$/.exec(fileID), filePath = match && match[1] || '';
+ if (openid && allowed.includes(fileID) && filePath.startsWith('private-evidence/' + openid + '/')) return fileID;
+ if (!openid || !filePath.startsWith('private/' + openid + '/')) throw new AppError('不可引用其他用户的图片，请重新上传');
+ const result = await cloud.downloadFile({fileID}); const buffer = result.fileContent;
+ if (!buffer || buffer.length > 1024 * 1024) throw new AppError('图片超过1MB，请压缩后重试');
+ const isPng=buffer.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
+ const isJpeg=buffer[0]===255 && buffer[1]===216;
+ if(!isPng && !isJpeg)throw new AppError('仅支持JPG、PNG图片');
+ if (config.CLIENT_CHECK_CONTENT || config.ADMIN_CHECK_CONTENT) await checkImg(buffer.toString('base64'),isPng?'png':'jpeg');
+ // Finalized evidence is server-owned. Storage rules MUST deny client writes to private-evidence/.
+ const digest=require('crypto').createHash('sha256').update(buffer).digest('hex');
+ const saved=await cloud.uploadFile({cloudPath:'private-evidence/'+openid+'/'+digest+(isPng?'.png':'.jpg'),fileContent:buffer});
+ if(!saved || !saved.fileID)throw new AppError('图片归档失败，请重试');
+ return saved.fileID;
+}
 module.exports = {
+ checkCloudImage,
 	checkImg,
 	checkImgClient,
 	checkImgAdmin,

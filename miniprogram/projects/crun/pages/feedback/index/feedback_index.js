@@ -1,3 +1,4 @@
+const Ops = require('../../../biz/operations_biz.js');
 const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const pageHelper = require('../../../../../helper/page_helper.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
@@ -22,6 +23,7 @@ Page({
 
 	onLoad: function (options) {
 		ProjectBiz.initPage(this);
+		this._orderId=options.orderId||'';
 	},
 
 	// 返回
@@ -60,7 +62,7 @@ Page({
 	// 选择图片
 	bindChooseImage: function () {
 		wx.chooseImage({
-			count: 9 - this.data.img.length,
+			count: 6 - this.data.img.length,
 			sizeType: ['compressed'],
 			sourceType: ['album', 'camera'],
 			success: (res) => {
@@ -122,12 +124,7 @@ Page({
 			// 上传图片
 			let imgList = [];
 			if (img && img.length) {
-				imgList = await cloudHelper.transTempPics(
-					img.slice(),
-					'feedback/',
-					Date.now().toString(),
-					'fb'
-				);
+				imgList = await Ops.upload(img);
 			}
 
 			let params = {
@@ -138,7 +135,8 @@ Page({
 				img: imgList || []
 			};
 
-			await cloudHelper.callCloudSumbit('feedback/insert', params, { title: '提交中...' });
+			params.orderId=this._orderId;
+			await Ops.command('feedback/insert', params);
 			wx.showModal({
 				title: '提交成功',
 				content: '感谢您的反馈，我们会尽快处理',
@@ -151,7 +149,7 @@ Page({
 			});
 		} catch (err) {
 			console.error(err);
-			pageHelper.showModal('提交失败，请稍后重试', '温馨提示');
+			Ops.error(err);
 		} finally {
 			this.setData({ isSubmit: false });
 		}

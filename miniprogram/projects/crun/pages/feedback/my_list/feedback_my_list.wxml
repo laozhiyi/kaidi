@@ -1,41 +1,18 @@
 <view class="page">
-
-	<!-- 顶部蓝色导航 -->
-	<view class="header">
-		<view class="header-content">
-			<view class="header-title">投诉记录</view>
-			<view class="header-desc">共 {{list.length}} 条记录</view>
-		</view>
-		<view class="header-btn" bindtap="bindAddTap">
-			<text class="header-btn-plus">+</text>
-			<text class="header-btn-text">新增投诉</text>
-		</view>
-	</view>
-
-	<!-- 列表 -->
-	<view class="list">
-		<view wx:if="{{isLoad && list.length==0}}" class="empty">
-			<view class="empty-icon">📭</view>
-			<view class="empty-text">还没有投诉记录</view>
-			<view class="empty-btn" bindtap="bindAddTap">+ 提交新投诉</view>
-		</view>
-
-		<view wx:for="{{list}}" wx:key="_id" class="item" bindtap="bindItemTap" data-id="{{item._id}}">
-			<view class="item-head">
-				<view class="left">
-					<view class="target-tag">{{item._targetText}}</view>
-					<view class="title">{{item.FB_TITLE}}</view>
-				</view>
-				<view class="status-pill" style="color:{{item._statusDesc.color}};background-color:{{item._statusDesc.bgColor}};">
-					{{item._statusDesc.label}}
-				</view>
-			</view>
-			<view class="item-content">{{item.FB_CONTENT}}</view>
-			<view class="item-foot">
-				<text class="time">{{item.FB_ADD_TIME}}</text>
-				<text wx:if="{{item.FB_REPLY}}" class="reply">已回复</text>
-			</view>
-		</view>
-	</view>
-
+  <view class="header">
+    <view class="header-content"><view class="header-title">反馈与投诉</view><view class="header-desc">{{list.length?'已加载 '+list.length+' 条记录':'查看提交记录与处理回复'}}</view></view>
+    <button class="header-btn" bindtap="bindAddTap"><text class="header-btn-plus">+</text><text class="header-btn-text">提交反馈</text></button>
+  </view>
+  <view class="list">
+    <view wx:if="{{error}}" class="list-state"><view>加载失败，请检查网络后重试</view><button class="list-more" bindtap="onPullDownRefresh">重新加载</button></view>
+    <view wx:if="{{loading}}" class="list-state">正在加载…</view>
+    <view wx:if="{{isLoad && !loading && !error && !list.length}}" class="empty"><view class="empty-text">还没有反馈记录</view><view class="empty-hint">有问题或建议？点击右上角提交反馈</view></view>
+    <view wx:for="{{list}}" wx:key="_id" class="item" bindtap="bindItemTap" data-id="{{item._id}}">
+      <view class="item-head"><view class="left"><view class="target-tag">{{item._targetText}}</view></view><view class="status-pill" style="color:{{item._statusDesc.color}};background-color:{{item._statusDesc.bgColor}};">{{item._statusDesc.label}}</view></view>
+      <view class="item-content">{{item.FB_CONTENT}}</view>
+      <view class="item-foot"><text class="time">{{item.FB_ADD_TIME}}</text><text class="reply">{{item.FB_REPLY?'查看回复':'查看详情'}} ›</text></view>
+    </view>
+    <button wx:if="{{hasMore}}" class="list-more" bindtap="bindMore" loading="{{loading}}" disabled="{{loading}}">加载更多</button>
+    <view wx:if="{{list.length && !hasMore && !loading && !error}}" class="list-state">已显示全部记录</view>
+  </view>
 </view>

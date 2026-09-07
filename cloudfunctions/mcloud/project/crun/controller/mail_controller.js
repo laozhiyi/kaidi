@@ -1,255 +1,32 @@
-/**
- * Notes: 兼职模块控制器
- * Ver : CCMiniCloud Framework 2.0.1 ALL RIGHTS RESERVED BY cclinux0730 (wechat)
- * Date: 2024-03-23 04:00:00 
- */
-
-const BaseProjectController = require('./base_project_controller.js');
+'use strict';
+const Base = require('./base_project_controller.js');
 const MailService = require('../service/mail_service.js');
-const timeUtil = require('../../../framework/utils/time_util.js');
-const contentCheck = require('../../../framework/validate/content_check.js');
-
-class MailController extends BaseProjectController { 
-
-	/** 接单 */
-	async acceptMail() {
-		// 数据校验
-		let rules = {
-			id: 'must|id',
-		};
-
-		// 取得数据
-		let input = this.validateData(rules);
-
-		let service = new MailService();
-		return await service.acceptMail(this._userId, input.id);
-	}
-
-	/** 取消接单 */
-	async cancelMail() {
-		// 数据校验
-		let rules = {
-			id: 'must|id',
-		};
-
-		// 取得数据
-		let input = this.validateData(rules);
-
-		let service = new MailService();
-		return await service.cancelMail(this._userId, input.id);
-	}
-
-	/** 完成订单（发布者确认） */
-	async finishMail() {
-		// 数据校验
-		let rules = {
-			id: 'must|id',
-		};
-
-		let input = this.validateData(rules);
-
-		let service = new MailService();
-		return await service.finishMail(this._userId, input.id);
-	}
-
-	/** 获取信息用于编辑修改 */
-	async getMailDetail() {
-
-		// 数据校验
-		let rules = {
-			id: 'must|id',
-		};
-
-		// 取得数据
-		let input = this.validateData(rules);
-
-		let service = new MailService();
-		let mail = await service.getMailDetail(this._userId, input.id);
-		if (mail) {
-			mail.MAIL_END_TIME = timeUtil.timestamp2Time(mail.MAIL_END_TIME, 'Y-M-D h:m');
-		}
-
-		return mail;
-
-	}
-
-	/** 浏览详细 */
-	async viewMail() {
-		// 数据校验
-		let rules = {
-			id: 'must|id',
-		};
-
-		// 取得数据
-		let input = this.validateData(rules);
-
-		let service = new MailService();
-		let mail = await service.viewMail(this._userId, input.id);
-
-		if (mail) { 
-			mail.end = timeUtil.timestamp2Time(mail.MAIL_END_TIME, 'Y/M/D h:m:s');
-			mail.end2 = timeUtil.timestamp2Time(mail.MAIL_END_TIME, 'Y-M-D h:m');
-
-			mail.MAIL_ADD_TIME = timeUtil.timestamp2Time(mail.MAIL_ADD_TIME, 'Y-M-D h:m');
-			mail.MAIL_ACCEPT_TIME = timeUtil.timestamp2Time(mail.MAIL_ACCEPT_TIME, 'Y-M-D h:m');
-			mail.MAIL_OVER_TIME = timeUtil.timestamp2Time(mail.MAIL_OVER_TIME, 'Y-M-D h:m');
-
-			mail.status = service.getStatusDesc(mail);
-
-			mail.myaccept = (mail.MAIL_ACCEPT_USER_ID === this._userId);
-			mail.mypost = (mail.MAIL_USER_ID === this._userId);
-
-		}
-
-		return mail;
-	}
-
-	/** 状态修改 */
-	async statusMail() {
-		// 数据校验
-		let rules = {
-			id: 'must|id',
-			status: 'must|int',
-			overTime: 'int|default=0',
-		};
-
-		// 取得数据
-		let input = this.validateData(rules);
-
-		let service = new MailService();
-		return await service.statusMail(this._userId, input.id, input.status, input.overTime);
-
-	}
-
-	/** 列表与搜索 */
-	async getMailList() {
-
-		// 数据校验
-		let rules = {
-			search: 'string|min:1|max:30|name=搜索条件',
-			sortType: 'string|name=搜索类型',
-			sortVal: 'name=搜索类型值',
-			orderBy: 'object|name=排序',
-			whereEx: 'object|name=附加查询条件',
-			page: 'must|int|default=1',
-			size: 'int',
-			isTotal: 'bool',
-			oldTotal: 'int',
-		};
-
-		// 取得数据
-		let input = this.validateData(rules);
-
-		let service = new MailService();
-		let result = await service.getMailList(this._userId, input);
-
-		// 数据格式化
-		let list = result.list;
-
-		for (let k = 0; k < list.length; k++) {
-			if (!list[k].MAIL_OBJ || typeof list[k].MAIL_OBJ !== 'object') list[k].MAIL_OBJ = {};
-			list[k].status = service.getStatusDesc(list[k]);
-
-			list[k].MAIL_ADD_TIME = timeUtil.timestamp2Time(list[k].MAIL_ADD_TIME, 'Y-M-D h:m');
-			list[k].end = timeUtil.timestamp2Time(list[k].MAIL_END_TIME, 'M月D日 h:m');
-			const leftMs = Number(list[k].MAIL_END_TIME) - Date.now();
-			if (leftMs <= 0) list[k].MAIL_OBJ.leftTimeLabel = '已截止';
-			else if (leftMs < 60 * 60 * 1000) list[k].MAIL_OBJ.leftTimeLabel = Math.max(1, Math.ceil(leftMs / 60000)) + '分钟';
-			else if (leftMs < 24 * 60 * 60 * 1000) list[k].MAIL_OBJ.leftTimeLabel = Math.ceil(leftMs / 3600000) + '小时';
-			else list[k].MAIL_OBJ.leftTimeLabel = Math.ceil(leftMs / 86400000) + '天';
-
-			// 删除冗余
-			if (list[k].MAIL_OBJ.content) delete list[k].MAIL_OBJ.content;
-
-			list[k].myaccept = (list[k].MAIL_ACCEPT_USER_ID === this._userId);
-			list[k].mypost = (list[k].MAIL_USER_ID === this._userId);
-
-		}
-
-		return result;
-
-	}
-
-	/** 发布 */
-	async insertMail() {
-
-		// 数据校验 
-		let rules = {
-			forms: 'array|name=表单数据',
-			cateId: 'string|name=分类',
-			totalFee: 'number|name=支付金额',
-		};
-
-
-		// 取得数据
-		let input = this.validateData(rules);
-
-		// 内容审核
-		await contentCheck.checkTextMultiClient(input);
-
-		let service = new MailService();
-		let result = await service.insertMail(this._userId, input);
-
-		return result;
-
-	}
-
-	/** 修改 */
-	async editMail() {
-
-		// 数据校验 
-		let rules = {
-		 
-		};
-
-
-		// 取得数据
-		let input = this.validateData(rules);
-
-		// 内容审核
-		await contentCheck.checkTextMultiClient(input);
-
-		let service = new MailService();
-		return await service.editMail(this._userId, input); 
-
-	}
-
-	/** 更新图片信息 */
-	async updateMailForms() {
-
-		// 数据校验
-		let rules = {
-			id: 'must|string|name=订单ID',
-			hasImageForms: 'array|name=图片表单',
-		};
-
-		// 取得数据
-		let input = this.validateData(rules);
-
-		// 内容审核
-		await contentCheck.checkTextMultiClient(input);
-
-		let service = new MailService();
-		return await service.updateMailForms(this._userId, input);
-	}
-
-	/** 删除 */
-	async delMail() {
-
-		// 数据校验
-		let rules = {
-			id: 'must|id',
-			isAdmin: 'must|bool'
-		};
-
-		// 取得数据
-		let input = this.validateData(rules);
-
-		let service = new MailService();
-		await service.delMail(this._userId, input.id);
-
-	}
-
+const check = require('../../../framework/validate/content_check.js');
+const time = require('../../../framework/utils/time_util.js');
+class MailController extends Base {
+ async _limitAudit(){await require('../service/operation_store.js').limit('crun',this._userId,'order_audit',20,60000);}
+ _input(extra = {}) { return this.validateData({id:'must|id',requestId:'must|string|min:16|max:100',...extra}); }
+ async _action(method, extra = {}, audit = false) { const input=this._input(extra); if(audit) {await this._limitAudit();await check.checkTextMultiClient(input); input.images=await this._checkImages(input.images || []);} return new MailService()[method](this._userId,input.id,input); }
+ async _checkImages(images,allowed=[]) { const result=[];for (const id of require('../service/order_rules.js').images(images)) result.push(await check.checkCloudImage(id,allowed));return result; }
+ async acceptMail() {return this._action('acceptMail');}
+ async cancelMail() {return this._action('cancelMail',{note:'string|max:300'},true);}
+ async finishMail() {return this._action('finishMail');}
+ async deliverMail() {return this._action('deliverMail',{note:'must|string|max:300',images:'must|array'},true);}
+ async exceptionMail() {return this._action('exceptionMail',{reason:'must|string|max:30',note:'must|string|max:500',images:'array'},true);}
+ async statusMail() {return new MailService().statusMail();}
+ async delMail() {return this._action('delMail');}
+ async updateMailForms() {return new MailService().updateMailForms();}
+ async _form(edit) { const input=this.validateData({...(edit?{id:'must|id'}:{}),requestId:'must|string|min:16|max:100',forms:'must|array',cateId:'string|max:30'}); await this._limitAudit();await check.checkTextMultiClient(input); const svc=new MailService();const old=edit?await svc.getMailDetail(this._userId,input.id):null;const allowed=old && old.MAIL_OBJ.imgUrls || [];for(const f of input.forms) if(f.mark==='img') f.val=await this._checkImages(f.val,allowed); return edit?svc.editMail(this._userId,input):svc.insertMail(this._userId,input); }
+ async insertMail() {return this._form(false);}
+ async editMail() {return this._form(true);}
+ async getMailDetail() {const p=this.validateData({id:'must|id'});return new MailService().getMailDetail(this._userId,p.id);}
+ _format(mail) {
+  if(!mail)return mail;
+  mail.end=time.timestamp2Time(mail.MAIL_END_TIME,'Y/M/D h:m:s'); mail.end2=time.timestamp2Time(mail.MAIL_END_TIME,'Y-M-D h:m');
+  for(const key of ['MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_OVER_TIME']) mail[key]=mail[key]?time.timestamp2Time(mail[key],'Y-M-D h:m'):'';
+  return mail;
+ }
+ async viewMail() {const p=this.validateData({id:'must|id'});return this._format(await new MailService().viewMail(this._userId,p.id));}
+ async getMailList() {const p=this.validateData({search:'string|max:30',sortType:'string|max:30',sortVal:'string|max:30',orderBy:'object',whereEx:'object',page:'int|default=1|min:1|max:500',size:'int|default=20|min:1|max:50'});const result=await new MailService().getMailList(this._userId,p);result.list=result.list.map(m=>{const left=m.MAIL_END_TIME-Date.now();m.MAIL_OBJ.leftTimeLabel=left<=0?'已截止':Math.ceil(left/60000)+'分钟';return this._format(m);});return result;}
 }
-
-module.exports = MailController;
+module.exports=MailController;

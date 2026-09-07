@@ -6,6 +6,24 @@
  */
 
 module.exports = {
+'admin/operations_hold':'admin/admin_operations_controller@hold',
+"mail/deliver":"mail_controller@deliverMail",
+"mail/exception":"mail_controller@exceptionMail",
+"operations/config":"operations_controller@getConfig",
+"operations/rider_apply":"operations_controller@riderApply",
+"operations/notifications":"operations_controller@notifications",
+"operations/read":"operations_controller@markRead",
+"operations/subscribe":"operations_controller@subscribe",
+"admin/operations_config":"admin/admin_operations_controller@getConfig",
+"admin/operations_config_save":"admin/admin_operations_controller@saveConfig",
+"admin/operations_riders":"admin/admin_operations_controller@riders",
+"admin/operations_rider_review":"admin/admin_operations_controller@riderReview",
+"admin/operations_orders":"admin/admin_operations_controller@orders",
+"admin/operations_order":"admin/admin_operations_controller@orderDetail",
+"admin/operations_resolve":"admin/admin_operations_controller@resolve",
+"admin/operations_overview":"admin/admin_operations_controller@overview",
+"admin/operations_maintain":"admin/admin_operations_controller@maintain",
+"admin/feedback_detail":"admin/admin_feedback_controller@getAdminFeedbackDetail",
 	'home/setup_get': 'home_controller@getSetup',
 
 	'passport/login': 'passport_controller@login',
