@@ -1,0 +1,6 @@
+@import "../../../../style/skin.wxss";
+page { background: #f1f6ff; }
+.campus-heading { padding: 32rpx; color: #397bc8; font-size: 30rpx; font-weight: 600; }
+.campus-picker { flex: 1; text-align: right; color: #397bc8; font-size: 28rpx; line-height: 80rpx; }
+.btn-admin { background: #397bc8; }
+.btn-admin[disabled] { opacity: .65; }

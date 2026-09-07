@@ -1,5 +1,5 @@
 <block wx:if="{{isAdmin&&isLoad}}">
-	<cmpt-comm-list source='admin' type="admin-campus-service-list" search="{{search||''}}" _menus="{{sortMenus}}" route="admin/campus_service_list" sortMenusDefaultIndex="0" topBottom="50" placeholder="搜索校区名称/负责人" bind:list="bindCommListCmpt">
+	<cmpt-comm-list id="campus-list" isCache="{{false}}" source='admin' type="admin-campus-service-list" search="{{search||''}}" _menus="{{sortMenus}}" route="admin/campus_service_list" sortMenusDefaultIndex="0" topBottom="50" placeholder="搜索校区名称/负责人" bind:list="bindCommListCmpt">
 
 		<view slot="searchEnd">
 			<button bindtap="url" data-url="../add/admin_campus_service_add" class="btn radius bg-admin text-white margin-right-s">
@@ -7,11 +7,12 @@
 			</button>
 		</view>
 
+		<view class="campus-toolbar"><picker range="{{campusOptions}}" value="{{campusIndex}}" bindchange="bindCampusChange"><view>{{campusOptions[campusIndex]}}<text class="icon-unfold margin-left-s"></text></view></picker><view bindtap="url" data-url="../chat_list/admin_campus_chat_list">客服对话与回复</view></view>
 		<!-- List Begin -->
 		<view class="admin-comm-list">
 			<view wx:if="{{dataList && dataList.total }}" class="load text-grey">共有{{dataList.total}}条符合条件记录</view>
 
-			<view class="item" wx:for="{{dataList.list}}" wx:key="key">
+			<view class="item" wx:for="{{dataList.list}}" wx:key="_id">
 				<view class="no">{{index+1}}</view>
 				<view class="header">
 					<view class="left text-cut">

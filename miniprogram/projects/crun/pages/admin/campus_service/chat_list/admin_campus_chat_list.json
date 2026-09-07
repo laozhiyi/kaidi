@@ -1,0 +1,5 @@
+{
+	"usingComponents": {"cmpt-comm-list": "/cmpts/public/list/comm_list_cmpt"},
+	"enablePullDownRefresh": true,
+	"navigationBarTitleText": "客服对话"
+}

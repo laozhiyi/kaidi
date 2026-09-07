@@ -5,6 +5,7 @@
 		"projects/crun/pages/about/index/about_index",
 		"projects/crun/pages/about/static/about_static",
 		"projects/crun/pages/campus_service/list/campus_service_list",
+		"projects/crun/pages/campus_service/chat/campus_service_chat",
 		"projects/crun/pages/feedback/index/feedback_index",
 		"projects/crun/pages/feedback/my_list/feedback_my_list",
 		"projects/crun/pages/feedback/detail/feedback_detail",
@@ -36,6 +37,11 @@
 		"projects/crun/pages/admin/user/list/admin_user_list",
 		"projects/crun/pages/admin/user/detail/admin_user_detail",
 		"projects/crun/pages/admin/user/export/admin_user_export",
+		"projects/crun/pages/admin/campus_service/list/admin_campus_service_list",
+		"projects/crun/pages/admin/campus_service/add/admin_campus_service_add",
+		"projects/crun/pages/admin/campus_service/edit/admin_campus_service_edit",
+		"projects/crun/pages/admin/campus_service/chat_list/admin_campus_chat_list",
+		"projects/crun/pages/admin/campus_service/chat_detail/admin_campus_chat_detail",
 		"projects/crun/pages/mail/choose/mail_choose",
 		"projects/crun/pages/mail/add/mail_add",
 		"projects/crun/pages/mail/edit/mail_edit",
@@ -55,7 +61,7 @@
 		"navigationBarTextStyle": "white"
 	},
 	"tabBar": {
-		"custom": false,
+		"custom": true,
 		"backgroundColor": "#FFFFFF",
 		"color": "#7A8AA6",
 		"selectedColor": "#397BC8",
@@ -63,20 +69,20 @@
 			{
 				"pagePath": "projects/crun/pages/default/index/default_index",
 				"text": "首页",
-				"iconPath": "/projects/crun/images/tabbar/home.png",
-				"selectedIconPath": "/projects/crun/images/tabbar/home_cur.png"
+				"iconPath": "projects/crun/images/tabbar/home.png",
+				"selectedIconPath": "projects/crun/images/tabbar/home_cur.png"
 			},
 			{
 				"pagePath": "projects/crun/pages/order/index/order_index",
 				"text": "订单",
-				"iconPath": "/projects/crun/images/tabbar/order.png",
-				"selectedIconPath": "/projects/crun/images/tabbar/order_cur.png"
+				"iconPath": "projects/crun/images/tabbar/order.png",
+				"selectedIconPath": "projects/crun/images/tabbar/order_cur.png"
 			},
 			{
 				"pagePath": "projects/crun/pages/my/index/my_index",
 				"text": "我的",
-				"iconPath": "/projects/crun/images/tabbar/my.png",
-				"selectedIconPath": "/projects/crun/images/tabbar/my_cur.png"
+				"iconPath": "projects/crun/images/tabbar/my.png",
+				"selectedIconPath": "projects/crun/images/tabbar/my_cur.png"
 			}
 		]
 	},

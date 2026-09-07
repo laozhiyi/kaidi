@@ -1,7 +1,9 @@
+<view wx:if="{{isAdmin && isLoad}}">
+<view class="campus-heading">广西师范大学 · 校区客服</view>
 <view class="form-box shadow">
 	<view class="form-group">
 		<view class="title must">校区名称</view>
-		<input placeholder="例如：广州大学城校区" placeholder-class="phc" model:value="{{formCampus}}" maxlength="50"></input>
+		<picker class="campus-picker" range="{{campusOptions}}" value="{{campusIndex}}" bindchange="bindCampusChange"><view>{{formCampus || '请选择校区'}}<text class="icon-right margin-left-s"></text></view></picker>
 	</view>
 
 	<view class="form-group">
@@ -35,4 +37,5 @@
 	</view>
 </view>
 
-<button bindtap="bindFormSubmit" class="btn-admin margin-top-xs">提交</button>
+<button bindtap="bindFormSubmit" disabled="{{isSubmit}}" loading="{{isSubmit}}" class="btn-admin margin-top-xs">提交</button>
+</view>

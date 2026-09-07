@@ -1,0 +1,2 @@
+@import "../list/admin_campus_service_list.wxss";
+.admin-comm-list .info-item .content { word-break: break-all; }

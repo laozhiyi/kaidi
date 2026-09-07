@@ -1,0 +1,43 @@
+<view class="chat-page">
+	<view wx:if="{{!isLoad}}" class="empty-page">正在加载对话…</view>
+	<block wx:if="{{isLoad && service}}">
+		<view class="chat-header">
+			<view class="chat-title">{{service.CS_CAMPUS}}客服</view>
+			<view class="chat-desc">{{service.CS_NAME}} · {{service.CS_STATUS==1?'咨询开放':'客服已停用'}}</view>
+			<view wx:if="{{!isAdminChat}}" class="chat-desc">工作时间：{{service.CS_WORK_TIME || '以客服回复为准'}}</view>
+			<view wx:if="{{isAdminChat && userId}}" class="chat-desc user-id">用户：{{userId}}</view>
+		</view>
+		<view wx:if="{{errorText}}" class="refresh-error" bindtap="bindRefreshTap">{{errorText}}</view>
+		<scroll-view class="message-list" scroll-y scroll-into-view="{{scrollIntoView}}" scroll-top="{{scrollTop}}" lower-threshold="80" bindscroll="bindMessageScroll" bindscrolltolower="bindScrollLower">
+			<view class="message-content">
+				<view class="history-action" wx:if="{{hasMore}}" bindtap="bindEarlierTap">{{loadingEarlier?'正在加载…':(historyError || '加载更早消息')}}</view>
+				<view class="history-end" wx:elif="{{messages.length}}">以上是全部历史消息</view>
+				<view wx:if="{{messages.length==0}}" class="empty-chat">
+					<view class="empty-title">{{isAdminChat?'暂无对话消息':'有什么可以帮您？'}}</view>
+					<view class="empty-text">请描述遇到的问题，客服会尽快回复</view>
+				</view>
+				<view wx:for="{{messages}}" wx:key="CSM_ID" id="msg-{{item.CSM_ID}}" class="message {{item.CSM_SENDER==ownSender?'message-me':'message-service'}}">
+					<view class="message-avatar">{{item.CSM_SENDER=='admin'?'客':(isAdminChat?'用':'我')}}</view>
+					<view class="message-body">
+						<view class="message-name">{{item.CSM_SENDER=='admin'?service.CS_NAME:(isAdminChat?'用户':'我')}}</view>
+						<view class="bubble"><text user-select>{{item.CSM_CONTENT}}</text></view>
+						<view class="message-time">{{item.CSM_ADD_TIME}}</view>
+					</view>
+				</view>
+				<view id="messages-bottom" class="messages-bottom"></view>
+			</view>
+		</scroll-view>
+		<view wx:if="{{hasNewMessages}}" class="new-messages" bindtap="bindLatestTap">有新消息 · 查看最新</view>
+		<view class="composer">
+			<view class="composer-field">
+				<textarea class="composer-input" maxlength="500" auto-height placeholder="{{isAdminChat?'请输入回复内容':'请输入咨询内容'}}" value="{{content}}" bindinput="bindContentInput" disabled="{{service.CS_STATUS!=1}}" cursor-spacing="20"></textarea>
+				<view class="counter">{{content.length}}/500</view>
+			</view>
+			<button class="send-btn" disabled="{{isSending || !content.length || service.CS_STATUS!=1}}" loading="{{isSending}}" bindtap="bindSendTap">{{isSending?'发送中':(isAdminChat?'回复':'发送')}}</button>
+		</view>
+	</block>
+	<view wx:if="{{isLoad && !service}}" class="empty-page">
+		<view class="empty-title">{{errorText || '会话暂不可用'}}</view>
+		<button class="retry-btn" bindtap="bindRefreshTap" loading="{{loading}}">重新加载</button>
+	</view>
+</view>

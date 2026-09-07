@@ -107,6 +107,8 @@ module.exports = {
 	// ========== 校区客服 ==========
 	'campus_service/list': 'campus_service_controller@getCampusServiceList',
 	'campus_service/detail': 'campus_service_controller@getCampusServiceDetail',
+	'campus_service/chat': 'campus_service_controller@getCampusChat',
+	'campus_service/send': 'campus_service_controller@sendCampusMessage',
 
 	// ========== 后台校区客服管理 ==========
 	'admin/campus_service_list': 'admin/admin_campus_service_controller@getAdminCampusServiceList',
@@ -114,6 +116,10 @@ module.exports = {
 	'admin/campus_service_insert': 'admin/admin_campus_service_controller@insertCampusService#demo',
 	'admin/campus_service_update': 'admin/admin_campus_service_controller@updateCampusService#demo',
 	'admin/campus_service_del': 'admin/admin_campus_service_controller@delCampusService#demo',
+	'admin/campus_service_status': 'admin/admin_campus_service_controller@statusCampusService#demo',
+	'admin/campus_chat_list': 'admin/admin_campus_service_controller@getAdminCampusChatList',
+	'admin/campus_chat_detail': 'admin/admin_campus_service_controller@getAdminCampusChatDetail',
+	'admin/campus_chat_reply': 'admin/admin_campus_service_controller@replyCampusMessage#demo',
 
 	// ========== 反馈投诉 ==========
 	'feedback/insert': 'feedback_controller@insertFeedback',

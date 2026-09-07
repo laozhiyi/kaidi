@@ -1,0 +1,20 @@
+@import "../../../../../../style/skin.wxss";
+.page { min-height: 100vh; padding-bottom: 170rpx; background: #f1f6ff; box-sizing: border-box; }
+.head { padding: 32rpx 28rpx; color: #fff; background: linear-gradient(135deg,#4a8fe0,#397bc8); }
+.title { font-size: 34rpx; font-weight: 600; }
+.desc { margin-top: 10rpx; color: rgba(255,255,255,.84); font-size: 24rpx; }
+.messages { height: calc(100vh - 250rpx); padding: 28rpx 24rpx; box-sizing: border-box; }
+.message { display: flex; flex-direction: row; align-items: flex-start; margin-bottom: 26rpx; }
+.message-user { flex-direction: row-reverse; }
+.avatar { width: 64rpx; height: 64rpx; border-radius: 50%; color: #fff; background: #397bc8; font-size: 24rpx; line-height: 64rpx; text-align: center; }
+.message-admin .avatar { background: #2dc87a; }
+.body { max-width: 74%; margin: 0 16rpx; }
+.message-user .body { text-align: right; }
+.bubble { display: inline-block; padding: 16rpx 20rpx; border-radius: 16rpx; color: #1f2a44; background: #fff; font-size: 27rpx; line-height: 40rpx; text-align: left; word-break: break-all; }
+.message-admin .bubble { color: #fff; background: #397bc8; }
+.time { margin-top: 6rpx; color: #94a3b8; font-size: 20rpx; }
+.reply-box { position: fixed; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; padding: 18rpx 24rpx 36rpx; background: #fff; box-shadow: 0 -4rpx 16rpx rgba(0,0,0,.06); box-sizing: border-box; }
+.reply-box textarea { flex: 1; min-height: 76rpx; padding: 18rpx 20rpx; border-radius: 14rpx; background: #f1f6ff; color: #1f2a44; font-size: 27rpx; box-sizing: border-box; }
+.reply-btn { width: 112rpx; height: 76rpx; margin-left: 16rpx; border-radius: 38rpx; color: #fff; background: #397bc8; line-height: 76rpx; text-align: center; }
+.disabled { opacity: .6; }
+.empty { padding: 220rpx 24rpx; color: #94a3b8; text-align: center; font-size: 28rpx; }

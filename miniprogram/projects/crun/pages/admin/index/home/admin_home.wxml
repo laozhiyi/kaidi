@@ -37,7 +37,7 @@
 
 		<view class="item" bindtap="url" data-url="../../mail/list/admin_mail_list"> <text class="icon-cartfill text-blue"></text> <text class="text-black">快递代取</text>
 		</view>
-		<view class="item" bindtap="url" data-url="../../campus_service/list/admin_campus_service_list"> <text class="icon-formfill text-cyan"></text> <text class="text-black">校区客服</text>
+		<view class="item" bindtap="url" data-url="../../campus_service/list/admin_campus_service_list"> <text class="icon-formfill text-cyan"></text> <text class="text-black">校区客服管理</text>
 		</view>
 	</view>
 
@@ -60,10 +60,10 @@
 			</view>
 		</view>
 
-		<view class="item arrow" bindtap="url" data-url="../../campus_service/list/admin_campus_service_list">
+		<view class="item arrow" bindtap="url" data-url="../../campus_service/chat_list/admin_campus_chat_list">
 			<view class="content">
-				<text class="icon-formfill text-cyan"></text>
-				<text class="text-black">校区客服管理</text>
+				<text class="icon-messagefill text-blue"></text>
+				<text class="text-black">客服对话与回复</text>
 			</view>
 		</view>
 	</view>

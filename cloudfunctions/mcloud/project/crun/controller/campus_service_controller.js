@@ -17,8 +17,8 @@ class CampusServiceController extends BaseProjectController {
 			sortType: 'string|name=搜索类型',
 			sortVal: 'name=搜索类型值',
 			orderBy: 'object|name=排序',
-			page: 'must|int|default=1',
-			size: 'int',
+			page: 'must|int|min:1|default=1',
+			size: 'int|min:1|max:100|default=20',
 			isTotal: 'bool',
 			oldTotal: 'int',
 		};
@@ -30,7 +30,26 @@ class CampusServiceController extends BaseProjectController {
 		return await service.getCampusServiceList(input);
 	}
 
-	/** 取得校区客服详情 */
+	/** 用户端会话详情 */
+	async getCampusChat() {
+		let rules = { serviceId: 'must|id', before: 'string|max:100', limit: 'int|min:1|max:100|default=50' };
+		let input = this.validateData(rules);
+		let service = new CampusServiceService();
+		return await service.getCampusChat(this._userId, input.serviceId, input);
+	}
+
+	/** 用户端发送消息 */
+	async sendCampusMessage() {
+		let rules = {
+			serviceId: 'must|id',
+			content: 'must|string|min:1|max:500|name=咨询内容'
+		};
+		let input = this.validateData(rules);
+		let service = new CampusServiceService();
+		return await service.sendCampusMessage(this._userId, input.serviceId, input.content);
+	}
+
+
 	async getCampusServiceDetail() {
 		let rules = {
 			id: 'must|id',

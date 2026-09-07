@@ -2,21 +2,32 @@
 
 	<!-- 顶部说明 -->
 	<view class="header">
-		<view class="header-title">选择你的校区</view>
-		<view class="header-desc">遇到问题请联系我们对应校区的客服，第一时间为你解决</view>
+		<view class="header-title">广西师范大学校区客服</view>
+		<view class="header-desc">选择所在校区，联系对应客服，及时解决校园生活中的问题</view>
 	</view>
 
 	<!-- 列表 -->
 	<view class="list">
-		<view wx:if="{{isLoad && list.length==0}}" class="empty">
-			<view class="empty-icon">📭</view>
-			<view class="empty-text">暂无校区客服，请稍后再试</view>
+		<view class="campus-tabs">
+			<view wx:for="{{campusOptions}}" wx:key="value"
+				class="campus-tab {{activeCampus==item.value?'campus-tab-active':''}}"
+				bindtap="bindCampusTap" data-campus="{{item.value}}">
+				{{item.label}}
+			</view>
 		</view>
 
-		<view wx:for="{{list}}" wx:key="_id" class="service-card card">
+		<view wx:if="{{!isLoad}}" class="empty-text loading-hint">正在加载校区客服…</view>
+		<view wx:if="{{loadError}}" class="load-error" bindtap="bindRetryTap">{{loadError}}</view>
+		<view wx:if="{{isLoad && !loadError && displayList.length==0}}" class="empty">
+			<view class="empty-icon">📭</view>
+			<view class="empty-text">{{emptyText}}</view>
+			<view class="empty-tip">客服信息由后台统一维护，敬请关注</view>
+		</view>
+
+		<view wx:for="{{displayList}}" wx:key="_id" class="service-card card">
 			<view class="card-head">
 				<view class="campus">{{item.CS_CAMPUS}}</view>
-				<view class="status" wx:if="{{item.CS_STATUS==1}}">在线</view>
+				<view class="status" wx:if="{{item.CS_STATUS==1}}">咨询开放</view>
 				<view class="status status-offline" wx:else>离线</view>
 			</view>
 
@@ -55,8 +66,9 @@
 			</view>
 
 			<!-- 操作按钮行 -->
-			<view class="btn-row">
-				<view class="btn btn-primary" bindtap="bindCallTap" data-mobile="{{item.CS_MOBILE}}">
+			<view class="btn-row" wx:if="{{item.CS_MOBILE || item.CS_WECHAT || item.CS_QQ || item._id}}">
+				<view wx:if="{{item._id}}" class="btn btn-chat" bindtap="bindChatTap" data-id="{{item._id}}"><text class="btn-text">在线咨询</text></view>
+					<view wx:if="{{item.CS_MOBILE}}" class="btn btn-primary" bindtap="bindCallTap" data-mobile="{{item.CS_MOBILE}}">
 					<text>📞</text>
 					<text class="btn-text">电话咨询</text>
 				</view>

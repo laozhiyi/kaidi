@@ -5,6 +5,8 @@ const cloudHelper = require('../../../../../../helper/cloud_helper.js');
 Page({
 
 	data: {
+		campusOptions: ['育才校区', '王城校区', '雁山校区'],
+		campusIndex: 0,
 		formCampus: '',
 		formName: '',
 		formMobile: '',
@@ -21,6 +23,13 @@ Page({
 		this.setData({ isLoad: true });
 	},
 
+	onUnload: function () { this._destroyed = true; },
+
+	bindCampusChange: function (e) {
+		const campusIndex = Number(e.detail.value);
+		if (this.data.campusOptions[campusIndex]) this.setData({ campusIndex, formCampus: this.data.campusOptions[campusIndex] });
+	},
+
 	model: function (e) {
 		pageHelper.model(this, e);
 	},
@@ -29,8 +38,8 @@ Page({
 		if (!AdminBiz.isAdmin(this)) return;
 		let { formCampus, formName, formMobile, formWechat, formQQ, formWorkTime, formOrder, isSubmit } = this.data;
 
-		if (!formCampus || !formCampus.trim()) {
-			return pageHelper.showModal('请填写校区名称', '温馨提示');
+		if (!this.data.campusOptions.includes(formCampus)) {
+			return pageHelper.showModal('请选择育才、王城或雁山校区', '温馨提示');
 		}
 		if (!formName || !formName.trim()) {
 			return pageHelper.showModal('请填写负责人姓名', '温馨提示');
@@ -56,15 +65,15 @@ Page({
 				workTime: (formWorkTime || '').trim(),
 				order: Number(formOrder) || 9999,
 			};
-			await cloudHelper.callCloudSumbit('admin/campus_service_insert', params, { title: '提交中...' });
+			await cloudHelper.callCloudSumbit('admin/campus_service_insert', params, { hint: false });
+			if (this._destroyed) return;
 			pageHelper.showSuccToast('添加成功', 2000, () => {
-				wx.navigateBack();
+				if (!this._destroyed) wx.navigateBack();
 			});
 		} catch (err) {
-			console.error(err);
-			pageHelper.showModal('添加失败，请稍后重试', '温馨提示');
+			if (!this._destroyed) pageHelper.showModal((err && (err.msg || err.message)) || '添加失败，请稍后重试', '温馨提示');
 		} finally {
-			this.setData({ isSubmit: false });
+			if (!this._destroyed) this.setData({ isSubmit: false });
 		}
 	},
 

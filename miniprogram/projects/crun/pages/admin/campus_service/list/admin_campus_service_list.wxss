@@ -1,0 +1,6 @@
+@import "../../../../style/skin.wxss";
+page { background: #f1f6ff; }
+.campus-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 22rpx 28rpx; background: #fff; color: #397bc8; font-size: 26rpx; border-bottom: 1rpx solid #edf2fa; }
+.campus-toolbar picker { padding: 16rpx 24rpx; border-radius: 12rpx; background: #f1f6ff; }
+.admin-comm-list .item { border-radius: 20rpx; }
+.admin-comm-list .btn { color: #397bc8; border-color: #397bc8; }

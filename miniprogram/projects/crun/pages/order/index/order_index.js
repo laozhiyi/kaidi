@@ -64,6 +64,8 @@ Page({
 	},
 
 	onShow: function () {
+		const tabBar = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
+		if (tabBar) tabBar.setData({ selected: 1 });
 		const pendingTab = wx.getStorageSync('crun-order-tab');
 		if (pendingTab !== '' && pendingTab !== null && pendingTab !== undefined) {
 			wx.removeStorageSync('crun-order-tab');

@@ -163,7 +163,14 @@
 
 .tab-bar-item .tab-text {
 	font-size: 24rpx !important;
-	color: #999999;
+	color: #7a8aa6;
+}
+
+.tab-bar-placeholder {
+	height: 100rpx;
+	height: calc(100rpx + constant(safe-area-inset-bottom));
+	height: calc(100rpx + env(safe-area-inset-bottom));
+	flex-shrink: 0;
 }
 
 /**分包距离底部 */

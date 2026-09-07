@@ -18,8 +18,8 @@ class AdminCampusServiceController extends BaseProjectAdminController {
 			sortType: 'string|name=搜索类型',
 			sortVal: 'name=搜索类型值',
 			orderBy: 'object|name=排序',
-			page: 'must|int|default=1',
-			size: 'int',
+			page: 'must|int|min:1|default=1',
+			size: 'int|min:1|max:100|default=20',
 			isTotal: 'bool',
 			oldTotal: 'int',
 		};
@@ -53,7 +53,7 @@ class AdminCampusServiceController extends BaseProjectAdminController {
 			name: 'must|string|min:1|max:30|name=负责人姓名',
 			mobile: 'must|mobile|name=手机号',
 			wechat: 'string|min:1|max:40|name=微信号',
-			qq: 'string|min:1|max=20|name=QQ号',
+			qq: 'string|min:1|max:20|name=QQ号',
 			workTime: 'string|min:1|max:50|name=工作时间',
 			qr: 'string|name=客服二维码',
 			order: 'int|default=9999|name=排序',
@@ -87,7 +87,39 @@ class AdminCampusServiceController extends BaseProjectAdminController {
 		return await service.updateCampusService(input.id, input);
 	}
 
-	/** 删除校区客服 */
+	/** 修改客服状态 */
+	async statusCampusService() {
+		await this.isAdmin();
+		let input = this.validateData({ id: 'must|id', status: 'must|int' });
+		let service = new CampusServiceService();
+		return await service.statusCampusService(input.id, input.status);
+	}
+
+	/** 会话列表 */
+	async getAdminCampusChatList() {
+		await this.isAdmin();
+		let input = this.validateData({ search: 'string|min:1|max:50|name=搜索条件', page: 'must|int|min:1|default=1', size: 'int|min:1|max:100|default=20' });
+		let service = new CampusServiceService();
+		return await service.getAdminCampusChatList(input);
+	}
+
+	/** 会话详情 */
+	async getAdminCampusChatDetail() {
+		await this.isAdmin();
+		let input = this.validateData({ sessionId: 'must|string|min:1|max:200', before: 'string|max:100', limit: 'int|min:1|max:100|default=50' });
+		let service = new CampusServiceService();
+		return await service.getAdminCampusChatDetail(input.sessionId, input);
+	}
+
+	/** 回复会话 */
+	async replyCampusMessage() {
+		await this.isAdmin();
+		let input = this.validateData({ sessionId: 'must|string|min:1|max:200', content: 'must|string|min:1|max:500|name=回复内容' });
+		let service = new CampusServiceService();
+		return await service.replyCampusMessage(input.sessionId, input.content);
+	}
+
+
 	async delCampusService() {
 		await this.isAdmin();
 

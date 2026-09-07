@@ -150,7 +150,7 @@
 	<!--设置列表 end-->
 
 </view>
-<view style="height:120rpx"></view>
+<view class="tab-bar-placeholder"></view>
 
 <block wx:if="{{skin.IS_SUB}}">
 	<import src="../../tpls/menu_tpl.wxml" />

@@ -38,6 +38,8 @@ Page({
 	 * 生命周期函数--监听页面显示
 	 */
 	onShow: async function () {
+		const tabBar = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
+		if (tabBar) tabBar.setData({ selected: 2 });
 		PassportBiz.loginSilenceMust(this);
 		this._loadUser();
 	},
