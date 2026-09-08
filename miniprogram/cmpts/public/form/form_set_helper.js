@@ -191,14 +191,15 @@ function checkForm(fields, forms, that) {
 	for (let k = 0; k < fields.length; k++) {
 		let type = fields[k].type;
 		let title = '「' + fields[k].title + '」';
-		let val = forms[k].val;
+		let form = forms.find(item => item && item.mark === fields[k].mark) || { mark: fields[k].mark, val: '' };
+		let val = form.val == null ? '' : form.val;
 
 		// 必填
 		let hintOprt = getMustHint(type); //提示动作
 
 		if (fields[k].must && type != 'switch' && (!helper.isDefined(val) || val.length == 0)) {
 			fields[k].focus = hintOprt + title;
-			pageHelper.anchor('form' + forms[k].mark, that);
+			pageHelper.anchor('form' + form.mark, that);
 			return pageHelper.showModal(hintOprt + '' + title);
 		}
 
@@ -208,20 +209,20 @@ function checkForm(fields, forms, that) {
 				let len = fields[k].max;
 				if (val.length != len) {
 					fields[k].focus = title + ' 字数必须为' + len + '位';
-					pageHelper.anchor('form' + forms[k].mark, that);
+					pageHelper.anchor('form' + form.mark, that);
 					return pageHelper.showModal(title + ' 字数必须为' + len + '位');
 				}
 			}
 			else {
 				if (val.length > fields[k].max) {
 					fields[k].focus = title + ' 字数不能多于' + fields[k].max + '位';
-					pageHelper.anchor('form' + forms[k].mark, that);
+					pageHelper.anchor('form' + form.mark, that);
 					return pageHelper.showModal(title + ' 字数不能多于' + fields[k].max + '位');
 				}
 
 				if (val.length < fields[k].min) {
 					fields[k].focus = title + ' 字数不能少于' + fields[k].min + '位';
-					pageHelper.anchor('form' + forms[k].mark, that);
+					pageHelper.anchor('form' + form.mark, that);
 					return pageHelper.showModal(title + ' 字数不能少于' + fields[k].min + '位');
 				}
 			}
@@ -233,20 +234,20 @@ function checkForm(fields, forms, that) {
 				let len = fields[k].max;
 				if (val.length != len) {
 					fields[k].focus = title + ' 张数必须为' + len + '张';
-					pageHelper.anchor('form' + forms[k].mark, that);
+					pageHelper.anchor('form' + form.mark, that);
 					return pageHelper.showModal(title + ' 张数必须为' + len + '张');
 				}
 			}
 			else {
 				if (val.length > fields[k].max) {
 					fields[k].focus = title + ' 张数不能多于' + fields[k].max + '张';
-					pageHelper.anchor('form' + forms[k].mark, that);
+					pageHelper.anchor('form' + form.mark, that);
 					return pageHelper.showModal(title + ' 张数不能多于' + fields[k].max + '张');
 				}
 
 				if (val.length < fields[k].min) {
 					fields[k].focus = title + ' 张数不能少于' + fields[k].min + '张';
-					pageHelper.anchor('form' + forms[k].mark, that);
+					pageHelper.anchor('form' + form.mark, that);
 					return pageHelper.showModal(title + ' 张数不能少于' + fields[k].min + '张');
 				}
 			}
