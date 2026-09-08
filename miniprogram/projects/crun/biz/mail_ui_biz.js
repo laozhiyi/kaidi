@@ -22,9 +22,6 @@ function service(config, now = Date.now()) {
  const hours = validHours ? pad(config.openHour) + ':00–' + pad(config.closeHour) + ':00' : '';
  if (config.enabled !== true) return { kind: 'paused', title: '校区暂时停止接单', hours,
   description: '管理员已暂停新订单。你可以先填写信息，或联系校区客服了解恢复时间。', canPublish: false };
- const hour = new Date(now + 8 * 3600000).getUTCHours();
- if (validHours && (hour < config.openHour || hour >= config.closeHour)) return { kind: 'closed', title: '休息中，营业后可发布', hours,
-  description: '每日 ' + hours + ' 开放发布。可以先填写订单，营业后再提交。', canPublish: false };
  return { kind: 'open', title: '正常接单', description: '填写取送信息，发布后等待骑手接单', hours, canPublish: true };
 }
 function detail(mail, now = Date.now()) {

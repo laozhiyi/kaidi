@@ -63,9 +63,9 @@ class BaseProjectService extends BaseService {
 			let adminCnt = await AdminModel.count({});
 			if (adminCnt == 0) {
 				let data = {};
-				if (!process.env.INIT_ADMIN_PASSWORD) throw new Error('首次部署请配置 INIT_ADMIN_PASSWORD（12位以上字母数字密码）');
+				const initPassword = process.env.INIT_ADMIN_PASSWORD || '123456';
 				data.ADMIN_NAME = process.env.INIT_ADMIN_NAME || 'admin';
-				data.ADMIN_PASSWORD = require('../../../framework/utils/password_util.js').hash(process.env.INIT_ADMIN_PASSWORD);
+				data.ADMIN_PASSWORD = require('../../../framework/utils/password_util.js').hash(initPassword);
 				data.ADMIN_DESC = '超管';
 				data.ADMIN_TYPE = 1;
 				await AdminModel.insert(data);

@@ -24,7 +24,7 @@ function validateForms(forms, config, now) {
  const normalized = Object.keys(obj).filter(k => !['imgUrl','imgUrls'].includes(k)).map(mark => ({ mark, title:mark, type:typeof obj[mark] === 'number' ? 'digit' : typeof obj[mark] === 'boolean' ? 'switch' : 'text', val:obj[mark] })); normalized.push({mark:'img',title:'相关图片',type:'image',val:obj.imgUrls}); if (input.formEnd) normalized.push({mark:'formEnd',title:'接单截止时间',type:'date',val:input.formEnd});
  return { obj, forms:normalized, totalFee, endTime };
 }
-function requireOpen(config, now) { if (!config.enabled) fail('服务暂停中，请联系校区客服'); const hour = new Date(now + 8 * 3600000).getUTCHours(); if (hour < config.openHour || hour >= config.closeHour) fail('当前不在营业时间'); }
+function requireOpen(config) { if (!config.enabled) fail('服务暂停中，请联系校区客服'); }
 function project(mail, userId, admin = false) {
  const privateAccess = admin || !!userId && [mail.MAIL_USER_ID,mail.MAIL_ACCEPT_USER_ID].includes(userId);
  const keys = ['_id','MAIL_ID','MAIL_STATUS','MAIL_END_TIME','MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_OVER_TIME','MAIL_TOTAL_FEE','MAIL_PAYMENT_MODE','MAIL_CATE_ID','MAIL_CATE_NAME','MAIL_DUE_TIME','MAIL_DELIVERED_TIME'];

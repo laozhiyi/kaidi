@@ -48,11 +48,11 @@ test('saved pause continues to block both server publishing and accepting withou
  const g = fixture(), active = await g.publish(); await g.service.acceptMail('rider', active, { requestId: g.req('take') }); g.config.enabled = false;
  await g.service.deliverMail('rider', active, { requestId: g.req('deliver'), note: '已送达', images: ['cloud://proof'] }); assert.equal(g.table('mail').get(active).MAIL_STATUS, 2);
 });
-test('service badge distinguishes loading, administrator pause and Beijing business-hour boundaries', () => {
+test('service badge distinguishes loading and administrator pause without business-hour blocking', () => {
  const config = { enabled: true, openHour: 8, closeHour: 22 };
  assert.equal(UI.service(null, now).kind, 'loading');
- for (const [time, kind] of [['07:59:59', 'closed'], ['08:00:00', 'open'], ['21:59:59', 'open'], ['22:00:00', 'closed']]) {
-  const state = UI.service(config, Date.parse('2026-09-07T' + time + '+08:00')); assert.equal(state.kind, kind); assert.equal(state.canPublish, kind === 'open'); assert.equal(state.hours, '08:00–22:00');
+ for (const time of ['07:59:59', '08:00:00', '21:59:59', '22:00:00']) {
+    const state = UI.service(config, Date.parse('2026-09-07T' + time + '+08:00')); assert.equal(state.kind, 'open'); assert.equal(state.canPublish, true); assert.equal(state.hours, '08:00–22:00');
  }
  assert.equal(UI.service({ ...config, enabled: false }, now).kind, 'paused');
  assert.equal(UI.service({ enabled: true, openHour: 0, closeHour: 24 }, now).canPublish, true);

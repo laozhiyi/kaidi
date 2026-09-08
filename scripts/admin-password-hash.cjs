@@ -6,6 +6,6 @@ try {
  const hash = require('../cloudfunctions/mcloud/framework/utils/password_util.js').hash(password);
  process.stdout.write(JSON.stringify({ADMIN_PASSWORD:hash,ADMIN_TOKEN:'',ADMIN_TOKEN_USER:'',ADMIN_TOKEN_TIME:0},null,2)+'\n');
 } catch (_) {
- console.error('Set ADMIN_RESET_PASSWORD to a 12-128 character password containing letters and numbers. No password was printed.');
+ console.error('Set ADMIN_RESET_PASSWORD to a non-empty password. No password was printed.');
  process.exitCode=1;
 }
