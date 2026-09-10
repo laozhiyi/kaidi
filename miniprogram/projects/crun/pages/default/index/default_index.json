@@ -1,7 +1,8 @@
 {
-	"usingComponents": { 
-	},  
-	"enablePullDownRefresh": true, 
-	"navigationStyle": "default",
-	"navigationBarTitleText": "首页"
+  "usingComponents": {
+    "mail-publish-form": "/projects/crun/pages/mail/add/mail_add_embedded"
+  },
+  "enablePullDownRefresh": true,
+  "navigationStyle": "default",
+  "navigationBarTitleText": "首页"
 }

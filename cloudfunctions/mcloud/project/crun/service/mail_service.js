@@ -9,17 +9,16 @@ const media = require('./private_media_service.js');
 class MailService extends Base {
  getStatusDesc(mail) { return rules.project(mail, '').status; }
  getFormObj(forms) { return Object.fromEntries((forms || []).map(x => [x.mark,x.val])); }
- async _user(userId, rider = false) {
+ async _user(userId) {
   if (!userId) this.AppError('请先登录');
   const user = await UserModel.getOne({ USER_MINI_OPENID:userId });
   if (!user || user.USER_STATUS !== 1) this.AppError('请先完成注册审核，或联系管理员解除停用');
-  if (rider && user.USER_RIDER_STATUS !== 1) this.AppError('请先申请骑手资格并等待审核');
   return user;
  }
- async _actor(tx, actor, rider = false) {
+ async _actor(tx, actor) {
   if (actor.adminId) { const admin = await store.get(tx,'admin',actor.adminId); if (!admin || admin._pid !== this.getProjectId() || admin.ADMIN_STATUS !== 1) this.AppError('管理员已停用'); return admin; }
   const user = await store.get(tx,'user',actor.user._id);
-  if (!user || user._pid !== this.getProjectId() || user.USER_MINI_OPENID !== actor.userId || user.USER_STATUS !== 1 || rider && user.USER_RIDER_STATUS !== 1) this.AppError('用户状态或骑手资格已变更');
+  if (!user || user._pid !== this.getProjectId() || user.USER_MINI_OPENID !== actor.userId || user.USER_STATUS !== 1) this.AppError('用户状态已变更');
   return user;
  }
  _request(value) { if (typeof value !== 'string' || !/^[a-zA-Z0-9_-]{16,100}$/.test(value)) this.AppError('请求标识无效，请刷新后重试'); return value; }
@@ -62,11 +61,11 @@ class MailService extends Base {
  }
  async _change(userId, id, action, input = {}, adminId = '') {
   this._request(input.requestId); if (typeof id !== 'string' || !id || id.length > 100) this.AppError('订单标识无效');
-  const actor = adminId ? {adminId} : {userId,user:await this._user(userId,action === 'accept')};
+  const actor = adminId ? {adminId} : {userId,user:await this._user(userId)};
   const seed = action === 'accept' ? await this._seed(userId,'rider') : [];
   await store.limit(this.getProjectId(),adminId || userId,'order_action',30,60000);
   return store.transaction(async tx => {
-   const currentUser = await this._actor(tx,actor,action === 'accept');
+   const currentUser = await this._actor(tx,actor);
    const mail = await store.get(tx,'mail',id); if (!mail || mail._pid !== this.getProjectId()) this.AppError('订单不存在'); mail._id = id;
    const seen = await store.get(tx,'order_request',store.key(this.getProjectId(),adminId || userId,input.requestId));
    if (seen) { if (seen.orderId !== id || seen.action !== action || seen.fingerprint !== store.key(input)) this.AppError('请求标识已被使用'); return {id,statusDesc:this.getStatusDesc(mail)}; }
@@ -77,20 +76,23 @@ class MailService extends Base {
    if (action === 'accept') {
     rules.requireOpen(config,now); if (state !== 0 || mail.MAIL_ACCEPT_USER_ID || poster || mail.MAIL_END_TIME <= now) this.AppError('该订单不可接取');
     if (mail.MAIL_PAYMENT_MODE !== 'offline') this.AppError('旧支付订单须先由管理员核对，不能直接接单');
-    if (!config.campuses.includes(mail.MAIL_OBJ.campus) || currentUser.USER_RIDER_CAMPUS !== mail.MAIL_OBJ.campus) this.AppError('仅可接取本人审核校区的订单');
+    if (!config.campuses.includes(mail.MAIL_OBJ.campus)) this.AppError('该订单校区暂不在服务范围');
     await this._quota(tx,userId,'rider',id,true,config.maxActiveOrders,seed);
     mail.MAIL_STATUS = 1; mail.MAIL_ACCEPT_USER_ID = userId; mail.MAIL_ACCEPT_USER_NAME = currentUser.USER_NAME; mail.MAIL_ACCEPT_TIME = now;
     mail.MAIL_DUE_TIME = now + (mail.MAIL_DELIVERY_MINUTES || config.deliveryMinutes) * 60000;
+   } else if (action === 'pickup') {
+    if (!rider || state !== 1) this.AppError('仅已接单订单可确认取件');
+    mail.MAIL_STATUS = 4; mail.MAIL_PICKUP_TIME = now;
    } else if (action === 'cancel') {
     if (!poster || state !== 0) this.AppError('只有发布者可取消待接单订单；已接单请提交异常申请'); mail.MAIL_STATUS = 99; note = rules.text(input.note || '发布者取消','取消原因',300,true);
    } else if (action === 'deliver') {
-    if (!rider || state !== 1) this.AppError('仅配送中的接单人可提交送达');
+    if (!rider || state !== 4) this.AppError('仅配送中的接单人可提交送达');
     const proof = rules.images(input.images || []); note = rules.text(input.note || '','送达说明',300,true);
     if (!proof.length) this.AppError('请上传送达凭证'); mail.MAIL_DELIVERY_PROOF = {images:proof,note,at:now}; mail.MAIL_DELIVERED_TIME = now; mail.MAIL_STATUS = 2;
    } else if (action === 'confirm') {
-    if (!poster || state !== 2) this.AppError('仅发布者可确认已送达订单'); mail.MAIL_STATUS = 9; mail.MAIL_OVER_TIME = now;
+    if (!poster || state !== 2) this.AppError('仅发布者可确认已送达订单'); mail.MAIL_STATUS = 9; mail.MAIL_OVER_TIME = now; mail.MAIL_POSTER_ARCHIVED = true; mail.MAIL_RIDER_ARCHIVED = true;
    } else if (action === 'exception') {
-    if (!rules.ACTIVE.includes(state) || state === 3) this.AppError('当前订单不能重复提交异常');
+    if (![1,2,4].includes(state)) this.AppError('当前订单不能重复提交异常');
     const allowed = ['取件失败','取件码错误','联系不上','物品损坏','送错地址','申请取消','其他']; if (!allowed.includes(input.reason)) this.AppError('异常原因无效');
     note = rules.text(input.note || '','异常说明',500,true); mail.MAIL_EXCEPTION = { reason:input.reason,note,images:rules.images(input.images || []),previousStatus:state,at:now }; mail.MAIL_STATUS = 3;
    } else if (action === 'hold') {
@@ -100,7 +102,7 @@ class MailService extends Base {
     if (!adminId || state !== 3) this.AppError('仅管理员可处理异常订单'); note = rules.text(input.note || '','处理依据',500,true);
     if (!['resume','cancel','complete'].includes(input.resolution)) this.AppError('处理方式无效');
     mail.MAIL_STATUS = input.resolution === 'resume' ? mail.MAIL_EXCEPTION.previousStatus : input.resolution === 'cancel' ? 99 : 9;
-    if (![0,1,2,9,99].includes(mail.MAIL_STATUS)) this.AppError('异常订单原状态无效'); if (mail.MAIL_STATUS === 9) mail.MAIL_OVER_TIME = now;
+    if (![0,1,2,4,9,99].includes(mail.MAIL_STATUS)) this.AppError('异常订单原状态无效'); if (mail.MAIL_STATUS === 9) mail.MAIL_OVER_TIME = now;
     mail.MAIL_EXCEPTION = {...mail.MAIL_EXCEPTION,resolution:input.resolution,resolvedAt:now,resolvedBy:adminId,result:note};
    } else if (action === 'edit') {
     if (!poster || state !== 0) this.AppError('仅可编辑尚未被接取的订单'); const normalized = rules.validateForms(input.forms,config,now);
@@ -118,6 +120,7 @@ class MailService extends Base {
   });
  }
  async acceptMail(userId,id,input) { return this._change(userId,id,'accept',input); }
+ async pickupMail(userId,id,input) { return this._change(userId,id,'pickup',input); }
  async cancelMail(userId,id,input) { return this._change(userId,id,'cancel',input); }
  async finishMail(userId,id,input) { return this._change(userId,id,'confirm',input); }
  async deliverMail(userId,id,input) { return this._change(userId,id,'deliver',input); }
@@ -143,8 +146,8 @@ class MailService extends Base {
   if (['my_post','my_accept','my_done','status','timeout'].includes(sortType)) {
    await this._user(userId);
    if (sortType === 'my_post') { where.and.MAIL_USER_ID = userId; where.and.MAIL_POSTER_ARCHIVED = ['<>',true]; }
-   if (sortType === 'my_accept') { where.and.MAIL_ACCEPT_USER_ID = userId; }
-   if (['my_done','status','timeout'].includes(sortType)) { where.or = [{MAIL_USER_ID:userId},{MAIL_ACCEPT_USER_ID:userId}]; const state = sortType === 'my_done' ? 9 : sortType === 'timeout' ? 0 : Number(sortVal); if (![0,1,2,3,9,99].includes(state)) this.AppError('状态筛选无效'); where.and.MAIL_STATUS = state; if (sortType === 'timeout') where.and.MAIL_END_TIME = ['<',Date.now()]; }
+   if (sortType === 'my_accept') { where.and.MAIL_ACCEPT_USER_ID = userId; where.and.MAIL_RIDER_ARCHIVED = ['<>',true]; }
+   if (['my_done','status','timeout'].includes(sortType)) { where.or = [{MAIL_USER_ID:userId},{MAIL_ACCEPT_USER_ID:userId}]; const state = sortType === 'my_done' ? 9 : sortType === 'timeout' ? 0 : Number(sortVal); if (![0,1,2,3,4,9,99].includes(state)) this.AppError('该订单校区暂不在服务范围'); where.and.MAIL_STATUS = state; if (sortType === 'timeout') where.and.MAIL_END_TIME = ['<',Date.now()]; }
   } else { where.and.MAIL_STATUS = 0; where.and.MAIL_PAYMENT_MODE = 'offline'; where.and.MAIL_END_TIME = ['>',Date.now()]; if (sortType === 'wait') where.and.MAIL_USER_ID = ['<>',userId]; }
   if (search && !['我的发布','我的接单'].includes(search)) { const q = rules.text(search,'搜索关键词',30,true); where.and['MAIL_OBJ.title'] = ['like',q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')]; }
   if (whereEx) {

@@ -1,7 +1,7 @@
 const Ops = require('../../biz/operations_biz.js');
 const ProjectBiz = require('../../biz/project_biz.js');
 const Passport = require('../../../../comm/biz/passport_biz.js');
-const TITLES = { messages: '消息中心', rider: '骑手资格' };
+const TITLES = { messages: '消息中心' };
 
 Page({
   data: {
@@ -10,7 +10,7 @@ Page({
   },
   onLoad(options = {}) {
     ProjectBiz.initPage(this);
-    this.setTab(options.tab === 'rider' ? 'rider' : 'messages');
+    this.setTab('messages');
   },
   async onShow() {
     this._visible = true;
@@ -23,8 +23,8 @@ Page({
   },
   onReachBottom() { this.bindMore(); },
   setTab(tab) {
-    this.setData({ tab });
-    wx.setNavigationBarTitle({ title: TITLES[tab] });
+    this.setData({ tab: 'messages' });
+    wx.setNavigationBarTitle({ title: TITLES.messages });
   },
   async load(reset = true) {
     if (typeof reset !== 'boolean') reset = true;
@@ -34,22 +34,16 @@ Page({
     const page = reset ? 1 : this.data.page + 1;
     this.setData({ loading: true, error: false });
     try {
-      // 骑手页不依赖消息接口；消息翻页不重复请求个人资料。
-      const config = reset ? await Ops.get('operations/config') : this.data.config;
-      const result = tab === 'rider'
-        ? await Ops.get('passport/my_detail')
-        : await Ops.get('operations/notifications', { page });
+      // 通知分页保持独立；服务配置仅用于可选订阅提示。
+      let config = this.data.config;
+      if (reset) { try { config = await Ops.get('operations/config'); } catch (_) { config = null; } }
+      const result = await Ops.get('operations/notifications', { page });
       if (!this._visible || seq !== this._seq) return;
-      if (tab === 'rider') {
-        const index = config.campuses.indexOf(result && result.USER_RIDER_CAMPUS);
-        this.setData({ config, user: result, campusIndex: index < 0 ? 0 : index, loading: false });
-      } else {
-        const list = result.list.map(item => ({ ...item,
-          time: new Date(item.createdAt + 8 * 3600000).toISOString().slice(0, 16).replace('T', ' ')
-        }));
-        this.setData({ config, list: reset ? list : this.data.list.concat(list), page,
-          hasMore: !!result.hasMore, loading: false });
-      }
+      const list = result.list.map(item => ({ ...item,
+        time: new Date(item.createdAt + 8 * 3600000).toISOString().slice(0, 16).replace('T', ' ')
+      }));
+      this.setData({ config, list: reset ? list : this.data.list.concat(list), page,
+        hasMore: !!result.hasMore, loading: false });
     } catch (error) {
       if (this._visible && seq === this._seq) this.setData({ loading: false, error: true });
     }
@@ -59,20 +53,6 @@ Page({
     if (!TITLES[tab] || tab === this.data.tab || this.data.busy) return;
     this.setTab(tab);
     return this.load(true);
-  },
-  bindCampus(e) { this.setData({ campusIndex: Number(e.detail.value) }); },
-  async bindApply() {
-    const config = this.data.config;
-    const campus = config && config.campuses[this.data.campusIndex];
-    if (this.data.busy || this.data.loading || !campus) return;
-    this.setData({ busy: true });
-    try {
-      await Ops.get('operations/rider_apply', { campus });
-      if (!this._visible) return;
-      await this.load(true);
-      wx.showToast({ title: '申请已提交' });
-    } catch (error) { if (this._visible) Ops.error(error); }
-    finally { if (!this._unloaded) this.setData({ busy: false }); }
   },
   async bindRead(e) {
     const item = this.data.list.find(x => x._id === e.currentTarget.dataset.id);

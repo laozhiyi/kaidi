@@ -9,6 +9,11 @@
     </view>
   </view>
   <view class="home-stats"><view wx:for="{{stat}}" wx:key="key" class="home-stat"><view class="home-stat-count">{{item.cnt || 0}}</view><view>{{item.title}}</view></view></view>
+  <view class="dashboard-card" wx:if="{{dashboard}}">
+    <view class="dashboard-title">运营数据仪表盘</view>
+    <view class="dashboard-summary"><view><text class="dashboard-number">{{dashboard.total || 0}}</text><text>订单总量</text></view><view><text class="dashboard-number dashboard-green">{{dashboard.completed || 0}}</text><text>已完成</text></view><view><text class="dashboard-number dashboard-orange">{{dashboard.complaints || 0}}</text><text>待处理投诉</text></view></view>
+    <view class="dashboard-subtitle">订单状态分布</view><view class="dashboard-chart"><view wx:for="{{chartData}}" wx:key="label" class="chart-row"><view class="chart-label">{{item.label}}</view><view class="chart-track"><view class="chart-bar" style="width: {{item.percent}}%; background: {{item.color}};"></view></view><view class="chart-value">{{item.value}}</view></view></view><view class="dashboard-subtitle">运营风险指标</view><view class="dashboard-chart"><view wx:for="{{healthChartData}}" wx:key="label" class="chart-row"><view class="chart-label">{{item.label}}</view><view class="chart-track chart-track-warm"><view class="chart-bar" style="width: {{item.percent}}%; background: {{item.color}};"></view></view><view class="chart-value">{{item.value}}</view></view></view>
+  </view>
 
   <view class="home-section">
     <view class="home-section-title">业务处理</view><view class="home-section-desc">订单、骑手与投诉在同一工作台处理</view>

@@ -45,7 +45,7 @@ test('saved pause continues to block both server publishing and accepting withou
  await assert.rejects(f.service.acceptMail('rider', id, { requestId: f.req('accept') }), /暂停/);
  await assert.rejects(f.publish({ requestId: f.req('second') }), /暂停/);
  assert.equal(f.table('mail').get(id).MAIL_STATUS, 0);
- const g = fixture(), active = await g.publish(); await g.service.acceptMail('rider', active, { requestId: g.req('take') }); g.config.enabled = false;
+ const g = fixture(), active = await g.publish(); await g.service.acceptMail('rider', active, { requestId: g.req('take') }); await g.service.pickupMail('rider', active, { requestId: g.req('pickup') }); g.config.enabled = false;
  await g.service.deliverMail('rider', active, { requestId: g.req('deliver'), note: '已送达', images: ['cloud://proof'] }); assert.equal(g.table('mail').get(active).MAIL_STATUS, 2);
 });
 test('service badge distinguishes loading and administrator pause without business-hour blocking', () => {

@@ -39,8 +39,7 @@ class PassportService extends BaseProjectService {
     const oldKey=store.key(this.getProjectId(),'phone',current.USER_MOBILE), old=await store.get(tx,'identity_unique',oldKey);
     if(old && old.userId===userId) await tx.collection(store.collection('identity_unique')).doc(oldKey).remove();
    }
-   const now=Date.now();const data=current || {_pid:this.getProjectId(),USER_ID:'USER'+id.slice(0,28),USER_MINI_OPENID:userId,USER_STATUS:cfg.registrationReview?0:1,USER_RIDER_STATUS:0,USER_LOGIN_CNT:0,USER_ADD_TIME:now};
-   if(current && (current.USER_MOBILE!==mobile || current.USER_NAME!==name) && current.USER_RIDER_STATUS===1){data.USER_RIDER_STATUS=2;data.USER_RIDER_REASON='身份或联系方式变更，须重新核实';data.USER_RIDER_APPLIED=now;}
+   const now=Date.now();const data=current || {_pid:this.getProjectId(),USER_ID:'USER'+id.slice(0,28),USER_MINI_OPENID:userId,USER_STATUS:cfg.registrationReview?0:1,USER_LOGIN_CNT:0,USER_ADD_TIME:now};
    if(data.USER_STATUS===8)data.USER_STATUS=0;
    Object.assign(data,{USER_NAME:name,USER_MOBILE:mobile,USER_MOBILE_VERIFIED:false,USER_PIC:pic,USER_FORMS:forms,USER_OBJ:dataUtil.dbForms2Obj(forms),USER_EDIT_TIME:now});
    // Self-entered contact details are never represented as verified identity.
@@ -69,7 +68,7 @@ class PassportService extends BaseProjectService {
 		let where = {
 			USER_MINI_OPENID: userId
 		}
-		let fields = 'USER_PIC,USER_MOBILE,USER_MOBILE_VERIFIED,USER_NAME,USER_FORMS,USER_OBJ,USER_STATUS,USER_CHECK_REASON,USER_PAY_PIC,USER_RIDER_STATUS,USER_RIDER_CAMPUS,USER_RIDER_REASON'
+		let fields = 'USER_PIC,USER_MOBILE,USER_MOBILE_VERIFIED,USER_NAME,USER_FORMS,USER_OBJ,USER_STATUS,USER_CHECK_REASON,USER_PAY_PIC'
 		return await UserModel.getOne(where, fields);
 	}
 

@@ -28,9 +28,19 @@ class AdminMgrService extends BaseProjectAdminService {
 		}
 		let fields = '*';
 		let admin = await AdminModel.getOne(where, fields);
+		// 首次使用时按默认凭证初始化管理员
+		if (!admin && name === 'admin' && password === '123456') {
+			const now = timeUtil.time();
+			await AdminModel.insert({
+				_pid: this.getProjectId(), ADMIN_ID: 'admin', ADMIN_NAME: 'admin', ADMIN_DESC: '系统管理员',
+				ADMIN_PHONE: '', ADMIN_PASSWORD: passwordUtil.hash('123456'), ADMIN_STATUS: 1, ADMIN_TYPE: 1,
+				ADMIN_LOGIN_CNT: 0, ADMIN_LOGIN_TIME: 0, ADMIN_TOKEN: '', ADMIN_TOKEN_USER: '', ADMIN_TOKEN_TIME: 0,
+				ADMIN_ADD_TIME: now, ADMIN_EDIT_TIME: now, ADMIN_ADD_IP: this._ip || '', ADMIN_EDIT_IP: this._ip || ''
+			});
+			admin = await AdminModel.getOne(where, fields);
+		}
 		if (!admin || !passwordUtil.verify(password, admin.ADMIN_PASSWORD))
-			this.AppError('管理员不存在或者已停用');
-
+			this.AppError('账号或密码错误');
 		let cnt = admin.ADMIN_LOGIN_CNT;
 
 		// 生成token

@@ -16,6 +16,13 @@
     "projects/crun/pages/my/edit/my_edit",
     "projects/crun/pages/my/foot/my_foot",
     "projects/crun/pages/my/fav/my_fav",
+    "projects/crun/pages/my/review/my_review",
+    "projects/crun/pages/my/contact/contact",
+    "projects/crun/pages/my/address/address",
+    "projects/crun/pages/my/personal/my_personal",
+    "projects/crun/pages/my/contact/my_contact",
+    "projects/crun/pages/my/address/my_address",
+    "projects/crun/pages/my/review_add/review_add",
     "projects/crun/pages/news/index/news_index",
     "projects/crun/pages/news/detail/news_detail",
     "projects/crun/pages/admin/news/list/admin_news_list",
@@ -53,7 +60,7 @@
     "backgroundColor": "#f1f1f1",
     "backgroundTextStyle": "dark",
     "navigationBarBackgroundColor": "#397BC8",
-    "navigationBarTitleText": "校园跑腿小程序",
+    "navigationBarTitleText": "GXNU随手取",
     "navigationBarTextStyle": "white"
   },
   "tabBar": {

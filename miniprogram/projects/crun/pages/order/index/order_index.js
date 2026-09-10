@@ -96,8 +96,23 @@ Page({
 	 * cmpt-comm-list 回传列表数据
 	 */
 	bindCommListCmpt: function (e) {
+        if (e.detail && e.detail.dataList && Array.isArray(e.detail.dataList.list)) {
+            const dataList = Object.assign({}, e.detail.dataList, { list: e.detail.dataList.list.map(order => this._decorateOrder(order)) });
+            this.setData({ dataList });
+            if (e.detail.sortType) this.setData({ sortType: e.detail.sortType });
+            return;
+        }
 		pageHelper.commListListener(this, e);
 	},
+
+    _decorateOrder: function (order) {
+        const obj = order && order.MAIL_OBJ || {};
+        let packages = Array.isArray(obj.packages) ? obj.packages : [];
+        if (!packages.length && obj.code) {
+            packages = String(obj.code).split(/\r?\n/).filter(Boolean).map(code => ({ code }));
+        }
+        return Object.assign({}, order, { packageProofs: packages.map(item => ({ code: item.code || '无取件码', noteLabel: item.note ? '有备注' : '无备注' })) });
+    },
 
 	/**
 	 * 顶部 tab 切换
@@ -244,6 +259,31 @@ Page({
 	/**
 	 * 完成订单 - 发布者或接单人确认配送完成
 	 */
+	/** 接单人更新取件/送达进度，每一步都先二次确认。 */
+	bindOrderAction: async function (e) {
+		const id = e.currentTarget.dataset.id;
+		const action = e.currentTarget.dataset.action;
+		if (!id || !['pickup', 'deliver'].includes(action) || this._orderActionBusy) return;
+		this._orderActionBusy = true;
+		try {
+			const message = action === 'pickup' ? '确认已经从快递点取到该包裹吗？' : '确认已经将包裹送到收件地址吗？';
+			if (!await pageHelper.showConfirm(message)) return;
+			if (action === 'deliver') {
+				wx.navigateTo({ url: pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id=' + encodeURIComponent(id) + '&panel=deliver') });
+				return;
+			}
+			await Ops.command('mail/pickup', { id });
+			pageHelper.showSuccToast('已更新为已取件');
+			PublicBiz.removeCacheList('order-mail-mine');
+			this.setData({ dataList: null }, () => this._reloadActiveList());
+		} catch (err) { Ops.error(err); } finally { this._orderActionBusy = false; }
+	},
+
+	bindComplaintTap: function (e) {
+		const id = e.currentTarget.dataset.id;
+		if (id) wx.navigateTo({ url: pageHelper.fmtURLByPID('/pages/feedback/index/feedback_index?orderId=' + encodeURIComponent(id)) });
+	},
+
 	bindOverTap: function (e) { this.bindDetailTap(e); },
 
 	/**

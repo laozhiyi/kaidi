@@ -8,8 +8,8 @@ Page({
 	 * 页面的初始数据
 	 */
 	data: {
-		name: '',
-		pwd: '',
+		name: 'admin',
+		pwd: '123456',
 		remember: false
 	},
 

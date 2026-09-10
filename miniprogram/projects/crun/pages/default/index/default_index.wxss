@@ -123,7 +123,7 @@ page {
 
 .express-card {
 	width: 100%;
-	margin: 0 0 20rpx;
+	margin: 18rpx 0 20rpx;
 	padding: 0 28rpx;
 	box-sizing: border-box;
 	background-color: #fff;
@@ -308,3 +308,23 @@ page {
 	margin-left: 18rpx;
 	line-height: 30rpx;
 }
+
+
+.service-tabs { display:flex; gap:16rpx; margin:4rpx 0 20rpx; }
+.service-tab { flex:1; min-width:0; padding:24rpx 10rpx 20rpx; text-align:center; background:#fff; border:1rpx solid #e6eef8; border-radius:18rpx; box-shadow:0 8rpx 20rpx rgba(94,128,184,.06); transition:all .2s; }
+.service-tab-active { border-color:#397bc8; background:#f3f8ff; box-shadow:0 8rpx 20rpx rgba(57,123,200,.14); }
+.service-tab-hover { opacity:.75; transform:translateY(2rpx); }
+.service-tab-icon { width:64rpx; height:64rpx; margin:0 auto 12rpx; border-radius:20rpx; display:flex; align-items:center; justify-content:center; color:#397bc8; background:#eaf3ff; font-size:34rpx; }
+.service-send { color:#33a184; background:#eaf8f3; } .service-buy { color:#c88934; background:#fff5e5; }
+.service-tab-title { font-size:27rpx; font-weight:600; color:#233552; } .service-tab-desc { margin-top:4rpx; font-size:20rpx; color:#91a0b4; white-space:nowrap; }
+.express-card-badge { flex-shrink:0; padding:8rpx 14rpx; color:#397bc8; background:#edf5ff; border-radius:20rpx; font-size:21rpx; }
+.quick-panel { margin:0 0 22rpx; padding:26rpx 24rpx 22rpx; background:#fff; border:1rpx solid #e1ebf7; border-radius:22rpx; box-shadow:0 12rpx 28rpx rgba(49,96,151,.1); }
+.quick-panel-head { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20rpx; } .quick-title { font-size:32rpx; font-weight:700; color:#243b5b; } .quick-subtitle { margin-top:5rpx; font-size:22rpx; color:#8c9db3; } .quick-close { padding:8rpx; color:#9aaabd; font-size:28rpx; }
+.quick-hint { display:flex; align-items:center; gap:8rpx; margin-bottom:14rpx; padding:14rpx 16rpx; color:#397bc8; background:#f2f7ff; border-radius:12rpx; font-size:23rpx; }
+.quick-field { display:flex; align-items:center; min-height:78rpx; margin:10rpx 0; padding:0 16rpx; background:#f7f9fc; border-radius:13rpx; box-sizing:border-box; } .quick-field textarea { flex:1; min-height:78rpx; padding:18rpx 0; } .quick-label { flex-shrink:0; width:126rpx; color:#60738f; font-size:24rpx; } .quick-field input { flex:1; min-width:0; height:78rpx; color:#304969; font-size:25rpx; } .quick-placeholder { color:#a7b2c1; }
+.quick-row { display:flex; gap:12rpx; } .quick-half { flex:1; min-width:0; } .quick-half .quick-label { width:88rpx; } .quick-price { justify-content:space-between; } .quick-price > view { flex:1; min-width:0; display:flex; flex-direction:column; } .quick-price .quick-label { width:auto; } .quick-reference { margin-top:3rpx; color:#397bc8; font-size:19rpx; } .quick-price input { flex:0 0 120rpx; text-align:right; } .quick-price > text:last-child { margin-left:8rpx; color:#647995; font-size:23rpx; }
+.quick-submit { width:100%; margin-top:20rpx; color:#fff; background:linear-gradient(90deg,#5c9bea,#397bc8); border-radius:16rpx; font-size:29rpx; } .quick-submit::after { border:0; } .quick-foot { margin-top:14rpx; text-align:center; color:#a0adbd; font-size:20rpx; }
+.quick-coming { text-align:center; } .quick-coming-icon { display:flex; align-items:center; justify-content:center; width:100rpx; height:100rpx; margin:10rpx auto 20rpx; border-radius:32rpx; color:#397bc8; background:#edf5ff; font-size:52rpx; } .quick-coming-title { color:#304969; font-size:29rpx; font-weight:600; } .quick-coming-note { margin:12rpx 24rpx 14rpx; color:#8b9ab0; font-size:23rpx; line-height:1.7; }
+@media (max-width:360px) { .main { padding-left:18rpx; padding-right:18rpx; } .service-tabs { gap:10rpx; } .service-tab { padding-left:4rpx; padding-right:4rpx; } .service-tab-title { font-size:25rpx; } .quick-row { gap:8rpx; } .quick-label { width:110rpx; } }
+
+.quick-deadline-pickers { flex: 1; display:flex; align-items:center; justify-content:flex-end; color:#304969; font-size:25rpx; } .quick-deadline-sep { margin:0 12rpx; color:#a4b2c4; } .quick-picker-value { color:#397bc8; }

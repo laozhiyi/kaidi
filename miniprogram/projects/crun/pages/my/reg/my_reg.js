@@ -6,8 +6,9 @@ const ProjectBiz = require('../../../biz/project_biz.js');
 const projectSetting = require('../../../public/project_setting.js');
 const setting = require('../../../../../setting/setting.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
+const profileMethods = require('../profile_methods.js');
 
-Page({
+Page(Object.assign({
 	/**
 	 * 页面的初始数据
 	 */
@@ -23,6 +24,7 @@ Page({
 	 */
 	onLoad: async function (options) {
 		ProjectBiz.initPage(this);
+		await profileMethods.loadCampuses(this);
 
 		if (options && options.retUrl)
 			this.data.retUrl = decodeURIComponent(options.retUrl);
@@ -49,6 +51,7 @@ Page({
 			formPic: '',
 			formForms: []
 		});
+		profileMethods.applyUser(this, { USER_NAME: '', USER_MOBILE: '', USER_PIC: '', USER_FORMS: [] });
 	},
 
 	/**
@@ -151,4 +154,4 @@ Page({
 			console.error(err);
 		}
 	}
-})
+}, profileMethods));

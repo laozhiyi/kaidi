@@ -49,11 +49,11 @@ function detail(mail, now = Date.now()) {
  const note = !participant && status === 0 && !expired ? '接单后可查看完整取送信息' : mail.myaccept && status === 1 ? '请及时取件配送，送达后上传凭证' : mail.myaccept && status === 2 ? '已通知发布者核对，请等待对方确认收货' : state.note;
  return { ...state, title, note, participant, expired, status, legacyPayment, fee: Number.isFinite(fee) && fee >= 0 ? fee.toFixed(2) : '—', packages,
   count: packages.reduce((sum, x) => sum + x.count, 0) || Number(obj.num) || 1,
-  role: mail.mypost ? '我发布的' : mail.myaccept ? '我接取的' : '订单详情',
+  role: mail.mypost ? '我的发布' : mail.myaccept ? '我的接单' : '订单详情',
   steps: ['已发布', '配送中', '待收货', '已完成'].map((label, index) => ({ label, index, done: state.step >= index, current: state.step === index })),
   phone: phone || '', contactName: contactName || (mail.mypost ? (status === 0 && !expired ? '等待骑手接单' : '暂无骑手信息') : '发布者'), contactRole: mail.mypost ? '接单骑手' : '订单发布者',
   createdAt: time(mail.MAIL_ADD_TIME), endAt: time(mail.MAIL_END_TIME) || time(mail.end2), dueAt: time(mail.MAIL_DUE_TIME), deliveredAt: time(mail.MAIL_DELIVERED_TIME),
-  primary, primaryLabel, history, canException: participant && [1, 2].includes(status), canCancel: !!mail.mypost && status === 0
+  primary, primaryLabel, history, canException: participant && [1, 2, 4].includes(status), canCancel: !!mail.mypost && status === 0
  };
 }
 module.exports = { time, service, detail };

@@ -33,7 +33,7 @@ class AdminBiz extends BaseBiz {
 	}
 
 	static async adminLogin(that, name, pwd) {
-		if (name.length < 5 || name.length > 30) {
+		if (!name || name.length > 30) {
 			wx.showToast({
 				title: '账号输入错误(5-30位)',
 				icon: 'none'

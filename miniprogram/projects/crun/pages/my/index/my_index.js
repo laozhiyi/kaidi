@@ -141,10 +141,7 @@ Page({
 	},
 
 
-	bindMyPostTap: function (e) {
-		wx.setStorageSync('crun-order-tab', 2);
-		wx.switchTab({ url: '/projects/crun/pages/order/index/order_index' });
-	},
+	bindMyPostTap: function (e) { this.bindFeedbackTap(e); },
 
 	bindAboutTap: function (e) {
 		wx.navigateTo({
@@ -163,6 +160,9 @@ Page({
 			url: '/projects/crun/pages/feedback/my_list/feedback_my_list',
 		});
 	},
+
+	bindProfileContactTap: function () { wx.navigateTo({ url: '../contact/contact' }); },
+	bindProfileAddressTap: function () { wx.navigateTo({ url: '../address/address' }); },
 
 	bindInviteTap: function (e) {
 		wx.navigateTo({

@@ -13,10 +13,9 @@ module.exports = { //crun
 	USER_REG_CHECK: false,
 	USER_FIELDS: [
 		{ mark: 'sex', title: '性别', type: 'select', selectOptions: ['男', '女'], must: true },
-		{ mark: 'college', title: '院系', type: 'text', must: true },
+		{ mark: 'college', title: '学院', type: 'text', must: true },
 		{ mark: 'sub', title: '专业', type: 'text', must: true },
-		{ mark: 'address', title: '宿舍楼栋', type: 'text', must: false },
-		{ mark: 'payPic', title: '收款码', type: 'image', must: false, max: 1, ext: { hint: '用于接收跑腿订单付款，请上传微信/支付宝收款码' } },
+		{ mark: 'payPic', title: '支付凭证', type: 'image', must: false, max: 1, ext: { hint: '请上传图片，支持jpg/png格式' } },
 	],
 	USER_CHECK_FORM: {
 		name: 'formName|must|string|min:1|max:30|name=姓名',

@@ -20,7 +20,7 @@
    <view wx:if="{{mail.MAIL_MEDIA.pickup.length}}" class="od-media"><image wx:for="{{mail.MAIL_MEDIA.pickup}}" wx:key="*this" class="od-photo" src="{{item}}" mode="aspectFill" data-url="{{item}}" data-group="pickup" bindtap="bindPreviewImageTap"/></view>
    <view wx:if="{{!mail.MAIL_OBJ.code && !mail.MAIL_MEDIA.pickup.length}}" class="od-empty-note">{{mail.MAIL_MEDIA_ERROR ? '取件图片暂不可用，请刷新或联系发布者' : '暂无取件凭证，请联系发布者确认'}}</view>
    <view wx:if="{{mail.MAIL_MEDIA_ERROR}}" class="od-media-error" bindtap="bindReload"><text class="icon-info"></text><text>{{mail.MAIL_MEDIA_ERROR}}</text><text class="od-text-link">刷新</text></view>
-   <view wx:if="{{mail.MAIL_OBJ.desc || mail.MAIL_OBJ.rider}}" class="od-note"><view class="od-label">配送备注</view><view wx:if="{{mail.MAIL_OBJ.desc}}">{{mail.MAIL_OBJ.desc}}</view><view wx:if="{{mail.MAIL_OBJ.rider}}" class="od-rider-note">骑手备注：{{mail.MAIL_OBJ.rider}}<text class="od-caption">（非指定派单）</text></view></view>
+   <view wx:if="{{mail.MAIL_OBJ.desc}}" class="od-note"><view class="od-label">配送备注</view><view wx:if="{{mail.MAIL_OBJ.desc}}">{{mail.MAIL_OBJ.desc}}</view></view>
   </view>
 
   <view wx:if="{{ui.participant && mail.MAIL_DELIVERY_PROOF}}" class="od-card"><view class="od-heading"><text class="od-section-title">送达凭证</text><text class="od-badge-green">骑手已提交</text></view><view class="od-body-text">{{mail.MAIL_DELIVERY_PROOF.note || '请核对物品是否已送达'}}</view><view class="od-media"><image wx:for="{{mail.MAIL_MEDIA.proof}}" wx:key="*this" class="od-photo" src="{{item}}" mode="aspectFill" data-url="{{item}}" data-group="proof" bindtap="bindPreviewImageTap"/></view><view wx:if="{{ui.deliveredAt}}" class="od-caption od-space-top">提交时间 {{ui.deliveredAt}}</view></view>

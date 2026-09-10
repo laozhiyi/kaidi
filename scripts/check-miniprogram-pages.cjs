@@ -81,12 +81,9 @@ function smokeRender(code) {
     ['operations/operations', { tab: 'messages' }, '暂无消息'],
     ['operations/operations', { tab: 'messages', error: true }, '加载失败'],
     ['operations/operations', { tab: 'messages', list: [{ _id: 'n', title: '订单已接取', content: '请等待配送', read: false }] }, '订单已接取'],
-    ['operations/operations', { tab: 'rider', config, user: { USER_RIDER_STATUS: 0 } }, '提交骑手申请'],
-    ['operations/operations', { tab: 'rider', config, user: { USER_RIDER_STATUS: 2 } }, '申请已提交'],
     ['admin/operations/admin_operations', { tab: 'overview', overview: { waiting: 1 } }, '运营概况'],
     ['admin/operations/admin_operations', { tab: 'orders', list: [order] }, '导出订单'],
     ['admin/operations/admin_operations', { tab: 'orders', detail: order }, '订单详情'],
-    ['admin/operations/admin_operations', { tab: 'riders', detail: { USER_NAME: '同学', USER_RIDER_CAMPUS: '东校区' } }, '审核通过'],
     ['admin/operations/admin_operations', { tab: 'feedback', detail: { FB_TITLE: '反馈内容', FB_CONTENT: '请协助处理' } }, '回复并处理完成'],
     ['admin/operations/admin_operations', { tab: 'config', config, isSuperAdmin: false }, '当前为只读模式'],
     ['about/index/about_index', { loading: false, about: [] }, '联系校区客服']

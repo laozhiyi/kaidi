@@ -1,7 +1,9 @@
-<view wx:if="{{isLoad===null}}" class="margin-top load notexist text-l load-project"></view>
-<view wx:if="{{isLoad===false}}" class="margin-top load loading text-l load-project"></view>
-
-<view wx:if="{{isLoad}}" class="main padding-project">  
-	<include src="user_form.wxml" />
-	<button bindtap="bindSubmitTap" class="btn-base btn-project shadow">修改资料</button>
+<view wx:if="{{isLoad}}" class="main padding-project">
+  <view class="profile-section">
+    <view class="profile-section-title">我的资料</view>
+    <view class="profile-section-subtitle">请选择要维护的信息</view>
+    <view class="profile-item-card" bindtap="bindPersonalTap"><view class="profile-item-main"><view class="profile-item-title">个人信息</view><view class="profile-item-detail">姓名、手机号、头像及其他个人资料</view></view><text class="profile-arrow icon-right"></text></view>
+    <view class="profile-item-card" bindtap="bindContactTap"><view class="profile-item-main"><view class="profile-item-title">常用联系人</view><view class="profile-item-detail">管理下单时常用的联系人</view></view><text class="profile-arrow icon-right"></text></view>
+    <view class="profile-item-card" bindtap="bindAddressTap"><view class="profile-item-main"><view class="profile-item-title">常用地址</view><view class="profile-item-detail">管理下单时常用的地址</view></view><text class="profile-arrow icon-right"></text></view>
+  </view>
 </view>

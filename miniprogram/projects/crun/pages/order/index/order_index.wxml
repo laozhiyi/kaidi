@@ -10,8 +10,8 @@
 	<!-- 顶部 Tab 切换：可接单 / 我接的 / 已完成 -->
 	<view class="order-tab-bar">
 		<view class="order-tab {{tabIndex===0?'cur':''}}" data-idx="0" bindtap="bindTabTap">可接单</view>
-		<view class="order-tab {{tabIndex===1?'cur':''}}" data-idx="1" bindtap="bindTabTap">我接的</view>
-		<view class="order-tab {{tabIndex===2?'cur':''}}" data-idx="2" bindtap="bindTabTap">我发布的</view>
+		<view class="order-tab {{tabIndex===1?'cur':''}}" data-idx="1" bindtap="bindTabTap">我的接单</view>
+		<view class="order-tab {{tabIndex===2?'cur':''}}" data-idx="2" bindtap="bindTabTap">我的发布</view>
 		<view class="order-tab {{tabIndex===3?'cur':''}}" data-idx="3" bindtap="bindTabTap">已完成</view>
 		<view class="order-tab-indicator" style="transform: translateX({{tabIndex*100}}%);"></view>
 	</view>
@@ -138,66 +138,30 @@
 
 	<!-- ===== 我接的 Tab ===== -->
 	<block wx:elif="{{tabIndex===1}}">
-		<cmpt-comm-list id="cmpt-list-mine" source='user' type="order-mail-mine" search="{{search||''}}" _params="{{listParams.mine}}" route="mail/list" isTotalMenu="{{false}}" showSearch="{{false}}" topBottom="120" bind:list="bindCommListCmpt">
-
+		<cmpt-comm-list id="cmpt-list-mine" source="user" type="order-mail-mine" search="{{search||''}}" _params="{{listParams.mine}}" route="mail/list" isTotalMenu="{{false}}" showSearch="{{false}}" topBottom="120" bind:list="bindCommListCmpt">
 			<block>
 				<view class="order-list" wx:if="{{dataList && dataList.list && dataList.list.length}}">
-					<view wx:for="{{dataList.list}}" wx:key="_id" wx:for-item="order" class="order-card shadow card-project" bindtap="bindDetailTap" data-id="{{order._id}}" hover-class="order-card-hover" hover-stay-time="80">
+					<view wx:for="{{dataList.list}}" wx:key="_id" wx:for-item="order" class="order-card shadow card-project" bindtap="bindDetailTap" data-id="{{order._id}}" hover-class="order-card-hover">
 						<view class="card-top">
-							<view class="user-info">
-								<image class="avatar" src="{{order.MAIL_OBJ.posterPic || '/projects/crun/images/menu/mail.png'}}" mode="aspectFill"></image>
-								<view class="user-meta">
-									<view class="nick-line">
-										<text class="nick">{{order.MAIL_OBJ.poster || '匿名用户'}}</text>
-									</view>
-									<text class="sub">{{order.MAIL_OBJ.tel || '联系方式接单后可见'}}</text>
-								</view>
-							</view>
-							<view class="card-side">
-								<text class="status-tag status-taking">{{order.status || '待取件'}}</text>
-							</view>
+							<view class="user-info"><image class="avatar" src="{{order.MAIL_OBJ.posterPic || '/projects/crun/images/menu/mail.png'}}" mode="aspectFill"></image><view class="user-meta"><view class="nick-line"><text class="nick">{{order.MAIL_OBJ.poster || '匿名用户'}}</text></view><text class="sub">截止 {{order.end2 || order.MAIL_END_TIME || '未设置'}}</text></view></view>
+							<view class="card-side"><text class="status-tag status-taking">{{order.status || '已接单'}}</text></view>
 						</view>
 						<view class="card-divider"></view>
+						<view class="card-progress"><view wx:for="{{order.progressLabels}}" wx:key="*this" wx:for-item="step" wx:for-index="stepIndex" class="progress-step {{stepIndex <= order.progressStep ? 'progress-step-active' : ''}}"><view class="progress-dot"></view><text>{{step}}</text></view></view>
 						<view class="card-mid">
-							<view class="info-row">
-								<text class="lbl">取件码</text>
-								<text class="val code-text">{{order.MAIL_OBJ.code}}</text>
-							</view>
-							<view class="info-row">
-								<text class="lbl">快递点</text>
-								<text class="val">{{order.MAIL_OBJ.address1}}</text>
-							</view>
-							<view class="info-row">
-								<text class="lbl">送达</text>
-								<text class="val">{{order.MAIL_OBJ.address2}}</text>
-							</view>
+							<view class="package-proofs" wx:if="{{order.packageProofs.length}}"><view wx:for="{{order.packageProofs}}" wx:key="*this" class="package-proof-row"><text class="lbl">取件码</text><text class="val code-text">{{item.code}}</text><text class="package-note-label">{{item.noteLabel}}</text></view></view>
+							<view class="info-row"><text class="lbl">快递点</text><text class="val">{{order.MAIL_OBJ.address1}}</text></view>
+							<view class="info-row"><text class="lbl">送达</text><text class="val">{{order.MAIL_OBJ.address2}}</text></view>
 						</view>
 						<view class="card-divider"></view>
-						<view class="card-bot">
-							<view class="price-block">
-								<text class="symbol">¥</text>
-								<text class="num">{{order.MAIL_OBJ.price}}</text>
-							</view>
-							<view class="actions" catchtap="bindStop">
-								<button class="btn-ghost" catchtap="bindCallTap" data-tel="{{order.MAIL_OBJ.tel}}">联系</button>
-								<button class="btn-primary" catchtap="bindOverTap" data-id="{{order._id}}" data-idx="{{index}}">处理订单</button>
-							</view>
-						</view>
+						<view class="card-bot"><view class="price-block"><text class="symbol">¥</text><text class="num">{{order.MAIL_OBJ.price}}</text></view><view class="actions" catchtap="bindStop"><button class="btn-ghost" catchtap="bindCallTap" data-tel="{{order.MAIL_OBJ.tel}}">联系</button><button class="btn-ghost" catchtap="bindComplaintTap" data-id="{{order._id}}">申诉</button><button wx:if="{{order.MAIL_STATUS===1}}" class="btn-primary" catchtap="bindOrderAction" data-action="pickup" data-id="{{order._id}}">已取件</button><button wx:elif="{{order.MAIL_STATUS===4}}" class="btn-primary" catchtap="bindOrderAction" data-action="deliver" data-id="{{order._id}}">已送达</button><button wx:elif="{{order.MAIL_STATUS===2}}" class="btn-ghost" catchtap="bindDetailTap" data-id="{{order._id}}">待收货</button></view></view>
 					</view>
 				</view>
-
-				<view wx:elif="{{dataList && dataList.total === 0}}" class="empty">
-					<image class="empty-img" src="/projects/crun/images/follow/bag.png" mode="aspectFit"></image>
-					<view class="empty-title">还没有接过的订单</view>
-					<view class="empty-sub">切到「可接单」看看新订单吧</view>
-				</view>
-
+				<view wx:elif="{{dataList && dataList.total === 0}}" class="empty"><image class="empty-img" src="/projects/crun/images/follow/bag.png" mode="aspectFit"></image><view class="empty-title">还没有接过的订单</view><view class="empty-sub">切到「可接单」看看新订单吧</view></view>
 				<template is="listLoadTpl" data="{{dataList,skin:'load-project'}}" />
 			</block>
-
 		</cmpt-comm-list>
 	</block>
-
 	<!-- ===== 我发布的 Tab ===== -->
 	<block wx:elif="{{tabIndex===2}}">
 		<cmpt-comm-list id="cmpt-list-posted" source='user' type="order-mail-posted" search="{{search||''}}" _params="{{listParams.posted}}" route="mail/list" isTotalMenu="{{false}}" showSearch="{{false}}" topBottom="120" bind:list="bindCommListCmpt">

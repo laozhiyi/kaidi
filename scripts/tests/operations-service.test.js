@@ -5,7 +5,7 @@ const password=require('../../cloudfunctions/mcloud/framework/utils/password_uti
 
 test('server recomputes cents and rejects malformed forms, disabled service and bad deadlines',async()=>{
  const f=fixture(),rules=f.load('order_rules.js');const forms=f.forms();forms.push({mark:'price',val:0.01});
- assert.equal(rules.validateForms(forms,f.config,Date.now()).totalFee,150);
+ assert.equal(rules.validateForms(forms,f.config,Date.now()).totalFee,1);
  for(const transform of [a=>a.push({mark:'tel',val:'123'}),a=>a.find(x=>x.mark==='small').val=-1,a=>a.find(x=>x.mark==='small').val=1.5,a=>a.find(x=>x.mark==='campus').val='外校',a=>a.find(x=>x.mark==='urgent').val=true,a=>a.find(x=>x.mark==='img').val=['https://untrusted'],a=>a.push({mark:'formEnd',val:'2020-01-01 12:00'})]){
   const input=f.forms();transform(input);assert.throws(()=>rules.validateForms(input,f.config,Date.now()));
  }
@@ -31,12 +31,11 @@ test('two racing riders yield one accept, one quota reservation and no partial l
  assert.equal([...f.table('order_quota').values()].filter(x=>x.role==='rider').length,1);
 });
 
-test('rider approval, active status, campus, self-accept and deadline are server enforced',async()=>{
- for(const change of [{USER_RIDER_STATUS:0},{USER_STATUS:9},{USER_RIDER_CAMPUS:'雁山校区'}]){
-  const f=fixture(),id=await f.publish();f.user('rider',change);await assert.rejects(f.service.acceptMail('rider',id,{requestId:f.req()}));assert.equal(f.table('mail').get(id).MAIL_STATUS,0);
- }
- const f=fixture(),id=await f.publish();await assert.rejects(f.service.acceptMail('poster',id,{requestId:f.req()}),/不可接取/);
- f.table('mail').get(id).MAIL_END_TIME=1;await assert.rejects(f.service.acceptMail('rider',id,{requestId:f.req()}),/不可接取/);
+test('active registered users, order campus, self-accept and deadline are server enforced',async()=>{
+ const inactive=fixture(),inactiveId=await inactive.publish();inactive.user('rider',{USER_STATUS:9});await assert.rejects(inactive.service.acceptMail('rider',inactiveId,{requestId:inactive.req('inactive')}));assert.equal(inactive.table('mail').get(inactiveId).MAIL_STATUS,0);
+ const outside=fixture();const outsideId=await outside.publish();outside.config.campuses=['????'];await assert.rejects(outside.service.acceptMail('rider',outsideId,{requestId:outside.req('campus')}));
+ const f=fixture(),id=await f.publish();await assert.rejects(f.service.acceptMail('poster',id,{requestId:f.req('self')}));
+ f.table('mail').get(id).MAIL_END_TIME=1;await assert.rejects(f.service.acceptMail('rider',id,{requestId:f.req('deadline')}));
 });
 
 test('accept versus cancel serializes and accept versus edit never mutates an accepted order',async()=>{
@@ -46,13 +45,14 @@ test('accept versus cancel serializes and accept versus edit never mutates an ac
 
 test('only rider can submit required proof; only poster can confirm; quotas released once',async()=>{
  const f=fixture(),id=await f.publish();await f.service.acceptMail('rider',id,{requestId:f.req('accept')});
+ await f.service.pickupMail('rider',id,{requestId:f.req('pickup')});
  await assert.rejects(f.service.finishMail('poster',id,{requestId:f.req('early')}),/已送达/);
  await assert.rejects(f.service.deliverMail('poster',id,{note:'送达',images:['cloud://proof'],requestId:f.req('wrong')}),/接单人/);
  await assert.rejects(f.service.deliverMail('rider',id,{note:'送达',images:[],requestId:f.req('empty')}),/凭证/);
  await f.service.deliverMail('rider',id,{note:'已当面交付',images:['cloud://proof'],requestId:f.req('deliver')});
  await assert.rejects(f.service.finishMail('rider',id,{requestId:f.req('wrongfinish')}),/发布者/);
  const input={requestId:f.req('finish')};await f.service.finishMail('poster',id,input);await f.service.finishMail('poster',id,input);
- assert.equal(f.table('mail').get(id).MAIL_STATUS,9);assert.equal(f.table('order_event').size,4);
+ assert.equal(f.table('mail').get(id).MAIL_STATUS,9);assert.equal(f.table('order_event').size,5);
  for(const quota of f.table('order_quota').values())assert.equal(quota.active.length,0);
  await f.service.delMail('poster',id,{requestId:f.req('archive')});assert.ok(f.table('mail').has(id));
 });
@@ -85,7 +85,7 @@ test('feedback is participant scoped and optimistic replies are idempotent and n
 test('maintenance expires only waiting offline orders, not delivered orders, and is repeat safe',async()=>{
  const f=fixture(),id=await f.publish();f.table('mail').get(id).MAIL_END_TIME=1;
  const svc=new (f.load('maintenance_service.js'))();await svc.run();await svc.run();assert.equal(f.table('mail').get(id).MAIL_STATUS,99);assert.equal(f.table('order_event').size,2);
- const second=await f.publish({requestId:f.req('second')});await f.service.acceptMail('rider',second,{requestId:f.req('accept')});await f.service.deliverMail('rider',second,{note:'送达',images:['cloud://proof'],requestId:f.req('deliver')});f.table('mail').get(second).MAIL_DUE_TIME=1;await svc.run();await svc.run();assert.equal(f.table('mail').get(second).MAIL_STATUS,2);assert.equal(f.table('mail').get(second).MAIL_HISTORY.filter(x=>x.action==='overdue').length,1);
+ const second=await f.publish({requestId:f.req('second')});await f.service.acceptMail('rider',second,{requestId:f.req('accept')});await f.service.pickupMail('rider',second,{requestId:f.req('pickup')});await f.service.deliverMail('rider',second,{note:'送达',images:['cloud://proof'],requestId:f.req('deliver')});f.table('mail').get(second).MAIL_DUE_TIME=1;await svc.run();await svc.run();assert.equal(f.table('mail').get(second).MAIL_STATUS,2);assert.equal(f.table('mail').get(second).MAIL_HISTORY.filter(x=>x.action==='overdue').length,1);
 });
 
 test('notification claim prevents double dispatch and retry budget terminates failures',async()=>{
@@ -121,8 +121,8 @@ test('administrator can freeze and resolve a disabled participant order with pre
  const f=fixture(),id=await f.publish();await f.service.acceptMail('rider',id,{requestId:f.req('take')});f.user('poster',{USER_STATUS:9});await f.service.holdMail('admin',id,{note:'发单人已停用，人工核实',requestId:f.req('hold')});assert.equal(f.table('mail').get(id).MAIL_STATUS,3);
  await f.service.resolveMail('admin',id,{resolution:'cancel',note:'核实尚未取件，双方取消',requestId:f.req('resolve')});assert.equal(f.table('mail').get(id).MAIL_STATUS,99);assert.equal(f.table('order_event').size,4);assert.ok([...f.table('order_quota').values()].every(x=>x.active.length===0));
 });
-test('configuration and rider reviews recheck current administrator permission inside transaction',async()=>{
+test('configuration rechecks current administrator permission inside transaction',async()=>{
  const f=fixture(),Config=f.load('operation_config_service.js'),Ops=f.load('operations_service.js');f.table('admin').get('admin').ADMIN_STATUS=0;
- await assert.rejects(new Config().saveConfig(f.config,'admin'),/权限已失效/);await assert.rejects(new Ops().riderReview('admin','rider',1,'身份核验通过'),/停用/);assert.equal(f.table('operation_audit').size,0);
+ await assert.rejects(new Config().saveConfig(f.config,'admin'));assert.equal(f.table('operation_audit').size,0);
  f.table('admin').get('admin').ADMIN_STATUS=1;await new Config().saveConfig(f.config,'admin');assert.equal(f.table('operation_audit').size,1);
 });

@@ -2,14 +2,14 @@ const Ops = require('../../../biz/operations_biz.js');
 const Admin = require('../../../../../comm/biz/admin_biz.js');
 const TABS = [
   { id: 'overview', text: '概况' }, { id: 'orders', text: '订单' },
-  { id: 'riders', text: '骑手' }, { id: 'feedback', text: '投诉' }, { id: 'config', text: '配置' }
+  { id: 'feedback', text: '投诉' }, { id: 'config', text: '配置' }
 ];
 Page({
   data: {
     tab: 'overview', tabs: TABS, list: [], page: 0, hasMore: false,
     loading: false, detailLoading: false, error: false, busy: false,
     detail: null, note: '', overview: null, config: null, statusIndex: 0,
-    statuses: ['全部', '待接单', '配送中', '待确认', '异常中', '已完成', '已取消'],
+    statuses: ['全部', '待接单', '已接单', '已取件', '待收货', '异常中', '已完成', '已取消'],
     resolutionIndex: 0, resolutions: ['恢复原流程', '取消订单', '确认完成'], campusText: '',
     fields: [
       { key: 'smallPrice', label: '小件价格', unit: '元', type: 'digit' },
@@ -64,9 +64,9 @@ Page({
         result = await Ops.get('admin/operations_config');
         if (this._visible && seq === this._seq) this.setData({ config: result, campusText: result.campuses.join('\n') });
       } else {
-        const route = { orders: 'admin/operations_orders', riders: 'admin/operations_riders', feedback: 'admin/feedback_list' }[tab];
+        const route = { orders: 'admin/operations_orders', feedback: 'admin/feedback_list' }[tab];
         const params = { page };
-        if (tab === 'orders' && this.data.statusIndex > 0) params.status = [-1, 0, 1, 2, 3, 9, 99][this.data.statusIndex];
+        if (tab === 'orders' && this.data.statusIndex > 0) params.status = [-1, 0, 1, 4, 2, 3, 9, 99][this.data.statusIndex];
         result = await Ops.get(route, params);
         if (this._visible && seq === this._seq) this.setData({
           list: reset ? result.list : this.data.list.concat(result.list), hasMore: !!result.hasMore, page
@@ -126,10 +126,7 @@ Page({
           id: detail._id, note, resolution: ['resume', 'cancel', 'complete'][this.data.resolutionIndex]
         });
         else await Ops.command('admin/operations_hold', { id: detail._id, note });
-      } else if (tab === 'riders') await Ops.get('admin/operations_rider_review', {
-        id: detail._id, status: Number(e.currentTarget.dataset.status), reason: note
-      });
-      else if (tab === 'feedback') await Ops.command('admin/feedback_reply', {
+      } else if (tab === 'feedback') await Ops.command('admin/feedback_reply', {
         id: detail._id, reply: note, version: detail.FB_VERSION || 0, status: Number(e.currentTarget.dataset.status)
       });
       if (this._visible) {

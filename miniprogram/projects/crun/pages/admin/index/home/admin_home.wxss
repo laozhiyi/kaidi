@@ -24,3 +24,16 @@
 .home-logout { margin: 28rpx 0; font-size: 28rpx; border-radius: 14rpx; color: #66758a; background: #e8edf4; }
 .home-logout::after { border: 0; }
 .foot-bottom { text-align: center; padding-top: 16rpx; }
+.dashboard-card { margin-top: 24rpx; padding: 26rpx; background: #fff; border-radius: 20rpx; }
+.dashboard-title { color: #24334b; font-size: 30rpx; font-weight: 600; margin-bottom: 22rpx; }
+.dashboard-summary { display: flex; gap: 12rpx; margin-bottom: 26rpx; }
+.dashboard-summary > view { flex: 1; padding: 18rpx 8rpx; text-align: center; background: #f5f8fc; border-radius: 14rpx; color: #7a889b; font-size: 21rpx; }
+.dashboard-number { display: block; color: #315f97; font-size: 38rpx; font-weight: 600; margin-bottom: 4rpx; }
+.dashboard-green { color: #4b9b78; }
+.dashboard-orange { color: #c48846; }
+.chart-row { display: flex; align-items: center; margin-top: 18rpx; }
+.chart-label { width: 100rpx; color: #64748a; font-size: 23rpx; }
+.chart-track { flex: 1; height: 18rpx; overflow: hidden; border-radius: 20rpx; background: #edf1f6; }
+.chart-track-warm { background: #fff7ed; }
+.chart-bar { height: 100%; min-width: 0; border-radius: 20rpx; transition: width .25s ease; }
+.chart-value { width: 52rpx; text-align: right; color: #35445b; font-size: 23rpx; }

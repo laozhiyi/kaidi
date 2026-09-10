@@ -1,0 +1,11 @@
+﻿<view class="review-add-page">
+  <view class="review-add-card">
+    <view class="review-add-title">评价本次服务</view>
+    <view class="review-add-sub">你的评价会帮助校园跑腿持续改进</view>
+    <view class="score-row">
+      <text wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="score-star {{item<=score?'active':''}}" data-score="{{item}}" bindtap="bindScore">★</text>
+    </view>
+    <textarea class="review-input" maxlength="300" placeholder="说说这次服务的体验（选填）" value="{{content}}" bindinput="bindContent"></textarea>
+    <button class="review-submit" bindtap="bindSubmit" loading="{{busy}}" disabled="{{busy}}">提交评价</button>
+  </view>
+</view>

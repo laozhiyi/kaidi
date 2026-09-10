@@ -23,10 +23,10 @@
     </view>
   </block>
 
-  <block wx:if="{{!detail && (tab==='orders' || tab==='riders' || tab==='feedback')}}">
+  <block wx:if="{{!detail && (tab==='orders' || tab==='feedback')}}">
     <view class="op-toolbar">
       <picker wx:if="{{tab==='orders'}}" class="op-filter" range="{{statuses}}" value="{{statusIndex}}" bindchange="bindFilter"><view class="op-picker"><text>{{statuses[statusIndex]}}</text><text class="op-muted">筛选 ▾</text></view></picker>
-      <view wx:else class="op-section-title">{{tab==='riders'?'骑手资格审核':'反馈与投诉'}}</view>
+      <view wx:if="{{tab==='feedback'}}" class="op-section-title">反馈与投诉</view>
       <button wx:if="{{tab==='orders'}}" class="op-button-secondary op-button-small" bindtap="bindExport">导出订单</button>
     </view>
     <view class="op-muted op-list-hint">点击记录查看详情并处理，列表支持上拉加载</view>
@@ -37,11 +37,6 @@
         <view class="op-row"><text>{{item.MAIL_OBJ.campus}}</text><text class="op-price">¥{{item.MAIL_OBJ.price}}</text></view>
         <view wx:if="{{item.overdue}}" class="op-warning">已超时，请及时跟进</view>
         <view class="op-card-foot"><text class="op-id">{{item.MAIL_ID}}</text><text>查看订单 ›</text></view>
-      </block>
-      <block wx:elif="{{tab==='riders'}}">
-        <view class="op-card-head"><text class="op-record-title">{{item.USER_NAME}}</text><text class="op-badge">{{item.USER_RIDER_STATUS===1?'已通过':item.USER_RIDER_STATUS===2?'待审核':item.USER_RIDER_STATUS===8?'未通过':item.USER_RIDER_STATUS===9?'已停用':'无资格'}}</text></view>
-        <view>{{item.USER_RIDER_CAMPUS || '未申请校区'}}</view>
-        <view class="op-card-foot"><text>{{item.USER_MOBILE}}</text><text>查看申请 ›</text></view>
       </block>
       <block wx:else>
         <view class="op-card-head"><text class="op-record-title">{{item.FB_TITLE}}</text><text class="op-badge">{{item.FB_STATUS===0?'待处理':item.FB_STATUS===1?'已处理':'不予处理'}}</text></view>
@@ -54,7 +49,7 @@
   </block>
 
   <block wx:if="{{detail}}">
-    <button class="op-button-secondary op-back" bindtap="bindClose" disabled="{{busy}}">‹ 返回{{tab==='orders'?'订单':tab==='riders'?'骑手':'投诉'}}列表</button>
+    <button class="op-button-secondary op-back" bindtap="bindClose" disabled="{{busy}}">‹ 返回{{tab==='orders'?'订单':'投诉'}}列表</button>
     <block wx:if="{{tab==='orders'}}">
       <view class="op-card">
         <view class="op-card-head"><view class="op-title">订单详情</view><text class="op-badge">{{detail.status}}</text></view>
@@ -81,17 +76,7 @@
         <button class="op-button-primary" bindtap="bindProcess" disabled="{{busy}}" loading="{{busy}}">{{detail.MAIL_STATUS===3?'提交异常处理结果':'转入异常处理'}}</button>
       </view>
     </block>
-    <view wx:elif="{{tab==='riders'}}" class="op-card">
-      <view class="op-title">{{detail.USER_NAME}}的骑手申请</view>
-      <view class="op-row"><text class="op-muted">联系电话</text><text>{{detail.USER_MOBILE}}</text></view>
-      <view class="op-row"><text class="op-muted">申请校区</text><text>{{detail.USER_RIDER_CAMPUS || '未申请'}}</text></view>
-      <view wx:if="{{detail.USER_RIDER_REASON}}" class="op-notice">上次审核：{{detail.USER_RIDER_REASON}}</view>
-      <view class="op-notice">请先线下核验校园身份和联系方式。停用不会删除既有订单，应继续协助处理。</view>
-      <view class="op-field-label">审核说明（必填）</view><textarea value="{{note}}" bindinput="bindNote" disabled="{{busy}}" maxlength="300" placeholder="填写审核依据或停用原因" />
-      <button class="op-button-primary" data-status="1" bindtap="bindProcess" disabled="{{busy}}">审核通过</button>
-      <view class="op-actions"><button class="op-button-secondary" data-status="8" bindtap="bindProcess" disabled="{{busy}}">不通过</button><button class="op-button-danger" data-status="9" bindtap="bindProcess" disabled="{{busy}}">停用资格</button></view>
-    </view>
-    <view wx:elif="{{tab==='feedback'}}" class="op-card">
+    <view wx:if="{{tab==='feedback'}}" class="op-card">
       <view class="op-title">{{detail.FB_TITLE}}</view><view class="op-prewrap">{{detail.FB_CONTENT}}</view>
       <view class="op-field-label">关联订单</view><view class="op-id">{{detail.FB_ORDER_ID || '未关联'}}</view>
       <view class="op-row"><text class="op-muted">联系方式</text><text>{{detail.FB_CONTACT || detail.FB_USER_MOBILE || '未提供'}}</text></view>

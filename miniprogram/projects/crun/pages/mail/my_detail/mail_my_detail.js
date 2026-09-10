@@ -10,13 +10,14 @@ function historyTime(value) {
  return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 19).replace('T', ' ') : '时间未知';
 }
 Page({
- data:{id:'',mail:null,detailUI:null,loading:true,error:false,errorMessage:'',notFound:false,configError:false,offlineNotice:'费用由双方线下协商结算，平台不代收、不担保；请勿提前向陌生人转账。',busy:false,panel:'',note:'',images:[],reasons:['取件失败','取件码错误','联系不上','物品损坏','送错地址','申请取消','其他'],reasonIndex:0,config:null},
+ data:{id:'',mail:null,detailUI:null,loading:true,error:false,errorMessage:'',notFound:false,configError:false,confirmGate:false,confirmCountdown:0,offlineNotice:'费用由双方线下协商结算，平台不代收、不担保；请勿提前向陌生人转账。',busy:false,panel:'',note:'',images:[],reasons:['取件失败','取件码错误','联系不上','物品损坏','送错地址','申请取消','其他'],reasonIndex:0,config:null},
  onLoad(options = {}) {
   ProjectBiz.initPage(this);
+  this._openPanelAfterLoad = options.panel === 'deliver' ? 'deliver' : '';
   this.setData({ id: typeof options.id === 'string' ? options.id.trim() : '' });
  },
  onShow() { this._visible = true; return this.load(); },
- onHide() { this._visible = false; this._seq = (this._seq || 0) + 1; },
+ onHide() { this._visible = false; this._seq = (this._seq || 0) + 1; this._clearConfirmTimer(); },
  onUnload() { this.onHide(); },
  async onPullDownRefresh() { try { await this.load(); } finally { wx.stopPullDownRefresh(); } },
  async _loadConfig(seq) {
@@ -48,7 +49,9 @@ Page({
    }
    mail.history = (Array.isArray(mail.MAIL_HISTORY) ? mail.MAIL_HISTORY : [])
     .filter(x => x && typeof x === 'object').map(x => ({ ...x, time: historyTime(x.at) }));
-   this.setData({ mail, detailUI: MailUI.detail(mail), loading: false });
+   this.setData({ mail, detailUI: MailUI.detail(mail), loading: false }, () => {
+    if (this._openPanelAfterLoad) { const panel = this._openPanelAfterLoad; this._openPanelAfterLoad = ''; this.bindPanel({ currentTarget: { dataset: { action: panel } } }); }
+   });
   } catch (e) {
    console.error('[mail_my_detail] load', e);
    if (this._visible && seq === this._seq) this.setData({ error: true, loading: false,
@@ -104,9 +107,27 @@ Page({
   if (!ui || this.data.busy || this.data.loading || this.data.error || this._confirming || !(action === 'confirm' && ui.primary === 'confirm' || action === 'cancel' && ui.canCancel)) return;
   this._confirming = true;
   try {
-   const result = await new Promise(resolve => wx.showModal({ title: action === 'confirm' ? '确认收到物品？' : '取消待接单订单？', content: action === 'confirm' ? '请核对物品已完整收到。线下费用请与骑手协商确认。' : '已被接取的订单不能直接取消，可申请异常处理。', success: resolve, fail: () => resolve({ confirm: false }) }));
-   if (result.confirm) await this.perform(action);
-  } finally { this._confirming = false; }
+   const result = await new Promise(resolve => wx.showModal({ title: action === 'confirm' ? '确认收货' : '取消待接单订单', content: action === 'confirm' ? '请先核对包裹、数量和外观是否无误。确认后订单将从双方的日常订单列表中移除。' : '确定取消这个尚未接单的订单吗？', success: resolve, fail: () => resolve({ confirm: false }) }));
+   if (!result.confirm) return;
+   if (action === 'confirm') return this._startConfirmGate();
+   await this.perform(action);
+  } finally { if (action !== 'confirm') this._confirming = false; }
+ },
+ _clearConfirmTimer() { if (this._confirmTimer) { clearInterval(this._confirmTimer); this._confirmTimer = null; } },
+ _startConfirmGate() {
+  this._clearConfirmTimer();
+  this.setData({ confirmGate: true, confirmCountdown: 5 });
+  this._confirmTimer = setInterval(() => {
+   const left = Math.max(0, Number(this.data.confirmCountdown || 0) - 1);
+   this.setData({ confirmCountdown: left });
+   if (!left) this._clearConfirmTimer();
+  }, 1000);
+ },
+ bindGateCancel() { this._clearConfirmTimer(); this._confirming = false; this.setData({ confirmGate: false, confirmCountdown: 0 }); },
+ async bindGateConfirm() {
+  if (this.data.confirmCountdown > 0 || this.data.busy) return;
+  this._clearConfirmTimer(); this.setData({ confirmGate: false });
+  try { await this.perform('confirm'); } finally { this._confirming = false; }
  },
  async bindSubmitPanel() {
   if (!this.data.panel || this.data.busy) return;

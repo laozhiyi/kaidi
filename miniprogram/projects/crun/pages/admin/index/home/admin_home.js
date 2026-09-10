@@ -7,7 +7,7 @@ Page({
 	/**
 	 * 页面的初始数据
 	 */
-	data: {},
+	data: { chartData: [], healthChartData: [], dashboard: null },
 
 	/**
 	 * 生命周期函数--监听页面加载
@@ -39,9 +39,26 @@ Page({
 				title: 'bar'
 			}
 			let res = await cloudHelper.callCloudData('admin/home', {}, opts);
-			this.setData({
-				stat: res
-			});
+			this.setData({ stat: res });
+			try {
+				const overview = await cloudHelper.callCloudData('admin/operations_overview', {}, opts);
+				const total = Number(overview.total || 0);
+				const rows = [
+					{ label: '待接单', value: Number(overview.waiting || 0), color: '#5c9bea' },
+					{ label: '配送中', value: Number(overview.delivering || 0), color: '#33a184' },
+					{ label: '待收货', value: Number(overview.confirming || 0), color: '#d99a42' },
+					{ label: '异常', value: Number(overview.exceptions || 0), color: '#df6d6d' },
+					{ label: '已完成', value: Number(overview.completed || 0), color: '#6fa36d' },
+				];
+				const healthTotal = Math.max(1, Number(overview.complaints || 0) + Number(overview.failedNotifications || 0) + Number(overview.exceptions || 0) + Number(overview.confirming || 0));
+				const healthRows = [
+					{ label: '异常订单', value: Number(overview.exceptions || 0), color: '#df6d6d' },
+					{ label: '待处理投诉', value: Number(overview.complaints || 0), color: '#d99a42' },
+					{ label: '通知失败', value: Number(overview.failedNotifications || 0), color: '#9d7ed0' },
+					{ label: '待收货', value: Number(overview.confirming || 0), color: '#5c9bea' },
+				];
+				this.setData({ dashboard: overview, chartData: rows.map(item => Object.assign(item, { percent: total && item.value ? Math.max(4, Math.round(item.value / total * 100)) : 0 })), healthChartData: healthRows.map(item => Object.assign(item, { percent: item.value ? Math.max(4, Math.round(item.value / healthTotal * 100)) : 0 })) });
+			} catch (e) { console.warn('[admin] overview unavailable', e); }
 
 		} catch (err) {
 			console.log(err);
@@ -58,9 +75,7 @@ Page({
 	/**
 	 * 生命周期函数--监听页面显示
 	 */
-	onShow: function () {
-
-	},
+	onShow: function () { if (this.data.isLoad && AdminBiz.isAdmin(this)) this._loadDetail(); },
 
 	/**
 	 * 生命周期函数--监听页面隐藏

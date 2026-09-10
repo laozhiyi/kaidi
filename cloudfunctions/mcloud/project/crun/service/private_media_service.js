@@ -14,7 +14,7 @@ async function order(dto) {
  if (!dto || !dto.MAIL_FORMS) return dto;
  const obj = dto.MAIL_OBJ || {};
  const groups = {
-  pickup: obj.imgUrls || [],
+  pickup: [...(obj.imgUrls || []), ...((obj.packages || []).flatMap(item => Array.isArray(item && item.images) ? item.images : []))],
   proof: dto.MAIL_DELIVERY_PROOF && dto.MAIL_DELIVERY_PROOF.images || [],
   exception: dto.MAIL_EXCEPTION && dto.MAIL_EXCEPTION.images || []
  };

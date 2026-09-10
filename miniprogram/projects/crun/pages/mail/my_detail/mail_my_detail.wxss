@@ -1,1 +1,10 @@
 @import "../../../style/mail_detail.wxss";
+
+.confirm-gate { width: 650rpx; padding: 48rpx 38rpx 34rpx; border-radius: 28rpx; background: #fff; text-align: center; box-sizing: border-box; }
+.confirm-gate-icon { width: 86rpx; height: 86rpx; margin: 0 auto 22rpx; border-radius: 50%; background: #e7f7ef; color: #28a36a; font-size: 54rpx; line-height: 86rpx; }
+.confirm-gate-title { color: #25364d; font-size: 33rpx; font-weight: 700; }
+.confirm-gate-copy { margin-top: 18rpx; color: #718198; font-size: 25rpx; line-height: 1.7; text-align: left; }
+.confirm-gate-count { margin: 28rpx 0; padding: 18rpx; border-radius: 14rpx; background: #fff5e5; color: #be7924; font-size: 28rpx; font-weight: 600; }
+.confirm-gate-count.ready { background: #eaf8f0; color: #258b5d; }
+.confirm-gate-actions { display: flex; gap: 18rpx; margin-top: 20rpx; }
+.confirm-gate-actions button { flex: 1; }

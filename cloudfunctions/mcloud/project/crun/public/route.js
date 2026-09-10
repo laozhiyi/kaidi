@@ -10,14 +10,11 @@ module.exports = {
 "mail/deliver":"mail_controller@deliverMail",
 "mail/exception":"mail_controller@exceptionMail",
 "operations/config":"operations_controller@getConfig",
-"operations/rider_apply":"operations_controller@riderApply",
 "operations/notifications":"operations_controller@notifications",
 "operations/read":"operations_controller@markRead",
 "operations/subscribe":"operations_controller@subscribe",
 "admin/operations_config":"admin/admin_operations_controller@getConfig",
 "admin/operations_config_save":"admin/admin_operations_controller@saveConfig",
-"admin/operations_riders":"admin/admin_operations_controller@riders",
-"admin/operations_rider_review":"admin/admin_operations_controller@riderReview",
 "admin/operations_orders":"admin/admin_operations_controller@orders",
 "admin/operations_order":"admin/admin_operations_controller@orderDetail",
 "admin/operations_resolve":"admin/admin_operations_controller@resolve",
@@ -95,15 +92,12 @@ module.exports = {
 	'mail/del': 'mail_controller@delMail',
 	'mail/view': 'mail_controller@viewMail',
 	'mail/accept': 'mail_controller@acceptMail',
+	'mail/pickup': 'mail_controller@pickupMail',
 	'mail/cancel': 'mail_controller@cancelMail',
 	'mail/finish': 'mail_controller@finishMail',
 	'mail/detail': 'mail_controller@getMailDetail',
 
 	'admin/mail_detail': 'admin/admin_mail_controller@getAdminMailDetail',
-	'admin/mail_list': 'admin/admin_mail_controller@getAdminMailList',
-	'admin/mail_status': 'admin/admin_mail_controller@statusMail#demo',
-	'admin/mail_del': 'admin/admin_mail_controller@delMail#demo',
-	'admin/mail_sort': 'admin/admin_mail_controller@sortMail#demo',
 	'admin/mail_data_get': 'admin/admin_mail_controller@mailDataGet',
 	'admin/mail_data_export': 'admin/admin_mail_controller@mailDataExport',
 	'admin/mail_data_del': 'admin/admin_mail_controller@mailDataDel',
@@ -138,6 +132,10 @@ module.exports = {
 	'admin/campus_chat_list': 'admin/admin_campus_service_controller@getAdminCampusChatList',
 	'admin/campus_chat_detail': 'admin/admin_campus_service_controller@getAdminCampusChatDetail',
 	'admin/campus_chat_reply': 'admin/admin_campus_service_controller@replyCampusMessage#demo',
+
+	// ========== 订单评价 ==========
+	'review/insert': 'review_controller@insert',
+	'review/my_list': 'review_controller@myList',
 
 	// ========== 反馈投诉 ==========
 	'feedback/insert': 'feedback_controller@insertFeedback',

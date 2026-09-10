@@ -23,11 +23,6 @@ UserModel.DB_STRUCTURE = {
 	USER_MOBILE: 'string|false|comment=联系电话',
  USER_MOBILE_VERIFIED: 'bool|false|default=false',
 	USER_PIC: 'string|false|comment=头像',
-
-	USER_RIDER_STATUS: 'int|true|default=0',
-	USER_RIDER_CAMPUS: 'string|false',
-	USER_RIDER_REASON: 'string|false',
-	USER_RIDER_APPLIED: 'int|false',
 	USER_PAY_PIC: 'string|false|comment=收款码',
 
 	USER_FORMS: 'array|true|default=[]',

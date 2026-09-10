@@ -15,23 +15,15 @@
   </view>
 
   <view class="my-card">
-    <view class="my-section-title">订单与记录</view>
+    <view class="my-section-title">我的服务</view>
     <view class="my-grid">
-      <view class="my-grid-item" bindtap="bindMyPostTap" hover-class="my-tap"><view class="my-grid-icon"><text class="icon-edit"></text></view><text class="my-grid-label">我的发布</text></view>
-      <view class="my-grid-item" bindtap="bindMyAcceptTap" hover-class="my-tap"><view class="my-grid-icon"><text class="icon-deliver"></text></view><text class="my-grid-label">我的接单</text></view>
+      <view class="my-grid-item" bindtap="bindFeedbackTap" hover-class="my-tap"><view class="my-grid-icon"><text class="icon-edit"></text></view><text class="my-grid-label">我的申诉</text></view>
+      <view class="my-grid-item" bindtap="url" data-url="../review/my_review" hover-class="my-tap"><view class="my-grid-icon"><text class="icon-deliver"></text></view><text class="my-grid-label">我的评价</text></view>
       <view class="my-grid-item" bindtap="bindMyFavTap" hover-class="my-tap"><view class="my-grid-icon my-icon-warm"><text class="icon-favor"></text></view><text class="my-grid-label">我的收藏</text></view>
-      <view class="my-grid-item" bindtap="url" data-url="../foot/my_foot" hover-class="my-tap"><view class="my-grid-icon my-icon-green"><text class="icon-time"></text></view><text class="my-grid-label">浏览历史</text></view>
+      <view class="my-grid-item" bindtap="url" data-url="/projects/crun/pages/operations/operations" hover-class="my-tap"><view class="my-grid-icon my-icon-green"><text class="icon-noticefill"></text></view><text class="my-grid-label">消息中心</text></view>
     </view>
   </view>
 
-  <view class="my-card my-links">
-    <view class="my-link" bindtap="url" data-url="/projects/crun/pages/operations/operations?tab=messages" hover-class="my-tap">
-      <view class="my-link-icon"><text class="icon-message"></text></view><view class="my-link-copy"><view class="my-link-title">消息中心</view><view class="my-link-desc">订单动态与处理通知</view></view><text class="my-arrow icon-right"></text>
-    </view>
-    <view class="my-link" bindtap="url" data-url="/projects/crun/pages/operations/operations?tab=rider" hover-class="my-tap">
-      <view class="my-link-icon my-icon-green"><text class="icon-deliver"></text></view><view class="my-link-copy"><view class="my-link-title">骑手资格</view><view class="my-link-desc">申请接单与查看审核</view></view><text class="my-arrow icon-right"></text>
-    </view>
-  </view>
 
   <view class="my-card">
     <view class="my-section-title">服务与帮助</view>
@@ -44,6 +36,8 @@
   </view>
 
   <view class="my-card my-links">
+    <view class="my-link" bindtap="bindProfileContactTap" hover-class="my-tap"><view class="my-link-icon"><text class="icon-people"></text></view><view class="my-link-copy my-link-title">常用联系人</view><text class="my-arrow icon-right"></text></view>
+    <view class="my-link" bindtap="bindProfileAddressTap" hover-class="my-tap"><view class="my-link-icon"><text class="icon-location"></text></view><view class="my-link-copy my-link-title">常用地址</view><text class="my-arrow icon-right"></text></view>
     <view class="my-link" bindtap="bindSetTap" hover-class="my-tap"><view class="my-link-icon"><text class="icon-settings"></text></view><view class="my-link-copy my-link-title">设置与后台管理</view><text class="my-arrow icon-right"></text></view>
   </view>
   <view class="tab-bar-placeholder"></view>

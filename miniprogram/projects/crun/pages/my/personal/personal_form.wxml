@@ -1,0 +1,10 @@
+<view class="profile-section profile-personal">
+  <view class="profile-section-title">个人信息</view>
+  <view class="profile-section-subtitle">完善资料，发布任务时可以快速选择</view>
+  <view class="profile-basic-row"><view class="profile-basic-label">姓名</view><input class="profile-basic-input" type="nickname" value="{{formName}}" placeholder="请输入姓名" bindinput="bindProfileNameInput" /></view>
+  <view class="profile-basic-row"><view class="profile-basic-label">手机号</view><input class="profile-basic-input" type="number" value="{{formMobile}}" placeholder="请输入手机号" bindinput="bindProfileMobileInput" /></view>
+  <button class="profile-avatar-row" open-type="chooseAvatar" bind:chooseavatar="bindPicTap"><view class="profile-basic-label">头像</view><image wx:if="{{formPic}}" class="profile-avatar" mode="aspectFill" src="{{formPic}}" /><text wx:else class="icon-cameraadd profile-avatar-empty"></text><text class="icon-right profile-arrow"></text></button>
+  <view class="profile-basic-row profile-picker-row"><view class="profile-basic-label">所在校区</view><picker range="{{campuses}}" value="{{campusIndex}}" bindchange="bindCampusChange"><view class="profile-picker-value">{{campus || '请选择校区'}} <text class="icon-unfold"></text></view></picker></view>
+  <view wx:if="{{!campus}}" class="profile-required-hint">注册时必填，后续可以修改</view>
+  <cmpt-form-show id="cmpt-form" mark="profile-form" isCacheMatch="{{false}}" fields="{{fields}}" forms="{{formForms}}" isDefMatch="{{isEdit?false:true}}" />
+</view>

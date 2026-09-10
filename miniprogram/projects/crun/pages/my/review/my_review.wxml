@@ -1,0 +1,26 @@
+﻿<view class="review-page">
+  <view class="review-hero">
+    <view class="review-title">我的评价</view>
+    <view class="review-desc">查看你发出的服务评价</view>
+  </view>
+  <view wx:if="{{loading && !isLoad}}" class="review-state">正在加载…</view>
+  <view wx:if="{{error}}" class="review-state">加载失败，请稍后重试</view>
+  <view wx:if="{{isLoad && !loading && !error && !list.length}}" class="review-empty">
+    <view class="review-empty-icon">★</view>
+    <view>还没有评价记录</view>
+    <view class="review-empty-desc">完成订单后，可以在订单详情中评价服务</view>
+  </view>
+  <view wx:for="{{list}}" wx:key="_id" class="review-card">
+    <view class="review-card-top">
+      <view>
+        <view class="review-target">评价给：{{item.REVIEW_TO_NAME || '服务参与者'}}</view>
+        <view class="review-order">订单：{{item.REVIEW_ORDER_ID}}</view>
+      </view>
+      <view class="review-stars">{{item.stars}}</view>
+    </view>
+    <view wx:if="{{item.REVIEW_CONTENT}}" class="review-content">{{item.REVIEW_CONTENT}}</view>
+    <view class="review-time">{{item.REVIEW_ADD_TIME_TEXT || item.REVIEW_ADD_TIME}}</view>
+  </view>
+  <button wx:if="{{hasMore}}" class="review-more" bindtap="onReachBottom">加载更多</button>
+  <view class="tab-bar-placeholder"></view>
+</view>

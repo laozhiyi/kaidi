@@ -1,0 +1,89 @@
+<view class="publish-page {{embedded ? 'publish-embedded' : ''}}">
+ <view wx:if="{{!isLoad}}" class="pub-state">
+  <view class="pub-state-icon"><text class="icon-{{configError ? 'info' : 'time'}}"></text></view>
+  <view class="pub-state-title">{{configError ? '暂时无法加载' : '正在准备发单信息'}}</view>
+  <view class="pub-state-note">{{configError ? loadError : '获取校区和包裹价格，请稍候'}}</view>
+  <button wx:if="{{configError}}" class="pub-button" bindtap="bindRetryLoad" loading="{{pageLoading}}" disabled="{{pageLoading}}">重新加载</button>
+ </view>
+ <block wx:if="{{isLoad}}">
+  <view class="pub-hero">
+   <view class="pub-hero-copy"><view class="pub-eyebrow">校园生活 · 少跑一趟</view><view class="pub-hero-title">{{editId ? '修改代取订单' : '快递，帮你带回来'}}</view><view class="pub-hero-note">选好包裹，填好地址，剩下交给骑手</view></view>
+   <view class="pub-hero-symbol"><text class="icon-deliver"></text></view>
+  </view>
+  <view class="pub-content">
+   <view class="pub-card pub-service">
+    <picker range="{{campuses}}" value="{{campusIndex}}" bindchange="bindCampusChange">
+     <view class="pub-campus-row"><view class="pub-campus-icon"><text class="icon-location"></text></view><view class="pub-campus-copy"><view class="pub-caption">当前服务校区</view><view class="pub-campus-name">{{campus}}</view></view><view class="pub-change">切换校区 <text class="icon-unfold"></text></view></view>
+    </picker>
+    <view class="pub-service-row pub-service-{{serviceState.kind}}"><view class="pub-status-label"><view class="pub-status-dot"></view><text>{{serviceState.title}}</text></view><text wx:if="{{serviceState.hours}}" class="pub-hours">{{serviceState.hours}}</text></view>
+    <view wx:if="{{!serviceState.canPublish}}" class="pub-service-detail"><view>{{serviceState.description}}</view><view class="pub-service-actions"><text bindtap="bindServiceHelpTap">联系校区客服 <text class="icon-right"></text></text><text bindtap="bindRetryLoad">刷新状态</text></view></view>
+   </view>
+   <view wx:if="{{configError}}" class="pub-inline-error"><text>{{loadError}}，已保留所填内容。</text><text bindtap="bindRetryLoad">重试</text></view>
+
+   <view class="pub-card pub-options pub-deadline-card">
+    <view class="pub-deadline"><view class="pub-option-label"><text class="icon-time"></text><text>客户期望接单截止时间</text></view><cmpt-picker-time mark="formEnd" mode="fullminute" timeModeStep="5" bind:select="bindEndSelect" endYear="2035" item="{{formEnd}}"><view class="pub-deadline-value">{{formEnd || '请选择时间'}} <text class="icon-right"></text></view></cmpt-picker-time></view>
+    <view wx:if="{{formEndFocus}}" class="pub-validation">{{formEndFocus}}</view>
+   </view>
+
+   <view class="pub-card">
+    <view class="pub-heading"><view><text class="pub-section-no">01</text><text>选择包裹</text></view><text class="pub-caption">按件计费</text></view>
+    <view class="pub-price-editor"><view><view class="pub-price-title">参考价格与本单合计</view><view class="pub-price-tip">参考价会随件型显示；每件费用可在下方单独调整</view></view><view class="pub-price-total">¥{{totalFee}}</view></view>
+    <view class="pub-packages">
+     <view class="pub-package {{item.count > 0 ? 'pub-package-selected' : ''}}" wx:for="{{packageTypes}}" wx:key="mark">
+      <view class="pub-parcel pub-parcel-{{item.mark}}"><view></view></view>
+      <view class="pub-package-name">{{item.label}}</view><view class="pub-package-price">¥<text>{{item.price}}</text><text class="pub-per-item"> /件</text></view>
+      <view class="pub-counter"><button class="pub-counter-button" disabled="{{item.count===0 || totalCount<=1}}" bindtap="bindPackageTap" data-index="{{index}}" data-step="-1">−</button><text>{{item.count}}</text><button class="pub-counter-button pub-counter-add" disabled="{{totalCount>=config.maxPackages}}" bindtap="bindPackageTap" data-index="{{index}}" data-step="1">＋</button></view>
+     </view>
+    </view>
+    <view wx:if="{{packageItems.length}}" class="pub-package-details">
+     <view class="pub-detail-title">每件包裹信息 <text>价格独立设置，取件码和截图二选一</text></view>
+     <view wx:for="{{packageItems}}" wx:key="index" class="pub-package-detail">
+      <view class="pub-package-detail-head"><text>{{index + 1}}. {{item.label}}</text><text class="pub-package-reference">参考 ¥{{item.referencePrice || item.price}}</text></view>
+      <view class="pub-package-custom-price"><text class="pub-package-input-label">自定义价格</text><input type="digit" value="{{item.price}}" data-index="{{index}}" data-mark="price" bindinput="bindPackageItemInput" placeholder="本件费用"/><text>元</text></view>
+      <view class="pub-package-proof-row">
+       <input class="pub-package-proof-input" value="{{item.code}}" data-index="{{index}}" data-mark="code" bindinput="bindPackageItemInput" placeholder="取件码"/>
+       <view class="pub-package-upload" bindtap="bindPackageImageTap" data-index="{{index}}">
+        <block wx:if="{{item.images && item.images.length}}"><image class="pub-package-thumb" src="{{item.images[0]}}" mode="aspectFill" catchtap="bindPackagePreviewImage" data-index="{{index}}"/></block>
+        <block wx:else><text class="icon-camera"></text><text>上传截图</text></block>
+       </view>
+      </view>
+      <input class="pub-package-note-input" value="{{item.note}}" data-index="{{index}}" data-mark="note" bindinput="bindPackageItemInput" placeholder="备注（选填）"/>
+     </view>
+    </view>
+    <view class="pub-footnote">共 {{totalCount}} 件包裹 · 请按实际大小选择规格</view>
+   </view>
+
+   <view class="pub-card">
+    <view class="pub-heading"><view><text class="pub-section-no">02</text><text>从哪里取，送到哪里</text></view></view>
+    <view class="pub-route-row"><view class="pub-route-marker pub-marker-pick">取</view><view class="pub-route-field"><view class="pub-field-caption">取件快递点 <text class="pub-required">*</text></view><input value="{{mailValues.address1}}" maxlength="100" placeholder="输入快递点名称与位置" placeholder-class="pub-placeholder" bindinput="bindMailInput" data-mark="address1" /></view><view class="pub-quick-select" bindtap="bindOpenPickStation">常用点<text class="icon-right"></text></view></view>
+    <view class="pub-route-divider"></view>
+    <view class="pub-route-row"><view class="pub-route-marker pub-marker-send">送</view><view class="pub-route-field"><view class="pub-field-caption">送达地址 <text class="pub-required">*</text></view><input value="{{mailValues.address2}}" maxlength="200" placeholder="例如：3号宿舍楼 201 室" placeholder-class="pub-placeholder" bindinput="bindMailInput" data-mark="address2" /></view><view class="pub-quick-select" bindtap="bindChooseProfileAddress">常用地址<text class="icon-right"></text></view></view>
+   </view>
+    <view class="pub-card">
+     <view class="pub-heading"><view><text class="pub-section-no">03</text><text>联系人信息</text></view><view class="pub-quick-select" bindtap="bindChooseProfileContact">常用联系人<text class="icon-right"></text></view></view>
+     <view class="pub-field-row"><text class="pub-field-label">联系人 <text class="pub-required">*</text></text><input value="{{mailValues.poster}}" maxlength="30" placeholder="方便骑手称呼你" placeholder-class="pub-placeholder" bindinput="bindMailInput" data-mark="poster" /></view>
+     <view class="pub-field-row"><text class="pub-field-label">手机号 <text class="pub-required">*</text></text><input type="number" maxlength="11" value="{{mailValues.tel}}" placeholder="请填写可联系的手机号码" placeholder-class="pub-placeholder" bindinput="bindMailInput" data-mark="tel" /></view>
+     <view class="pub-field-row"><text class="pub-field-label">第二联系方式</text><input value="{{mailValues.tel2}}" maxlength="50" placeholder="选填，例如微信号或备用电话" placeholder-class="pub-placeholder" bindinput="bindMailInput" data-mark="tel2" /></view>
+    </view>
+<view wx:if="{{config.urgentEnabled}}" class="pub-card pub-options">
+    <view class="pub-option-row"><view><view class="pub-option-label">加急 <text class="pub-urgent-tag">可选</text></view><view class="pub-caption">优先处理，预计 {{config.urgentMinutes}} 分钟内完成</view></view><switch checked="{{urgent}}" color="#397bc8" bindchange="bindUrgentChange"/></view>
+   </view>
+   <view class="pub-settlement" bindtap="bindSettlementTap"><text class="icon-info"></text><view><text>费用线下结算，请勿提前转账</text><view>平台不代收、不担保 · 查看结算说明</view></view><text class="icon-right"></text></view>
+  </view>
+
+  <view class="pub-submit-bar"><view class="pub-total"><view class="pub-total-label">共 {{totalCount}} 件 · 线下费用</view><view class="pub-total-price"><text>¥</text>{{totalFee}}</view></view><button class="pub-submit" bindtap="bindFormSubmit" loading="{{submitting}}" disabled="{{submitting || pageLoading || configError || (!serviceState.canPublish && !editId)}}">{{editId ? '保存修改' : serviceState.kind==='paused' ? '暂时停止接单' : serviceState.kind==='closed' ? '营业后可发布' : '发布代取订单'}}<text wx:if="{{!submitting && serviceState.canPublish}}" class="icon-right"></text></button></view>
+  <view class="pub-form-engine"><cmpt-form-show id="cmpt-form" mark="mail-add-engine" isCacheMatch="{{false}}" fields="{{fields}}" forms="{{formForms}}" isDefMatch="{{true}}"/></view>
+ </block>
+   <view wx:if="{{addressPickerVisible || contactPickerVisible}}" class="pub-profile-picker-mask" catchtouchmove="bindStopProp" bindtap="bindCloseProfilePicker">
+   <view class="pub-profile-picker" catchtap="bindStopProp">
+    <view class="pub-sheet-head"><view class="pub-sheet-title">{{addressPickerVisible ? '选择常用地址' : '选择常用联系人'}}</view><text class="pub-sheet-close icon-close" catchtap="bindCloseProfilePicker"></text></view>
+    <scroll-view scroll-y class="pub-profile-picker-body">
+     <view wx:if="{{addressPickerVisible}}" wx:for="{{profileAddresses}}" wx:key="index" class="pub-profile-picker-item" data-index="{{index}}" bindtap="bindSelectProfileAddress"><view class="pub-profile-picker-title">{{item.label || '常用地址'}}<text wx:if="{{item.isDefault}}" class="pub-default-badge">默认</text></view><view class="pub-profile-picker-text">{{item.detail}}</view></view>
+     <view wx:if="{{contactPickerVisible}}" wx:for="{{profileContacts}}" wx:key="index" class="pub-profile-picker-item" data-index="{{index}}" bindtap="bindSelectProfileContact"><view class="pub-profile-picker-title">{{item.name}}</view><view class="pub-profile-picker-text">{{item.phone}}</view></view>
+    </scroll-view>
+   </view>
+  </view>
+<view wx:if="{{pickStationVisible}}" class="pub-sheet-mask" catchtouchmove="bindStopProp" bindtap="bindClosePickStation"><view class="pub-sheet" catchtap="bindStopProp"><view class="pub-sheet-handle"></view><view class="pub-sheet-head"><view><view class="pub-sheet-title">选择常用快递点</view><view class="pub-caption">以下为示例，请核对实际位置；也可手动输入</view></view><text class="pub-sheet-close icon-close" catchtap="bindClosePickStation"></text></view><scroll-view scroll-y class="pub-sheet-body"><view class="pub-station-group" wx:for="{{pickStations}}" wx:for-item="phase" wx:key="name"><view class="pub-station-title">{{phase.name}}</view><view class="pub-station-chips"><view class="pub-station-chip {{mailValues.address1 === (phase.name + ' · ' + item) ? 'pub-station-active' : ''}}" wx:for="{{phase.list}}" wx:key="*this" bindtap="bindSelectPickStation" data-phase="{{phase.name}}" data-name="{{item}}">{{item}}</view></view></view></scroll-view><button class="pub-button" bindtap="bindClosePickStation">{{mailValues.address1 ? '确认快递点' : '返回手动填写'}}</button></view></view>
+</view>
+
+

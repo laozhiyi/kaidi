@@ -40,7 +40,7 @@ class BaseProjectService extends BaseService {
  async _initSetup() {
 		let F = (c) => 'bx_' + c;
 		const INSTALL_CL = 'setup_crun';
-		const COLLECTIONS = ['identity_unique', 'operation_config', 'operation_audit', 'operation_limit', 'order_quota', 'order_event', 'order_request', 'notification', 'subscription', 'feedback_request','setup', 'admin', 'log', 'news', 'mail', 'follow', 'thing', 'food', 'fav', 'user', 'campus_service', 'campus_service_message', 'feedback', 'invite'];
+		const COLLECTIONS = ['identity_unique', 'operation_config', 'operation_audit', 'operation_limit', 'order_quota', 'order_event', 'order_request', 'notification', 'subscription', 'feedback_request','setup', 'admin', 'log', 'news', 'mail', 'follow', 'thing', 'food', 'fav', 'user', 'campus_service', 'campus_service_message', 'feedback', 'invite', 'order_review'];
 		const CONST_PIC = '/images/cover.gif';
 
 

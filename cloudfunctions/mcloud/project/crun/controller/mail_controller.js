@@ -9,9 +9,10 @@ class MailController extends Base {
  async _action(method, extra = {}, audit = false) { const input=this._input(extra); if(audit) {await this._limitAudit();await check.checkTextMultiClient(input); input.images=await this._checkImages(input.images || []);} return new MailService()[method](this._userId,input.id,input); }
  async _checkImages(images,allowed=[]) { const result=[];for (const id of require('../service/order_rules.js').images(images)) result.push(await check.checkCloudImage(id,allowed));return result; }
  async acceptMail() {return this._action('acceptMail');}
+ async pickupMail() {return this._action('pickupMail');}
  async cancelMail() {return this._action('cancelMail',{note:'string|max:300'},true);}
  async finishMail() {return this._action('finishMail');}
- async deliverMail() {return this._action('deliverMail',{note:'must|string|max:300',images:'must|array'},true);}
+ async deliverMail() {return this._action('deliverMail',{note:'string|max:300',images:'array'},true);}
  async exceptionMail() {return this._action('exceptionMail',{reason:'must|string|max:30',note:'must|string|max:500',images:'array'},true);}
  async statusMail() {return new MailService().statusMail();}
  async delMail() {return this._action('delMail');}

@@ -1,36 +1,23 @@
 <view class="main">
-	<view class="notice" wx:if="{{isLoad}}" bindtap="handleFeatureTap" data-title="公告通知" data-url="/projects/crun/pages/news/index/news_index" hover-class="notice-hover">
-		<view class="notice-badge">
-			<text class="notice-icon icon-noticefill"></text>
-		</view>
-		<view class="notice-content">
-			<view class="notice-label">通知公告</view>
-			<view class="notice-text">平台当前有 <text class="notice-count">{{cnt}}</text> 个需求等待接单</view>
-		</view>
-		<view class="notice-action">查看<text class="notice-arrow icon-right"></text></view>
-	</view>
-
-	<view class="hero">
-		<image mode="aspectFill" src="../../../images/home_banner.jpg" />
-	</view>
-
-	<!-- 快递代取：进入操作选择页 -->
-	<view class="express-card" wx:if="{{isLoad}}" bindtap="bindExpressTap">
-		<view class="express-card-head">
-			<view class="express-card-icon icon-mail"></view>
-			<view class="express-card-copy">
-				<view class="express-card-title">快递代取</view>
-				<view class="express-card-subtitle">填写信息，发布代取订单</view>
-			</view>
-			<view class="express-card-arrow">›</view>
-		</view>
-	</view>
-
-	<view class="tab-bar-placeholder"></view>
+  <view class="notice" wx:if="{{isLoad}}" bindtap="handleFeatureTap" data-url="/projects/crun/pages/news/index/news_index" hover-class="notice-hover">
+    <view class="notice-badge"><text class="notice-icon icon-noticefill"></text></view><view class="notice-content"><view class="notice-label">通知公告</view><view class="notice-text">平台当前有 <text class="notice-count">{{cnt || 0}}</text> 个需求等待接单</view></view><view class="notice-action">查看<text class="notice-arrow icon-right"></text></view>
+  </view>
+  <view class="hero"><image mode="aspectFill" src="../../../images/home_banner.jpg" /></view>
+  <view class="express-card" wx:if="{{isLoad}}"><view class="express-card-head"><view class="express-card-icon icon-mail"></view><view class="express-card-copy"><view class="express-card-title">快递代取</view><view class="express-card-subtitle">选择下方服务，直接在本页填写</view></view><view class="express-card-badge">{{cnt || 0}} 个需求</view></view></view>
+  <view class="service-tabs" wx:if="{{isLoad}}"><view wx:for="{{serviceOptions}}" wx:key="key" class="service-tab {{activeService===item.key?'service-tab-active':''}}" data-key="{{item.key}}" bindtap="bindServiceTap" hover-class="service-tab-hover"><view class="service-tab-icon service-{{item.key}}"><text class="icon-{{item.icon}}"></text></view><view class="service-tab-title">{{item.title}}</view><view class="service-tab-desc">{{item.desc}}</view></view></view>
+  <mail-publish-form id="home-take-form" wx:if="{{isLoad}}" hidden="{{activeService !== 'take'}}" embedded="true" service="take" bind:published="bindEmbeddedPublished" />
+  <view wx:if="{{activeService && activeService !== 'take'}}" class="quick-panel">
+    <view class="quick-panel-head"><view><view class="quick-title">{{activeService==='take'?'帮我取':activeService==='send'?'帮我送':'帮我买'}}</view><view class="quick-subtitle">填写后直接在首页发布，切换服务不会丢失</view></view><text class="quick-close icon-close" bindtap="bindCloseService"></text></view>
+    <view class="quick-hint"><text class="icon-location"></text><text>服务校区：{{quickForm.campus || '请先在个人资料中填写'}}</text></view>
+    <view class="quick-field quick-deadline"><text class="quick-label">期望接单截止</text><view class="quick-deadline-pickers"><picker mode="date" value="{{quickForm.formEndDate}}" start="{{today}}" bindchange="bindQuickEndChange"><text class="quick-picker-value">{{quickForm.formEndDate || '选择日期'}}</text></picker><text class="quick-deadline-sep">·</text><picker mode="time" value="{{quickForm.formEndTime}}" bindchange="bindQuickTimeChange"><text class="quick-picker-value">{{quickForm.formEndTime || '选择时间'}}</text></picker></view></view>
+    <view class="quick-field"><text class="quick-label">{{activeService==='take'?'取件点':'出发地点'}}</text><input value="{{quickForm.address1}}" placeholder="例如：菜鸟驿站" bindinput="bindQuickInput" data-mark="address1" maxlength="100" /></view>
+    <view class="quick-field"><text class="quick-label">送达地址</text><input value="{{quickForm.address2}}" placeholder="例如：1号宿舍楼 101" bindinput="bindQuickInput" data-mark="address2" maxlength="200" /></view>
+    <view class="quick-field"><text class="quick-label">{{activeService==='take'?'取件码':'需求说明'}}</text><input value="{{quickForm.code}}" placeholder="{{activeService==='take'?'填写取件码':'填写物品、数量或取送要求'}}" bindinput="bindQuickInput" data-mark="code" maxlength="200" /></view>
+    <view class="quick-row"><view class="quick-field quick-half"><text class="quick-label">联系人</text><input value="{{quickForm.poster}}" placeholder="姓名" bindinput="bindQuickInput" data-mark="poster" maxlength="30" /></view><view class="quick-field quick-half"><text class="quick-label">电话</text><input type="number" value="{{quickForm.tel}}" placeholder="手机号" bindinput="bindQuickInput" data-mark="tel" maxlength="11" /></view></view>
+    <view class="quick-field quick-price"><view><text class="quick-label">本单费用</text><text class="quick-reference">参考价 ¥{{referencePrice}} / 小件，可按需求自定义</text></view><input type="digit" value="{{quickForm.price}}" placeholder="输入金额" bindinput="bindQuickInput" data-mark="price" maxlength="8" /><text>元</text></view>
+    <view class="quick-field"><text class="quick-label">备注</text><textarea value="{{quickForm.desc}}" placeholder="选填，例如放置位置、联系习惯" bindinput="bindQuickInput" data-mark="desc" maxlength="500" auto-height="true"></textarea></view>
+    <button class="quick-submit" bindtap="bindQuickSubmit" loading="{{quickSubmitting}}" disabled="{{quickSubmitting}}">发布{{activeService==='take'?'代取':activeService==='send'?'配送':'代购'}}需求</button>
+    <view class="quick-foot">校区、地址和联系人优先读取“我的”中的资料，也可以在这里修改。</view>
+  </view>
+  <view class="tab-bar-placeholder"></view>
 </view>
-
-
-<block wx:if="{{skin.IS_SUB}}">
-	<import src="../../tpls/menu_tpl.wxml" />
-	<template is="menuTpl" data="{{curMenu:'home_index',returnHome:false}}" />
-</block>
