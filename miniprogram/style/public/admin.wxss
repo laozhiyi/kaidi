@@ -9,7 +9,7 @@ page {
 	display: flex;
 	flex-direction: column;
 	justify-content: flex-start;
-	align-items: flex-start;
+	align-items: stretch;
 	box-sizing: border-box;
 	margin-bottom: 100rpx;
 }
@@ -364,4 +364,144 @@ page {
 
 .btn-bottom-admin .save {
 	background-color: var(--adminColor);
+}
+
+/* 后台统一布局：保持标题、内容和操作区的列线一致 */
+.main-admin {
+	box-sizing: border-box;
+}
+
+.main-admin {
+	padding-left: 24rpx;
+	padding-right: 24rpx;
+}
+
+.main-admin > form,
+.main-admin > .form-box,
+.main-admin > .admin-comm-list,
+.main-admin > .search-form,
+.main-admin > .comm-list {
+	width: 100%;
+	align-self: stretch;
+}
+
+.main-admin .form-box {
+	width: 100%;
+	overflow: hidden;
+	background-color: #fff;
+}
+
+.main-admin .form-group {
+	width: 100%;
+	min-width: 0;
+	padding-left: 24rpx;
+	padding-right: 24rpx;
+}
+
+.main-admin .form-group > .title,
+.main-admin .form-group > .title:first-child {
+	flex: 0 0 170rpx;
+	width: 170rpx;
+	min-width: 170rpx;
+	padding-right: 20rpx;
+	text-align: left;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.main-admin .form-group > input,
+.main-admin .form-group > textarea,
+.main-admin .form-group > .picker,
+.main-admin .form-group > .picker-null,
+.main-admin .form-group > .picker-set,
+.main-admin .form-group > .form-text,
+.main-admin .form-group > .upload-img,
+.main-admin .form-group > view:not(.title) {
+	min-width: 0;
+}
+
+.main-admin .form-group > input,
+.main-admin .form-group > .form-text {
+	text-align: left;
+}
+
+.main-admin .form-group > .picker .picker,
+.main-admin .form-group > .picker-null .picker,
+.main-admin .form-group > .picker-set {
+	text-align: left;
+}
+
+.main-admin .form-group.form-detail {
+	align-items: flex-start;
+}
+
+.main-admin .form-group.form-detail > .title {
+	flex-basis: 170rpx;
+	min-width: 170rpx;
+}
+
+.main-admin .form-group textarea {
+	min-width: 0;
+}
+
+/* 通用列表的标题列、分隔列和内容列固定对齐 */
+.admin-comm-list .item .info .info-item {
+	min-width: 0;
+	align-items: flex-start;
+}
+
+.admin-comm-list .item .info .info-item .title {
+	box-sizing: border-box;
+	flex: 0 0 150rpx;
+	width: 150rpx;
+	min-width: 150rpx;
+	text-align: left;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.admin-comm-list .item .info .info-item .mao {
+	flex: 0 0 24rpx;
+	width: 24rpx;
+	min-width: 24rpx;
+	margin-right: 8rpx;
+}
+
+.admin-comm-list .item .info .info-item .content {
+	min-width: 0;
+	word-break: break-all;
+	line-height: 1.5;
+}
+
+.admin-comm-list .item .info .oprt {
+	width: 100%;
+	gap: 16rpx;
+	justify-content: flex-start;
+	padding-left: 0;
+	padding-right: 0;
+}
+
+.admin-comm-list .item .info .oprt .btn {
+	flex: 1 1 0;
+	min-width: 0;
+	margin-left: 0 !important;
+	margin-right: 0 !important;
+	white-space: nowrap;
+}
+
+@media (max-width: 360px) {
+	.main-admin .form-group > .title,
+	.main-admin .form-group.form-detail > .title {
+		flex-basis: 145rpx;
+		width: 145rpx;
+		min-width: 145rpx;
+	}
+
+	.admin-comm-list .item .info .info-item .title {
+		flex-basis: 130rpx;
+		width: 130rpx;
+		min-width: 130rpx;
+	}
 }

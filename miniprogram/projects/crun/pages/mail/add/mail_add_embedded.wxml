@@ -13,7 +13,7 @@
   <view class="pub-content">
    <view class="pub-card pub-service">
     <picker range="{{campuses}}" value="{{campusIndex}}" bindchange="bindCampusChange">
-     <view class="pub-campus-row"><view class="pub-campus-icon"><text class="icon-location"></text></view><view class="pub-campus-copy"><view class="pub-caption">当前服务校区</view><view class="pub-campus-name">{{campus}}</view></view><view class="pub-change">切换校区 <text class="icon-unfold"></text></view></view>
+     <view class="pub-campus-row"><view class="pub-campus-copy"><view class="pub-caption">当前服务校区</view><view class="pub-campus-name">{{campus}}</view></view><view class="pub-change">切换校区 <text class="icon-unfold"></text></view></view>
     </picker>
     <view class="pub-service-row pub-service-{{serviceState.kind}}"><view class="pub-status-label"><view class="pub-status-dot"></view><text>{{serviceState.title}}</text></view><text wx:if="{{serviceState.hours}}" class="pub-hours">{{serviceState.hours}}</text></view>
     <view wx:if="{{!serviceState.canPublish}}" class="pub-service-detail"><view>{{serviceState.description}}</view><view class="pub-service-actions"><text bindtap="bindServiceHelpTap">联系校区客服 <text class="icon-right"></text></text><text bindtap="bindRetryLoad">刷新状态</text></view></view>

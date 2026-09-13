@@ -8,7 +8,7 @@
   <mail-publish-form id="home-take-form" wx:if="{{isLoad}}" hidden="{{activeService !== 'take'}}" embedded="true" service="take" bind:published="bindEmbeddedPublished" />
   <view wx:if="{{activeService && activeService !== 'take'}}" class="quick-panel">
     <view class="quick-panel-head"><view><view class="quick-title">{{activeService==='take'?'帮我取':activeService==='send'?'帮我送':'帮我买'}}</view><view class="quick-subtitle">填写后直接在首页发布，切换服务不会丢失</view></view><text class="quick-close icon-close" bindtap="bindCloseService"></text></view>
-    <view class="quick-hint"><text class="icon-location"></text><text>服务校区：{{quickForm.campus || '请先在个人资料中填写'}}</text></view>
+    <view class="quick-hint"><text>服务校区：{{quickForm.campus || '请先在个人资料中填写'}}</text></view>
     <view class="quick-field quick-deadline"><text class="quick-label">期望接单截止</text><view class="quick-deadline-pickers"><picker mode="date" value="{{quickForm.formEndDate}}" start="{{today}}" bindchange="bindQuickEndChange"><text class="quick-picker-value">{{quickForm.formEndDate || '选择日期'}}</text></picker><text class="quick-deadline-sep">·</text><picker mode="time" value="{{quickForm.formEndTime}}" bindchange="bindQuickTimeChange"><text class="quick-picker-value">{{quickForm.formEndTime || '选择时间'}}</text></picker></view></view>
     <view class="quick-field"><text class="quick-label">{{activeService==='take'?'取件点':'出发地点'}}</text><input value="{{quickForm.address1}}" placeholder="例如：菜鸟驿站" bindinput="bindQuickInput" data-mark="address1" maxlength="100" /></view>
     <view class="quick-field"><text class="quick-label">送达地址</text><input value="{{quickForm.address2}}" placeholder="例如：1号宿舍楼 101" bindinput="bindQuickInput" data-mark="address2" maxlength="200" /></view>

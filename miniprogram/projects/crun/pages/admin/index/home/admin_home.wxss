@@ -1,5 +1,5 @@
 @import '../../../../../../style/public/admin.wxss';
-.main-admin { padding: 0 24rpx 48rpx; padding-bottom: calc(48rpx + env(safe-area-inset-bottom)); background: #f4f6f9; min-height: 100vh; box-sizing: border-box; }
+.main-admin { padding: 0 24rpx 48rpx; padding-bottom: calc(48rpx + env(safe-area-inset-bottom)); background: #f4f6f9; min-height: 100vh; box-sizing: border-box; width: 100%; align-items: stretch; }
 .admin-info { margin: 0 -24rpx; padding: 36rpx 28rpx 44rpx; color: #fff; display: flex; align-items: center; }
 .admin-info .pic { flex-shrink: 0; width: 84rpx; height: 84rpx; line-height: 84rpx; text-align: center; border-radius: 20rpx; font-size: 58rpx; margin-right: 24rpx; background: rgba(255,255,255,.14); }
 .admin-info .right { flex: 1; min-width: 0; }

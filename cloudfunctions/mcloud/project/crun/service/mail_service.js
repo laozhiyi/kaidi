@@ -142,13 +142,19 @@ class MailService extends Base {
   let {search,sortType,sortVal,whereEx,page=1,size=20} = input;
   if (!Number.isInteger(page) || page < 1 || page > 500 || !Number.isInteger(size) || size < 1 || size > 50) this.AppError('分页参数无效');
   const where = {and:{_pid:this.getProjectId()}};
+  const now = Date.now();
+  const completedSince = now - 12 * 60 * 60 * 1000;
   if (search === '我的发布') sortType = 'my_post'; if (search === '我的接单') sortType = 'my_accept';
   if (['my_post','my_accept','my_done','status','timeout'].includes(sortType)) {
    await this._user(userId);
    if (sortType === 'my_post') { where.and.MAIL_USER_ID = userId; where.and.MAIL_POSTER_ARCHIVED = ['<>',true]; }
    if (sortType === 'my_accept') { where.and.MAIL_ACCEPT_USER_ID = userId; where.and.MAIL_RIDER_ARCHIVED = ['<>',true]; }
-   if (['my_done','status','timeout'].includes(sortType)) { where.or = [{MAIL_USER_ID:userId},{MAIL_ACCEPT_USER_ID:userId}]; const state = sortType === 'my_done' ? 9 : sortType === 'timeout' ? 0 : Number(sortVal); if (![0,1,2,3,4,9,99].includes(state)) this.AppError('该订单校区暂不在服务范围'); where.and.MAIL_STATUS = state; if (sortType === 'timeout') where.and.MAIL_END_TIME = ['<',Date.now()]; }
-  } else { where.and.MAIL_STATUS = 0; where.and.MAIL_PAYMENT_MODE = 'offline'; where.and.MAIL_END_TIME = ['>',Date.now()]; if (sortType === 'wait') where.and.MAIL_USER_ID = ['<>',userId]; }
+   if (['my_post','my_accept'].includes(sortType)) {
+    // 已完成订单仅在完成后的 12 小时内显示；其他状态保持原有可见性。
+    where.or = [{ MAIL_STATUS: ['<>', 9], MAIL_END_TIME: ['>=', now] }, { MAIL_STATUS: 9, MAIL_OVER_TIME: ['>=', completedSince] }];
+   }
+   if (['my_done','status','timeout'].includes(sortType)) { where.or = [{MAIL_USER_ID:userId},{MAIL_ACCEPT_USER_ID:userId}]; const state = sortType === 'my_done' ? 9 : sortType === 'timeout' ? 0 : Number(sortVal); if (![0,1,2,3,4,9,99].includes(state)) this.AppError('该订单校区暂不在服务范围'); where.and.MAIL_STATUS = state; if (sortType === 'my_done') where.and.MAIL_OVER_TIME = ['>=', completedSince]; if (sortType === 'timeout') where.and.MAIL_END_TIME = ['<',now]; }
+  } else { where.and.MAIL_STATUS = 0; where.and.MAIL_PAYMENT_MODE = 'offline'; where.and.MAIL_END_TIME = ['>',now]; if (sortType === 'wait') where.and.MAIL_USER_ID = ['<>',userId]; }
   if (search && !['我的发布','我的接单'].includes(search)) { const q = rules.text(search,'搜索关键词',30,true); where.and['MAIL_OBJ.title'] = ['like',q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')]; }
   if (whereEx) {
    for (const [name,value] of Object.entries(whereEx)) {
