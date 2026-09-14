@@ -12,25 +12,31 @@ test('server recomputes cents and rejects malformed forms, disabled service and 
  f.config.enabled=false;await assert.rejects(f.publish(),/暂停/);assert.equal(f.table('mail').size,0);
 });
 
-test('public DTO never contains forms, pickup codes, contact details or file identifiers',async()=>{
+test('public DTO exposes pickup and delivery locations without contacts or pickup credentials',async()=>{
  const f=fixture(),id=await f.publish();const row=f.table('mail').get(id);row.MAIL_OBJ.imgUrls=['cloud://env/private/poster/secret.jpg'];
+ row.MAIL_OBJ.tel2='PRIVATE_SECOND_CONTACT';
  const outsider=await f.service.viewMail('other',id);const json=JSON.stringify(outsider);
- for(const sensitive of ['MAIL_FORMS','123-456','13800000000','宿舍101','secret.jpg','MAIL_USER_ID'])assert.ok(!json.includes(sensitive),sensitive);
+ assert.equal(outsider.MAIL_OBJ.address1,'菜鸟一期');assert.equal(outsider.MAIL_OBJ.address2,'宿舍101');
+ for(const sensitive of ['MAIL_FORMS','123-456','小王','13800000000','PRIVATE_SECOND_CONTACT','secret.jpg','MAIL_USER_ID'])assert.ok(!json.includes(sensitive),sensitive);
  const own=await f.service.viewMail('poster',id);assert.equal(own.mypost,true);assert.ok(own.MAIL_MEDIA.pickup[0].startsWith('https://signed.invalid'));
  await assert.rejects(f.service.getMailDetail('other',id),/无权限/);
 });
 
-test('pickup details unlock only for the accepting rider and order history remains publisher-only',async()=>{
+test('locations stay public while credentials unlock only for the accepting rider and history stays publisher-only',async()=>{
  const f=fixture(),id=await f.publish();
  const row=f.table('mail').get(id);
  row.MAIL_OBJ.packages=[{type:'small',price:1.5,code:'PRIVATE_PACKAGE_CODE',note:'PRIVATE_PACKAGE_NOTE',images:[]}];
  row.MAIL_OBJ.imgUrls=['cloud://env/private/poster/secret.jpg'];
+ row.MAIL_OBJ.tel2='PRIVATE_SECOND_CONTACT';
  row.MAIL_HISTORY[0].note='PRIVATE_HISTORY';
  const assertPublic=mail=>{
   assert.equal(mail.mypost,false);assert.equal(mail.myaccept,false);
-  for(const value of ['MAIL_FORMS','MAIL_HISTORY','MAIL_MEDIA','123-456','PRIVATE_PACKAGE_CODE','PRIVATE_PACKAGE_NOTE','PRIVATE_HISTORY','secret.jpg','13800000000','宿舍101'])assert.ok(!JSON.stringify(mail).includes(value),value);
+  assert.equal(mail.MAIL_OBJ.address1,'菜鸟一期');assert.equal(mail.MAIL_OBJ.address2,'宿舍101');
+  for(const key of ['poster','tel','tel2','code','packages','imgUrl','imgUrls'])assert.equal(mail.MAIL_OBJ[key],undefined,key);
+  assert.equal(mail.acceptUser,undefined);
+  for(const value of ['MAIL_FORMS','MAIL_HISTORY','MAIL_MEDIA','123-456','PRIVATE_PACKAGE_CODE','PRIVATE_PACKAGE_NOTE','PRIVATE_HISTORY','secret.jpg','小王','13800000000','PRIVATE_SECOND_CONTACT'])assert.ok(!JSON.stringify(mail).includes(value),value);
  };
- for(const user of ['rider','other']) {
+ for(const user of ['','rider','other']) {
   assertPublic(await f.service.viewMail(user,id));
   const list=await f.service.getMailList(user,{sortType:'wait'});
   assert.equal(list.list.length,1);assertPublic(list.list[0]);
@@ -40,6 +46,8 @@ test('pickup details unlock only for the accepting rider and order history remai
  await f.service.acceptMail('rider',id,{requestId:f.req('accept')});
  const rider=await f.service.viewMail('rider',id);
  assert.equal(rider.myaccept,true);assert.equal(rider.MAIL_OBJ.code,'123-456');
+ assert.equal(rider.MAIL_OBJ.address1,'菜鸟一期');assert.equal(rider.MAIL_OBJ.address2,'宿舍101');
+ assert.equal(rider.MAIL_OBJ.poster,'小王');assert.equal(rider.MAIL_OBJ.tel,'13800000000');assert.equal(rider.MAIL_OBJ.tel2,'PRIVATE_SECOND_CONTACT');
  assert.equal(rider.MAIL_OBJ.packages[0].code,'PRIVATE_PACKAGE_CODE');assert.equal(rider.MAIL_MEDIA.pickup.length,1);
  assert.equal(rider.MAIL_HISTORY,undefined);
  assertPublic(await f.service.viewMail('other',id));
@@ -56,6 +64,7 @@ test('anonymous viewers never match unassigned or missing order identities',asyn
   for(const mail of [row,{...row,MAIL_USER_ID:userId,MAIL_ACCEPT_USER_ID:userId}]) {
    const view=rules.project(mail,userId);
    assert.equal(view.mypost,false);assert.equal(view.myaccept,false);
+   assert.equal(view.MAIL_OBJ.address1,'菜鸟一期');assert.equal(view.MAIL_OBJ.address2,'宿舍101');
    assert.equal(view.MAIL_OBJ.code,undefined);assert.equal(view.MAIL_FORMS,undefined);assert.equal(view.MAIL_HISTORY,undefined);
   }
  }

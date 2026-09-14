@@ -14,7 +14,7 @@
     <view class="ac-card">
       <view class="ac-section-title">取送与包裹信息</view>
       <view class="ac-address"><view class="ac-address-mark">取</view><view><view class="ac-field-label">取件地址</view><view class="ac-field-value">{{detail.MAIL_OBJ.address1 || '未填写'}}</view></view></view>
-      <view class="ac-address"><view class="ac-address-mark green">送</view><view><view class="ac-field-label">送达地址</view><view class="ac-field-value">{{detail.MAIL_OBJ.address2 || '未填写'}}</view></view></view>
+      <view class="ac-address"><view class="ac-address-mark green">送</view><view><view class="ac-field-label">送达地址</view><view class="ac-field-value">{{detail.deliveryAddress || '未填写'}}</view></view></view>
       <view class="ac-field"><view class="ac-field-label">取件码</view><view class="ac-code"><text user-select>{{detail.MAIL_OBJ.code || '请查看取件凭证'}}</text></view></view>
       <view wx:if="{{detail.MAIL_OBJ.desc}}" class="ac-field"><view class="ac-field-label">订单备注</view><view class="ac-field-value">{{detail.MAIL_OBJ.desc}}</view></view>
       <view class="ac-row"><text class="ac-muted">包裹组成</text><text>小件 {{detail.MAIL_OBJ.small || 0}} · 中件 {{detail.MAIL_OBJ.medium || 0}} · 大件 {{detail.MAIL_OBJ.large || 0}}</text></view>

@@ -6,6 +6,7 @@ const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
 const PublicBiz = require('../../../../../comm/biz/public_biz.js');
 const Favorites = require('../../../biz/order_fav_biz.js');
 const OrderSync = require('../../../biz/order_sync_biz.js');
+const MailUI = require('../../../biz/mail_ui_biz.js');
 
 /**
  * 快递代取 - 接单/订单 Tab 页
@@ -45,7 +46,7 @@ Page({
 
 		// 列表数据（cmpt-comm-list 通过 bind:list 回填）
 		dataList: null,
-		favoriteBusyId: '', favoriteSyncError: false, acceptingId: '', actionBusyId: '', orderSyncError: false,
+		favoriteBusyId: '', favoriteSyncError: false, acceptingId: '', actionBusyId: '', confirmingId: '', orderSyncError: false,
 	},
 
 	onLoad: async function (options) {
@@ -174,11 +175,17 @@ Page({
 
     _decorateOrder: function (order) {
         const obj = order && order.MAIL_OBJ || {};
+        const progress = MailUI.progress(order);
         let packages = Array.isArray(obj.packages) ? obj.packages : [];
         if (!packages.length && obj.code) {
             packages = String(obj.code).split(/\r?\n/).filter(Boolean).map(code => ({ code }));
         }
-		return Object.assign({}, order, { MAIL_FAV_CNT: Number(order.MAIL_FAV_CNT) || 0, MAIL_IS_FAV: !!order.MAIL_IS_FAV, packageProofs: packages.map(item => ({ pickupPoint: item.pickupPoint || obj.address1 || '', code: item.code || '查看取件截图', noteLabel: item.note ? '有备注' : '无备注' })) });
+		return Object.assign({}, order, {
+			showProgress: progress.visible, progressStep: progress.step, progressLabels: progress.steps.map(step => step.label),
+			deliveryAddress: MailUI.deliveryAddress(order), receipt: MailUI.receipt(order),
+			MAIL_FAV_CNT: Number(order.MAIL_FAV_CNT) || 0, MAIL_IS_FAV: !!order.MAIL_IS_FAV,
+			packageProofs: packages.filter(item => item && typeof item === 'object').map(item => ({ pickupPoint: item.pickupPoint || obj.address1 || '', code: item.code || '查看取件截图', noteLabel: item.note ? '有备注' : '无备注' }))
+		});
     },
 	_snapshotKey: function (tab) {
 		const user = PassportBiz.getUserId ? PassportBiz.getUserId() : '';
@@ -315,8 +322,18 @@ Page({
 		} finally { this._accepting = false; if (!this._unloaded) this.setData({ acceptingId: '' }); }
 	},
 
-	/** 为尚未支付的自有订单发起支付，并在成功后刷新发布列表。 */
-	bindPayTap: function () { pageHelper.showNoneToast('当前版本仅支持线下结算，不提供微信支付'); },
+	/** 发布者从列表发起收货确认，详情页读取最新状态后执行现有核对流程。 */
+	bindConfirmReceiptTap: function (e) {
+		const id = e.currentTarget.dataset.id;
+		const order = (this.data.dataList && this.data.dataList.list || []).find(row => row._id === id);
+		if (!id || !this._visible || this.data.tabIndex !== 2 || !order || !MailUI.receipt(order).visible || this.data.confirmingId) return;
+		this.setData({ confirmingId: id });
+		wx.navigateTo({
+			url: pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id=' + encodeURIComponent(id) + '&action=confirm'),
+			fail: error => { if (this._visible) Ops.error(error); },
+			complete: () => { if (!this._unloaded) this.setData({ confirmingId: '' }); },
+		});
+	},
 
 	/**
 	 * 联系发单人（拨打电话）
@@ -330,27 +347,30 @@ Page({
 		wx.makePhoneCall({ phoneNumber: String(tel) });
 	},
 
-	/**
-	 * 完成订单 - 发布者或接单人确认配送完成
-	 */
 	/** 接单人更新取件/送达进度，每一步都先二次确认。 */
 	bindOrderAction: async function (e) {
 		const id = e.currentTarget.dataset.id;
 		const action = e.currentTarget.dataset.action;
-		if (!id || !['pickup', 'deliver'].includes(action) || this._orderActionBusy) return;
+		const order = (this.data.dataList && this.data.dataList.list || []).find(row => row._id === id);
+		const expectedStatus = { pickup: 1, deliver: 4 }[action];
+		if (!id || !this._visible || this.data.tabIndex !== 1 || !order || !order.myaccept || expectedStatus === undefined || Number(order.MAIL_STATUS) !== expectedStatus || this._orderActionBusy) return;
 		this._orderActionBusy = true;
 		this.setData({ actionBusyId: id });
 		try {
-			const message = action === 'pickup' ? '确认已经从快递点取到该包裹吗？' : '确认已经将包裹送到收件地址吗？';
-			if (!await pageHelper.showConfirm(message)) return;
+			const message = action === 'pickup' ? '确认已经从快递点取齐本单所有包裹吗？确认后将进入配送中。' : '确认已将本单所有包裹送到收件地址吗？接下来将进入订单详情，请填写送达说明并上传至少1张照片，提交后通知发布者确认收货。';
+			if (!await pageHelper.showConfirm(message) || !this._visible || this.data.tabIndex !== 1) return;
+			const current = (this.data.dataList && this.data.dataList.list || []).find(row => row._id === id);
+			if (!current || !current.myaccept || Number(current.MAIL_STATUS) !== expectedStatus) return;
 			if (action === 'deliver') {
-				wx.navigateTo({ url: pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id=' + encodeURIComponent(id) + '&panel=deliver') });
+				await new Promise((resolve, reject) => wx.navigateTo({
+					url: pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id=' + encodeURIComponent(id) + '&panel=deliver'),
+					success: resolve, fail: reject,
+				}));
 				return;
 			}
 			await Ops.command('mail/pickup', { id });
-			pageHelper.showSuccToast('已更新为已取件');
 			PublicBiz.removeCacheList('order-mail-mine');
-			await this._syncOrders();
+			if (this._visible) { pageHelper.showSuccToast('已更新为已取件'); await this._syncOrders(); }
 		} catch (err) { if (this._visible) { Ops.error(err); await this._syncOrders(); } }
 		finally { this._orderActionBusy = false; if (!this._unloaded) this.setData({ actionBusyId: '' }); }
 	},

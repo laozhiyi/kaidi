@@ -3,11 +3,23 @@ const path = require('node:path');
 const vm = require('node:vm');
 const crypto = require('node:crypto');
 const root = path.resolve(__dirname, '../../cloudfunctions/mcloud/project/crun/service');
-function fixture() {
+function fixture({ projectFields = false } = {}) {
  const tables = new Map();
+ const reads = [];
  const table = name => { if(!tables.has(name))tables.set(name,new Map());return tables.get(name); };
  const clone = x => x == null ? x : structuredClone(x);
  const field = (row, key) => key.split('.').reduce((v,k)=>v && v[k],row);
+ function project(row, fields) {
+  if (!row || !projectFields || !fields || fields === '*') return clone(row);
+  const selected = { _id: row._id };
+  for (const key of String(fields).split(',').map(key => key.trim())) {
+   const value = field(row, key); if (value === undefined) continue;
+   const parts = key.split('.'); let target = selected;
+   for (const part of parts.slice(0, -1)) target = target[part] ||= {};
+   target[parts.at(-1)] = clone(value);
+  }
+  return selected;
+ }
  function matches(row, where) {
   if(typeof where==='string')return row._id===where;
   return Object.entries(where || {}).every(([k,v])=>{
@@ -35,9 +47,9 @@ function fixture() {
  class Base {constructor(){this._timestamp=Date.now();}getProjectId(){return 'crun';}AppError(message){throw new Error(message);}async insertLog(){}}
  function model(name){return {
   async insert(data){const id=name+'-document-'+(table(name).size+1);table(name).set(id,{_pid:'crun',...clone(data),_id:id});return id;},
-  async getOne(w){return clone([...table(name).values()].find(x=>x._pid==='crun'&&matches(x,w))||null);},
-  async getAll(w,f,o,n=100){const q=collection(name).where({_pid:'crun',...w});for(const [key,direction] of Object.entries(o||{}))q.orderBy(key,direction);return (await q.limit(n).get()).data;},
-  async getList(w,f,o,page=1,size=20){let q=collection(name).where(w);for(const [k,d] of Object.entries(o))q.orderBy(k,d);const total=(await q.count()).total;return {list:(await q.skip((page-1)*size).limit(size).get()).data,page,size,total,count:Math.ceil(total/size)};},
+  async getOne(w,f){reads.push({name,method:'getOne',fields:f});return project([...table(name).values()].find(x=>x._pid==='crun'&&matches(x,w))||null,f);},
+  async getAll(w,f,o,n=100){reads.push({name,method:'getAll',fields:f});const q=collection(name).where({_pid:'crun',...w});for(const [key,direction] of Object.entries(o||{}))q.orderBy(key,direction);return (await q.limit(n).get()).data.map(row=>project(row,f));},
+  async getList(w,f,o,page=1,size=20){reads.push({name,method:'getList',fields:f});let q=collection(name).where(w);for(const [k,d] of Object.entries(o))q.orderBy(k,d);const total=(await q.count()).total;return {list:(await q.skip((page-1)*size).limit(size).get()).data.map(row=>project(row,f)),page,size,total,count:Math.ceil(total/size)};},
   async edit(w,data){for(const [id,row] of table(name))if(matches(row,w))table(name).set(id,{...row,...clone(data)});},
   async count(w){return [...table(name).values()].filter(x=>matches(x,w)).length;},async inc(){}};}
  let sendError=null,sends=0;
@@ -75,6 +87,6 @@ function fixture() {
  const req=(value='default')=>'request_'+value.padEnd(16,'_');
  const Mail=load('mail_service.js'),service=new Mail();
  const publish=async(extra={},actor='poster')=>(await service.insertMail(actor,{forms:forms(),requestId:req('publish'),...extra}))._id;
- return {store,table,load,user,config,forms,req,service,publish,setSendError:e=>sendError=e,get sends(){return sends;}};
+ return {store,table,load,user,config,forms,req,service,publish,reads,setSendError:e=>sendError=e,get sends(){return sends;}};
 }
 module.exports={fixture};

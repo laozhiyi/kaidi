@@ -7,7 +7,13 @@ const check = require('../../../../framework/validate/content_check.js');
 class AdminOperationsController extends Base {
  async getConfig(){await this.isAdmin();return new Config().getConfig();}
  async saveConfig(){await this.isSuperAdmin();const p=this.validateData({value:'must|object',section:'string|max:20'});await check.checkTextMultiAdmin(p);return new Config().saveConfig(p.value,this._adminId,p.section);}
- async orders(){await this.isAdmin();const p=this.validateData({page:'int|default=1|min:1|max:500',status:'int',search:'string|max:50',campus:'string|max:30',sort:'string|max:20',overdue:'bool'});return new Service().orders(p.page,p.status,p);}
+ async orders(){
+  await this.isAdmin();
+  // “全部”使用 -1；int 只接受非负整数，先校验状态枚举再转为数值。
+  const p=this.validateData({page:'int|default=1|min:1|max:500',status:'must|string|default=-1|in:-1,0,1,2,3,4,9,99',search:'string|max:50',campus:'string|max:30',sort:'string|max:20',overdue:'bool'});
+  p.status=Number(p.status);
+  return new Service().orders(p.page,p.status,p);
+ }
  async orderDetail(){await this.isAdmin();const p=this.validateData({id:'must|id'});return new Service().orderDetail(p.id);}
  async hold(){await this.isAdmin();const p=this.validateData({id:'must|id',requestId:'must|string|min:16|max:100',note:'must|string|max:500'});await check.checkTextMultiAdmin(p);return new Mail().holdMail(this._adminId,p.id,p);}
  async resolve(){await this.isAdmin();const p=this.validateData({id:'must|id',requestId:'must|string|min:16|max:100',resolution:'must|string|max:20',note:'must|string|max:500'});await check.checkTextMultiAdmin(p);return new Mail().resolveMail(this._adminId,p.id,p);}

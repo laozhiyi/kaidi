@@ -114,6 +114,25 @@ function smokeRender(code) {
     if (patch.detail) assert.ok(!content.includes('点击记录查看详情并处理'), '详情模式不应仍展示列表');
     if (patch.config && patch.isSuperAdmin === false) assert.ok(!content.includes('保存设置'), '只读模式不应展示保存按钮');
   }
+  const receiptFixtures = require('./test-support/order-receipt-fixtures.cjs'), receiptCases = receiptFixtures.scenarios();
+  const nodeText = node => node == null ? '' : typeof node === 'object' ? (node.children || []).map(nodeText).join('') : String(node);
+  function buttons(node) {
+    if (!node || typeof node !== 'object') return [];
+    return (node.tag === 'wx-button' ? [node] : []).concat((node.children || []).flatMap(buttons));
+  }
+  for (const fixture of receiptCases) {
+    const tree = context.$gwx('./' + fixture.base + '.wxml')(receiptFixtures.pageState(fixture), {}, {});
+    const content = JSON.stringify(tree), controls = buttons(tree);
+    const receiptButtons = controls.filter(button => nodeText(button) === '确认收货');
+    assert.equal(receiptButtons.length, fixture.receiptExpected ? 1 : 0, fixture.title + ' 收货按钮可见性错误');
+    if (fixture.receiptExpected) {
+      assert.ok(!receiptButtons[0].attr.disabled, fixture.title + ' 收货入口应可点击查看状态');
+      assert.equal(receiptButtons[0].attr[fixture.isList ? 'catchtap' : 'bindtap'], fixture.isList ? 'bindConfirmReceiptTap' : 'bindReceiptTap');
+      assert.ok(content.includes(require('../miniprogram/projects/crun/biz/mail_ui_biz.js').receipt(fixture.mail).hint), fixture.title + ' 缺少收货状态说明');
+    }
+    if (fixture.editExpected) assert.ok(controls.some(button => nodeText(button) === '编辑订单'), '待接单详情仍应支持编辑订单');
+    if (fixture.isList) assert.ok(!content.includes('线下结算'), '我的发布卡片应使用收货操作入口');
+  }
   const mailCases = require('./test-support/mail-ui-fixtures.cjs').scenarios();
   for (const fixture of mailCases) {
     const base = 'projects/crun/pages/mail/' + fixture.page;
@@ -157,7 +176,7 @@ function smokeRender(code) {
     const content = JSON.stringify(render(notificationLayouts.pageState(fixture), {}, {}));
     assert.ok(content.includes(fixture.expected), fixture.title + ' 渲染结果缺少：' + fixture.expected);
   }
-  console.log('WXML 渲染冒烟检查通过：' + (scenarios.length + mailCases.length + packageCases.length + reputationCases.length + adminCases.length + notificationCases.length) + ' 个页面状态（含公告未读、后台表单、会话、失败重试与隐私检查）。');
+  console.log('WXML 渲染冒烟检查通过：' + (scenarios.length + receiptCases.length + mailCases.length + packageCases.length + reputationCases.length + adminCases.length + notificationCases.length) + ' 个页面状态（含收货入口、公告未读、后台表单、失败重试与隐私检查）。');
 }
 function compile(compiler, kind, files) {
   const extensions = kind === 'wxml' ? /\.(wxml|wxs)$/ : /\.wxss$/;

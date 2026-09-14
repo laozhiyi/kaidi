@@ -28,7 +28,7 @@ page {
 .notice {
 	display: flex;
 	align-items: center;
-	min-height: 92rpx;
+	min-height: 120rpx;
 	margin: 0 0 18rpx;
 	padding: 14rpx 18rpx;
 	box-sizing: border-box;
@@ -155,7 +155,7 @@ page {
 	display: flex;
 	align-items: center;
 	width: 100%;
-	min-height: 100rpx;
+	min-height: 120rpx;
 }
 
 .express-card-arrow {

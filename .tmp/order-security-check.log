@@ -1,0 +1,20 @@
+✔ evidence accepts only exact owner upload prefix and rejects nested prefix spoofing (2.0742ms)
+✔ audited evidence is copied server-side and only authorized archived files can be reused (3.3307ms)
+✔ image size, signature and moderation failures do not create evidence (2.2874ms)
+✔ development moderation switch does not bypass file validation or evidence archiving (0.6518ms)
+✔ text review uses trusted identity, segments long inputs and fails closed (0.7601ms)
+✔ weak network retries reuse command id without persisting personal payload (1.5047ms)
+✔ command cache isolates users, administrator sessions and changed payloads (1.0285ms)
+✔ operation controller authenticates first, normalizes absent status and requires mutation ids (2.6119ms)
+✔ database wrapper treats only missing documents as absent, never network errors (0.8779ms)
+✔ publish page sends selected deadline after successful upload and guards repeated taps (6.4792ms)
+✔ disabled payment methods return explicit business errors without touching cloud payment (1.7968ms)
+✔ administrator sessions require matching identity, active account, unexpired token and correct role (0.7927ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 78.6706

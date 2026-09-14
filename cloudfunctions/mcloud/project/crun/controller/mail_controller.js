@@ -10,10 +10,11 @@ class MailController extends Base {
  async _action(method, extra = {}, audit = false) {
   const input=this._input(extra), svc=new MailService();
   if(audit) {
-   const action={cancelMail:'cancel',deliverMail:'deliver',exceptionMail:'exception'}[method];
+   const action={cancelMail:'cancel',deliverMail:'deliver',updateDeliveryProof:'update_proof',exceptionMail:'exception'}[method];
    const replay=await svc.replayRequest(this._userId,action,input); if(replay)return replay;
    input._sourceFingerprint=store.key(input);
-   await this._limitAudit();await check.checkTextMultiClient(input); input.images=await this._checkImages(input.images || []);
+   const oldProof=method === 'updateDeliveryProof' ? await svc.getDeliveryProofForUpdate(this._userId,input.id) : null;
+   await this._limitAudit();await check.checkTextMultiClient(input); input.images=await this._checkImages(input.images || [],oldProof && oldProof.images || []);
   }
   return svc[method](this._userId,input.id,input);
  }
@@ -23,6 +24,7 @@ class MailController extends Base {
  async cancelMail() {return this._action('cancelMail',{note:'string|max:300'},true);}
  async finishMail() {return this._action('finishMail');}
  async deliverMail() {return this._action('deliverMail',{note:'string|max:300',images:'array'},true);}
+ async updateDeliveryProof() {return this._action('updateDeliveryProof',{note:'must|string|max:300',images:'must|array'},true);}
  async exceptionMail() {return this._action('exceptionMail',{reason:'must|string|max:30',note:'must|string|max:500',images:'array'},true);}
  async statusMail() {return new MailService().statusMail();}
  async delMail() {return this._action('delMail');}

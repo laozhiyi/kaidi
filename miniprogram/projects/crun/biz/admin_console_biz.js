@@ -1,5 +1,6 @@
 const Admin = require('../../../comm/biz/admin_biz.js');
 const Ops = require('./operations_biz.js');
+const Address = require('./address_biz.js');
 
 const ROUTES = {
   home: '/projects/crun/pages/admin/index/home/admin_home',
@@ -75,12 +76,12 @@ function time(value, short = false) {
 }
 const STATUS = { 0: '待接单', 1: '已接单', 4: '已取件', 2: '待收货', 3: '异常处理中', 9: '已完成', 99: '已取消' };
 const TONES = { 0: 'amber', 1: 'blue', 4: 'blue', 2: 'amber', 3: 'red', 9: 'green', 99: 'muted' };
-const ACTIONS = { publish: '发布订单', edit: '修改订单', accept: '接取订单', pickup: '确认取件', deliver: '提交送达凭证', complete: '确认完成', confirm: '确认收货', cancel: '取消订单', exception: '上报异常', hold: '管理员介入', resume: '恢复配送', resolve: '处理异常', resolve_resume: '恢复配送', resolve_cancel: '取消订单', resolve_complete: '确认完成', expire: '订单到期关闭', overdue: '发送超时提醒' };
+const ACTIONS = { publish: '发布订单', edit: '修改订单', accept: '接取订单', pickup: '确认取件', deliver: '提交送达凭证', update_proof: '更新送达凭证', complete: '确认完成', confirm: '确认收货', cancel: '取消订单', exception: '上报异常', hold: '管理员介入', resume: '恢复配送', resolve: '处理异常', resolve_resume: '恢复配送', resolve_cancel: '取消订单', resolve_complete: '确认完成', expire: '订单到期关闭', overdue: '发送超时提醒' };
 function order(row) {
   const obj = row.MAIL_OBJ || {};
   const step = ({ 0: 0, 1: 1, 4: 2, 2: 3, 9: 4 })[row.MAIL_STATUS];
   return { ...row, MAIL_OBJ: obj, statusLabel: row.status || STATUS[row.MAIL_STATUS] || '状态未知', tone: TONES[row.MAIL_STATUS] || 'muted',
-    orderNo: row.MAIL_ID || row._id, createdText: time(row.MAIL_ADD_TIME), dueText: time(row.MAIL_DUE_TIME), endText: time(row.MAIL_END_TIME),
+    orderNo: row.MAIL_ID || row._id, deliveryAddress: Address.formatOrderAddress(row), createdText: time(row.MAIL_ADD_TIME), dueText: time(row.MAIL_DUE_TIME), endText: time(row.MAIL_END_TIME),
     priceText: Number.isFinite(Number(obj.price)) ? Number(obj.price).toFixed(2) : '—',
     steps: ['已发布', '已接单', '已取件', '已送达', '已完成'].map((label, index) => ({ label, done: step !== undefined && index <= step, current: index === step })),
     history: (row.MAIL_HISTORY || []).filter(Boolean).map((item, index) => ({ ...item, key: item.id || String(index), timeText: time(item.at), label: ACTIONS[item.action] || '更新订单', actorText: ({ admin: '管理员', poster: '发布人', rider: '接单人', system: '系统' })[item.actor] || '系统' })),

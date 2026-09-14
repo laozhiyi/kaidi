@@ -6,7 +6,7 @@ const ConfigService = require('./operation_config_service.js');
 const store = require('./operation_store.js');
 const rules = require('./order_rules.js');
 const media = require('./private_media_service.js');
-const REQUEST_ROUTES = {publish:'mail/insert',edit:'mail/edit',accept:'mail/accept',pickup:'mail/pickup',cancel:'mail/cancel',deliver:'mail/deliver',confirm:'mail/finish',exception:'mail/exception',archive:'mail/del',hold:'admin/operations_hold',resolve:'admin/operations_resolve'};
+const REQUEST_ROUTES = {publish:'mail/insert',edit:'mail/edit',accept:'mail/accept',pickup:'mail/pickup',cancel:'mail/cancel',deliver:'mail/deliver',update_proof:'mail/update_proof',confirm:'mail/finish',exception:'mail/exception',archive:'mail/del',hold:'admin/operations_hold',resolve:'admin/operations_resolve'};
 class MailService extends Base {
  getStatusDesc(mail) { return rules.project(mail, '').status; }
  getFormObj(forms) { return Object.fromEntries((forms || []).map(x => [x.mark,x.val])); }
@@ -72,7 +72,7 @@ class MailService extends Base {
    _pid: this.getProjectId(), shard, revision: event.id, updatedAt: now
   });
   for (const userId of new Set([mail.MAIL_USER_ID,mail.MAIL_ACCEPT_USER_ID].filter(Boolean))) {
-   await store.set(tx,'notification',store.key(event.id,userId),{ _pid:this.getProjectId(), userId, orderId:mail._id, title:'订单状态更新', content:rules.LABELS[mail.MAIL_STATUS], action, createdAt:now, read:false, delivery:'pending', attempts:0, nextAttemptAt:now });
+   await store.set(tx,'notification',store.key(event.id,userId),{ _pid:this.getProjectId(), userId, orderId:mail._id, title:action === 'update_proof' ? '送达凭证已更新' : '订单状态更新', content:action === 'update_proof' ? '骑手已更新送达说明或照片，请核对后确认收货' : rules.LABELS[mail.MAIL_STATUS], action, createdAt:now, read:false, delivery:'pending', attempts:0, nextAttemptAt:now });
   }
  }
  async insertMail(userId, input) {
@@ -127,6 +127,11 @@ class MailService extends Base {
     if (!rider || state !== 4) this.AppError('仅配送中的接单人可提交送达');
     const proof = rules.images(input.images || []); note = rules.text(input.note || '','送达说明',300,true);
     if (!proof.length) this.AppError('请上传送达凭证'); mail.MAIL_DELIVERY_PROOF = {images:proof,note,at:now}; mail.MAIL_DELIVERED_TIME = now; mail.MAIL_STATUS = 2;
+   } else if (action === 'update_proof') {
+    if (!rider || state !== 2 || !mail.MAIL_DELIVERY_PROOF) this.AppError('仅待收货订单的接单骑手可更新送达凭证');
+    const proof = rules.images(input.images || []); note = rules.text(input.note || '','送达说明',300,true);
+    if (!proof.length) this.AppError('请至少保留1张送达照片');
+    mail.MAIL_DELIVERY_PROOF = {...mail.MAIL_DELIVERY_PROOF,images:proof,note,updatedAt:now};
    } else if (action === 'confirm') {
     if (!poster || state !== 2) this.AppError('仅发布者可确认已送达订单'); mail.MAIL_STATUS = 9; mail.MAIL_OVER_TIME = now; mail.MAIL_POSTER_ARCHIVED = true; mail.MAIL_RIDER_ARCHIVED = true;
    } else if (action === 'exception') {
@@ -162,6 +167,14 @@ class MailService extends Base {
  async cancelMail(userId,id,input) { return this._change(userId,id,'cancel',input); }
  async finishMail(userId,id,input) { return this._change(userId,id,'confirm',input); }
  async deliverMail(userId,id,input) { return this._change(userId,id,'deliver',input); }
+ async updateDeliveryProof(userId,id,input) { return this._change(userId,id,'update_proof',input); }
+ async getDeliveryProofForUpdate(userId,id) {
+  await this._user(userId);
+  const mail = await MailModel.getOne(id);
+  if (!mail || mail._pid !== this.getProjectId()) this.AppError('订单不存在');
+  if (mail.MAIL_ACCEPT_USER_ID !== userId || mail.MAIL_STATUS !== 2 || !mail.MAIL_DELIVERY_PROOF) this.AppError('仅待收货订单的接单骑手可更新送达凭证');
+  return mail.MAIL_DELIVERY_PROOF;
+ }
  async exceptionMail(userId,id,input) { return this._change(userId,id,'exception',input); }
  async holdMail(adminId,id,input) { return this._change('',id,'hold',input,adminId); }
  async resolveMail(adminId,id,input) { return this._change('',id,'resolve',input,adminId); }
@@ -181,7 +194,11 @@ class MailService extends Base {
   Object.assign(result, { MAIL_FAV_CNT: favorite.count, MAIL_IS_FAV: favorite.isFav, MAIL_CAN_FAV: favorite.available });
   return media.order(result);
  }
- async getMailDetail(userId,id) { const mail = await MailModel.getOne(id); if (!mail) return null; if (userId !== null) { await this._user(userId); if (mail.MAIL_USER_ID !== userId) this.AppError('无权限查看该订单'); } return media.order(rules.project(mail,userId,userId === null)); }
+ async getMailDetail(userId,id) {
+  const mail = await MailModel.getOne(id); if (!mail) return null;
+  if (userId !== null) { await this._user(userId); if (mail.MAIL_USER_ID !== userId) this.AppError('无权限查看该订单'); }
+  return media.order(rules.project(mail,userId,userId === null));
+ }
  async getMailList(userId,input) {
   let {search,sortType,sortVal,whereEx,page=1,size=20} = input;
   if (!Number.isInteger(page) || page < 1 || page > 500 || !Number.isInteger(size) || size < 1 || size > 50) this.AppError('分页参数无效');
@@ -212,8 +229,8 @@ class MailService extends Base {
   let order = {MAIL_ADD_TIME:'desc'};
   if (input.orderBy && Object.keys(input.orderBy).length) { if (Object.keys(input.orderBy).length !== 1 || !['MAIL_ADD_TIME','MAIL_OBJ.price'].includes(Object.keys(input.orderBy)[0]) || !['asc','desc'].includes(Object.values(input.orderBy)[0])) this.AppError('排序参数无效'); order = input.orderBy; }
   order = { ...order, _id: 'desc' };
-  // Lists do not need history, proof images or complete form payloads.
-  const fields = '_id,_pid,MAIL_ID,MAIL_USER_ID,MAIL_ACCEPT_USER_ID,MAIL_STATUS,MAIL_END_TIME,MAIL_ADD_TIME,MAIL_ACCEPT_TIME,MAIL_PICKUP_TIME,MAIL_OVER_TIME,MAIL_TOTAL_FEE,MAIL_PAYMENT_MODE,MAIL_CATE_ID,MAIL_CATE_NAME,MAIL_DUE_TIME,MAIL_DELIVERED_TIME,MAIL_OBJ,MAIL_VERSION';
+  // Read the submitted address with the order; private forms are removed from the response below.
+  const fields = '_id,_pid,MAIL_ID,MAIL_USER_ID,MAIL_ACCEPT_USER_ID,MAIL_STATUS,MAIL_END_TIME,MAIL_ADD_TIME,MAIL_ACCEPT_TIME,MAIL_PICKUP_TIME,MAIL_OVER_TIME,MAIL_TOTAL_FEE,MAIL_PAYMENT_MODE,MAIL_CATE_ID,MAIL_CATE_NAME,MAIL_DUE_TIME,MAIL_DELIVERED_TIME,MAIL_OBJ,MAIL_FORMS,MAIL_VERSION';
   const field = Object.keys(order)[0], direction = order[field];
   const cursor = input.cursor;
   if (cursor && (typeof cursor !== 'object' || cursor.field !== field || cursor.direction !== direction

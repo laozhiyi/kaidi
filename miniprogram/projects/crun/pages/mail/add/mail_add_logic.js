@@ -132,12 +132,12 @@ module.exports = {
    }
    this._prices = prices;
    this.setData({ serviceState: MailUI.service(config) });
-   const preferredCampus = this._profileCampus && config.campuses.includes(this._profileCampus) ? this._profileCampus : this.data.campus;
+   const preferredCampus = !this._campusEdited && this._profileCampus && config.campuses.includes(this._profileCampus) ? this._profileCampus : this.data.campus;
    this.setData({ config, campuses: config.campuses,
     campus: config.campuses.includes(preferredCampus) ? preferredCampus : config.campuses[0],
     campusIndex: Math.max(0, config.campuses.indexOf(preferredCampus)) });
    if (this.data.mailValues) {
-    ['address2','poster','tel','tel2'].forEach(mark => { if (this._profileDefaults && !this.data.mailValues[mark] && this._profileDefaults[mark]) this._setFormVal(mark, this._profileDefaults[mark]); });
+    ['address2','poster','tel','tel2'].forEach(mark => { if ((!this._profileEdited || !this._profileEdited[mark]) && this._profileDefaults && !this.data.mailValues[mark] && this._profileDefaults[mark]) this._setFormVal(mark, this._profileDefaults[mark]); });
    }
    if (this.data.editId && !this._editLoaded) {
     await this._loadForEdit(this.data.editId);
@@ -209,6 +209,7 @@ module.exports = {
 
 			if (!mail.mypost || mail.MAIL_STATUS !== 0) throw new Error('该订单不可编辑，请返回订单详情');
 			const obj = mail.MAIL_OBJ || {};
+			const address2 = Address.orderAddress(mail);
 			this.setData({campus:obj.campus||this.data.campus,campusIndex:Math.max(0,this.data.campuses.indexOf(obj.campus||this.data.campus))});
 			const storedForms = Array.isArray(mail.MAIL_FORMS) ? mail.MAIL_FORMS : [];
 			const findStoredFormVal = (mark, def) => {
@@ -246,7 +247,7 @@ module.exports = {
 				{ mark: 'price', title: '打赏金额(元)', type: 'digit', val: String(obj.price || findFormVal('price', '1.50')) },
 				{ mark: 'code', title: '取件码', type: 'textarea', val: String(obj.code || findFormVal('code', '')) },
 				{ mark: 'img', title: '相关图片', type: 'image', val: Array.isArray(findFormVal('img', [])) ? findFormVal('img', []) : [] },
-				{ mark: 'address2', title: '收件地址', type: 'textarea', val: String(obj.address2 || findFormVal('address2', '')) },
+				{ mark: 'address2', title: '收件地址', type: 'textarea', val: address2 },
 				{ mark: 'poster', title: '联系人', type: 'text', val: String(obj.poster || findFormVal('poster', '')) },
 				{ mark: 'tel', title: '手机号', type: 'mobile', val: String(obj.tel || findFormVal('tel', '')) },
 				{ mark: 'tel2', title: '第二联系方式', type: 'text', val: String(obj.tel2 || findFormVal('tel2', '')) },
@@ -268,7 +269,7 @@ module.exports = {
 			// 回填：联系人信息
 			const mailValues = {
 				code: String(obj.code || ''),
-				address2: String(obj.address2 || ''),
+				address2,
 				poster: String(obj.poster || ''),
 				tel: String(obj.tel || ''),
 				tel2: String(obj.tel2 || ''),
@@ -373,6 +374,8 @@ module.exports = {
 	bindMailInput: function (e) {
 		const mark = e.currentTarget.dataset.mark;
 		const value = e.detail.value;
+		this._profileEdited = this._profileEdited || {};
+		this._profileEdited[mark] = true;
 		this._setFormVal(mark, value);
 	},
 
@@ -599,10 +602,18 @@ module.exports = {
    const missingPickup = packages.findIndex(item => !String(item.pickupPoint || '').trim());
    if (missingPickup >= 0) throw new Error('请选择第' + (missingPickup + 1) + '件包裹的取件点');
    let data=validate.check(this.data,MailBiz.CHECK_FORM,this);if(!data)return;
-   const form=this.selectComponent('#cmpt-form');const current=form && form.getForms(true);if(!current)return;
+   const form=this.selectComponent('#cmpt-form');if(!form)return;
+   // Sync the complete visible address before validating the hidden form snapshot.
+   const address2 = String(this.data.mailValues && this.data.mailValues.address2 || '').trim();
+   const addressPhase = Address.phaseOf({ detail: address2 });
+   form.setOneFormVal('address2',address2);
+   const current=form.getForms(true);if(!current)return;
    wx.showLoading({title:'上传并保存中',mask:true});
    const hasPackageProof = packages.some(item => item.code || item.images && item.images.length);
-   const forms=JSON.parse(JSON.stringify(current)).filter(x=>!['campus','formEnd','packages','address1'].includes(x.mark) && (!hasPackageProof || !['code','img'].includes(x.mark)));
+   const forms=JSON.parse(JSON.stringify(current)).filter(x=>!['campus','formEnd','packages','address1','address2','addressPhase'].includes(x.mark) && (!hasPackageProof || !['code','img'].includes(x.mark)));
+   // Submit the visible destination directly even if the component still returns an older value.
+   forms.push({mark:'address2',title:'收件地址',type:'textarea',val:address2});
+   if(addressPhase)forms.push({mark:'addressPhase',title:'所属期数',type:'text',val:addressPhase});
     const packageRows = await this._uploadPackageImages((Array.isArray(this.data.packageItems) ? this.data.packageItems : []).map(({_used,...item})=>item));
     forms.push({mark:'packages',title:'逐件凭证',type:'json',val:packageRows});
    for(const item of forms)if(item.type==='image')item.val=await Ops.upload(item.val||[]);

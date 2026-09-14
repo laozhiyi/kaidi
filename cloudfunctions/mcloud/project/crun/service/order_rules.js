@@ -1,5 +1,6 @@
 'use strict';
 const AppError = require('../../../framework/core/app_error.js');
+const deliveryAddress = require('./delivery_address.js');
 const fail = message => { throw new AppError(message); };
 const ACTIVE = [1, 2, 3, 4];
 const LABELS = { 0: '待接单', 1: '已接单', 2: '待收货', 3: '异常处理中', 4: '已取件', 9: '已完成', 99: '已取消' };
@@ -13,6 +14,16 @@ function validateForms(forms, config, now) {
  for (const [key,name,max,required] of [['title','任务名称',50,true],['code','取件码',500,false],['address2','收件地址',200,true],['poster','联系人',30,true],['tel','手机号',11,true],['desc','备注',500,false],['tel2','\u7b2c\u4e8c\u8054\u7cfb\u65b9\u5f0f',100,false],['campus','校区',30,true]]) obj[key] = text(input[key] == null ? '' : input[key],name,max,required);
  if (!/^1[3-9][0-9]{9}$/.test(obj.tel)) fail('手机号格式不正确');
  if (!config.campuses.includes(obj.campus)) fail('该校区不在服务范围');
+ const addressPhase = text(input.addressPhase == null ? '' : input.addressPhase, '所属期数', 2);
+ if (addressPhase) {
+  if (!deliveryAddress.PHASES.includes(addressPhase)) fail('所属期数无效');
+  const prefix = deliveryAddress.phaseOf(obj.address2, obj.campus);
+  if (prefix && prefix !== addressPhase) fail('收件地址与所属期数不一致');
+  obj.addressPhase = addressPhase;
+ }
+ obj.address2 = text(deliveryAddress.resolve({ MAIL_OBJ:obj, MAIL_FORMS:forms }),'收件地址',200,true);
+ const resolvedPhase = deliveryAddress.phaseOf(obj.address2, obj.campus);
+ if (resolvedPhase) obj.addressPhase = resolvedPhase;
  obj.imgUrls = images(input.img || []); obj.imgUrl = obj.imgUrls[0] || '';
  for (const name of ['small','medium','large']) { const raw = input[name] == null ? 0 : input[name]; if (typeof raw !== 'number' && !(typeof raw === 'string' && /^\d+$/.test(raw))) fail('快递件数必须为整数'); const n = Number(raw); if (!Number.isInteger(n) || n < 0 || n > config.maxPackages) fail('快递件数超出限制'); obj[name] = n; }
  obj.num = obj.small + obj.medium + obj.large; if (obj.num < 1 || obj.num > config.maxPackages) fail('package count invalid');
@@ -52,6 +63,7 @@ function validateForms(forms, config, now) {
 }
 function requireOpen(config) { if (!config.enabled) fail('服务暂停中，请联系校区客服'); }
 function project(mail, userId, admin = false) {
+ mail = deliveryAddress.complete(mail);
  const mypost = !!userId && mail.MAIL_USER_ID === userId;
  const myaccept = !!userId && mail.MAIL_ACCEPT_USER_ID === userId;
  const privateAccess = admin || mypost || myaccept;
@@ -59,7 +71,7 @@ function project(mail, userId, admin = false) {
  if (privateAccess) keys.push('MAIL_FORMS','MAIL_EXCEPTION','MAIL_DELIVERY_PROOF','MAIL_PAY_STATUS','MAIL_CAN_REVIEW','MAIL_REVIEWED');
  if (admin || mypost) keys.push('MAIL_HISTORY');
  const out = {}; keys.forEach(k => { if (mail[k] !== undefined) out[k] = mail[k]; });
- const publicFields = ['title','small','medium','large','num','price','referencePrice','urgent','campus']; const obj = mail.MAIL_OBJ || {};
+ const publicFields = ['title','small','medium','large','num','price','referencePrice','urgent','campus','address1','address2','addressPhase']; const obj = mail.MAIL_OBJ || {};
  out.MAIL_OBJ = privateAccess ? { ...obj } : Object.fromEntries(publicFields.filter(k => obj[k] !== undefined).map(k => [k,obj[k]]));
  out.mypost = mypost; out.myaccept = myaccept;
  out.status = LABELS[mail.MAIL_STATUS] || '状态未知'; if (mail.MAIL_STATUS === 0 && mail.MAIL_END_TIME < Date.now()) out.status = '已过期';

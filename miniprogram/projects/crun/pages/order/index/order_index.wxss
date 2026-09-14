@@ -350,34 +350,30 @@ page {
 	white-space: nowrap;
 }
 
-/* 标签 */
-.tag-list {
+/* 包裹类型使用彩色文字，和地址行保持相同字号。 */
+.package-types {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 10rpx;
-	padding-top: 2rpx;
+	column-gap: 18rpx;
+	row-gap: 4rpx;
 }
 
-.tag {
+.package-type {
 	display: inline-block;
-	padding: 4rpx 14rpx;
-	border-radius: 8rpx;
-	font-size: 22rpx;
-	line-height: 28rpx;
+	font-size: 26rpx;
+	font-weight: 500;
+	line-height: 38rpx;
 }
 
-.tag.tag-blue {
-	background: #eaf1fb;
+.package-small {
 	color: #397bc8;
 }
 
-.tag.tag-orange {
-	background: #fff5e6;
+.package-medium {
 	color: #ff7a00;
 }
 
-.tag.tag-red {
-	background: #ffece6;
+.package-large {
 	color: #f56c6c;
 }
 
@@ -439,6 +435,14 @@ page {
 
 .actions button::after {
 	border: 0;
+}
+
+.receipt-hint {
+	margin-top: 14rpx;
+	color: #7b8da8;
+	font-size: 22rpx;
+	line-height: 1.5;
+	text-align: right;
 }
 
 .btn-ghost {

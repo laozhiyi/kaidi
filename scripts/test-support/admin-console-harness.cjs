@@ -64,7 +64,7 @@ function harness(relative, get = () => ({}), options = {}) {
         if (request.endsWith('/data_helper.js')) return {};
         if (request.endsWith('/public_biz.js')) return { removeCacheList() {}, getRichEditorDesc: (desc, content) => desc || content.filter(item => item.type === 'text').map(item => item.val).join('').slice(0, 100) };
         if (request.endsWith('/file_helper.js')) return { openDoc: (title, url) => events.push({ open: url, title }) };
-        if (/\/(?:admin_(?:console|settings|export|catalog|manager_form|news)_biz|news_biz|validate|project_setting|chat_page)\.js$/.test(request)) return evaluate(path.relative(mini, path.resolve(path.dirname(absolute), request)));
+        if (/\/(?:admin_(?:console|settings|export|catalog|manager_form|news)_biz|address_biz|news_biz|validate|project_setting|chat_page)\.js$/.test(request)) return evaluate(path.relative(mini, path.resolve(path.dirname(absolute), request)));
         throw new Error('Unexpected dependency: ' + request);
       }
     }, { filename: absolute });

@@ -66,10 +66,10 @@ test('detail presentation calculates fees, package tags and safe Beijing times',
  assert.equal(UI.detail({ ...base, MAIL_PAYMENT_MODE: 'wechat' }, now).legacyPayment, true);
 });
 test('detail primary actions depend on actual order role and status, never on page entry', () => {
- const cases = [[0, 'poster', 'edit'], [1, 'rider', 'deliver'], [2, 'poster', 'confirm'], [2, 'rider', 'contact'], [3, 'rider', 'contact'], [9, 'poster', 'contact'], [99, 'public', 'orders']];
+ const cases = [[0, 'poster', 'edit'], [1, 'rider', 'pickup'], [4, 'rider', 'deliver'], [4, 'poster', 'contact'], [2, 'poster', 'confirm'], [2, 'rider', 'contact'], [3, 'rider', 'contact'], [9, 'poster', 'contact'], [99, 'public', 'orders']];
  for (const [status, role, action] of cases) {
   const mail = { ...base, MAIL_STATUS: status, mypost: role === 'poster', myaccept: role === 'rider', acceptUser: { USER_NAME: '小陈', USER_MOBILE: '13900000000' } };
-  const ui = UI.detail(mail, now); assert.equal(ui.primary, action); assert.equal(ui.canCancel, role === 'poster' && status === 0); assert.equal(ui.canException, role !== 'public' && [1,2].includes(status));
+  const ui = UI.detail(mail, now); assert.equal(ui.primary, action); assert.equal(ui.canCancel, role === 'poster' && status === 0); assert.equal(ui.canException, role !== 'public' && [1,2,4].includes(status));
  }
  const expired = UI.detail({ ...base, mypost: true, MAIL_END_TIME: now - 1 }, now); assert.equal(expired.expired, true); assert.equal(expired.step, -1); assert.notEqual(expired.primary, 'edit');
 });
@@ -99,12 +99,12 @@ test('shared detail template handlers are implemented in both page controllers',
  }
  assert.match(template, /ui.participant && mail.MAIL_DELIVERY_PROOF/); assert.match(template, /ui.participant && mail.MAIL_EXCEPTION/);
 });
-test('participant primary button delegates to edit, delivery sheet or explicit confirmation, and honors busy/error', async () => {
+test('participant primary button confirms pickup and delivery before advancing, and honors busy/error', async () => {
  const p = page('my_detail/mail_my_detail.js'), calls = []; p.setData({ mail: base, loading: false });
- p.bindEditTap = () => calls.push('edit'); p.bindPanel = e => calls.push(e.currentTarget.dataset.action); p.bindConfirm = e => calls.push(e.currentTarget.dataset.action); p.bindCallTap = () => calls.push('contact'); p.bindBackOrders = () => calls.push('orders');
- for (const primary of ['edit', 'deliver', 'confirm', 'contact', 'orders']) { p.setData({ detailUI: { primary } }); await p.bindPrimaryAction(); }
- assert.deepEqual(calls, ['edit', 'deliver', 'confirm', 'contact', 'orders']);
- p.setData({ busy: true }); p.bindPrimaryAction(); p.setData({ busy: false, error: true }); p.bindPrimaryAction(); assert.equal(calls.length, 5);
+ p.bindEditTap = () => calls.push('edit'); p.bindPanel = () => calls.push('unconfirmed-panel'); p.bindConfirm = e => calls.push(e.currentTarget.dataset.action); p.bindCallTap = () => calls.push('contact'); p.bindBackOrders = () => calls.push('orders');
+ for (const primary of ['edit', 'pickup', 'deliver', 'confirm', 'contact', 'orders']) { p.setData({ detailUI: { primary } }); await p.bindPrimaryAction(); }
+ assert.deepEqual(calls, ['edit', 'pickup', 'deliver', 'confirm', 'contact', 'orders']);
+ p.setData({ busy: true }); p.bindPrimaryAction(); p.setData({ busy: false, error: true }); p.bindPrimaryAction(); assert.equal(calls.length, 6);
 });
 test('more menu filters mutations by role/state, and cancellation is never performed without confirmation', async () => {
  let sheet, modal, commands = 0;
@@ -117,7 +117,7 @@ test('more menu filters mutations by role/state, and cancellation is never perfo
 });
 test('delivery sheet requires a note and a photo, ignores unsupported actions and caps attachments at six', async () => {
  const errors = [], p = page('my_detail/mail_my_detail.js', { error: e => errors.push(e.message) }, { chooseImage: () => { throw Error('already full'); } });
- p.setData({ loading: false, detailUI: UI.detail({ ...base, myaccept: true, MAIL_STATUS: 1 }, now) });
+ p.setData({ loading: false, detailUI: UI.detail({ ...base, myaccept: true, MAIL_STATUS: 4 }, now) });
  p.bindPanel({ currentTarget: { dataset: { action: 'cancel' } } }); assert.equal(p.data.panel, '');
  p.bindPanel({ currentTarget: { dataset: { action: 'deliver' } } }); assert.equal(p.data.panel, 'deliver');
  await p.bindSubmitPanel(); p.setData({ note: '放在门口' }); await p.bindSubmitPanel(); assert.equal(errors.length, 2); assert.match(errors[1], /照片/);
@@ -171,7 +171,7 @@ test('order command locks before async login/upload and refuses actions not allo
  let release, commands = 0, uploads = 0;
  const p = page('my_detail/mail_my_detail.js', { upload: async () => { uploads++; await new Promise(r => release = r); return ['cloud://proof']; }, command: async () => commands++ }, { showToast() {} });
  p._visible = true; p.load = async () => {};
- p.setData({ loading: false, mail: base, id: 'order', panel: 'deliver', note: '已送达', images: ['local'], detailUI: UI.detail({ ...base, myaccept: true, MAIL_STATUS: 1 }, now) });
+ p.setData({ loading: false, mail: base, id: 'order', panel: 'deliver', note: '已送达', images: ['local'], detailUI: UI.detail({ ...base, myaccept: true, MAIL_STATUS: 4 }, now) });
  await p.perform('confirm'); assert.equal(commands, 0);
  const pending = p.perform('deliver'); await p.perform('deliver'); await new Promise(resolve => setImmediate(resolve));
  assert.equal(uploads, 1); assert.equal(p.data.busy, true); release(); await pending; assert.equal(commands, 1); assert.equal(p.data.busy, false);

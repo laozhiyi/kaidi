@@ -181,6 +181,10 @@ Page({
   } catch (err) { if (this._visible) { Ops.error(err); await this._loadDetail(); } }
   finally { if (loading) wx.hideLoading(); this._accepting = false; if (this._visible) this.setData({ accepting: false }); else this.data.accepting = false; }
  },
+ bindUpdateProofTap() {
+  if (!this._visible || this.data.isLoad !== true || this.data.errorMessage || this.data.accepting || !this.data.detailUI || !this.data.detailUI.canUpdateProof) return;
+  wx.navigateTo({ url: '../my_detail/mail_my_detail?id=' + encodeURIComponent(this.data.id) + '&panel=update_proof' });
+ },
  bindCallTap() { const ui = this.data.detailUI; if (ui && ui.participant && ui.phone) wx.makePhoneCall({ phoneNumber: String(ui.phone) }); },
  bindCopyCodeTap(e) { const mail = this.data.mail; if (!mail || !mail.canSeeCode) return; const index = e && e.currentTarget.dataset.index; const item = index != null && this.data.detailUI && this.data.detailUI.pickupItems[index]; const code = index != null ? item && item.code : mail.code; if (code) wx.setClipboardData({ data: String(code) }); },
  bindPreviewImageTap(e) { const mail = this.data.mail; if (!mail || !mail.canSeeCode) return; const { url, group } = e.currentTarget.dataset; const urls = mail.MAIL_MEDIA && mail.MAIL_MEDIA[group] || []; if (url && urls.includes(url)) wx.previewImage({ urls, current: url }); },

@@ -7,30 +7,73 @@ const { runMiniProgram } = require('../test-support/miniprogram-module.cjs');
 const { fixture } = require('../test-support/operations-fixture.cjs');
 const UI = require('../../miniprogram/projects/crun/biz/mail_ui_biz.js');
 const Address = require('../../miniprogram/projects/crun/biz/address_biz.js');
+const Profile = require('../../miniprogram/projects/crun/biz/profile_biz.js');
 const Deadline = require('../../miniprogram/projects/crun/biz/deadline_biz.js');
 const setting = require('../../miniprogram/projects/crun/public/project_setting.js');
 const root = path.resolve(__dirname, '../..');
 const event = (dataset = {}, value) => ({ currentTarget: { dataset }, detail: { value } });
 const copy = value => JSON.parse(JSON.stringify(value));
 
+function mailController(f) {
+ class Base {
+  constructor(params, userId) { this.params = params; this._userId = userId; }
+  validateData(schema) { return require('../../cloudfunctions/mcloud/framework/validate/data_check.js').check(copy(this.params), schema); }
+  AppError(message) { throw Error(message); }
+ }
+ return runMiniProgram(path.join(root, 'cloudfunctions/mcloud/project/crun/controller/mail_controller.js'), {
+  require(name) {
+   if (name.endsWith('base_project_controller.js')) return Base;
+   if (name.endsWith('mail_service.js')) return f.load('mail_service.js');
+   if (name.endsWith('order_rules.js')) return f.load('order_rules.js');
+   if (name.endsWith('operation_store.js')) return f.store;
+   if (name.endsWith('time_util.js')) return require('../../cloudfunctions/mcloud/framework/utils/time_util.js');
+   if (name.endsWith('content_check.js')) return { async checkTextMultiClient() {}, async checkCloudImage(id) { return id; } };
+   throw Error('Unexpected controller dependency ' + name);
+  }
+ });
+}
+
+function orderPage(file, Controller, f, actor = 'rider') {
+ let page;
+ const view = params => new Controller(params, actor).viewMail();
+ runMiniProgram(path.join(root, 'miniprogram/projects/crun/pages', file + '.js'), {
+  Page: value => { page = value; }, wx: { getStorageSync() {}, removeStorageSync() {} }, console,
+  require(name) {
+   if (name.includes('mail_ui_biz')) return UI;
+   if (name.includes('project_biz')) return { initPage() {} };
+   if (name.includes('passport_biz')) return { getUserId: () => actor };
+   if (name.includes('cloud_helper')) return { callCloudSumbit: async (_, params) => ({ data: await view(params) }) };
+   if (name.includes('operations_biz')) return { get: async (route, params) => route === 'operations/config' ? f.config : view(params) };
+   if (name.includes('order_fav_biz')) return { watch: () => ({ refresh() {}, stop() {} }) };
+   if (name.includes('order_sync_biz')) return { subscribe: () => () => {} };
+   return {};
+  }
+ });
+ page.data = copy(page.data);
+ page.setData = (patch, callback) => { Object.assign(page.data, patch); if (callback) callback(); };
+ return page;
+}
+
 async function formHarness(entry = 'mail_add.js', options = {}) {
  const f = options.backend || fixture(), calls = [], errors = [], uploads = [];
+ const Controller = options.backend ? mailController(f) : null;
  let definition, component;
  const wx = { setNavigationBarTitle() {}, showLoading() {}, hideLoading() {}, hideKeyboard() {}, showModal() {}, showToast() {}, stopPullDownRefresh() {} };
  runMiniProgram(path.join(root, 'miniprogram/projects/crun/pages/mail/add', entry), { wx, console,
   Page: value => { definition = value; }, Component: value => { component = value; }, require(name) {
    if (name.includes('mail_ui_biz')) return UI;
    if (name.includes('address_biz')) return Address;
+   if (name.includes('profile_biz')) return Profile;
    if (name.includes('deadline_biz')) return Deadline;
-   if (name.includes('passport_biz')) return { isLogin: () => false, loginMustBackWin: async () => true, loginMustCancelWin: async () => true };
+   if (name.includes('passport_biz')) return { isLogin: () => !!options.profile, loginMustBackWin: async () => true, loginMustCancelWin: async () => true };
    if (name.includes('project_biz')) return { initPage() {} };
    if (name.includes('mail_biz')) return { CHECK_FORM: {}, initFormData: () => ({ fields: setting.MAIL_FIELDS, formCateId: '1', formOrder: 9999 }) };
    if (name.includes('/validate.js')) return { check: data => ({ cateId: data.formCateId, end: data.formEnd }) };
-   if (name.includes('cloud_helper')) return { callCloudSumbit: async () => ({ data: options.mail }) };
+   if (name.includes('cloud_helper')) return { callCloudSumbit: async () => ({ data: options.mail }), callCloudData: async () => options.profile };
    if (name.includes('public_biz')) return { removeCacheList() {} };
    if (name.includes('operations_biz')) return { get: async () => f.config, pendingCommand: () => null, error: error => errors.push(error.message),
     upload: async images => { uploads.push(copy(images)); return images.map(image => image.startsWith('cloud://') ? image : 'cloud://fixture/private-evidence/poster/' + image); },
-    command: async (route, params) => { calls.push({ route, params: copy(params) }); return options.backend ? f.service.insertMail('poster', { ...params, requestId: f.req('client-publish') }) : { _id: 'saved' }; }
+    command: async (route, params) => { calls.push({ route, params: copy(params) }); return Controller ? new Controller({ ...params, requestId: f.req('client-publish') }, 'poster')[route === 'mail/edit' ? 'editMail' : 'insertMail']() : { _id: 'saved' }; }
    };
    return {};
   }
@@ -47,13 +90,109 @@ async function formHarness(entry = 'mail_add.js', options = {}) {
  if (component) { component.lifetimes.attached.call(page); await new Promise(resolve => setImmediate(resolve)); }
  else await page.onLoad(options.mail ? { id: options.mail._id } : {});
  assert.equal(page.data.isLoad, true);
- return { page, calls, errors, uploads, backend: f };
+ return { page, calls, errors, uploads, backend: f, Controller, async show() {
+  if (component) { component.pageLifetimes.show.call(page); await new Promise(resolve => setImmediate(resolve)); }
+  else await page.onShow();
+ } };
 }
 
 function setPickup(page, index, phase, name) {
  page.bindOpenPackagePickup(event({ id: page.data.packageItems[index].id }));
  page.bindSelectPackagePickup(event({ phase, name }));
  page.bindConfirmPackagePickup();
+}
+
+for (const entry of ['mail_add.js', 'mail_add_embedded.js']) {
+ test(entry + ': the typed delivery address survives profile refresh and reaches the order unchanged', async () => {
+  const f = fixture({ projectFields: true }), profile = { USER_NAME: '小王', USER_MOBILE: '13800000000', USER_FORMS: [
+   { mark: 'campus', val: '育才校区' }, { mark: 'address2', val: '47' }
+  ] };
+  const { page, errors, Controller, show } = await formHarness(entry, { backend: f, profile });
+  page.bindCampusChange(event({}, f.config.campuses.indexOf('雁山校区')));
+  for (const value of ['四期 64', '']) {
+   const refresh = page._loadProfileDefaults();
+   page.bindMailInput(event({ mark: 'address2' }, value));
+   await refresh;
+   await show();
+   await page.bindRetryLoad();
+   assert.equal(page.data.mailValues.address2, value, 'a delayed default or page return must not overwrite manual input, including a cleared address');
+   assert.equal(page.data.campus, '雁山校区');
+  }
+  page.bindMailInput(event({ mark: 'address2' }, '四期 64'));
+  setPickup(page, 0, '二期', '中通');
+  page.bindPackageItemInput(event({ index: 0, mark: 'code' }, 'ADDRESS-CODE'));
+  await page.bindFormSubmit();
+  assert.deepEqual(errors, []);
+  const id = page.data.mailId, stored = f.table('mail').get(id);
+  assert.equal(stored.MAIL_OBJ.address2, '四期 64');
+  assert.equal(stored.MAIL_FORMS.find(item => item.mark === 'address2').val, '四期 64');
+  const list = orderPage('order/index/order_index', Controller, f);
+  await list.onLoad({}); list.onShow();
+  list.bindCommListCmpt({ detail: { dataList: await new Controller({ sortType: 'wait' }, 'rider').getMailList() } });
+  assert.equal(list.data.dataList.list[0].deliveryAddress, '雁山校区 · 四期 64');
+  const detail = orderPage('mail/detail/mail_detail', Controller, f);
+  await detail.onLoad({ id });
+  assert.equal(detail.data.detailUI.deliveryAddress, '雁山校区 · 四期 64');
+  const ownDetail = orderPage('mail/my_detail/mail_my_detail', Controller, f, 'poster');
+  ownDetail.onLoad({ id }); await ownDetail.onShow();
+  assert.equal(ownDetail.data.detailUI.deliveryAddress, '雁山校区 · 四期 64');
+  list.onHide(); detail.onHide(); ownDetail.onHide();
+ });
+
+ test(entry + ': the full selected delivery address reaches the server even if the hidden form is stale', async () => {
+  for (const phase of Address.PHASES) {
+   const f = fixture(), detail = '3栋201室（东侧楼梯入口）', expected = phase + ' ' + detail;
+   const profile = { USER_NAME: '小王', USER_MOBILE: '13800000000', USER_FORMS: [
+    { mark: 'campus', val: f.config.campuses[0] },
+    { mark: 'addresses', val: [{ label: '一期', detail: '1栋101室', isDefault: true }, { label: phase, detail }] }
+   ] };
+   const { page, calls, errors } = await formHarness(entry, { backend: f, profile });
+   assert.equal(page.data.mailValues.address2, '一期 1栋101室');
+   page.bindChooseProfileAddress(); page.bindSelectProfileAddress(event({ index: 1 })); page.bindConfirmProfilePicker();
+   assert.equal(page.data.mailValues.address2, expected);
+   setPickup(page, 0, '二期', '中通');
+   page.bindPackageItemInput(event({ index: 0, mark: 'code' }, 'ADDRESS-CODE'));
+   const hiddenForms = copy(page.data.formForms);
+   hiddenForms.find(item => item.mark === 'address2').val = detail;
+   let checkedAddress;
+   page.selectComponent = () => ({
+    setOneFormVal(mark, val) { hiddenForms.find(item => item.mark === mark).val = val; },
+    getForms() { checkedAddress = hiddenForms.find(item => item.mark === 'address2').val; return hiddenForms; }
+   });
+   await page.bindFormSubmit();
+   assert.deepEqual(errors, []); assert.equal(calls.length, 1);
+   assert.equal(checkedAddress, expected);
+   const id = page.data.mailId, stored = f.table('mail').get(id);
+   assert.equal(stored.MAIL_OBJ.address2, expected);
+   assert.equal(stored.MAIL_OBJ.addressPhase, phase);
+   assert.equal(stored.MAIL_FORMS.find(item => item.mark === 'address2').val, expected);
+   assert.equal(stored.MAIL_FORMS.find(item => item.mark === 'addressPhase').val, phase);
+   assert.equal((await f.service.viewMail('rider', id)).MAIL_OBJ.address2, expected);
+   assert.equal((await f.service.getMailList('rider', { sortType: 'wait' })).list[0].MAIL_OBJ.address2, expected);
+   await f.service.acceptMail('rider', id, { requestId: f.req('address-accept') });
+   assert.equal((await f.service.viewMail('rider', id)).MAIL_OBJ.address2, expected);
+   assert.equal((await f.service.getMailList('rider', { sortType: 'my_accept' })).list[0].MAIL_OBJ.address2, expected);
+  }
+ });
+
+ test(entry + ': submission keeps the selected phase when the form component returns only the detail', async () => {
+  const f = fixture(), detail = '3栋201室', profile = { USER_NAME: '小王', USER_MOBILE: '13800000000', USER_FORMS: [
+   { mark: 'campus', val: f.config.campuses[0] },
+   { mark: 'addresses', val: [{ label: '二期', detail, isDefault: true }, { label: '五期', detail }] }
+  ] };
+  const { page, calls, errors } = await formHarness(entry, { backend: f, profile });
+  page.bindChooseProfileAddress(); page.bindSelectProfileAddress(event({ index: 1 })); page.bindConfirmProfilePicker();
+  setPickup(page, 0, '二期', '中通');
+  page.bindPackageItemInput(event({ index: 0, mark: 'code' }, 'ADDRESS-CODE'));
+  const staleForms = copy(page.data.formForms);
+  staleForms.find(item => item.mark === 'address2').val = detail;
+  page.selectComponent = () => ({ setOneFormVal() {}, getForms: () => staleForms });
+  await page.bindFormSubmit();
+  assert.deepEqual(errors, []); assert.equal(calls.length, 1);
+  assert.equal(calls[0].params.forms.find(item => item.mark === 'address2').val, '五期 ' + detail);
+  assert.equal(calls[0].params.forms.find(item => item.mark === 'addressPhase').val, '五期');
+  assert.equal(UI.detail(await f.service.viewMail('rider', page.data.mailId)).deliveryAddress, f.config.campuses[0] + ' · 五期 ' + detail);
+ });
 }
 
 for (const entry of ['mail_add.js', 'mail_add_embedded.js']) {
@@ -127,7 +266,7 @@ test('publishing requires each pickup point before any upload and resets the nex
  assert.equal(page.data.packageItems.length, 1); assert.equal(page.data.packageItems[0].pickupPoint, ''); assert.equal(page.data.packagePickupVisible, false);
 });
 
-test('home submission saves point/code/image pairs and only participants receive them', async () => {
+test('home submission exposes all pickup points but keeps per-package credentials private until acceptance', async () => {
  const f = fixture(), { page, calls, errors } = await formHarness('mail_add_embedded.js', { backend: f });
  page.bindPackageTap(event({ index: 0, step: 1 }));
  setPickup(page, 0, '二期', '中通'); setPickup(page, 1, '五期', '邮政');
@@ -139,7 +278,14 @@ test('home submission saves point/code/image pairs and only participants receive
  const stored = f.table('mail').get(page.data.mailId);
  assert.deepEqual(stored.MAIL_OBJ.packages.map(item => [item.code, item.pickupPoint]), [['PAIR-CODE', '二期 · 中通'], ['', '五期 · 邮政']]);
  assert.equal(stored.MAIL_OBJ.address1, '二期 · 中通；五期 · 邮政');
- assert.ok(!JSON.stringify(await f.service.viewMail('rider', stored._id)).includes('pickupPoint'));
+ const publicDetail = await f.service.viewMail('rider', stored._id);
+ const publicList = await f.service.getMailList('rider', { sortType: 'wait' });
+ assert.equal(publicList.list.length, 1);
+ for (const order of [publicDetail, publicList.list[0]]) {
+  assert.equal(order.MAIL_OBJ.address1, '二期 · 中通；五期 · 邮政');
+  assert.equal(order.MAIL_OBJ.address2, '一期1栋101');
+  for (const sensitive of ['pickupPoint', 'PAIR-CODE', '小王', '13800000000', 'cloud://', 'https://signed.invalid/']) assert.ok(!JSON.stringify(order).includes(sensitive), sensitive);
+ }
  await f.service.acceptMail('rider', stored._id, { requestId: f.req('accept') });
  const accepted = await f.service.viewMail('rider', stored._id), ui = UI.detail(accepted);
  assert.equal(ui.pickupItems.length, 2); assert.equal(ui.pickupItems[0].code, 'PAIR-CODE');

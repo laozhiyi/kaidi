@@ -17,7 +17,8 @@ class AdminFeedbackController extends BaseProjectAdminController {
 
 		let rules = {
 			search: 'string|max:50|name=搜索条件',
-			status: 'int',
+			// “全部”使用 -1；int 只接受非负整数，先校验状态枚举再转为数值。
+			status: 'must|string|default=-1|in:-1,0,1,2',
 			type: 'string|max:30',
 			sortType: 'string|name=搜索类型',
 			sortVal: 'name=搜索类型值',
@@ -30,6 +31,7 @@ class AdminFeedbackController extends BaseProjectAdminController {
 		};
 
 		let input = this.validateData(rules);
+		input.status = Number(input.status);
 
 		let service = new FeedbackService();
 		return await service.getAdminFeedbackList(input);
