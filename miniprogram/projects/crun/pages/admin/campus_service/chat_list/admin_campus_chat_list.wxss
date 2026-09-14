@@ -1,2 +1,4 @@
-@import "../list/admin_campus_service_list.wxss";
-.admin-comm-list .info-item .content { word-break: break-all; }
+@import '../../../../style/admin_console.wxss';
+.ac-message-preview { margin-top: 24rpx; padding: 20rpx 22rpx; border-radius: 12rpx; background: #f6f8fc; color: #52637d; font-size: 26rpx; }
+.ac-conversation-user { display: flex; align-items: baseline; gap: 12rpx; margin-top: 18rpx; font-size: 22rpx; color: #8995a8; }
+.ac-conversation-user .ac-id { min-width: 0; }

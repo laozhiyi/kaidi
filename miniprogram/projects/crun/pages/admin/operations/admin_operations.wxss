@@ -1,1 +1,1 @@
-@import "../../../style/operations.wxss";
+@import '../../../style/admin_console.wxss';

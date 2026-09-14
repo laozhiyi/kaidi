@@ -42,11 +42,12 @@ class CampusServiceController extends BaseProjectController {
 	async sendCampusMessage() {
 		let rules = {
 			serviceId: 'must|id',
+			requestId: 'must|string|min:16|max:100',
 			content: 'must|string|min:1|max:500|name=咨询内容'
 		};
 		let input = this.validateData(rules);
 		let service = new CampusServiceService();
-		return await service.sendCampusMessage(this._userId, input.serviceId, input.content);
+		return await service.sendCampusMessage(this._userId, input.serviceId, input.content, input.requestId);
 	}
 
 

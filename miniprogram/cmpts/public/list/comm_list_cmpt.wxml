@@ -84,6 +84,8 @@
 
 </view>
 
+<view wx:if="{{listError}}" class="list-retry" bindtap="reload" role="button">{{listError}}</view>
+<view wx:if="{{updatesPending}}" class="list-retry" bindtap="reload" role="button">订单有更新，点击查看最新列表</view>
 <!-- content begin -->
 <view wx:if="{{!isTotalMenu}}" class="box-list" style="height:{{listHeight?listHeight:'(100vh)'}};margin-top:0rpx;">
 	<scroll-view    refresher-enabled="true" refresher-triggered="{{refresherTriggered}}" scroll-y="true" class="box-list-scroll" bindrefresherrefresh='bindPullDownRefresh' bindscrolltolower='bindReachBottom' scroll-top='{{topNum}}' bindscroll="bindScrollTop">

@@ -24,15 +24,21 @@ class FeedbackController extends BaseProjectController {
 
 		let input = this.validateData(rules);
 
-		// 在调用外部审核及归档前限流。
-  await require('../service/operation_store.js').limit('crun',this._userId,'feedback_audit',10,60000);
-  // 内容审核
-		await contentCheck.checkTextMultiClient(input);
-		const images=require('../service/order_rules.js').images(input.img || []);input.img=[];
-		for(const id of images)input.img.push(await contentCheck.checkCloudImage(id));
-
 		let service = new FeedbackService();
-		return await service.insertFeedback(this._userId, input);
+		const images = require('../service/order_rules.js').images(input.img || []);
+		const submitted = await service.submittedFeedback(this._userId, input);
+		if (submitted) return submitted;
+		const fingerprint = service.sourceFingerprint(input);
+		// 外部审核按用户限流；已成功的请求直接返回原申诉编号。
+		await require('../service/operation_store.js').limit(service.getProjectId(), this._userId, 'feedback_audit', 10, 60000);
+		await contentCheck.checkTextMultiClient({ title: input.title, content: input.content, contact: input.contact || '' });
+		input.img = [];
+		// 每次最多并行审核两张图片，缩短等待并限制单次请求占用。
+		for (let offset = 0; offset < images.length; offset += 2) {
+			const archived = await Promise.all(images.slice(offset, offset + 2).map(id => contentCheck.checkCloudImage(id)));
+			input.img.push(...archived);
+		}
+		return await service.insertFeedback(this._userId, input, fingerprint);
 	}
 
 	/** 我的反馈列表 */

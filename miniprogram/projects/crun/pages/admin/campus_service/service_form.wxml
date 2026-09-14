@@ -1,0 +1,17 @@
+<view class="ac-card">
+  <view class="ac-card-title"><view class="ac-icon"><text class="icon-service"></text></view><view><view class="ac-section-title">校区与负责人</view><view class="ac-card-desc">向用户展示的客服信息</view></view></view>
+  <view class="ac-form-field"><view class="ac-label">服务校区<text class="ac-required">*</text></view><picker range="{{campusOptions}}" value="{{campusIndex}}" bindchange="bindCampusChange" disabled="{{isSubmit}}"><view class="ac-select"><text class="{{formCampus?'':'ac-muted'}}">{{formCampus || '请选择校区'}}</text><text>⌄</text></view></picker></view>
+  <view class="ac-form-field"><view class="ac-label">负责人姓名<text class="ac-required">*</text></view><input class="ac-input" placeholder="输入负责人姓名" placeholder-class="ac-placeholder" model:value="{{formName}}" maxlength="30" disabled="{{isSubmit}}" /></view>
+  <view class="ac-form-field"><view class="ac-label">联系手机<text class="ac-required">*</text></view><input class="ac-input" placeholder="输入 11 位手机号码" type="number" placeholder-class="ac-placeholder" model:value="{{formMobile}}" maxlength="11" disabled="{{isSubmit}}" /></view>
+</view>
+<view class="ac-card">
+  <view class="ac-section-title">其他联系方式</view>
+  <view class="ac-form-field"><view class="ac-label">微信号<text class="ac-optional">选填</text></view><input class="ac-input" placeholder="输入客服微信号" placeholder-class="ac-placeholder" model:value="{{formWechat}}" maxlength="40" disabled="{{isSubmit}}" /></view>
+  <view class="ac-form-field"><view class="ac-label">QQ 号<text class="ac-optional">选填</text></view><input class="ac-input" placeholder="输入客服 QQ 号" type="number" placeholder-class="ac-placeholder" model:value="{{formQQ}}" maxlength="20" disabled="{{isSubmit}}" /></view>
+</view>
+<view class="ac-card">
+  <view class="ac-section-title">服务安排</view>
+  <view class="ac-form-field"><view class="ac-label">服务时间<text class="ac-optional">选填</text></view><input class="ac-input" placeholder="例如：周一至周五 9:00–18:00" placeholder-class="ac-placeholder" model:value="{{formWorkTime}}" maxlength="50" disabled="{{isSubmit}}" /></view>
+  <view class="ac-form-field"><view class="ac-label">显示排序</view><input class="ac-input" placeholder="输入排序号" type="number" placeholder-class="ac-placeholder" model:value="{{formOrder}}" maxlength="6" disabled="{{isSubmit}}" /><view class="ac-field-hint">数字越小越靠前，默认 9999。</view></view>
+</view>
+<button class="ac-primary" bindtap="bindFormSubmit" disabled="{{isSubmit}}" loading="{{isSubmit}}">{{isSubmit?'正在保存…':id?'保存修改':'添加校区客服'}}</button>

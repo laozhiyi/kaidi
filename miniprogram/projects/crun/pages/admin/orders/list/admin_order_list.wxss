@@ -1,0 +1,4 @@
+@import '../../../../style/admin_console.wxss';
+.ac-overdue { display: flex; align-items: center; gap: 6rpx; }
+.ac-overdue switch { transform: scale(.72); transform-origin: left center; width: 84rpx; }
+.ac-empty-icon { color: #a3b5d0; font-size: 64rpx; margin-bottom: 18rpx; }

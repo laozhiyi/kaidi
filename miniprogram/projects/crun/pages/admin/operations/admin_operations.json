@@ -1,1 +1,1 @@
-{"navigationBarTitleText":"运营工作台","enablePullDownRefresh":true,"backgroundColor":"#f4f6f9"}
+{ "usingComponents": {}, "navigationBarTitleText": "后台管理", "navigationBarBackgroundColor": "#f3f5f9", "navigationBarTextStyle": "black" }

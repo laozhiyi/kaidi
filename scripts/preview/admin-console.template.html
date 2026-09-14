@@ -1,0 +1,99 @@
+<div id="admin-console-live-preview" aria-label="随手取后台多页面预览">
+  <div class="ap-toolbar">
+    <label class="ap-page-label" for="ap-page-select">页面</label>
+    <select id="ap-page-select" aria-label="选择后台页面">
+      <optgroup label="运营与业务">
+        <option value="home">01 · 运营工作台</option>
+        <option value="orders">02 · 订单列表</option>
+        <option value="order">03 · 订单详情</option>
+        <option value="feedback">04 · 投诉与反馈</option>
+        <option value="feedbackDetail">05 · 反馈详情</option>
+        <option value="users">06 · 用户列表</option>
+        <option value="user">07 · 用户详情</option>
+      </optgroup>
+      <optgroup label="管理与设置">
+        <option value="settings">08 · 管理中心</option>
+        <option value="service">09 · 服务范围与营业时间</option>
+        <option value="pricing">10 · 价格与结算说明</option>
+        <option value="rules">11 · 接单与履约规则</option>
+      </optgroup>
+      <optgroup label="数据与系统">
+        <option value="analytics">12 · 数据统计</option>
+        <option value="monitor">13 · 系统维护</option>
+        <option value="export">14 · 订单报表</option>
+        <option value="userExport">15 · 用户报表</option>
+      </optgroup>
+    </select>
+    <span class="ap-sample">交互预览 · 示例数据</span>
+  </div>
+  <div class="ap-device">
+    <div class="ap-titlebar"><button id="ap-back" type="button" aria-label="返回上一页"><i data-lucide="chevron-left" aria-hidden="true"></i></button><span id="ap-page-title">运营工作台</span><span class="ap-wechat" aria-hidden="true">···</span></div>
+    <div id="ap-page-host" data-page-key="home"></div>
+  </div>
+  <div id="ap-status" class="ap-status" role="status" aria-live="polite"></div>
+  <dialog id="ap-dialog" aria-labelledby="ap-dialog-title">
+    <h3 id="ap-dialog-title"></h3><p id="ap-dialog-content"></p>
+    <div class="ap-dialog-actions"><button id="ap-dialog-cancel" type="button">取消</button><button id="ap-dialog-confirm" type="button">确认提交</button></div>
+  </dialog>
+</div>
+<style>
+#admin-console-live-preview { --ap-ink: light-dark(#21304a,#e5eaf4); --ap-muted: light-dark(#65758d,#a4b1c6); --ap-line: light-dark(#e2e8f1,#2a374c); --ap-panel: light-dark(#ffffff,#192333); --ap-backdrop: light-dark(#f3f5f9,#121d2c); --ap-blue: light-dark(#2863db,#8cb6ff); color:var(--ap-ink); font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif; max-width:100%; background:transparent; }
+#admin-console-live-preview * { box-sizing:border-box; }
+#admin-console-live-preview .ap-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0 auto 14px; max-width:460px; }
+#admin-console-live-preview .ap-page-label { color:var(--ap-muted); }
+#admin-console-live-preview select { font:inherit; color:var(--ap-ink); background:var(--ap-panel); border:1px solid var(--ap-line); border-radius:8px; padding:8px 10px; min-width:0; max-width:100%; }
+#admin-console-live-preview #ap-page-select { flex:1; }
+#admin-console-live-preview .ap-sample { flex-basis:100%; text-align:right; color:var(--ap-muted); font-size:12px; }
+#admin-console-live-preview .ap-device { container:admin-preview / inline-size; max-width:460px; margin:auto; border:1px solid var(--ap-line); border-radius:18px; background:var(--ap-backdrop); overflow:clip; }
+#admin-console-live-preview .ap-titlebar { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:var(--ap-panel); border-bottom:1px solid var(--ap-line); font-weight:500; }
+#admin-console-live-preview .ap-titlebar button { padding:6px; display:flex; align-items:center; color:var(--ap-ink); border:0; background:transparent; }
+#admin-console-live-preview .ap-titlebar button:disabled { visibility:hidden; }
+#admin-console-live-preview .ap-wechat { padding:0 8px; border:1px solid var(--ap-line); border-radius:14px; }
+#admin-console-live-preview [data-wx-tag] { font-family:inherit; }
+#admin-console-live-preview [data-wx-tag="input"], #admin-console-live-preview [data-wx-tag="textarea"] { background:transparent; color:inherit; border:0; padding:0; }
+#admin-console-live-preview [data-wx-tag="button"] { border:0; cursor:pointer; width:100%; }
+#admin-console-live-preview .ap-hit { appearance:none; display:block; background:transparent; border:0; margin:0; padding:0; color:inherit; font:inherit; text-align:inherit; cursor:pointer; }
+#admin-console-live-preview .ap-hit[data-wx-tag="text"] { display:inline; }
+#admin-console-live-preview [data-wx-tag="switch"] { appearance:auto; width:18px; height:18px; accent-color:var(--ap-blue); cursor:pointer; flex-shrink:0; }
+/*__STYLES__*/
+#admin-console-live-preview #ap-page-host .ac-page { min-height:0; padding-bottom:20px; }
+#admin-console-live-preview .admin-nav-spacer { height:0; }
+#admin-console-live-preview .admin-nav { position:static; margin:20px -14px -20px; padding-bottom:8px; box-shadow:none; }
+#admin-console-live-preview #ap-page-host .ac-tabs { white-space:normal; display:flex; flex-wrap:wrap; gap:6px; }
+#admin-console-live-preview #ap-page-host .ac-tab { margin:0; }
+#admin-console-live-preview .ac-row.ap-hit { width:100%; }
+#admin-console-live-preview .ac-heading { flex-wrap:wrap; }
+#admin-console-live-preview .ac-search [data-wx-tag="input"] { border:0; }
+#admin-console-live-preview .ac-search [data-wx-tag="button"], #admin-console-live-preview .ac-heading [data-wx-tag="button"], #admin-console-live-preview .ac-row [data-wx-tag="button"] { width:auto; }
+#admin-console-live-preview select[data-wx-tag="picker"] { width:100%; margin:0 0 12px; padding:11px; background:var(--ap-panel); border:1px solid var(--ap-line); }
+#admin-console-live-preview .ac-filter-row select[data-wx-tag="picker"] { margin:0; padding:8px; }
+#admin-console-live-preview input.ap-date { width:100%; padding:10px; border:1px solid var(--ap-line); background:var(--ap-panel); border-radius:8px; font:inherit; color:var(--ap-ink); }
+#admin-console-live-preview .ap-status { max-width:460px; margin:8px auto 0; color:var(--ap-muted); font-size:12px; overflow-wrap:anywhere; }
+#admin-console-live-preview .ap-status:empty { display:none; }
+#admin-console-live-preview dialog { width:min(360px,90%); background:var(--ap-panel); color:var(--ap-ink); border:1px solid var(--ap-line); border-radius:16px; padding:22px; }
+#admin-console-live-preview dialog::backdrop { background:light-dark(rgba(24,36,57,.28),rgba(0,0,0,.55)); }
+#admin-console-live-preview dialog h3 { margin:0 0 10px; font-family:inherit; font-size:17px; font-weight:500; line-height:1.5; }
+#admin-console-live-preview dialog p { margin:0 0 18px; }
+#admin-console-live-preview .ap-dialog-actions { display:flex; gap:12px; justify-content:flex-end; }
+#admin-console-live-preview .ap-dialog-actions button { border:1px solid var(--ap-line); background:var(--ap-backdrop); color:var(--ap-ink); padding:9px 14px; border-radius:8px; font:inherit; cursor:pointer; }
+#admin-console-live-preview #ap-dialog-confirm { background:light-dark(#2863db,#326be0); color:light-dark(#ffffff,#ffffff); border-color:transparent; }
+#admin-console-live-preview .ap-icon { display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; }
+#admin-console-live-preview .ap-icon svg { width:1em; height:1em; min-width:16px; min-height:16px; }
+#admin-console-live-preview .ap-hit:hover { filter:brightness(.98); }
+@container admin-preview (max-width:360px) {
+  #admin-console-live-preview .ac-shortcut { width:100%; }
+  #admin-console-live-preview .ac-form-actions { flex-wrap:wrap; }
+}
+@media (pointer:coarse) {
+  #admin-console-live-preview button, #admin-console-live-preview select, #admin-console-live-preview input { min-height:44px; }
+  #admin-console-live-preview [data-wx-tag="input"], #admin-console-live-preview [data-wx-tag="textarea"] { font-size:16px; }
+}
+</style>
+<script>
+(function () {
+/*__COMPILED__*/
+/*__MODULES__*/
+/*__ADAPTER__*/
+/*__RUNTIME__*/
+})();
+</script>

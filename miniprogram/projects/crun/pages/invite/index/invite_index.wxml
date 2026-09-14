@@ -3,7 +3,7 @@
 	<!-- 顶部 banner -->
 	<view class="banner">
 		<view class="banner-title">邀请好友</view>
-		<view class="banner-sub">一起赚积分 / 现金奖励</view>
+		<view class="banner-sub">把便捷的校园生活分享给好友</view>
 
 		<!-- 统计卡片 -->
 		<view class="stat-grid">
@@ -18,8 +18,8 @@
 			</view>
 			<view class="stat-divider"></view>
 			<view class="stat-cell">
-				<view class="stat-num">{{stat.reward}}</view>
-				<view class="stat-label">已返利</view>
+				<view class="stat-num">{{stat.pending}}</view>
+				<view class="stat-label">待注册</view>
 			</view>
 		</view>
 	</view>
@@ -27,23 +27,25 @@
 	<!-- 邀请码卡片 -->
 	<view class="card code-card">
 		<view class="code-title">我的专属邀请码</view>
-		<view class="code-value">{{code || '加载中…'}}</view>
-		<view class="code-tip">好友注册时填写你的邀请码，双方都可获得奖励</view>
+		<view class="code-value">{{code || (loading ? '加载中…' : '暂未获取')}}</view>
+		<view class="code-tip">好友从分享链接进入，或注册时填写邀请码，即可记录邀请关系</view>
 
 		<view class="code-btn-row">
-			<view class="btn btn-default" bindtap="bindCopyCode">复制邀请码</view>
-			<button class="btn btn-primary" open-type="share">立即邀请</button>
+			<button class="btn btn-default" bindtap="bindCopyCode" disabled="{{!code}}">复制邀请码</button>
+			<button class="btn btn-primary" open-type="share" disabled="{{!code}}">立即邀请</button>
 		</view>
 	</view>
 
 	<!-- 邀请记录 -->
+	<view wx:if="{{error}}" class="card invite-state"><view>{{error}}</view><button class="btn btn-default invite-retry" bindtap="_loadAll">重新加载</button></view>
+	<view wx:if="{{loading}}" class="invite-state">正在加载邀请信息…</view>
 	<view class="card list-card">
 		<view class="list-title">
 			<text>邀请记录</text>
 			<text class="list-count">共 {{stat.total}} 条</text>
 		</view>
 
-		<view wx:if="{{list.length==0}}" class="empty">
+		<view wx:if="{{isLoad && !loading && !error && list.length==0}}" class="empty">
 			<view class="empty-text">还没有邀请记录，快去分享给好友吧</view>
 		</view>
 
@@ -58,12 +60,13 @@
 		</view>
 	</view>
 
+	<button wx:if="{{hasMore}}" class="btn btn-default invite-more" bindtap="bindMore" disabled="{{loading}}" loading="{{loading}}">加载更多邀请记录</button>
 	<view class="rules">
 		<view class="rules-title">活动规则</view>
 		<view class="rules-item">1. 分享邀请码或小程序给好友</view>
 		<view class="rules-item">2. 好友通过你分享的链接进入并完成注册</view>
-		<view class="rules-item">3. 系统自动建立邀请关系并发放奖励</view>
-		<view class="rules-item">4. 具体奖励以平台公告为准</view>
+		<view class="rules-item">3. 注册完成后自动记录邀请关系，可在本页查看</view>
+		<view class="rules-item">4. 每位好友仅记录一次邀请关系</view>
 	</view>
 
 </view>

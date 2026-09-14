@@ -1,7 +1,6 @@
 const pageHelper = require('../../../helper/page_helper');
 const posterCmptHelper = require('../../public/poster/poster_cmpt_helper.js');
 const FavBiz = require('../../../comm/biz/fav_biz.js');
-const FootBiz = require('../../../comm/biz/foot_biz.js');
 
 Component({
 	options: {
@@ -68,10 +67,6 @@ Component({
 			type: Boolean,
 			value: true
 		},
-		doFoot: {
-			type: Boolean,
-			value: true
-		},
 		doShare: {
 			type: Boolean,
 			value: true
@@ -85,10 +80,6 @@ Component({
 			value: ''
 		},
 		doPoster: {
-			type: Boolean,
-			value: true
-		},
-		doFoot: {
 			type: Boolean,
 			value: true
 		},
@@ -136,10 +127,6 @@ Component({
 					FavBiz.isFav(this, this.data.oid, this.data.cate);
 			}
 
-			if (this.data.doFoot) {
-				FootBiz.addFoot(this.data.cate, this.data.title);
-			}
-
 			if (this.data.doShare) {
 
 				let posterConfig = await posterCmptHelper.config1({
@@ -175,7 +162,11 @@ Component({
 			});
 		},
 		bindFavTap: async function () {
-			if (this.data.isFav == -1) return;
+			if (this.data.isFav == -1) {
+				await FavBiz.isFav(this, this.data.oid, this.data.type || this.data.cate);
+				if (this.data.isFav == -1) pageHelper.showNoneToast('收藏状态加载失败，请重试');
+				return;
+			}
 			
 			if (this.data.type)
 				await FavBiz.updateFav(this, this.data.oid, this.data.isFav, this.data.type, this.data.title);

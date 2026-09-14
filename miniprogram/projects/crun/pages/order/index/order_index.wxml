@@ -15,6 +15,7 @@
 		<view class="order-tab {{tabIndex===3?'cur':''}}" data-idx="3" bindtap="bindTabTap">已完成</view>
 		<view class="order-tab-indicator" style="transform: translateX({{tabIndex*100}}%);"></view>
 	</view>
+	<view wx:if="{{orderSyncError}}" class="order-fav-error" bindtap="_syncOrders">网络暂不稳定，点击更新订单</view>
 
 	<!-- ===== 可接单 Tab ===== -->
 	<block wx:if="{{tabIndex===0}}">
@@ -25,16 +26,17 @@
 				<view class="filter-chip {{sortVal==='price_desc'?'active':''}}" bindtap="bindSortTap" data-type="sort" data-val="price_desc">高价优先</view>
 				<view class="filter-chip {{sortVal==='urgent'?'active':''}}" bindtap="bindSortTap" data-type="urgent" data-val="urgent">加急单</view>
 				<view class="filter-chip phase-chip {{phaseVal?'active':''}}" bindtap="bindOpenPhasePicker">
-					<text>地点{{phaseVal ? ' · ' + phaseVal : ''}}</text>
+					<text>送达地点{{phaseVal ? ' · ' + phaseVal : ''}}</text>
 					<text class="phase-caret">▾</text>
 				</view>
 			</scroll-view>
 		</view>
 
+		<view wx:if="{{favoriteSyncError}}" class="order-fav-error" bindtap="bindRefreshFavorites">收藏数量暂未更新，点击重试</view>
 		<!-- 地点选择弹层 -->
 		<view class="phase-mask" wx:if="{{phasePickerVisible}}" bindtap="bindClosePhasePicker" catchtouchmove="bindStopProp">
 			<view class="phase-sheet" catchtap="bindStopProp">
-				<view class="phase-sheet-title">选择地点</view>
+				<view class="phase-sheet-title">选择送达地点</view>
 				<view class="phase-sheet-list">
 					<view wx:for="{{phaseOptions}}" wx:key="value" class="phase-sheet-item {{phaseVal===item.value?'active':''}}" data-value="{{item.value}}" data-label="{{item.label}}" bindtap="bindPhaseSelect">
 						<text class="phase-sheet-label">{{item.label}}</text>
@@ -45,7 +47,7 @@
 			</view>
 		</view>
 
-		<cmpt-comm-list id="cmpt-list-take" source='user' type="order-mail-take" search="{{search||''}}" _params="{{listParams.take}}" route="mail/list" isTotalMenu="{{false}}" showSearch="{{false}}" topBottom="120" placeholder="搜索取件码/地址" bind:list="bindCommListCmpt">
+		<cmpt-comm-list id="cmpt-list-take" source='user' type="order-mail-take" search="{{search||''}}" _dataList="{{dataList}}" _params="{{listParams.take}}" route="mail/list" isTotalMenu="{{false}}" showSearch="{{false}}" topBottom="120" placeholder="搜索取件码/地址" bind:list="bindCommListCmpt">
 
 			<block>
 				<view class="order-list" wx:if="{{dataList && dataList.list && dataList.list.length}}">
@@ -101,6 +103,10 @@
 						<view class="card-divider"></view>
 
 						<!-- 底部：金额 + 操作 -->
+						<view class="order-fav-row">
+							<text>{{order.MAIL_FAV_CNT}} 人收藏</text>
+							<button class="order-fav-button {{order.MAIL_IS_FAV ? 'saved' : ''}}" catchtap="bindFavoriteTap" data-id="{{order._id}}" disabled="{{!!favoriteBusyId || (!order.MAIL_IS_FAV && order.MAIL_CAN_FAV === false)}}" loading="{{favoriteBusyId === order._id}}" aria-label="{{order.MAIL_IS_FAV ? '取消收藏订单' : '收藏订单'}}"><text class="icon-{{order.MAIL_IS_FAV ? 'favorfill' : 'favor'}}"></text><text>{{order.MAIL_IS_FAV ? '已收藏' : '收藏'}}</text></button>
+						</view>
 						<view class="card-bot">
 							<view class="price-block">
 								<text class="symbol">¥</text>
@@ -109,7 +115,7 @@
 							</view>
 							<view class="actions" catchtap="bindStop">
 								<button class="btn-ghost" catchtap="bindDetailTap" data-id="{{order._id}}">详情</button>
-								<button class="btn-primary" catchtap="bindAcceptTap" data-id="{{order._id}}" data-idx="{{index}}">立即接单</button>
+								<button class="btn-primary" catchtap="bindAcceptTap" data-id="{{order._id}}" data-idx="{{index}}" loading="{{acceptingId === order._id}}" disabled="{{!!acceptingId || order.MAIL_CAN_FAV === false}}" hover-stay-time="80">{{acceptingId === order._id ? '接单中' : order.MAIL_CAN_FAV === false ? '已不可接单' : '立即接单'}}</button>
 							</view>
 						</view>
 
@@ -117,7 +123,7 @@
 				</view>
 
 				<!-- 空态 -->
-				<view wx:elif="{{dataList && dataList.total === 0}}" class="empty">
+				<view wx:elif="{{dataList && !dataList.error && dataList.total === 0}}" class="empty">
 					<image class="empty-img" src="/projects/crun/images/follow/bag.png" mode="aspectFit"></image>
 					<view class="empty-title">附近暂无订单</view>
 					<view class="empty-sub">下拉刷新看看，或调整筛选条件</view>
@@ -129,16 +135,11 @@
 
 		</cmpt-comm-list>
 
-		<!-- 悬浮发布按钮 -->
-		<view class="fab-publish" bindtap="bindPublishTap">
-			<text class="fab-icon">+</text>
-			<text class="fab-text">发布</text>
-		</view>
 	</block>
 
 	<!-- ===== 我接的 Tab ===== -->
 	<block wx:elif="{{tabIndex===1}}">
-		<cmpt-comm-list id="cmpt-list-mine" source="user" type="order-mail-mine" search="{{search||''}}" _params="{{listParams.mine}}" route="mail/list" isTotalMenu="{{false}}" showSearch="{{false}}" topBottom="120" bind:list="bindCommListCmpt">
+		<cmpt-comm-list id="cmpt-list-mine" source="user" type="order-mail-mine" search="{{search||''}}" _dataList="{{dataList}}" _params="{{listParams.mine}}" route="mail/list" isTotalMenu="{{false}}" showSearch="{{false}}" topBottom="120" bind:list="bindCommListCmpt">
 			<block>
 				<view class="order-list" wx:if="{{dataList && dataList.list && dataList.list.length}}">
 					<view wx:for="{{dataList.list}}" wx:key="_id" wx:for-item="order" class="order-card shadow card-project" bindtap="bindDetailTap" data-id="{{order._id}}" hover-class="order-card-hover">
@@ -149,22 +150,22 @@
 						<view class="card-divider"></view>
 						<view class="card-progress"><view wx:for="{{order.progressLabels}}" wx:key="*this" wx:for-item="step" wx:for-index="stepIndex" class="progress-step {{stepIndex <= order.progressStep ? 'progress-step-active' : ''}}"><view class="progress-dot"></view><text>{{step}}</text></view></view>
 						<view class="card-mid">
-							<view class="package-proofs" wx:if="{{order.packageProofs.length}}"><view wx:for="{{order.packageProofs}}" wx:key="*this" class="package-proof-row"><text class="lbl">取件码</text><text class="val code-text">{{item.code}}</text><text class="package-note-label">{{item.noteLabel}}</text></view></view>
-							<view class="info-row"><text class="lbl">快递点</text><text class="val">{{order.MAIL_OBJ.address1}}</text></view>
+							<view class="package-proofs" wx:if="{{order.packageProofs.length}}"><view wx:for="{{order.packageProofs}}" wx:key="index" class="package-proof-item"><view class="info-row"><text class="lbl">取件点</text><text class="val">{{item.pickupPoint}}</text></view><view class="package-proof-row"><text class="lbl">取件码</text><text class="val code-text">{{item.code}}</text><text class="package-note-label">{{item.noteLabel}}</text></view></view></view>
+							<view wx:else class="info-row"><text class="lbl">快递点</text><text class="val">{{order.MAIL_OBJ.address1}}</text></view>
 							<view class="info-row"><text class="lbl">送达</text><text class="val">{{order.MAIL_OBJ.address2}}</text></view>
 						</view>
 						<view class="card-divider"></view>
-						<view class="card-bot"><view class="price-block"><text class="symbol">¥</text><text class="num">{{order.MAIL_OBJ.price}}</text></view><view class="actions" catchtap="bindStop"><button class="btn-ghost" catchtap="bindCallTap" data-tel="{{order.MAIL_OBJ.tel}}">联系</button><button class="btn-ghost" catchtap="bindComplaintTap" data-id="{{order._id}}">申诉</button><button wx:if="{{order.MAIL_STATUS===1}}" class="btn-primary" catchtap="bindOrderAction" data-action="pickup" data-id="{{order._id}}">已取件</button><button wx:elif="{{order.MAIL_STATUS===4}}" class="btn-primary" catchtap="bindOrderAction" data-action="deliver" data-id="{{order._id}}">已送达</button><button wx:elif="{{order.MAIL_STATUS===2}}" class="btn-ghost" catchtap="bindDetailTap" data-id="{{order._id}}">待收货</button></view></view>
+						<view class="card-bot"><view class="price-block"><text class="symbol">¥</text><text class="num">{{order.MAIL_OBJ.price}}</text></view><view class="actions" catchtap="bindStop"><button class="btn-ghost" catchtap="bindCallTap" data-tel="{{order.MAIL_OBJ.tel}}">联系</button><button class="btn-ghost" catchtap="bindComplaintTap" data-id="{{order._id}}">申诉</button><button wx:if="{{order.MAIL_STATUS===1}}" class="btn-primary" catchtap="bindOrderAction" data-action="pickup" data-id="{{order._id}}" loading="{{actionBusyId === order._id}}" disabled="{{!!actionBusyId}}">已取件</button><button wx:elif="{{order.MAIL_STATUS===4}}" class="btn-primary" catchtap="bindOrderAction" data-action="deliver" data-id="{{order._id}}" loading="{{actionBusyId === order._id}}" disabled="{{!!actionBusyId}}">已送达</button><button wx:elif="{{order.MAIL_STATUS===2}}" class="btn-ghost" catchtap="bindDetailTap" data-id="{{order._id}}">待收货</button></view></view>
 					</view>
 				</view>
-				<view wx:elif="{{dataList && dataList.total === 0}}" class="empty"><image class="empty-img" src="/projects/crun/images/follow/bag.png" mode="aspectFit"></image><view class="empty-title">还没有接过的订单</view><view class="empty-sub">切到「可接单」看看新订单吧</view></view>
+				<view wx:elif="{{dataList && !dataList.error && dataList.total === 0}}" class="empty"><image class="empty-img" src="/projects/crun/images/follow/bag.png" mode="aspectFit"></image><view class="empty-title">还没有接过的订单</view><view class="empty-sub">切到「可接单」看看新订单吧</view></view>
 				<template is="listLoadTpl" data="{{dataList,skin:'load-project'}}" />
 			</block>
 		</cmpt-comm-list>
 	</block>
 	<!-- ===== 我发布的 Tab ===== -->
 	<block wx:elif="{{tabIndex===2}}">
-		<cmpt-comm-list id="cmpt-list-posted" source='user' type="order-mail-posted" search="{{search||''}}" _params="{{listParams.posted}}" route="mail/list" isTotalMenu="{{false}}" showSearch="{{false}}" topBottom="120" bind:list="bindCommListCmpt">
+		<cmpt-comm-list id="cmpt-list-posted" source='user' type="order-mail-posted" search="{{search||''}}" _dataList="{{dataList}}" _params="{{listParams.posted}}" route="mail/list" isTotalMenu="{{false}}" showSearch="{{false}}" topBottom="120" bind:list="bindCommListCmpt">
 			<block>
 				<view class="order-list" wx:if="{{dataList && dataList.list && dataList.list.length}}">
 					<view wx:for="{{dataList.list}}" wx:key="_id" wx:for-item="order" class="order-card shadow card-project" bindtap="bindDetailTap" data-id="{{order._id}}" hover-class="order-card-hover">
@@ -184,7 +185,7 @@
 						<view class="card-bot"><view class="price-block"><text class="symbol">¥</text><text class="num">{{order.MAIL_OBJ.price}}</text></view><view class="actions"><button class="btn-ghost" catchtap="bindDetailTap" data-id="{{order._id}}">查看详情</button><text class="sub">线下结算</text></view></view>
 					</view>
 				</view>
-				<view wx:elif="{{dataList && dataList.total === 0}}" class="empty"><image class="empty-img" src="/projects/crun/images/follow/bag.png" mode="aspectFit"></image><view class="empty-title">还没有发布过订单</view><view class="empty-sub">点击右下角发布一个新订单</view></view>
+				<view wx:elif="{{dataList && !dataList.error && dataList.total === 0}}" class="empty"><image class="empty-img" src="/projects/crun/images/follow/bag.png" mode="aspectFit"></image><view class="empty-title">还没有发布过订单</view><view class="empty-sub">可前往首页填写并发布订单</view></view>
 				<template is="listLoadTpl" data="{{dataList,skin:'load-project'}}" />
 			</block>
 		</cmpt-comm-list>
@@ -192,7 +193,7 @@
 
 	<!-- ===== 已完成 Tab ===== -->
 	<block wx:else>
-		<cmpt-comm-list id="cmpt-list-done" source='user' type="order-mail-done" search="{{search||''}}" _params="{{listParams.done}}" route="mail/list" isTotalMenu="{{false}}" showSearch="{{false}}" topBottom="120" bind:list="bindCommListCmpt">
+		<cmpt-comm-list id="cmpt-list-done" source='user' type="order-mail-done" search="{{search||''}}" _dataList="{{dataList}}" _params="{{listParams.done}}" route="mail/list" isTotalMenu="{{false}}" showSearch="{{false}}" topBottom="120" bind:list="bindCommListCmpt">
 
 			<block>
 				<view class="order-list" wx:if="{{dataList && dataList.list && dataList.list.length}}">
@@ -230,12 +231,13 @@
 							</view>
 							<view class="actions" catchtap="bindStop">
 								<button class="btn-ghost" catchtap="bindDetailTap" data-id="{{order._id}}">查看详情</button>
+								<button wx:if="{{order.MAIL_CAN_REVIEW || order.MAIL_REVIEWED}}" class="{{order.MAIL_REVIEWED ? 'btn-ghost' : 'btn-primary'}}" catchtap="bindReviewTap" data-id="{{order._id}}">{{order.MAIL_REVIEWED ? '已评价' : '评价对方'}}</button>
 							</view>
 						</view>
 					</view>
 				</view>
 
-				<view wx:elif="{{dataList && dataList.total === 0}}" class="empty">
+				<view wx:elif="{{dataList && !dataList.error && dataList.total === 0}}" class="empty">
 					<image class="empty-img" src="/projects/crun/images/follow/bag.png" mode="aspectFit"></image>
 					<view class="empty-title">还没有完成的订单</view>
 					<view class="empty-sub">加油赚配送费～</view>

@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const vm = require('node:vm');
+const { runMiniProgram } = require('../test-support/miniprogram-module.cjs');
 const path = require('node:path');
 const UI = require('../../miniprogram/projects/crun/biz/mail_ui_biz.js');
 const { fixture } = require('../test-support/operations-fixture.cjs');
@@ -12,11 +12,11 @@ const base = { _id: 'order', MAIL_ID: 'KD20260907001', MAIL_STATUS: 0, MAIL_PAYM
  MAIL_ADD_TIME: now, MAIL_OBJ: { title: '快递代取', small: 2, medium: 1, large: 0, price: 6, code: '123-456', tel: '13800000000', poster: '小林' } };
 function page(file, extraOps = {}, extraWx = {}, extraHelper = {}) {
  let result;
- vm.runInNewContext(fs.readFileSync(path.join(root, 'miniprogram/projects/crun/pages/mail', file), 'utf8'), { console, Page: p => result = p,
+ runMiniProgram(path.join(root, 'miniprogram/projects/crun/pages/mail', file), { console, Page: p => result = p,
   wx: extraWx, require(request) {
    if (request.includes('mail_ui_biz')) return UI;
    if (request.includes('content_check_helper')) return { imgTypeCheck: () => true, imgSizeCheck: () => true };
-   if (request.includes('operations_biz')) return { get: async () => ({ paymentMode: 'offline' }), ...extraOps };
+   if (request.includes('operations_biz')) return { get: async () => ({ paymentMode: 'offline' }), pendingCommand: () => null, ...extraOps };
    if (request.includes('cloud_helper')) return { callCloudSumbit: async () => ({ data: base }) };
    if (request.includes('passport_biz')) return { loginMustCancelWin: async () => true };
    if (request.includes('project_biz')) return { initPage() {} };
@@ -79,6 +79,19 @@ test('public presentation never projects contact or event history, even if a mal
  const own = UI.detail({ ...mail, mypost: true, MAIL_HISTORY: [null, ...mail.MAIL_HISTORY, { action: 'accept', at: 'bad', actor: 'rider' }] }, now);
  assert.equal(own.history.length, 2); assert.equal(own.history[0].title, '骑手已接单'); assert.equal(own.history[0].time, '时间待确认');
 });
+
+test('order history is visible only to the publisher across order states', () => {
+ for (const status of [0, 1, 2, 3, 4, 9, 99]) {
+  for (const role of ['public', 'rider', 'poster']) {
+   if (role === 'rider' && status === 0) continue;
+   const mail = { ...base, MAIL_STATUS: status, mypost: role === 'poster', myaccept: role === 'rider',
+    MAIL_HISTORY: [{ action: 'publish', note: 'PRIVATE_HISTORY', actor: 'poster', at: now }] };
+   const ui = UI.detail(mail, now);
+   assert.equal(ui.participant, role !== 'public', role + ':' + status);
+   assert.equal(ui.history.length, role === 'poster' ? 1 : 0, role + ':' + status);
+  }
+ }
+});
 test('shared detail template handlers are implemented in both page controllers', () => {
  const template = fs.readFileSync(path.join(root, 'miniprogram/projects/crun/pages/mail/tpl/mail_detail_tpl.wxml'), 'utf8');
  for (const name of ['my_detail/mail_my_detail.js', 'detail/mail_detail.js']) {
@@ -128,6 +141,22 @@ test('public accepting locks before confirmation, avoids repeat requests and exp
  const pending = p.bindAcceptTap(); await new Promise(resolve => setImmediate(resolve)); assert.equal(p.data.accepting, true);
  await p.bindAcceptTap(); release(true); await pending;
  assert.equal(commands, 1); assert.equal(p.data.accepting, false); assert.equal(p.data.mail.canAccept, false); assert.equal(redirects.length, 1);
+});
+
+test('copying a parcel code uses that parcel and remains unavailable to other viewers', () => {
+ for (const file of ['my_detail/mail_my_detail.js', 'detail/mail_detail.js']) {
+  const copied = [], p = page(file, {}, { setClipboardData: value => copied.push(value.data) });
+  const mail = { ...base, myaccept: true, canSeeCode: true, code: 'ALL-CODES', MAIL_OBJ: { ...base.MAIL_OBJ,
+   packages: [{ type: 'small', pickupPoint: '二期 · 中通', code: 'FIRST' }, { type: 'small', pickupPoint: '五期 · 邮政', code: 'SECOND' }] } };
+  p.setData({ mail, detailUI: UI.detail(mail, now) });
+  p.bindCopyCodeTap({ currentTarget: { dataset: { index: 1 } } });
+  p.bindCopyCodeTap({ currentTarget: { dataset: { index: 9 } } });
+  assert.deepEqual(copied, ['SECOND']);
+  mail.myaccept = false; mail.canSeeCode = false;
+  p.setData({ mail, detailUI: UI.detail(mail, now) });
+  p.bindCopyCodeTap({ currentTarget: { dataset: { index: 0 } } });
+  assert.equal(copied.length, 1);
+ }
 });
 
 test('publish screenshot selection and hidden form both cap attachments at six', () => {

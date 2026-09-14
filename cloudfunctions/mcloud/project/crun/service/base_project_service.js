@@ -40,7 +40,11 @@ class BaseProjectService extends BaseService {
  async _initSetup() {
 		let F = (c) => 'bx_' + c;
 		const INSTALL_CL = 'setup_crun';
-		const COLLECTIONS = ['identity_unique', 'operation_config', 'operation_audit', 'operation_limit', 'order_quota', 'order_event', 'order_request', 'notification', 'subscription', 'feedback_request','setup', 'admin', 'log', 'news', 'mail', 'follow', 'thing', 'food', 'fav', 'user', 'campus_service', 'campus_service_message', 'feedback', 'invite', 'order_review'];
+		const SCHEMA_CL = 'setup_crun_20260914';
+		// A versioned marker is created only after every required collection is
+		// available. Warm-up of a new instance then needs one lookup, not 28.
+		if (await dbUtil.isExistCollection(F(SCHEMA_CL))) return;
+		const COLLECTIONS = ['identity_unique', 'operation_config', 'operation_audit', 'operation_limit', 'order_quota', 'order_event', 'order_request', 'order_feed', 'notification', 'news_read', 'subscription', 'feedback_request','setup', 'admin', 'log', 'news', 'mail', 'fav', 'user', 'campus_service', 'campus_service_message', 'feedback', 'invite', 'order_review', 'review_request'];
 		const CONST_PIC = '/images/cover.gif';
 
 
@@ -52,6 +56,7 @@ class BaseProjectService extends BaseService {
 		if (await dbUtil.isExistCollection(F(INSTALL_CL))) {
 			// 已初始化过，仅补齐可能新增的集合（用于版本升级场景）
 			for (const name of COLLECTIONS) await this._ensureCollection(F(name));
+			await this._ensureCollection(F(SCHEMA_CL));
 			return;
 		}
 
@@ -95,6 +100,7 @@ class BaseProjectService extends BaseService {
 		}
 
 		await this._ensureCollection(F(INSTALL_CL));
+		await this._ensureCollection(F(SCHEMA_CL));
 	}
 
 }

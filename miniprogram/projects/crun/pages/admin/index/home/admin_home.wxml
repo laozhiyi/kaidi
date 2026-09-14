@@ -1,49 +1,35 @@
-<view wx:if="{{!isLoad}}" class="margin-top load loading text-l text-admin"></view>
-<view class="main-admin" wx:if="{{isLoad && isAdmin}}">
-  <view class="admin-info bg-admin">
-    <view class="pic"><text class="icon-profilefill"></text></view>
-    <view class="right">
-      <view class="name">{{admin.name}}</view>
-      <view class="admin-role">{{isSuperAdmin?'超级管理员':'一般管理员'}}</view>
-      <view class="desc">共登录 {{admin.cnt}} 次 · 上次 {{admin.last}}</view>
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-eyebrow">GXNU 随手取 · 管理后台</view>
+  <view class="ac-heading">
+    <view><view class="ac-title">运营工作台</view><view class="ac-subtitle">{{dateText}} · {{admin.name}}，欢迎回来</view></view>
+    <view class="ac-service-status" bindtap="bindNavigate" data-key="service"><view class="ac-service-dot {{configError?'unknown':config && config.enabled?'':'paused'}}"></view><text>{{configError?'状态未获取':config?config.enabled?'服务开放中':'服务已暂停':'读取状态中'}}</text></view>
+  </view>
+  <view wx:if="{{error}}" class="ac-card ac-state"><view class="ac-state-title">工作台数据暂未更新</view><view class="ac-muted">{{error}}</view><button class="ac-secondary ac-small" bindtap="load">重新加载</button></view>
+  <view wx:if="{{loading && !overview}}" class="ac-card ac-state ac-muted">正在读取运营数据…</view>
+  <block wx:if="{{overview}}">
+    <view class="ac-stat-grid">
+      <view class="ac-stat blue" bindtap="bindNavigate" data-key="orders"><view class="ac-stat-label">今日新增订单</view><view class="ac-number">{{overview.todayOrders}}</view><view class="ac-stat-note">累计 {{overview.total}} 单 ›</view></view>
+      <view class="ac-stat" bindtap="bindNavigate" data-key="orders" data-status="9"><view class="ac-stat-label">今日完成订单</view><view class="ac-number">{{overview.todayCompleted}}</view><view class="ac-stat-note">累计完成 {{overview.completed}} 单 ›</view></view>
+      <view class="ac-stat" bindtap="bindNavigate" data-key="orders"><view class="ac-stat-label">当前进行中</view><view class="ac-number">{{overview.active}}</view><view class="ac-stat-note">待接单、配送、待收货与异常</view></view>
+      <view class="ac-stat" bindtap="bindNavigate" data-key="users"><view class="ac-stat-label">注册用户</view><view class="ac-number">{{overview.users}}</view><view class="ac-stat-note">待审核 {{overview.pendingUsers}} 人 ›</view></view>
+    </view>
+    <view class="ac-card">
+      <view class="ac-section-head"><text class="ac-section-title">待办事项</text><text class="ac-muted">优先处理</text></view>
+      <view class="ac-row" bindtap="bindNavigate" data-key="orders" data-status="3"><view class="ac-icon ac-icon-red"><text class="icon-warn"></text></view><view><view class="ac-row-title">异常订单</view><view class="ac-row-desc">核实情况并恢复或结束订单</view></view><text class="ac-badge red">{{overview.exceptions}}</text><text class="ac-chevron">›</text></view>
+      <view class="ac-row" bindtap="bindNavigate" data-key="feedback" data-status="0"><view class="ac-icon ac-icon-amber"><text class="icon-message"></text></view><view><view class="ac-row-title">待处理投诉</view><view class="ac-row-desc">查看反馈、凭证与历史回复</view></view><text class="ac-badge amber">{{overview.complaints}}</text><text class="ac-chevron">›</text></view>
+      <view class="ac-row" bindtap="bindNavigate" data-key="orders" data-overdue="true"><view class="ac-icon"><text class="icon-time"></text></view><view><view class="ac-row-title">超时订单</view><view class="ac-row-desc">联系双方，跟进履约进度</view></view><text class="ac-badge">{{overview.overdue}}</text><text class="ac-chevron">›</text></view>
+    </view>
+  </block>
+  <view class="ac-card">
+    <view class="ac-section-head"><text class="ac-section-title">常用功能</text><text class="ac-link" bindtap="bindNavigate" data-key="settings">全部管理 ›</text></view>
+    <view class="ac-grid">
+      <view class="ac-shortcut" bindtap="bindNavigate" data-key="orders"><view class="ac-icon"><text class="icon-form"></text></view><view><view class="ac-shortcut-title">订单管理</view><view class="ac-shortcut-desc">查询 · 跟进 · 导出</view></view></view>
+      <view class="ac-shortcut" bindtap="bindNavigate" data-key="analytics"><view class="ac-icon"><text class="icon-rank"></text></view><view><view class="ac-shortcut-title">数据统计</view><view class="ac-shortcut-desc">订单分布与待办</view></view></view>
+      <view class="ac-shortcut" bindtap="bindNavigate" data-key="chats"><view class="ac-icon"><text class="icon-service"></text></view><view><view class="ac-shortcut-title">客服会话</view><view class="ac-shortcut-desc">校区在线咨询</view></view></view>
+      <view class="ac-shortcut" bindtap="bindNavigate" data-key="news"><view class="ac-icon"><text class="icon-notice"></text></view><view><view class="ac-shortcut-title">公告内容</view><view class="ac-shortcut-desc">发布与编辑公告</view></view></view>
     </view>
   </view>
-  <view class="home-stats"><view wx:for="{{stat}}" wx:key="key" class="home-stat"><view class="home-stat-count">{{item.cnt || 0}}</view><view>{{item.title}}</view></view></view>
-  <view class="dashboard-card" wx:if="{{dashboard}}">
-    <view class="dashboard-title">运营数据仪表盘</view>
-    <view class="dashboard-summary"><view><text class="dashboard-number">{{dashboard.total || 0}}</text><text>订单总量</text></view><view><text class="dashboard-number dashboard-green">{{dashboard.completed || 0}}</text><text>已完成</text></view><view><text class="dashboard-number dashboard-orange">{{dashboard.complaints || 0}}</text><text>待处理投诉</text></view></view>
-    <view class="dashboard-subtitle">订单状态分布</view><view class="dashboard-chart"><view wx:for="{{chartData}}" wx:key="label" class="chart-row"><view class="chart-label">{{item.label}}</view><view class="chart-track"><view class="chart-bar" style="width: {{item.percent}}%; background: {{item.color}};"></view></view><view class="chart-value">{{item.value}}</view></view></view><view class="dashboard-subtitle">运营风险指标</view><view class="dashboard-chart"><view wx:for="{{healthChartData}}" wx:key="label" class="chart-row"><view class="chart-label">{{item.label}}</view><view class="chart-track chart-track-warm"><view class="chart-bar" style="width: {{item.percent}}%; background: {{item.color}};"></view></view><view class="chart-value">{{item.value}}</view></view></view>
-  </view>
-
-  <view class="home-section">
-    <view class="home-section-title">业务处理</view><view class="home-section-desc">订单、骑手与投诉在同一工作台处理</view>
-    <view class="workbench-entry" bindtap="url" data-url="/projects/crun/pages/admin/operations/admin_operations">
-      <view><view class="workbench-title">运营工作台</view><view class="workbench-desc">概况 · 订单 · 骑手 · 投诉 · 配置</view></view><text>›</text>
-    </view>
-    <view class="home-grid">
-      <view class="home-grid-item" bindtap="url" data-url="../../user/list/admin_user_list"><text class="icon-group_fill text-green"></text><view>用户管理</view></view>
-      <view class="home-grid-item" bindtap="url" data-url="../../campus_service/chat_list/admin_campus_chat_list"><text class="icon-messagefill text-blue"></text><view>客服对话</view></view>
-      <view class="home-grid-item" bindtap="url" data-url="../../campus_service/list/admin_campus_service_list"><text class="icon-formfill text-cyan"></text><view>客服配置</view></view>
-    </view>
-  </view>
-
-  <view class="home-section">
-    <view class="home-section-title">内容与展示</view>
-    <view class="home-grid">
-      <view class="home-grid-item" bindtap="url" data-url="../../news/list/admin_news_list"><text class="icon-formfill text-darkgreen"></text><view>公告管理</view></view>
-      <view class="home-grid-item" bindtap="url" data-url="../../setup/about_list/admin_setup_about_list"><text class="icon-edit text-blue"></text><view>关于与联系</view></view>
-      <view class="home-grid-item" bindtap="url" data-url="../../setup/qr/admin_setup_qr"><text class="icon-qr_code text-mauve"></text><view>小程序码</view></view>
-    </view>
-  </view>
-
-  <view class="home-section">
-    <view class="home-section-title">账号与安全</view>
-    <view class="comm-list menu">
-      <view wx:if="{{isSuperAdmin}}" class="item arrow" bindtap="url" data-url="../../mgr/list/admin_mgr_list"><view class="content"><text class="icon-profile text-red"></text><text>管理员账号</text></view></view>
-      <view class="item arrow" bindtap="url" data-url="../../mgr/pwd/admin_mgr_pwd"><view class="content"><text class="icon-lock text-orange"></text><text>修改我的密码</text></view></view>
-      <view class="item arrow" bindtap="url" data-url="../../mgr/log/admin_log_list"><view class="content"><text class="icon-footprint text-brown"></text><text>操作日志</text></view></view>
-    </view>
-  </view>
-  <button bindtap="bindExitTap" class="home-logout">退出后台登录</button>
-  <view class="foot-bottom"><cmpt-foot /></view>
+  <view class="ac-card ac-health" bindtap="bindNavigate" data-key="monitor"><view><view class="ac-row-title">系统维护</view><view class="ac-row-desc">{{overview?'通知失败 '+overview.failedNotifications+' 条':'查看通知与订单维护情况'}}</view></view><text class="ac-chevron">›</text></view>
+  <view wx:if="{{overview}}" class="ac-footnote">更新于 {{overview.updatedText}} · 下拉刷新</view>
+  <admin-nav active="home" />
 </view>

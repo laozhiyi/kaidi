@@ -11,8 +11,12 @@ module.exports = {
 "mail/exception":"mail_controller@exceptionMail",
 "operations/config":"operations_controller@getConfig",
 "operations/notifications":"operations_controller@notifications",
+"operations/summary":"operations_controller@notificationSummary",
 "operations/read":"operations_controller@markRead",
+"operations/read_all":"operations_controller@markAllRead",
 "operations/subscribe":"operations_controller@subscribe",
+"operations/recover":"operations_controller@recover",
+"admin/operations_recover":"admin/admin_operations_controller@recover",
 "admin/operations_config":"admin/admin_operations_controller@getConfig",
 "admin/operations_config_save":"admin/admin_operations_controller@saveConfig",
 "admin/operations_orders":"admin/admin_operations_controller@orders",
@@ -35,6 +39,7 @@ module.exports = {
 	'fav/del': 'fav_controller@delFav',
 	'fav/is_fav': 'fav_controller@isFav',
 	'fav/my_list': 'fav_controller@getMyFavList',
+	'fav/order_stats': 'fav_controller@orderStats',
 
 	'admin/home': 'admin/admin_home_controller@adminHome',
 	'admin/clear_vouch': 'admin/admin_home_controller@clearVouchData',
@@ -69,6 +74,7 @@ module.exports = {
 	'home/list': 'home_controller@getHomeList',
 	'news/list': 'news_controller@getNewsList',
 	'news/view': 'news_controller@viewNews',
+	'news/featured': 'news_controller@featured',
 
 	'admin/news_list': 'admin/admin_news_controller@getAdminNewsList',
 	'admin/news_insert': 'admin/admin_news_controller@insertNews#demo',
@@ -102,15 +108,6 @@ module.exports = {
 	'admin/mail_data_export': 'admin/admin_mail_controller@mailDataExport',
 	'admin/mail_data_del': 'admin/admin_mail_controller@mailDataDel',
 
-	// 急事代办
-
-
-	// 外卖代取
-
-
-	// 陪替服务
-
-
 	// ========== 支付模块 ==========
 	'pay/create': 'pay_controller@createPay',
 	'pay/query': 'pay_controller@queryPay',
@@ -136,6 +133,9 @@ module.exports = {
 	// ========== 订单评价 ==========
 	'review/insert': 'review_controller@insert',
 	'review/my_list': 'review_controller@myList',
+	'review/context': 'review_controller@context',
+	'reputation/summary': 'reputation_controller@summary',
+	'reputation/records': 'reputation_controller@records',
 
 	// ========== 反馈投诉 ==========
 	'feedback/insert': 'feedback_controller@insertFeedback',

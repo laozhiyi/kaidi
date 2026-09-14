@@ -2,14 +2,18 @@
 	<view wx:if="{{!isLoad}}" class="margin-top load loading text-l load-project"></view>
 	<block wx:else>
 
-		<cmpt-comm-list type="news-list" search="{{search||''}}" _params="{{_params}}" _menus="{{sortMenus}}" _items="{{sortItems}}" isTotalMenu="{{isTotalMenu}}" route="news/list" topBottom="120" placeholder="搜索标题" bind:list="bindCommListCmpt">
+		<cmpt-comm-list id="news-list" type="news-list" search="{{search||''}}" _params="{{_params}}" _menus="{{sortMenus}}" _items="{{sortItems}}" isTotalMenu="{{isTotalMenu}}" route="news/list" topBottom="120" placeholder="搜索标题" bind:list="bindCommListCmpt">
 			<view class="up-project" wx:if="{{showUp}}">
 				<image wx:if="{{upImg}}" mode="widthFix" lazy-load src="{{upImg}}" />
 			</view>
 
 			<!-- List Begin -->
-			<import src="../../tpls/public/base_list_tpl.wxml" />
-			<template is="baseListTpl" data="{{dataList:dataList.list,listMode}}" />
+			<view class="news-list-cards">
+				<view wx:for="{{dataList.list}}" wx:key="id" class="news-list-card" bindtap="url" data-url="/projects/crun/pages/news/detail/news_detail?id={{item.id}}" hover-class="news-list-hover">
+					<view class="news-list-copy"><view class="news-list-meta"><text wx:if="{{item.important}}" class="news-list-important">重要公告</text><text wx:else>校园公告</text><text wx:if="{{isLoggedIn}}" class="{{item.read?'news-list-read':'news-list-unread'}}">{{item.read?'已读':'● 未读'}}</text></view><view class="news-list-title">{{item.title}}</view><view class="news-list-desc">{{item.desc || '点击查看完整公告'}}</view><view class="news-list-date">{{item.ext}}</view></view>
+					<image wx:if="{{item.pic}}" class="news-list-cover" src="{{item.pic}}" mode="aspectFill" lazy-load="true" />
+				</view>
+			</view>
 			<!-- List END -->
 
 			<!--load begin-->

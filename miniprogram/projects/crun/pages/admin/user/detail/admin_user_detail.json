@@ -1,9 +1,1 @@
-{
-	"usingComponents": {
-
-	},
-	"navigationBarBackgroundColor": "#2499f2",
-	"navigationBarTextStyle": "white",  
-	"enablePullDownRefresh": true,  
-	"navigationBarTitleText": "用户详情"
-}
+{ "usingComponents": {}, "enablePullDownRefresh": true, "navigationBarTitleText": "用户详情", "navigationBarBackgroundColor": "#f3f5f9", "navigationBarTextStyle": "black" }

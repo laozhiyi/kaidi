@@ -1,89 +1,16 @@
-<block wx:if="{{isAdmin&&isLoad}}">
-	<cmpt-comm-list id="cmpt-comm-list" source='admin' type="admin-meet" search="{{search||''}}" _menus="{{sortMenus}}" _items="{{sortItems}}" route="admin/user_list" sortMenusDefaultIndex="0" topBottom="50" placeholder="搜索" bind:list="bindCommListCmpt">
-
-		<view slot="searchEnd">
-			<button bindtap="url" data-url="../export/admin_user_export?condition={{dataList.condition}}" class="btn mid radius bg-admin text-white margin-right-s"><text class="icon-down margin-right-xxs"></text>导出用户资料</button>
-		</view>
-
-		<!-- List Begin -->
-		<view class="admin-comm-list">
-			<view wx:if="{{dataList && dataList.total }}" class="load text-grey">共有{{dataList.total}}条符合条件记录 </view>
-
-			<view class="item" wx:for="{{dataList.list}}" wx:key="key">
-				<view class="no">{{index+1}}</view>
-				<view class="header">
-					<view class="left text-cut">{{item.USER_NAME}}
-					</view>
-					<view class="right">
-						<text wx:if="{{item.USER_STATUS==1}}" class="text-black">「正常」</text>
-						<text wx:elif="{{item.USER_STATUS==0}}" class="text-orange">「待审核」</text>
-						<text wx:elif="{{item.USER_STATUS==8}}" class="text-red">「审核未过」</text>
-						<text wx:elif="{{item.USER_STATUS==9}}" class="text-purple">「禁用」</text>
-					</view>
-				</view>
-
-				<view class="info">
-					<view wx:if="{{item.USER_STATUS==8}}" class="info-item">
-						<view class="title">审核理由</view>
-						<view class="mao">：</view>
-						<view class="content">{{item.USER_CHECK_REASON||'未填写'}}</view>
-					</view>
-					<view class="info-item" bindtap="url" data-type="phone" data-url="{{item.USER_MOBILE}}">
-						<view class="title">手机</view>
-						<view class="mao">：</view>
-						<view class="content">{{item.USER_MOBILE||'未填写'}} <text wx:if="{{item.USER_MOBILE}}" class="icon-phone margin-left-s"></text></view>
-					</view>
-
-					<view class="info-item">
-						<view class="title">注册</view>
-						<view class="mao">：</view>
-						<view class="content">{{item.USER_ADD_TIME}}</view>
-					</view>
-
-					<view class="info-item" bindtap="url" data-url="../detail/admin_user_detail?id={{item.USER_MINI_OPENID}}">
-						<view class="title">详情</view>
-						<view class="mao">：</view>
-						<view class="content text-blue">查看更多用户资料...</view>
-					</view>
-
-					<view class="oprt">
-
-						<block wx:if="{{userRegCheck}}">
-							<view wx:if="{{item.USER_STATUS==0}}" bindtap="bindStatusTap" data-status="1" data-idx="{{index}}" class="btn  margin-right-s text-green">审核通过</view> 
-
-							<view wx:if="{{item.USER_STATUS==0}}" bindtap="bindCheckTap" data-status="8" data-idx="{{index}}" class="btn  margin-right-s text-red">审核不过</view>
-						</block>
-
-						<view wx:if="{{item.USER_STATUS==9}}" bindtap="bindStatusTap" data-status="1" data-idx="{{index}}" class="btn  margin-right-s"><text class="icon-check margin-right-xxs text-green"></text>恢复正常</view>
-
-						<view wx:if="{{item.USER_STATUS!=9}}" bindtap="bindStatusTap" data-status="9" data-idx="{{index}}" class="btn  margin-right-s"><text class="icon-close margin-right-xxs text-purple"></text>禁用</view>
-
-						<view bindtap="bindDelTap" data-id="{{item.USER_MINI_OPENID}}" class="btn  margin-right-s"><text class="icon-delete margin-right-xxs text-orange"></text>删除</view>
-
-					</view>
-				</view>
-			</view>
-		</view>
-		<!-- List END -->
-
-		<!--load begin-->
-		<import src="../../../../../../tpls/public/list_load_tpl.wxml" />
-		<template is="listLoadTpl" data="{{skin:'text-grey',dataList}}" />
-		<!--load end-->
-
-
-	</cmpt-comm-list>
-
-
-	<cmpt-modal wx:if="{{checkModalShow}}" model:show="{{checkModalShow}}" type="dialog" title="审核不过" bind:click="bindCheckCmpt" class="modal-form" cancelText="返回" confirmText="确定">
-		<view class="form-group" style="padding:0 10rpx">
-			<view class="title">审核不过理由 <text class="text-grey text-mid">(选填)</text>：</view>
-			<view bindtap="bindClearReasonTap" style="width:150rpx;text-align: right;" class="text-grey"><text class="icon-roundclose"></text>清空</view>
-		</view>
-
-		<view class="form-group cancel-area">
-			<textarea placeholder-class="phc" placeholder="请输入审核不过理由 (非必填)" style="height:110rpx" model:value="{{formReason}}" maxlength="100"></textarea>
-		</view>
-	</cmpt-modal>
-
-</block>
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-eyebrow">业务管理 / 用户</view>
+  <view class="ac-heading"><view><view class="ac-title">用户管理</view><view class="ac-subtitle">查看用户资料，审核注册与维护账号状态</view></view><button class="ac-secondary ac-small" bindtap="bindExport" disabled="{{loading || error}}">导出资料</button></view>
+  <view class="ac-search"><text class="icon-search ac-search-icon"></text><input value="{{searchDraft}}" bindinput="bindInput" bindconfirm="bindSearch" confirm-type="search" maxlength="30" placeholder="搜索姓名或手机号码" /><button class="ac-secondary ac-small" bindtap="bindSearch">搜索</button></view>
+  <scroll-view scroll-x class="ac-tabs"><view wx:for="{{statuses}}" wx:key="value" class="ac-tab {{status===item.value?'active':''}}" data-value="{{item.value}}" bindtap="bindStatus">{{item.label}}</view></scroll-view>
+  <view class="ac-filter-summary"><text>{{loading?'正在查询…':'共 '+total+' 位用户'}}</text><text class="ac-link" bindtap="bindReset">重置筛选</text></view>
+  <view wx:if="{{error}}" class="ac-card ac-state"><view class="ac-state-title">用户资料未能更新</view><view class="ac-muted">{{error}}</view><button class="ac-secondary ac-small" bindtap="bindRetry">重试</button></view>
+  <view wx:if="{{!loading && !error && !list.length}}" class="ac-card ac-state"><view class="ac-state-title">暂无符合条件的用户</view><view class="ac-muted">可以更换关键词或调整状态筛选</view></view>
+  <view wx:for="{{list}}" wx:key="_id" class="ac-card" data-id="{{item.userId}}" bindtap="bindDetail">
+    <view class="ac-user-head"><view class="ac-avatar"><text class="icon-profile"></text></view><view class="ac-user-name"><view class="ac-order-title">{{item.USER_NAME || '未填写姓名'}}</view><view class="ac-order-meta">{{item.USER_MOBILE || '未填写电话'}}</view></view><text class="ac-badge {{item.tone}}">{{item.statusLabel}}</text></view>
+    <view wx:if="{{item.USER_CHECK_REASON && item.USER_STATUS!==1}}" class="ac-order-warning">{{item.USER_CHECK_REASON}}</view>
+    <view class="ac-order-foot"><text>{{item.USER_ADD_TIME}} 注册</text><text class="ac-link">{{item.USER_STATUS===0?'查看并审核':'用户详情'}} ›</text></view>
+  </view>
+  <view class="ac-list-footer"><button wx:if="{{hasMore}}" class="ac-secondary" bindtap="bindMore" loading="{{loading}}" disabled="{{loading}}">加载更多</button><text wx:if="{{list.length}}">已显示 {{list.length}} / {{total}} 位{{!hasMore && !loading?' · 已到底':''}}</text><text wx:elif="{{loading}}">正在读取用户…</text></view>
+  <admin-nav active="users" />
+</view>

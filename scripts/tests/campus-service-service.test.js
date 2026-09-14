@@ -43,6 +43,12 @@ function fixture(rows = []) {
 	}
 	const module = { exports: {} };
 	const dependencies = {
+		'./operation_store.js': {
+			key: (...parts) => require('node:crypto').createHash('sha256').update(JSON.stringify(parts)).digest('hex').slice(0, 32),
+			transaction: callback => callback({}), limitInTransaction: async () => {},
+			get: async (_, name, id) => (name === 'campus_service' ? services : rows).find(row => row._id === id) || null,
+			set: async (_, name, id, row) => { rows.push({ ...row, _id: id }); }
+		},
 		'./base_project_service.js': Base,
 		'../../../framework/utils/util.js': { isDefined: value => value !== undefined },
 		'../model/campus_service_model.js': model(services),
@@ -112,7 +118,7 @@ test('sending requires identity and active service; trims and validates message'
 	await assert.rejects(service.sendCampusMessage('', 'service', 'hello'), /登录/);
 	await assert.rejects(service.sendCampusMessage('user', 'service', '  '), /请输入/);
 	await assert.rejects(service.sendCampusMessage('user', 'service', 'x'.repeat(501)), /500/);
-	await service.sendCampusMessage('user', 'service', '  你好  ');
+	await service.sendCampusMessage('user', 'service', '  你好  ', 'chat_request_123456');
 	assert.equal(rows[0].CSM_CONTENT, '你好');
 	assert.equal(rows[0].CSM_USER_ID, 'user');
 	services[0].CS_STATUS = 0;

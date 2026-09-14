@@ -250,3 +250,8 @@
 	color: #94a3b8;
 	line-height: 40rpx;
 }
+.invite-state { padding:28rpx; color:#8294ab; font-size:26rpx; text-align:center; }
+.invite-retry { margin-top:20rpx; }
+.invite-more { display:flex; width:100%; margin:0 0 24rpx; }
+.code-btn-row button { min-width:0; margin:0; padding:0 18rpx; }
+.code-btn-row button[disabled] { opacity:.5; }

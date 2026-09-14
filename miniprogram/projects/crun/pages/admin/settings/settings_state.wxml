@@ -1,0 +1,3 @@
+<view wx:if="{{loading && !config}}" class="ac-card ac-state ac-muted">正在读取设置…</view>
+<view wx:if="{{error}}" class="ac-card ac-state"><view class="ac-state-title">设置未能更新</view><view class="ac-muted">{{error}}</view><button class="ac-secondary ac-small" bindtap="bindLoad">重新读取</button></view>
+<view wx:if="{{!isSuperAdmin}}" class="ac-notice amber">当前为只读模式，修改设置需要超级管理员权限。</view>

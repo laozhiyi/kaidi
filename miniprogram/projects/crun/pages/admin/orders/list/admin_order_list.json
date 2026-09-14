@@ -1,0 +1,1 @@
+{ "usingComponents": { "admin-nav": "/projects/crun/cmpts/admin_nav/admin_nav" }, "enablePullDownRefresh": true, "navigationBarTitleText": "订单管理", "navigationBarBackgroundColor": "#f3f5f9", "navigationBarTextStyle": "black" }

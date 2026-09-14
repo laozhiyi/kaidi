@@ -1,4 +1,6 @@
 const ProfileBiz = require('../../../biz/profile_biz.js');
+const Address = require('../../../biz/address_biz.js');
+const Deadline = require('../../../biz/deadline_biz.js');
 const MailUI = require('../../../biz/mail_ui_biz.js');
 const Ops = require('../../../biz/operations_biz.js');
 const pageHelper = require('../../../../../helper/page_helper.js');
@@ -27,26 +29,19 @@ module.exports = {
 		totalFee: '1.50',
         customPrice: '',
 		urgent: false,
-		config:null,campuses:[],campus:'',configError:false,loadError:'',pageLoading:false,submitting:false,
+		config:null,campuses:[],campus:'',configError:false,loadError:'',pageLoading:false,submitting:false,hasPendingSubmission:false,
 		proofImages: [], proofPreview:{}, packageItems: [], profileContacts: [], profileAddresses: [], contactPickerVisible: false, addressPickerVisible: false,
 		mailValues: {
 			code: '',
-			address1: '',
 			address2: '',
 			poster: '',
 			tel: '',
 			tel2: '',
 			desc: '',
 		},
-		// 快递点（期数）选择弹层
-		pickStationVisible: false,
-		pickStations: [
-			{ name: '一期', list: ['菜鸟', '丰巢'] },
-			{ name: '二期', list: ['中通', '圆通', '申通', '韵达', '顺丰'] },
-			{ name: '三期', list: ['京东', '德邦'] },
-			{ name: '四期', list: ['丹鸟'] },
-			{ name: '五期', list: ['邮政', '极兔'] },
-		],
+		packagePickupVisible: false, packagePickupId: '', packagePickupNumber: 0, packagePickupDraft: '', packagePickupError: '',
+		pickupStations: Address.PICKUP_STATIONS,
+		profileAddressIndex: -1, profileContactIndex: -1,
 	},
 
 	onLoad: async function (options) {
@@ -81,7 +76,6 @@ module.exports = {
 			{ mark: 'price', title: '代取费用(元)', type: 'digit', val: '1.50' },
 			{ mark: 'code', title: '取件码', type: 'textarea', val: '' },
 			{ mark: 'img', title: '相关图片', type: 'image', val: [] },
-			{ mark: 'address1', title: '快递点', type: 'text', val: '' },
 			{ mark: 'address2', title: '收件地址', type: 'textarea', val: '' },
 			{ mark: 'poster', title: '联系人', type: 'text', val: '' },
 			{ mark: 'tel', title: '手机号', type: 'mobile', val: '' },
@@ -95,15 +89,15 @@ module.exports = {
 
 		this.setData(Object.assign(formData, {
 			isLoad: false,
-			formEnd: new Date(Date.now()+3*86400000+8*3600000).toISOString().slice(0,16).replace('T',' '),
+			formEnd: Deadline.after(),
 		}));
 
 		// 动态设置导航栏标题
 		if (!options || !options.embedded) wx.setNavigationBarTitle({ title: editId ? '编辑快递代取' : '发布快递代取' });
 
 		this._formReady = true;
-		await this._loadProfileDefaults();
-		await this.bindRetryLoad();
+		this._refreshPendingSubmission();
+		await Promise.all([this._loadProfileDefaults(), this.bindRetryLoad()]);
  },
  async _loadProfileDefaults() {
   try {
@@ -159,12 +153,45 @@ module.exports = {
    this.setData({ pageLoading: false });
   }
  },
-  async onShow() { if (this.data.config) this.setData({ serviceState: MailUI.service(this.data.config) }); if (this._formReady) { await this._loadProfileDefaults(); const picker = this._profilePickerAfterReturn; if (picker && ((picker === 'address' && this.data.profileAddresses.length) || (picker === 'contact' && this.data.profileContacts.length))) { this._profilePickerAfterReturn = ''; this.setData({ addressPickerVisible: picker === 'address', contactPickerVisible: picker === 'contact' }); } } },
+  async onShow() {
+   this._refreshPendingSubmission();
+   if (this.data.config) this.setData({ serviceState: MailUI.service(this.data.config) });
+   if (!this._formReady) return;
+   await this._loadProfileDefaults();
+   const picker = this._profilePickerAfterReturn;
+   this._profilePickerAfterReturn = '';
+   if (picker === 'address') this.bindChooseProfileAddress();
+   if (picker === 'contact') this.bindChooseProfileContact();
+  },
  bindCampusChange(e) { const campusIndex = Number(e.detail.value); this._campusEdited = true; this.setData({ campusIndex, campus: this.data.campuses[campusIndex] }); },
  bindServiceHelpTap() { wx.navigateTo({ url: '/projects/crun/pages/campus_service/list/campus_service_list' }); },
  bindSettlementTap() { wx.showModal({ title: '关于线下结算', content: this.data.config.offlineNotice, showCancel: false, confirmText: '我知道了' }); },
- _packageRows(previous = this.data.packageItems) { const rows=[]; const old=Array.isArray(previous)?previous:[]; let nextId=0; this.data.packageTypes.forEach(type => { for(let i=0;i<type.count;i++){ const prior=old.find(x=>x.type===type.mark && !rows.some(y=>y.id===x.id)); rows.push(prior ? {...prior,label:type.label} : {id:type.mark+'-'+(++nextId),type:type.mark,label:type.label,price:type.price,code:'',note:'',images:[]}); } }); return rows; },
- _syncPackageItems(previous) { const rows=this._packageRows(previous); this.setData({packageItems:rows}); this._setFormVal('packages',rows); },
+ _packageRows(previous = this.data.packageItems, types = this.data.packageTypes) {
+  const rows = [], old = Array.isArray(previous) ? previous : [], used = new Set();
+  for (const type of types) {
+   for (let i = 0; i < type.count; i++) {
+    const index = old.findIndex((row, at) => row && row.type === type.mark && !used.has(at));
+    const prior = index >= 0 ? old[index] : null;
+    if (prior) used.add(index);
+    let id = prior && prior.id;
+    if (!id || rows.some(row => row.id === id)) {
+     do { this._packageSequence = (this._packageSequence || 0) + 1; id = 'parcel-' + this._packageSequence; }
+     while (old.some(row => row && row.id === id) || rows.some(row => row.id === id));
+    }
+    rows.push({ type: type.mark, price: type.price, code: '', note: '', images: [], pickupPoint: '', ...prior, id, label: type.label, referencePrice: type.price });
+   }
+  }
+  return rows;
+ },
+ _syncPackageItems(previous) {
+  const rows = this._packageRows(previous);
+  this.setData({ packageItems: rows }); this._setFormVal('packages', rows);
+  if (this.data.packagePickupVisible) {
+   const index = rows.findIndex(row => row.id === this.data.packagePickupId);
+   if (index < 0) this.bindClosePackagePickup();
+   else this.setData({ packagePickupNumber: index + 1 });
+  }
+ },
  _refreshFee(){const reference=this.data.packageTypes.reduce((sum,x,i)=>sum+x.count*this._prices[i],0);const total=this.data.packageItems.length ? this.data.packageItems.reduce((sum,x)=>sum+(Number(x.price)||0),0) : reference;const referencePrice=reference.toFixed(2);this.setData({totalFee:total.toFixed(2),referencePrice});this._setFormVal('price',total.toFixed(2));},
  bindPackageItemInput(e){const index=Number(e.currentTarget.dataset.index);const mark=e.currentTarget.dataset.mark;let items=this.data.packageItems.map((item,i)=>i===index?{...item,[mark]:e.detail.value}:item); if(mark==='code' && String(e.detail.value || '').trim() && items[index] && items[index].images && items[index].images.length){ items[index]=Object.assign({},items[index],{images:[]}); } this.setData({packageItems:items});this._setFormVal('packages',items);if(mark==='price')this._refreshFee();},
  bindCustomPrice(e){const value=String(e.detail.value||'').replace(/[^0-9.]/g,'');this.setData({customPrice:value});this._setFormVal('price',value);},
@@ -195,7 +222,8 @@ module.exports = {
 			const small = Number(obj.small != null ? obj.small : findStoredFormVal('small', 0)) || 0;
 			const medium = Number(obj.medium != null ? obj.medium : findStoredFormVal('medium', 0)) || 0;
 			const large = Number(obj.large != null ? obj.large : findStoredFormVal('large', 0)) || 0;
-			const storedPackages = findStoredFormVal('packages', Array.isArray(obj.packages) ? obj.packages : []);
+			const packageValue = Array.isArray(obj.packages) ? obj.packages : findStoredFormVal('packages', []);
+			const storedPackages = Array.isArray(packageValue) ? packageValue : [];
 			const packageTypes = [
 				{ mark: 'small', label: '小件', price: '1.50', count: small },
 				{ mark: 'medium', label: '中件', price: '3.00', count: medium },
@@ -218,7 +246,6 @@ module.exports = {
 				{ mark: 'price', title: '打赏金额(元)', type: 'digit', val: String(obj.price || findFormVal('price', '1.50')) },
 				{ mark: 'code', title: '取件码', type: 'textarea', val: String(obj.code || findFormVal('code', '')) },
 				{ mark: 'img', title: '相关图片', type: 'image', val: Array.isArray(findFormVal('img', [])) ? findFormVal('img', []) : [] },
-				{ mark: 'address1', title: '快递点', type: 'text', val: String(obj.address1 || findFormVal('address1', '')) },
 				{ mark: 'address2', title: '收件地址', type: 'textarea', val: String(obj.address2 || findFormVal('address2', '')) },
 				{ mark: 'poster', title: '联系人', type: 'text', val: String(obj.poster || findFormVal('poster', '')) },
 				{ mark: 'tel', title: '手机号', type: 'mobile', val: String(obj.tel || findFormVal('tel', '')) },
@@ -241,7 +268,6 @@ module.exports = {
 			// 回填：联系人信息
 			const mailValues = {
 				code: String(obj.code || ''),
-				address1: String(obj.address1 || ''),
 				address2: String(obj.address2 || ''),
 				poster: String(obj.poster || ''),
 				tel: String(obj.tel || ''),
@@ -258,10 +284,15 @@ module.exports = {
 			// 总价 = 件数档位价求和（数据库里存的 price 是发布人定价，保留）
 			const totalFee = String(obj.price != null ? obj.price : findFormVal('price', '1.50'));
 			const totalCount = (small + medium + large) || 1;
+			// Older orders stored one pickup point for the whole order; migrate it into each parcel when editing.
+			const legacyPickup = String(obj.address1 || findFormVal('address1', ''));
+			const packageItems = this._packageRows(Array.isArray(storedPackages) ? storedPackages : [], packageTypes)
+				.map((item, index) => ({ ...item, pickupPoint: item.pickupPoint || legacyPickup,
+					...(!storedPackages.length && index === 0 ? { code: mailValues.code, images: mailValues.code ? [] : proofImages } : {}) }));
 
 			this.setData({
 				packageTypes,
-                packageItems: Array.isArray(storedPackages) && storedPackages.length ? storedPackages : [],
+                packageItems,
 				mailValues,
 				formForms,
 				proofImages,
@@ -332,11 +363,11 @@ module.exports = {
 		});
 		this._setFormVal('num', String(totalCount));
 		this._setFormVal('weight', String(Math.max(1, totalWeight)));
-		this._refreshFee();
 		this._setFormVal('small', String(packages[0].count));
 		this._setFormVal('medium', String(packages[1].count));
 		this._setFormVal('large', String(packages[2].count));
         this._syncPackageItems(this.data.packageItems);
+		this._refreshFee();
 	},
 
 	bindMailInput: function (e) {
@@ -400,11 +431,54 @@ module.exports = {
 	},
 
 
-  bindChooseProfileAddress() { if (this.data.profileAddresses && this.data.profileAddresses.length) this.setData({ addressPickerVisible: true }); else { this._profilePickerAfterReturn = 'address'; wx.navigateTo({ url: '/projects/crun/pages/my/edit/my_edit' }); } },
-  bindChooseProfileContact() { if (this.data.profileContacts && this.data.profileContacts.length) this.setData({ contactPickerVisible: true }); else { this._profilePickerAfterReturn = 'contact'; wx.navigateTo({ url: '/projects/crun/pages/my/edit/my_edit' }); } },
+  bindChooseProfileAddress() {
+   if (this.data.submitting) return;
+   if (wx.hideKeyboard) wx.hideKeyboard();
+   const list = this.data.profileAddresses || [];
+   const match = list.findIndex(item => Address.formatAddress(item) === this.data.mailValues.address2);
+   const fallback = list.findIndex(item => item.isDefault);
+   this.setData({ addressPickerVisible: true, contactPickerVisible: false, profileAddressIndex: match >= 0 ? match : fallback });
+  },
+  bindChooseProfileContact() {
+   if (this.data.submitting) return;
+   if (wx.hideKeyboard) wx.hideKeyboard();
+   const list = this.data.profileContacts || [];
+   const match = list.findIndex(item => item.name === this.data.mailValues.poster && item.phone === this.data.mailValues.tel);
+   const fallback = list.findIndex(item => item.isDefault);
+   this.setData({ contactPickerVisible: true, addressPickerVisible: false, profileContactIndex: match >= 0 ? match : fallback });
+  },
   bindCloseProfilePicker() { this.setData({ addressPickerVisible: false, contactPickerVisible: false }); },
-  bindSelectProfileAddress(e) { const item = this.data.profileAddresses[Number(e.currentTarget.dataset.index)]; if (item) this._setFormVal('address2', item.detail); this.setData({ addressPickerVisible: false }); },
-  bindSelectProfileContact(e) { const item = this.data.profileContacts[Number(e.currentTarget.dataset.index)]; if (item) this.setData({ contactPickerVisible: false }, () => { this._setFormVal('poster', item.name); this._setFormVal('tel', item.phone); }); },
+  bindSelectProfileAddress(e) {
+   const index = Number(e.currentTarget.dataset.index);
+   if (Number.isInteger(index) && this.data.profileAddresses[index]) this.setData({ profileAddressIndex: index });
+  },
+  bindSelectProfileContact(e) {
+   const index = Number(e.currentTarget.dataset.index);
+   if (Number.isInteger(index) && this.data.profileContacts[index]) this.setData({ profileContactIndex: index });
+  },
+  bindConfirmProfilePicker() {
+   this._profileEdited = this._profileEdited || {};
+   if (this.data.addressPickerVisible) {
+    const item = this.data.profileAddresses[this.data.profileAddressIndex];
+    if (!item) return;
+    this._profileEdited.address2 = true;
+    this._setFormVal('address2', Address.formatAddress(item));
+   } else {
+    const item = this.data.profileContacts[this.data.profileContactIndex];
+    if (!item) return;
+    this._profileEdited.poster = true;
+    this._profileEdited.tel = true;
+    this._setFormVal('poster', item.name);
+    this._setFormVal('tel', item.phone);
+   }
+   this.bindCloseProfilePicker();
+  },
+  bindManageProfilePicker() {
+   const kind = this.data.addressPickerVisible ? 'address' : 'contact';
+   this._profilePickerAfterReturn = kind;
+   this.bindCloseProfilePicker();
+   wx.navigateTo({ url: kind === 'address' ? '/projects/crun/pages/my/address/address' : '/projects/crun/pages/my/contact/contact' });
+  },
   bindPackageImageTap(e) { const index = Number(e.currentTarget.dataset.index); const current=this.data.packageItems[index]; if(current && String(current.code||'').trim()){ wx.showToast({title:'取件码和截图二选一',icon:'none'}); return; } wx.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'], success: res => { const file = res.tempFiles && res.tempFiles[0]; if (!file) return; if(!contentCheckHelper.imgTypeCheck(file.tempFilePath) || !contentCheckHelper.imgSizeCheck(file.size, 1024*1000*10)){ wx.showToast({title:'图片格式或大小不符合要求',icon:'none'}); return; } const items = this.data.packageItems.slice(); items[index] = Object.assign({}, items[index], { images: [file.tempFilePath], code:'' }); this.setData({ packageItems: items }); this._setFormVal('packages', items); } }); },
   bindPackagePreviewImage(e) { const index = Number(e.currentTarget.dataset.index); const item = this.data.packageItems[index]; if (item && item.images && item.images.length) wx.previewImage({ urls: item.images, current: item.images[0] }); },
 
@@ -418,42 +492,78 @@ module.exports = {
 		this.setData({ formEnd: e.detail, formEndFocus: '' });
 	},
 
-	bindOpenPickStation: function () {
-		this.setData({ pickStationVisible: true });
-	},
-
-	bindClosePickStation: function () {
-		this.setData({ pickStationVisible: false });
-	},
-
-	bindSelectPickStation: function (e) {
-		const phase = e.currentTarget.dataset.phase;
-		const name = e.currentTarget.dataset.name;
-		const value = phase + ' · ' + name;
-		this._setFormVal('address1', value);
-	},
+ bindOpenPackagePickup(e) {
+  if (this.data.submitting) return;
+  const index = this.data.packageItems.findIndex(item => item.id === e.currentTarget.dataset.id);
+  if (index < 0) return;
+  if (wx.hideKeyboard) wx.hideKeyboard();
+  this.setData({ packagePickupVisible: true, packagePickupId: this.data.packageItems[index].id, packagePickupNumber: index + 1,
+   packagePickupDraft: this.data.packageItems[index].pickupPoint || '', packagePickupError: '' });
+ },
+ bindClosePackagePickup() {
+  this.setData({ packagePickupVisible: false, packagePickupId: '', packagePickupNumber: 0, packagePickupDraft: '', packagePickupError: '' });
+ },
+ bindSelectPackagePickup(e) {
+  if (!this.data.packagePickupVisible || this.data.submitting) return;
+  const { phase, name } = e.currentTarget.dataset;
+  if (!Address.PICKUP_STATIONS.some(group => group.name === phase && group.list.includes(name))) return;
+  this.setData({ packagePickupDraft: phase + ' · ' + name, packagePickupError: '' });
+ },
+ bindPackagePickupInput(e) { this.setData({ packagePickupDraft: e.detail.value, packagePickupError: '' }); },
+ bindConfirmPackagePickup() {
+  if (!this.data.packagePickupVisible || this.data.submitting) return;
+  const pickupPoint = String(this.data.packagePickupDraft || '').trim();
+  if (!pickupPoint || pickupPoint.length > 100) { this.setData({ packagePickupError: '请选择或填写取件点，最多100字' }); return; }
+  const index = this.data.packageItems.findIndex(item => item.id === this.data.packagePickupId);
+  if (index < 0) { this.bindClosePackagePickup(); return; }
+  const items = this.data.packageItems.map((item, at) => at === index ? { ...item, pickupPoint } : item);
+  this.setData({ packageItems: items }); this._setFormVal('packages', items);
+  this.bindClosePackagePickup();
+ },
 
 	bindStopProp: function () {},
+	_refreshPendingSubmission() {
+		this.setData({ hasPendingSubmission: !!Ops.pendingCommand(this.data.editId ? 'mail/edit' : 'mail/insert', { id: this.data.editId || '' }) });
+	},
+	async bindRecoverSubmission() {
+		if (this._submitting) return;
+		this._submitting = true; this.setData({ submitting: true });
+		try {
+			if (!await PassportBiz.loginMustCancelWin(this)) return;
+			const result = await Ops.recoverCommand(this.data.editId ? 'mail/edit' : 'mail/insert', { id: this.data.editId || '' });
+			this._refreshPendingSubmission();
+			if (result.state === 'committed') {
+				const id = result.result._id || result.result.id;
+				wx.showModal({ title: '上次提交已保存', content: '请查看该订单后再继续，当前填写的内容会保留。', confirmText: '查看订单', cancelText: '留在此页',
+					success: res => { if (res.confirm) wx.navigateTo({ url: pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id=' + encodeURIComponent(id)) }); } });
+			} else wx.showModal({ title: '上次提交未保存', content: '已停止上次未完成的提交，可以继续提交当前内容。', showCancel: false });
+		} catch (e) { Ops.error(e); }
+		finally { this._submitting = false; this.setData({ submitting: false }); }
+	},
 
 	resetAfterPublish: function () {
-		const end = new Date(Date.now() + 3 * 86400000 + 8 * 3600000).toISOString().slice(0, 16).replace('T', ' ');
+		const end = Deadline.after();
 		const old = this.data.mailValues || {};
 		const campus = this.data.campus || '';
-		const mailValues = { code: '', address1: '', address2: old.address2 || '', poster: old.poster || '', tel: old.tel || '', tel2: '', desc: '' };
+		const mailValues = { code: '', address2: old.address2 || '', poster: old.poster || '', tel: old.tel || '', tel2: '', desc: '' };
 		const form = this.selectComponent('#cmpt-form');
-		if (form && Array.isArray(form.data.forms) && typeof form.setOneFormVal === 'function') {
-			const values = { title: '快递代取', num: 1, weight: 1, price: this.data.packageTypes && this.data.packageTypes[0] ? this.data.packageTypes[0].price : '1.50', code: '', img: [], address1: '', address2: mailValues.address2, poster: mailValues.poster, tel: mailValues.tel, tel2: mailValues.tel2, desc: '', small: 1, medium: 0, large: 0, urgent: false, campus, formEnd: end, packages: [] };
+		if (form && form.data && Array.isArray(form.data.forms) && typeof form.setOneFormVal === 'function') {
+			const values = { title: '快递代取', num: 1, weight: 1, price: this.data.packageTypes && this.data.packageTypes[0] ? this.data.packageTypes[0].price : '1.50', code: '', img: [], address2: mailValues.address2, poster: mailValues.poster, tel: mailValues.tel, tel2: mailValues.tel2, desc: '', small: 1, medium: 0, large: 0, urgent: false, campus, formEnd: end, packages: [] };
 			form.data.forms.forEach(item => form.setOneFormVal(item.mark, Object.prototype.hasOwnProperty.call(values, item.mark) ? values[item.mark] : (item.type === 'image' ? [] : item.type === 'switch' ? false : '')));
 		}
 		const packageTypes = (this.data.packageTypes || []).map((item, index) => Object.assign({}, item, { count: index === 0 ? 1 : 0 }));
 		this.setData({ editId: '', mailId: '', formEnd: end, formEndFocus: '', mailValues, proofImages: [], proofPreview: {}, packageItems: [], packageTypes, totalCount: 1, totalFee: packageTypes[0] ? packageTypes[0].price : '1.50', urgent: false, campus, campusIndex: Math.max(0, (this.data.campuses || []).indexOf(campus)) });
+		this._syncPackageItems([]);
+		this.bindClosePackagePickup();
+		this._refreshFee();
 	},
-	_showMailList: function () { if (this.data.embedded) { this.triggerEvent('published', { id: this.data.mailId }); return; } PublicBiz.removeCacheList('admin-mail-list');
+	_showMailList: function () { PublicBiz.removeCacheList('admin-mail-list');
 		PublicBiz.removeCacheList('mail-list');
 		PublicBiz.removeCacheList('order-mail-take');
 		PublicBiz.removeCacheList('order-mail-posted');
 		PublicBiz.removeCacheList('order-mail-mine');
 		PublicBiz.removeCacheList('order-mail-done');
+		if (this.data.embedded) { this.triggerEvent('published', { id: this.data.mailId }); return; }
 		// 跳到「我的订单详情」页，方便发布者继续查看
 		const mailId = this.data.mailId;
 		if (mailId) {
@@ -481,13 +591,18 @@ module.exports = {
   if (!this.data.editId && this.data.config && this.data.config.enabled === true && !serviceState.canPublish) { Ops.error(new Error(serviceState.description)); return; }
   if (!this.data.config || this.data.configError || this.data.pageLoading || (this.data.config.enabled !== true && !this.data.editId)) { Ops.error(new Error('请先加载有效运营配置，并确认服务已开放')); return; }
   if(this._submitting || !this.data.config)return;
-  if(!await PassportBiz.loginMustCancelWin(this) || this._submitting)return;
-  let data=validate.check(this.data,MailBiz.CHECK_FORM,this);if(!data)return;
-  const form=this.selectComponent('#cmpt-form');const current=form && form.getForms(true);if(!current)return;
   this._submitting=true;this.setData({submitting:true});
   try {
+   if(!await PassportBiz.loginMustCancelWin(this))return;
+   const packages = Array.isArray(this.data.packageItems) ? this.data.packageItems : [];
+   if (!packages.length) throw new Error('请先选择包裹');
+   const missingPickup = packages.findIndex(item => !String(item.pickupPoint || '').trim());
+   if (missingPickup >= 0) throw new Error('请选择第' + (missingPickup + 1) + '件包裹的取件点');
+   let data=validate.check(this.data,MailBiz.CHECK_FORM,this);if(!data)return;
+   const form=this.selectComponent('#cmpt-form');const current=form && form.getForms(true);if(!current)return;
    wx.showLoading({title:'上传并保存中',mask:true});
-   const forms=JSON.parse(JSON.stringify(current)).filter(x=>x.mark!=='campus'&&x.mark!=='formEnd'&&x.mark!=='packages');
+   const hasPackageProof = packages.some(item => item.code || item.images && item.images.length);
+   const forms=JSON.parse(JSON.stringify(current)).filter(x=>!['campus','formEnd','packages','address1'].includes(x.mark) && (!hasPackageProof || !['code','img'].includes(x.mark)));
     const packageRows = await this._uploadPackageImages((Array.isArray(this.data.packageItems) ? this.data.packageItems : []).map(({_used,...item})=>item));
     forms.push({mark:'packages',title:'逐件凭证',type:'json',val:packageRows});
    for(const item of forms)if(item.type==='image')item.val=await Ops.upload(item.val||[]);
@@ -497,9 +612,6 @@ module.exports = {
    const result=await Ops.command(this.data.editId?'mail/edit':'mail/insert',params);
    this.setData({mailId:result._id||result.id});wx.hideLoading();PublicBiz.removeCacheList('mail-list');
    wx.showModal({title:this.data.editId?'保存成功':'发布成功',content:this.data.config.offlineNotice,showCancel:false,success:()=>this._showMailList()});
-  }catch(e){wx.hideLoading();Ops.error(e);}finally{this._submitting=false;this.setData({submitting:false});}
+  }catch(e){wx.hideLoading();Ops.error(e);}finally{this._submitting=false;this.setData({submitting:false});this._refreshPendingSubmission();}
  },
 };
-
-
-

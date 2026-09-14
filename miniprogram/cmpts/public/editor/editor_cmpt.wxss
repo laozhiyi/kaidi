@@ -144,3 +144,18 @@
 	display: block;
 	width: 100%;
 }
+
+.console-editor { width: 100%; min-width: 0; color: #21304a; }
+.console-editor .editor-tab { position: static; height: auto; margin: 0 0 26rpx; padding: 6rpx; border-radius: 14rpx; background: #f0f4fb; gap: 6rpx; }
+.console-editor .editor-tab button { flex: 1; min-width: 0; margin: 0; padding: 16rpx; height: auto; line-height: 1.4; font-size: 25rpx; border-radius: 10rpx; background: transparent; color: #718099; }
+.console-editor .editor-tab button.bg-blue { background: #fff; color: #2863db; box-shadow: 0 2rpx 8rpx rgba(33,48,74,.05); }
+.console-editor .editor-tab button::after { border: 0; }
+.console-editor .editor-wrapper { padding: 0; }
+.console-editor .editor-node-wrapper { border: 1rpx solid #e4eaf4; border-radius: 14rpx; overflow: hidden; margin: 0 0 16rpx; }
+.console-editor .editor-node-wrapper.is-view { border-color: transparent; }
+.console-editor .editor-wrapper .editor-node-wrapper .editor-textarea { padding: 24rpx 22rpx; min-height: 220rpx; border: 0; border-radius: 0; background: #f6f8fc; color: #21304a; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 28rpx; line-height: 1.7; }
+.console-editor .editor-wrapper .is-view .editor-textarea { background: #fff; }
+.console-editor .editor-delete { position: static; justify-content: flex-end; background: #fff; border-radius: 0; box-shadow: none; border-top: 1rpx solid #edf0f5; padding: 14rpx 10rpx; color: #8995a8; }
+.console-editor .editor-delete .iconfont { padding: 6rpx 20rpx; font-size: 29rpx; }
+.console-editor .editor-add-wrapper { gap: 14rpx; margin-bottom: 28rpx; }
+.console-editor .editor-add-wrapper .editor-add-wrapper-view { flex: 1; min-width: 0; width: auto; border: 1rpx dashed #cdd8ea; border-radius: 12rpx; padding: 18rpx 8rpx; background: #fafbfe; color: #637da4; font-size: 24rpx; line-height: 1.5; }

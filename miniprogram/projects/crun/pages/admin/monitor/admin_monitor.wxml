@@ -1,0 +1,27 @@
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 管理中心</text><text>/</text><text>系统维护</text></view>
+  <view class="ac-heading"><view><view class="ac-title">系统维护</view><view class="ac-subtitle">检查运行状态，跟进订单与消息通知</view></view><button class="ac-secondary ac-small" bindtap="load" disabled="{{loading || busy}}" loading="{{loading}}">刷新</button></view>
+  <view wx:if="{{error}}" class="ac-card ac-state"><view class="ac-state-title">运行数据暂未更新</view><view class="ac-muted">{{error}}</view><button class="ac-secondary ac-small" bindtap="load">重新加载</button></view>
+  <view wx:if="{{loading && !overview}}" class="ac-card ac-state ac-muted">正在读取运行数据…</view>
+  <view wx:if="{{overview}}" class="ac-stat-grid">
+    <view class="ac-stat"><view class="ac-stat-label">通知发送失败</view><view class="ac-monitor-number"><text class="ac-number {{overview.failedNotifications?'ac-text-red':''}}">{{overview.failedNotifications}}</text><text>条</text></view><view class="ac-stat-note">检查并处理待发通知</view></view>
+    <view class="ac-stat"><view class="ac-stat-label">履约超时</view><view class="ac-monitor-number"><text class="ac-number">{{overview.overdue}}</text><text>单</text></view><view class="ac-stat-note">提醒双方及时跟进</view></view>
+  </view>
+  <view class="ac-card">
+    <view class="ac-section-head"><text class="ac-section-title">维护任务</text><text class="ac-muted">每次执行以下项目</text></view>
+    <view class="ac-maintenance-task"><view class="ac-task-step">01</view><view class="ac-task-copy"><view class="ac-row-title">关闭过期待接单订单</view><view class="ac-row-desc">处理超过接单截止时间、仍未接取的线下订单。</view></view></view>
+    <view class="ac-maintenance-task"><view class="ac-task-step">02</view><view class="ac-task-copy"><view class="ac-row-title">发送履约超时提醒</view><view class="ac-row-desc">提醒相关用户跟进，保留订单与履约记录。</view></view></view>
+    <view class="ac-maintenance-task"><view class="ac-task-step">03</view><view class="ac-task-copy"><view class="ac-row-title">处理待发送通知</view><view class="ac-row-desc">发送待发通知并重试；达到重试上限的记录保留失败状态。</view></view></view>
+  </view>
+  <view class="ac-card ac-maintenance-action">
+    <view class="ac-card-title"><view class="ac-icon"><text class="icon-settings"></text></view><view><view class="ac-section-title">手动执行维护</view><view class="ac-card-desc">用于主动检查和处理当前积压任务</view></view></view>
+    <view class="ac-notice">维护不会自动确认收货。异常订单需在订单详情中核实并处理。</view>
+    <view wx:if="{{!isSuperAdmin}}" class="ac-notice amber">当前为只读模式，执行维护需要超级管理员权限。</view>
+    <button wx:if="{{isSuperAdmin}}" class="ac-primary" bindtap="bindMaintain" disabled="{{busy || loading}}" loading="{{busy}}">{{busy?'正在执行维护':'执行一次维护'}}</button>
+  </view>
+  <view wx:if="{{result}}" class="ac-card ac-result">
+    <view class="ac-section-head"><text class="ac-section-title">本次执行结果</text><text class="ac-badge green">已完成</text></view>
+    <view class="ac-result-grid"><view><view class="ac-result-value">{{result.expired || 0}}</view><view class="ac-result-label">关闭过期订单</view></view><view><view class="ac-result-value">{{result.overdue || 0}}</view><view class="ac-result-label">超时提醒</view></view><view><view class="ac-result-value">{{result.notifications || 0}}</view><view class="ac-result-label">处理通知</view></view></view>
+    <view class="ac-footnote">{{ranAt}} 执行</view>
+  </view>
+</view>

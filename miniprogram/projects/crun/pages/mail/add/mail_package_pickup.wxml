@@ -1,0 +1,15 @@
+<view wx:if="{{packagePickupVisible}}" class="pub-sheet-mask" catchtouchmove="bindStopProp" bindtap="bindClosePackagePickup">
+ <view class="pub-sheet" catchtap="bindStopProp">
+  <view class="pub-sheet-handle"></view>
+  <view class="pub-sheet-head"><view><view class="pub-sheet-title">选择常用快递点</view><view class="pub-caption">第 {{packagePickupNumber}} 件包裹 · 选择或填写对应的取件点</view></view><text class="pub-sheet-close icon-close" catchtap="bindClosePackagePickup"></text></view>
+  <scroll-view scroll-y class="pub-sheet-body">
+   <view class="pub-station-group" wx:for="{{pickupStations}}" wx:for-item="phase" wx:key="name">
+    <view class="pub-station-title">{{phase.name}}</view>
+    <view class="pub-station-chips"><view class="pub-station-chip {{packagePickupDraft === (phase.name + ' · ' + item) ? 'pub-station-active' : ''}}" wx:for="{{phase.list}}" wx:key="*this" bindtap="bindSelectPackagePickup" data-phase="{{phase.name}}" data-name="{{item}}">{{item}}</view></view>
+   </view>
+   <view class="pub-field-label">其他取件点</view><view class="pub-input-box"><input value="{{packagePickupDraft}}" maxlength="100" placeholder="也可手动填写名称与位置" placeholder-class="pub-placeholder" bindinput="bindPackagePickupInput" /></view>
+   <view wx:if="{{packagePickupError}}" class="pub-validation">{{packagePickupError}}</view>
+  </scroll-view>
+  <button class="pub-button" bindtap="bindConfirmPackagePickup" disabled="{{!packagePickupDraft || submitting}}">确认取件点</button>
+ </view>
+</view>

@@ -19,10 +19,6 @@
 .op-page button[disabled] { opacity: .5; }
 .op-page textarea { box-sizing: border-box; background: #f4f6f9; border-radius: 12rpx; padding: 20rpx; width: 100%; height: 200rpx; line-height: 1.7; }
 .op-page input { box-sizing: border-box; border-bottom: 1rpx solid #e6eaf0; padding: 12rpx 0; min-height: 64rpx; }
-.op-tabs { display: flex; margin-bottom: 24rpx; padding: 8rpx; background: #e7edf5; border-radius: 16rpx; position: sticky; top: 0; z-index: 5; }
-.op-tab { padding: 16rpx 12rpx; border-radius: 12rpx; text-align: center; white-space: nowrap; }
-.op-tabs-equal .op-tab { flex: 1; min-width: 0; }
-.op-tab.active { background: #397bc8; color: white; font-weight: 600; }
 .op-card-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16rpx; }
 .op-card-head .op-title { margin: 0 16rpx 0 0; flex: 1; min-width: 0; }
 .op-record-title, .op-message-title { font-weight: 600; flex: 1; min-width: 0; margin-right: 16rpx; }

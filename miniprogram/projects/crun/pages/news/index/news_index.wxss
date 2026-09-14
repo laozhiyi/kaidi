@@ -1,2 +1,15 @@
 @import "../../../../../style/public/comm_box_list.wxss";
+
+.news-list-cards { padding: 20rpx 24rpx; }
+.news-list-card { display: flex; align-items: center; gap: 22rpx; margin-bottom: 20rpx; padding: 26rpx; background: #fff; border: 1rpx solid #e1eaf5; border-radius: 18rpx; }
+.news-list-hover { background: #f4f8fe; }
+.news-list-copy { flex: 1; min-width: 0; }
+.news-list-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; color: #6585b0; font-size: 22rpx; }
+.news-list-important { color: #a56b20; }
+.news-list-unread { color: #d4524d; }
+.news-list-read { color: #98a5b8; }
+.news-list-title { color: #263d5c; font-size: 29rpx; font-weight: 600; line-height: 1.6; word-break: break-all; }
+.news-list-desc { color: #7b8da4; font-size: 24rpx; line-height: 1.7; margin-top: 10rpx; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.news-list-date { margin-top: 14rpx; color: #97a5b8; font-size: 21rpx; }
+.news-list-cover { flex-shrink: 0; width: 136rpx; height: 136rpx; border-radius: 12rpx; }
 @import "../../../style/skin.wxss"; 

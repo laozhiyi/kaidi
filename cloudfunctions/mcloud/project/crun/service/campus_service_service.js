@@ -111,7 +111,7 @@ class CampusServiceService extends BaseProjectService {
 	}
 
 	/** 用户端发送消息 */
-	async sendCampusMessage(userId, serviceId, content) {
+	async sendCampusMessage(userId, serviceId, content, requestId) {
 		if (!userId) this.AppError('请先登录');
 		content = String(content || '').trim();
 		if (!content) this.AppError('请输入咨询内容');
@@ -125,10 +125,8 @@ class CampusServiceService extends BaseProjectService {
 		if (!service) this.AppError('客服信息不存在或已停用');
 
 		let sessionId = `${this.getProjectId()}_${serviceId}_${userId}`;
-		let messageId = 'CSM' + Date.now() + Math.random().toString(36).substr(2, 9);
-		await CampusServiceMessageModel.insert({
+		return this._saveMessage({
 			_pid: this.getProjectId(),
-			CSM_ID: messageId,
 			CSM_SESSION_ID: sessionId,
 			CSM_SERVICE_ID: serviceId,
 			CSM_USER_ID: userId,
@@ -137,8 +135,30 @@ class CampusServiceService extends BaseProjectService {
 			CSM_READ: 0,
 			CSM_ADD_TIME: this._timestamp,
 			CSM_EDIT_TIME: this._timestamp
+		}, requestId, userId);
+	}
+
+	async _saveMessage(message, requestId, actorId) {
+		if (typeof requestId !== 'string' || !/^[\w-]{16,100}$/.test(requestId)) this.AppError('消息请求标识无效，请重试');
+		const store = require('./operation_store.js');
+		const id = store.key(this.getProjectId(), 'chat', message.CSM_SENDER, actorId, requestId);
+		const fingerprint = store.key(message.CSM_SESSION_ID, message.CSM_CONTENT);
+		return store.transaction(async tx => {
+			if (message.CSM_SENDER === 'admin') {
+				const admin = await store.get(tx, 'admin', actorId);
+				if (!admin || admin._pid !== this.getProjectId() || admin.ADMIN_STATUS !== 1) this.AppError('管理员权限已失效');
+			}
+			const old = await store.get(tx, 'campus_service_message', id);
+			if (old) {
+				if (old.CSM_REQUEST_FINGERPRINT !== fingerprint) this.AppError('相同请求不能发送不同消息');
+				return { id: old.CSM_ID, sessionId: old.CSM_SESSION_ID };
+			}
+			const service = await store.get(tx, 'campus_service', message.CSM_SERVICE_ID);
+			if (!service || service._pid !== this.getProjectId() || service.CS_STATUS !== 1) this.AppError('客服信息不存在或已停用');
+			await store.limitInTransaction(tx, this.getProjectId(), actorId, 'chat_send', 60, 60000);
+			await store.set(tx, 'campus_service_message', id, { ...message, CSM_ID: 'CSM' + id, CSM_REQUEST_FINGERPRINT: fingerprint });
+			return { id: 'CSM' + id, sessionId: message.CSM_SESSION_ID };
 		});
-		return { id: messageId, sessionId };
 	}
 
 
@@ -164,12 +184,17 @@ class CampusServiceService extends BaseProjectService {
 		};
 
 		if (util.isDefined(search) && search) {
+			search = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 			where.or = [
 				{ CS_CAMPUS: ['like', search] },
 				{ CS_NAME: ['like', search] }
 			];
 		}
 
+		if (sortType === 'status') {
+			if (![0, 1].includes(Number(sortVal))) this.AppError('客服状态无效');
+			where.and.CS_STATUS = Number(sortVal);
+		}
 		return await CampusServiceModel.getList(where, fields, orderBy, page, size, isTotal, oldTotal);
 	}
 
@@ -292,7 +317,7 @@ class CampusServiceService extends BaseProjectService {
 	}
 
 	/** 管理员-回复会话 */
-	async replyCampusMessage(sessionId, content) {
+	async replyCampusMessage(sessionId, content, requestId, adminId) {
 		content = String(content || '').trim();
 		if (!sessionId) this.AppError('会话参数错误');
 		if (!content) this.AppError('请输入回复内容');
@@ -301,10 +326,8 @@ class CampusServiceService extends BaseProjectService {
 		if (!last) this.AppError('会话不存在');
 		let service = await CampusServiceModel.getOne({ _id: last.CSM_SERVICE_ID, _pid: this.getProjectId(), CS_STATUS: 1 }, '_id');
 		if (!service) this.AppError('客服信息不存在或已停用');
-		let messageId = 'CSM' + Date.now() + Math.random().toString(36).substr(2, 9);
-		await CampusServiceMessageModel.insert({
+		return this._saveMessage({
 			_pid: this.getProjectId(),
-			CSM_ID: messageId,
 			CSM_SESSION_ID: sessionId,
 			CSM_SERVICE_ID: last.CSM_SERVICE_ID,
 			CSM_USER_ID: last.CSM_USER_ID,
@@ -313,8 +336,7 @@ class CampusServiceService extends BaseProjectService {
 			CSM_READ: 0,
 			CSM_ADD_TIME: this._timestamp,
 			CSM_EDIT_TIME: this._timestamp
-		});
-		return { id: messageId, sessionId };
+		}, requestId, adminId);
 	}
 
 

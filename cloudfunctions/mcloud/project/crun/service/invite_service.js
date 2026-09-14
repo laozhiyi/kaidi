@@ -1,152 +1,95 @@
-/**
- * Notes: 邀请好友模块业务逻辑
- * Ver : CCMiniCloud Framework 2.0.1
- * Date: 2026-09-06
- */
-
-const BaseProjectService = require('./base_project_service.js');
-const util = require('../../../framework/utils/util.js');
-const timeUtil = require('../../../framework/utils/time_util.js');
-const InviteModel = require('../model/invite_model.js');
+const Base = require('./base_project_service.js');
+const store = require('./operation_store.js');
 const UserModel = require('../model/user_model.js');
+const Operations = require('./operations_service.js');
+const timeUtil = require('../../../framework/utils/time_util.js');
+const crypto = require('crypto');
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function newCode() { return Array.from(crypto.randomBytes(6), value => CODE_CHARS[value % CODE_CHARS.length]).join(''); }
 
-class InviteService extends BaseProjectService {
-
-	/** 取得/创建当前用户的邀请码 */
-	async getOrCreateMyInviteCode(userId) {
-		// 先查找用户记录
-		let where = {
-			INV_USER_ID: userId,
-			INV_ACCEPT_USER_ID: '',
-		};
-		let inv = await InviteModel.getOne(where, '*');
-		if (!inv) {
-			// 查询用户信息
-			let user = await UserModel.getOne({ USER_MINI_OPENID: userId }, 'USER_NAME');
-			// 生成唯一邀请码
-			const code = await this._genUniqueCode();
-			const invId = 'INV' + Date.now() + Math.random().toString(36).substr(2, 9);
-			let data = {
-				INV_ID: invId,
-				INV_USER_ID: userId,
-				INV_USER_NAME: user ? user.USER_NAME : '',
-				INV_ACCEPT_USER_ID: '',
-				INV_ACCEPT_USER_NAME: '',
-				INV_CODE: code,
-				INV_STATUS: InviteModel.STATUS.PENDING,
-				INV_REWARD_STATUS: 0,
-				INV_REWARD_DESC: '',
-				INV_ADD_TIME: this._timestamp,
-				INV_EDIT_TIME: this._timestamp,
-				INV_ACCEPT_TIME: 0
-			};
-			await InviteModel.insert(data);
-			return { code, total: 0, accepted: 0, reward: 0 };
-		}
-
-		// 统计该用户的邀请数据
-		let statWhere = { INV_USER_ID: userId };
-		let total = await InviteModel.count(statWhere);
-		let acceptedWhere = { INV_USER_ID: userId, INV_STATUS: InviteModel.STATUS.ACCEPTED };
-		let accepted = await InviteModel.count(acceptedWhere);
-		let rewardWhere = { INV_USER_ID: userId, INV_REWARD_STATUS: 1 };
-		let reward = await InviteModel.count(rewardWhere);
-
-		return { code: inv.INV_CODE, total, accepted, reward };
-	}
-
-	/** 生成唯一邀请码 */
-	async _genUniqueCode() {
-		const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-		let code = '';
-		let exists = true;
-		while (exists) {
-			code = '';
-			for (let i = 0; i < 6; i++) {
-				code += chars.charAt(Math.floor(Math.random() * chars.length));
-			}
-			let cnt = await InviteModel.count({ INV_CODE: code });
-			exists = (cnt > 0);
-		}
-		return code;
-	}
-
-	/** 接受邀请（注册时绑定） */
-	async acceptInvite(acceptUserId, code) {
-		if (!code) return null;
-
-		let where = { INV_CODE: code };
-		let inv = await InviteModel.getOne(where, '*');
-		if (!inv) return null;
-		if (inv.INV_USER_ID === acceptUserId) return null; // 不能邀请自己
-
-		// 标记已接受
-		let acceptUser = await UserModel.getOne({ USER_MINI_OPENID: acceptUserId }, 'USER_NAME');
-		await InviteModel.edit(inv._id, {
-			INV_ACCEPT_USER_ID: acceptUserId,
-			INV_ACCEPT_USER_NAME: acceptUser ? acceptUser.USER_NAME : '',
-			INV_STATUS: InviteModel.STATUS.ACCEPTED,
-			INV_ACCEPT_TIME: this._timestamp,
-			INV_EDIT_TIME: this._timestamp
-		});
-		return { inviter: inv.INV_USER_ID };
-	}
-
-	/** 我的邀请列表 */
-	async getMyInviteList(userId, {
-		search,
-		sortType,
-		sortVal,
-		orderBy,
-		page,
-		size,
-		isTotal = true,
-		oldTotal
-	}) {
-
-		orderBy = orderBy || {
-			'INV_ADD_TIME': 'desc'
-		};
-		let fields = 'INV_ACCEPT_USER_NAME,INV_CODE,INV_STATUS,INV_REWARD_STATUS,INV_REWARD_DESC,INV_ADD_TIME,INV_ACCEPT_TIME';
-
-		let where = {};
-		where.and = {
-			_pid: this.getProjectId(),
-			INV_USER_ID: userId,
-		};
-
-		if (util.isDefined(search) && search) {
-			where.or = [
-				{ INV_ACCEPT_USER_NAME: ['like', search] },
-				{ INV_CODE: ['like', search] }
-			];
-		}
-
-		let result = await InviteModel.getList(where, fields, orderBy, page, size, isTotal, oldTotal);
-
-		let list = result.list || [];
-		for (let k = 0; k < list.length; k++) {
-			list[k].INV_ADD_TIME = timeUtil.timestamp2Time(list[k].INV_ADD_TIME, 'Y-M-D h:m');
-			if (list[k].INV_ACCEPT_TIME > 0)
-				list[k].INV_ACCEPT_TIME = timeUtil.timestamp2Time(list[k].INV_ACCEPT_TIME, 'Y-M-D h:m');
-		}
-		result.list = list;
-		return result;
-	}
-
-	/** 我的邀请统计 */
-	async getMyInviteStat(userId) {
-		let totalWhere = { INV_USER_ID: userId };
-		let total = await InviteModel.count(totalWhere);
-		let acceptedWhere = { INV_USER_ID: userId, INV_STATUS: InviteModel.STATUS.ACCEPTED };
-		let accepted = await InviteModel.count(acceptedWhere);
-		let rewardWhere = { INV_USER_ID: userId, INV_REWARD_STATUS: 1 };
-		let reward = await InviteModel.count(rewardWhere);
-		let pendingWhere = { INV_USER_ID: userId, INV_STATUS: InviteModel.STATUS.PENDING };
-		let pending = await InviteModel.count(pendingWhere);
-
-		return { total, accepted, reward, pending };
-	}
+class InviteService extends Base {
+  async _user(userId, allowPending = false) {
+    const user = userId && await UserModel.getOne({ USER_MINI_OPENID: userId });
+    if (!user || (allowPending ? user.USER_STATUS === 9 : user.USER_STATUS !== 1)) this.AppError('请先完成注册并登录');
+    return user;
+  }
+  async getOrCreateMyInviteCode(userId) {
+    const user = await this._user(userId);
+    const pid = this.getProjectId();
+    const id = store.key(pid, 'invite-code', userId);
+    const current = await store.get(store.database(), 'invite', id);
+    if (current) return { code: current.INV_CODE };
+    const legacy = await store.database().collection(store.collection('invite')).where({ _pid: pid, INV_USER_ID: userId }).orderBy('INV_ADD_TIME', 'asc').limit(1).get();
+    let code = legacy.data[0] && legacy.data[0].INV_CODE || newCode();
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const owners = await store.database().collection(store.collection('invite')).where({ _pid: pid, INV_CODE: code }).limit(1).get();
+      if (owners.data[0] && owners.data[0].INV_USER_ID !== userId) { code = newCode(); continue; }
+      const result = await store.transaction(async tx => {
+        const existing = await store.get(tx, 'invite', id);
+        if (existing) return { code: existing.INV_CODE };
+        const uniqueId = store.key(pid, 'invite-code', code);
+        const owner = await store.get(tx, 'identity_unique', uniqueId);
+        if (owner && owner.userId !== userId) return null;
+        const now = Date.now();
+        await store.set(tx, 'identity_unique', uniqueId, { _pid: pid, userId, code, updatedAt: now });
+        await store.set(tx, 'invite', id, {
+          _pid: pid, INV_ID: id, INV_KIND: 'code', INV_USER_ID: userId, INV_USER_NAME: user.USER_NAME || '',
+          INV_ACCEPT_USER_ID: '', INV_ACCEPT_USER_NAME: '', INV_CODE: code, INV_STATUS: 0,
+          INV_REWARD_STATUS: 0, INV_REWARD_DESC: '', INV_ADD_TIME: now, INV_EDIT_TIME: now, INV_ACCEPT_TIME: 0
+        });
+        return { code };
+      });
+      if (result) return result;
+      code = newCode();
+    }
+    this.AppError('邀请码生成失败，请重试');
+  }
+  async acceptInvite(userId, inputCode) {
+    const user = await this._user(userId, true);
+    const code = String(inputCode || '').trim().toUpperCase();
+    const pid = this.getProjectId();
+    if (!/^[A-Z0-9]{6}$/.test(code)) return { accepted: false, reason: '邀请码无效' };
+    const result = await store.database().collection(store.collection('invite')).where({ _pid: pid, INV_CODE: code }).limit(1).get();
+    const invite = result.data[0];
+    if (!invite) return { accepted: false, reason: '邀请码无效' };
+    if (invite.INV_USER_ID === userId) return { accepted: false, reason: '不能使用自己的邀请码' };
+    const inviter = await UserModel.getOne({ USER_MINI_OPENID: invite.INV_USER_ID });
+    if (!inviter || inviter.USER_STATUS === 9) return { accepted: false, reason: '邀请码已失效' };
+    const legacy = await store.database().collection(store.collection('invite')).where({ _pid: pid, INV_ACCEPT_USER_ID: userId }).limit(1).get();
+    if (legacy.data.length) return { accepted: true, alreadyAccepted: true, inviter: legacy.data[0].INV_USER_ID };
+    const id = store.key(pid, 'invite-accept', userId);
+    return store.transaction(async tx => {
+      const old = await store.get(tx, 'invite', id);
+      if (old) return { accepted: true, alreadyAccepted: true, inviter: old.INV_USER_ID };
+      const current = await store.get(tx, 'user', user._id);
+      if (!current || current._pid !== pid || current.USER_STATUS === 9) this.AppError('账号不可用');
+      const now = Date.now();
+      await store.set(tx, 'invite', id, {
+        _pid: pid, INV_ID: id, INV_KIND: 'accept', INV_USER_ID: invite.INV_USER_ID, INV_USER_NAME: inviter.USER_NAME || '',
+        INV_ACCEPT_USER_ID: userId, INV_ACCEPT_USER_NAME: user.USER_NAME || '', INV_CODE: code, INV_STATUS: 1,
+        INV_REWARD_STATUS: 0, INV_REWARD_DESC: '', INV_ADD_TIME: now, INV_EDIT_TIME: now, INV_ACCEPT_TIME: now
+      });
+      return { accepted: true, inviter: invite.INV_USER_ID };
+    });
+  }
+  async getMyInviteList(userId, { page = 1, size = 20 } = {}) {
+    await this._user(userId);
+    const result = await new Operations().list('invite', {
+      INV_USER_ID: userId, INV_ACCEPT_USER_ID: store.database().command.neq('')
+    }, page, 'INV_ADD_TIME', size);
+    result.list = result.list.map(item => ({ ...item,
+      INV_ADD_TIME: timeUtil.timestamp2Time(item.INV_ADD_TIME, 'Y-M-D h:m'),
+      INV_ACCEPT_TIME: item.INV_ACCEPT_TIME ? timeUtil.timestamp2Time(item.INV_ACCEPT_TIME, 'Y-M-D h:m') : ''
+    }));
+    return result;
+  }
+  async getMyInviteStat(userId) {
+    await this._user(userId);
+    const db = store.database();
+    const where = { _pid: this.getProjectId(), INV_USER_ID: userId, INV_ACCEPT_USER_ID: db.command.neq('') };
+    const count = async extra => (await db.collection(store.collection('invite')).where({ ...where, ...extra }).count()).total;
+    const [total, accepted, reward, pending] = await Promise.all([count({}), count({ INV_STATUS: 1 }), count({ INV_REWARD_STATUS: 1 }), count({ INV_STATUS: 0 })]);
+    return { total, accepted, reward, pending };
+  }
 }
-
 module.exports = InviteService;

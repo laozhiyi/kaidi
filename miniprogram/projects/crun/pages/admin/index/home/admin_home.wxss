@@ -1,39 +1,13 @@
-@import '../../../../../../style/public/admin.wxss';
-.main-admin { padding: 0 24rpx 48rpx; padding-bottom: calc(48rpx + env(safe-area-inset-bottom)); background: #f4f6f9; min-height: 100vh; box-sizing: border-box; width: 100%; align-items: stretch; }
-.admin-info { margin: 0 -24rpx; padding: 36rpx 28rpx 44rpx; color: #fff; display: flex; align-items: center; }
-.admin-info .pic { flex-shrink: 0; width: 84rpx; height: 84rpx; line-height: 84rpx; text-align: center; border-radius: 20rpx; font-size: 58rpx; margin-right: 24rpx; background: rgba(255,255,255,.14); }
-.admin-info .right { flex: 1; min-width: 0; }
-.admin-info .name { font-size: 36rpx; font-weight: 600; word-break: break-all; }
-.admin-role { display: inline-block; font-size: 22rpx; padding: 4rpx 14rpx; border-radius: 8rpx; margin: 10rpx 0; background: rgba(255,255,255,.18); }
-.admin-info .desc { font-size: 23rpx; line-height: 1.6; opacity: .85; }
-.home-stats { display: flex; flex-wrap: wrap; margin: 24rpx -8rpx 0; }
-.home-stat { box-sizing: border-box; flex: 1; min-width: 28%; background: #fff; border-radius: 16rpx; text-align: center; padding: 22rpx 8rpx; margin: 0 8rpx 16rpx; color: #718098; font-size: 24rpx; }
-.home-stat-count { color: #315f97; font-size: 40rpx; font-weight: 600; margin-bottom: 8rpx; }
-.home-section { margin-top: 24rpx; background: #fff; border-radius: 20rpx; padding: 26rpx; }
-.home-section-title { color: #24334b; font-size: 30rpx; font-weight: 600; }
-.home-section-desc { color: #7a889b; font-size: 23rpx; margin: 10rpx 0 20rpx; }
-.workbench-entry { display: flex; align-items: center; justify-content: space-between; padding: 26rpx; background: #edf4fd; border-radius: 16rpx; color: #315f97; }
-.workbench-title { font-size: 32rpx; font-weight: 600; }
-.workbench-desc { font-size: 23rpx; margin-top: 10rpx; line-height: 1.6; }
-.home-grid { display: flex; flex-wrap: wrap; margin-top: 24rpx; }
-.home-grid-item { width: 33.333%; box-sizing: border-box; text-align: center; padding: 18rpx 4rpx; font-size: 25rpx; color: #35445b; }
-.home-grid-item > text { display: block; font-size: 42rpx; margin-bottom: 14rpx; }
-.home-section .comm-list { margin: 16rpx 0 0; width: 100%; }
-.home-section .comm-list .content { font-size: 27rpx; }
-.home-section .comm-list .content > text:first-child { margin-right: 18rpx; }
-.home-logout { margin: 28rpx 0; font-size: 28rpx; border-radius: 14rpx; color: #66758a; background: #e8edf4; }
-.home-logout::after { border: 0; }
-.foot-bottom { text-align: center; padding-top: 16rpx; }
-.dashboard-card { margin-top: 24rpx; padding: 26rpx; background: #fff; border-radius: 20rpx; }
-.dashboard-title { color: #24334b; font-size: 30rpx; font-weight: 600; margin-bottom: 22rpx; }
-.dashboard-summary { display: flex; gap: 12rpx; margin-bottom: 26rpx; }
-.dashboard-summary > view { flex: 1; padding: 18rpx 8rpx; text-align: center; background: #f5f8fc; border-radius: 14rpx; color: #7a889b; font-size: 21rpx; }
-.dashboard-number { display: block; color: #315f97; font-size: 38rpx; font-weight: 600; margin-bottom: 4rpx; }
-.dashboard-green { color: #4b9b78; }
-.dashboard-orange { color: #c48846; }
-.chart-row { display: flex; align-items: center; margin-top: 18rpx; }
-.chart-label { width: 100rpx; color: #64748a; font-size: 23rpx; }
-.chart-track { flex: 1; height: 18rpx; overflow: hidden; border-radius: 20rpx; background: #edf1f6; }
-.chart-track-warm { background: #fff7ed; }
-.chart-bar { height: 100%; min-width: 0; border-radius: 20rpx; transition: width .25s ease; }
-.chart-value { width: 52rpx; text-align: right; color: #35445b; font-size: 23rpx; }
+@import '../../../../style/admin_console.wxss';
+.ac-service-status { flex-shrink: 0; display: flex; align-items: center; gap: 10rpx; padding: 12rpx 15rpx; background: #fff; border: 1rpx solid #e3e9f2; border-radius: 30rpx; color: #60718b; font-size: 21rpx; }
+.ac-service-dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: #3c9c78; }
+.ac-service-dot.paused { background: #d39848; }
+.ac-service-dot.unknown { background: #98a4b6; }
+.ac-page .ac-row > .ac-icon:first-child { flex: 0 0 64rpx; }
+.ac-page .ac-row > view:nth-child(2) { flex: 1; min-width: 0; }
+.ac-page .ac-icon-red { color: #bc4f4f; background: #fff0f0; }
+.ac-page .ac-icon-amber { color: #a76e26; background: #fff5e7; }
+.ac-page .ac-health { display: flex; align-items: center; justify-content: space-between; }
+.ac-page .ac-heading { align-items: flex-start; flex-wrap: wrap; }
+.ac-page .ac-heading > view:first-child { flex-basis: 430rpx; }
+.ac-service-status { margin-top: 6rpx; }

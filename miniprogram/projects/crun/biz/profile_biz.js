@@ -1,3 +1,5 @@
+const Address = require('./address_biz.js');
+
 function parseList(value) {
   if (Array.isArray(value)) return value;
   if (typeof value !== 'string' || !value.trim()) return null;
@@ -28,6 +30,6 @@ function readProfile(user) {
   if (contacts === null && !hasMark(forms, 'contacts')) { const n = formValue(forms, 'commonContact'), p = formValue(forms, 'commonContactMobile'); contacts = n || p ? [{ name: n, phone: p }] : []; }
   if (addresses === null && !hasMark(forms, 'addresses')) { const d = formValue(forms, 'address'); addresses = d ? [{ label: '常用地址', detail: d }] : []; }
   const c = getDefaultItem(normalizeContacts(contacts || [])); const a = getDefaultItem(normalizeAddresses(addresses || []));
-  return { contacts: normalizeContacts(contacts || []), addresses: normalizeAddresses(addresses || []), campus: String(formValue(forms, 'campus') || '').trim(), address2: String(formValue(forms, 'address2') || formValue(forms, 'address') || (a && a.detail) || '').trim(), poster: String(formValue(forms, 'poster') || formValue(forms, 'commonContact') || (c && c.name) || user.USER_NAME || '').trim(), tel: String(formValue(forms, 'tel') || formValue(forms, 'commonContactMobile') || (c && c.phone) || user.USER_MOBILE || '').trim(), tel2: String(formValue(forms, 'tel2') || '').trim() };
+  return { contacts: normalizeContacts(contacts || []), addresses: normalizeAddresses(addresses || []), campus: String(formValue(forms, 'campus') || '').trim(), address2: String(Address.formatAddress(a) || formValue(forms, 'address2') || formValue(forms, 'address') || '').trim(), poster: String((c && c.name) || formValue(forms, 'poster') || formValue(forms, 'commonContact') || user.USER_NAME || '').trim(), tel: String((c && c.phone) || formValue(forms, 'tel') || formValue(forms, 'commonContactMobile') || user.USER_MOBILE || '').trim(), tel2: String(formValue(forms, 'tel2') || '').trim() };
 }
 module.exports = { formValue, normalizeContacts, normalizeAddresses, getDefaultItem, readProfile };

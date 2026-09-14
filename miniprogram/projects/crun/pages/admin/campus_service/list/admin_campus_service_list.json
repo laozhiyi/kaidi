@@ -1,7 +1,7 @@
 {
-	"usingComponents": {
-		"cmpt-comm-list": "/cmpts/public/list/comm_list_cmpt"
-	},
-	"enablePullDownRefresh": true,
-	"navigationBarTitleText": "校区客服管理"
+  "usingComponents": {},
+  "navigationBarTitleText": "校区客服配置",
+  "navigationBarBackgroundColor": "#f3f5f9",
+  "navigationBarTextStyle": "black",
+  "enablePullDownRefresh": true
 }

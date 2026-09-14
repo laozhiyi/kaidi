@@ -1,0 +1,46 @@
+<view class="reputation-page">
+  <view wx:if="{{error}}" class="reputation-state"><view>信誉信息加载失败，请重试</view><button class="reputation-button" bindtap="load" loading="{{loading}}" disabled="{{loading}}">重新加载</button></view>
+  <view wx:if="{{loading && !summary}}" class="reputation-state">正在获取信誉分…</view>
+  <block wx:if="{{summary}}">
+    <view class="reputation-hero">
+      <view class="reputation-hero-top"><text>每一次守约，都值得被看见</text><text class="reputation-badge">满分 {{summary.maxScore}}</text></view>
+      <view class="reputation-caption">当前信誉分</view>
+      <view class="reputation-number">{{summary.score}}<text>分</text></view>
+      <view class="reputation-progress"><view class="reputation-progress-value" style="width:{{summary.score}}%;"></view></view>
+      <view class="reputation-range"><text>0</text><text>基础分 {{summary.baseScore}}</text><text>100</text></view>
+      <view class="reputation-hero-note">{{summary.reviews.count || summary.admin.count ? '按时履约、友善沟通，让每次合作更安心' : '你的信誉从 80 分开始，期待每一次安心合作'}}</view>
+    </view>
+
+    <view class="reputation-card">
+      <view class="reputation-heading">分数构成</view>
+      <view class="reputation-breakdown">
+        <view class="reputation-part"><view class="reputation-part-value">{{summary.baseScore}}</view><view class="reputation-part-title">基础分</view><view class="reputation-small">所有用户相同</view></view>
+        <view class="reputation-part"><view class="reputation-part-value {{summary.reviews.points < 0 ? 'negative' : 'positive'}}">{{summary.reviews.pointsText}}</view><view class="reputation-part-title">用户评价</view><view class="reputation-small">{{summary.reviews.count}} 条 · {{summary.reviews.averageText}}</view></view>
+        <view class="reputation-part"><view class="reputation-part-value {{summary.admin.points < 0 ? 'negative' : 'positive'}}">{{summary.admin.pointsText}}</view><view class="reputation-part-title">申诉审核</view><view class="reputation-small">{{summary.admin.count}} 条 · {{summary.admin.averageText}}</view></view>
+      </view>
+      <view class="reputation-hint">基础分与两项评价累计计算，总分限制在 0～100 分。{{summary.rawScore !== summary.score ? '当前累计为 ' + summary.rawScore + ' 分，已按上下限显示。' : ''}}</view>
+    </view>
+
+    <view class="reputation-card">
+      <view class="reputation-heading">星级怎样影响分数</view>
+      <view class="reputation-rule-grid"><view wx:for="{{summary.rules}}" wx:key="score" class="reputation-rule"><view class="reputation-rule-star">{{item.score}} 星</view><view class="reputation-rule-points {{item.points < 0 ? 'negative' : 'positive'}}">{{item.pointsText}} 分</view></view></view>
+      <view class="reputation-rule-copy">订单完成后，发布者与接单人可互评，每人每单评价一次。收到的评价计入自己的信誉分。</view>
+      <view class="reputation-rule-copy">申诉须由管理员核实并给出星级，未审核的申诉不影响分数。修改审核星级会替换原评分，撤销评分会移除对应计分。</view>
+    </view>
+
+    <view class="reputation-section-head"><text class="reputation-heading">计分记录</text><text class="reputation-small">下拉可刷新</text></view>
+    <view class="reputation-tabs">
+      <button class="reputation-tab {{source === 'review' ? 'active' : ''}}" data-source="review" bindtap="bindSource">收到的评价 <text>{{summary.reviews.count}}</text></button>
+      <button class="reputation-tab {{source === 'admin' ? 'active' : ''}}" data-source="admin" bindtap="bindSource">申诉审核 <text>{{summary.admin.count}}</text></button>
+    </view>
+    <view wx:if="{{loading && !list.length}}" class="reputation-state">正在加载记录…</view>
+    <view wx:if="{{!loading && !error && !list.length}}" class="reputation-card reputation-empty"><text class="reputation-empty-star">☆</text><view>{{source === 'review' ? '还没有收到评价' : '暂无生效的申诉评分'}}</view><view class="reputation-small">{{source === 'review' ? '完成订单后，双方都可以评价对方' : '仅经管理员审核确认的星级计入信誉分'}}</view><button wx:if="{{source === 'review'}}" class="reputation-button" bindtap="bindCompletedOrders">查看已完成订单</button></view>
+    <view wx:for="{{list}}" wx:key="_id" class="reputation-card reputation-record">
+      <view class="reputation-record-top"><view><view class="reputation-record-name">{{item.name}}<text wx:if="{{item.role}}" class="reputation-role">{{item.role}}</text></view><view class="reputation-record-stars">{{item.stars}}</view></view><view class="reputation-record-points {{item.points < 0 ? 'negative' : 'positive'}}">{{item.pointsText}}<text>分</text></view></view>
+      <view class="reputation-record-content">{{item.content || '对方未填写文字评价'}}</view>
+      <view class="reputation-record-foot"><text>{{item.time}}</text><button data-id="{{item.orderId}}" bindtap="bindOrder">查看订单 ›</button></view>
+    </view>
+    <button wx:if="{{hasMore}}" class="reputation-button" bindtap="onReachBottom" loading="{{loading}}" disabled="{{loading}}">加载更多</button>
+    <view wx:if="{{list.length && !hasMore && !loading && !error}}" class="reputation-end">已显示全部{{source === 'review' ? '评价' : '审核'}}记录</view>
+  </block>
+</view>

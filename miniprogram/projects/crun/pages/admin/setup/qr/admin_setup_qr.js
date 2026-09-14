@@ -1,108 +1,35 @@
-const AdminBiz = require('../../../../../../comm/biz/admin_biz.js');
-const pageHelper = require('../../../../../../helper/page_helper.js');
-const cloudHelper = require('../../../../../../helper/cloud_helper.js');
-
+const UI = require('../../../../biz/admin_console_biz.js');
+const Ops = require('../../../../biz/operations_biz.js');
 Page({
-
-	/**
-	 * 页面的初始数据
-	 */
-	data: {
-		isLoad: false,
-		qrUrl: '',
-
-		title: '',
-
-		path: '',
-		sc: '',
-	},
-
-	/**
-	 * 生命周期函数--监听页面加载
-	 */
-	onLoad: async function (options) {
-		if (!AdminBiz.isAdmin(this)) return;
-
-		if (options && options.qr && options.title) {
-			this.setData({
-				qr: decodeURIComponent(options.qr),
-				title: decodeURIComponent(options.title),
-			}, () => {
-				this._loadDetail();
-			});
-		}
-		else
-			this._loadDetail();
-	},
-
-	_loadDetail: async function () {
-		if (this.data.qr) {
-			this.setData({
-				qrUrl: this.data.qr,
-				isLoad: true
-			})
-			return;
-		}
-
-		let path = pageHelper.fmtURLByPID('/pages/default/index/default_index');
-		let params = {
-			path 
-		};
-		let opt = {
-			title: 'bar'
-		};
-		try {
-			await cloudHelper.callCloudSumbit('admin/setup_qr', params, opt).then(res => {
-
-				this.setData({
-					qrUrl: res.data,
-					isLoad: true
-				});
-			});
-		} catch (err) {
-			console.error(err);
-		}
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面初次渲染完成
-	 */
-	onReady: function () {
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面显示
-	 */
-	onShow: function () {
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面隐藏
-	 */
-	onHide: function () {
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面卸载
-	 */
-	onUnload: function () {
-
-	},
-
-	/**
-	 * 页面相关事件处理函数--监听用户下拉动作
-	 */
-	onPullDownRefresh: async function () {
-		await this._loadDetail();
-		wx.stopPullDownRefresh();
-	},
-
-	url: function (e) {
-		pageHelper.url(e, this);
-	}
-
-})
+  data: { title: 'GXNU 随手取', path: '/projects/crun/pages/default/index/default_index', sc: 'qr', qrUrl: '', loading: false, error: '', imageError: false },
+  onLoad(options = {}) {
+    if (!UI.start(this)) return;
+    try {
+      const title = options.title ? decodeURIComponent(options.title) : this.data.title;
+      const qr = options.qr ? decodeURIComponent(options.qr) : '';
+      const path = options.path ? decodeURIComponent(options.path) : this.data.path;
+      const sc = options.sc ? decodeURIComponent(options.sc) : 'qr';
+      this.setData({ title, path, sc });
+      if (qr && qr !== 'undefined' && qr !== 'null') { this.setData({ qrUrl: qr }); return; }
+    } catch (_) { this.setData({ error: '小程序码参数无效，请返回重新打开' }); return; }
+    return this.load();
+  },
+  onShow() { const reload = this._visible === false && !this.data.qrUrl; this._visible = true; if (reload) return this.load(); },
+  onHide() { UI.hide(this); },
+  onUnload() { this._unloaded = true; UI.hide(this); },
+  async onPullDownRefresh() { try { await this.load(); } finally { wx.stopPullDownRefresh(); } },
+  bindBack() { UI.back('settings'); },
+  bindImageError() { this.setData({ imageError: true }); },
+  bindPreview() { if (this.data.qrUrl && !this.data.imageError) wx.previewImage({ current: this.data.qrUrl, urls: [this.data.qrUrl] }); },
+  async load() {
+    if (!UI.authorize(this)) return;
+    const seq = this._seq = (this._seq || 0) + 1;
+    this.setData({ loading: true, error: '' });
+    try {
+      const qrUrl = await Ops.get('admin/setup_qr', { path: this.data.path, sc: this.data.sc });
+      if (typeof qrUrl !== 'string' || !qrUrl) throw new Error('小程序码暂未生成，请稍后重试');
+      if (this._visible && seq === this._seq) this.setData({ qrUrl, imageError: false });
+    } catch (error) { if (this._visible && seq === this._seq) this.setData({ error: UI.message(error) }); }
+    finally { if (this._visible && seq === this._seq) this.setData({ loading: false }); }
+  }
+});

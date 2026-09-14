@@ -168,6 +168,25 @@ module.exports = function createChatPage(config) {
 			this._draftVersion++;
 			this.setData({ content: e.detail.value });
 		},
+		_messageRequest: function (content) {
+			const key = 'crun-chat-pending:' + config.ownSender + ':' + this.data.chatId;
+			if (!this._pendingMessages) {
+				const saved = wx.getStorageSync ? wx.getStorageSync(key) : [];
+				this._pendingMessages = Array.isArray(saved) ? saved : [];
+			}
+			let pending = this._pendingMessages.find(item => item.content === content);
+			if (!pending) {
+				if (this._pendingMessages.length >= 20) throw new Error('有消息尚未确认发送结果，请先刷新会话并重试');
+				pending = { content, requestId: 'chat_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) };
+				this._pendingMessages.push(pending);
+			}
+			if (wx.setStorageSync) wx.setStorageSync(key, this._pendingMessages);
+			return pending.requestId;
+		},
+		_clearMessageRequest: function (requestId) {
+			this._pendingMessages = (this._pendingMessages || []).filter(item => item.requestId !== requestId);
+			if (wx.setStorageSync) wx.setStorageSync('crun-chat-pending:' + config.ownSender + ':' + this.data.chatId, this._pendingMessages);
+		},
 		bindSendTap: async function () {
 			if (this.data.isSending || !this.data.service || !this._visible) return;
 			if (this.data.service.CS_STATUS !== 1) return pageHelper.showModal('该客服已停用，暂时无法发送', '温馨提示');
@@ -177,14 +196,19 @@ module.exports = function createChatPage(config) {
 			const draftVersion = this._draftVersion;
 			this.setData({ isSending: true });
 			clearTimeout(this._pollTimer);
+			let requestId;
 			try {
-				await cloudHelper.callCloudSumbit(config.sendRoute, { [config.idKey]: this.data.chatId, content }, { hint: false });
+				requestId = this._messageRequest(content);
+				const response = await cloudHelper.callCloudSumbit(config.sendRoute, { [config.idKey]: this.data.chatId, content, requestId }, { hint: false });
+				if (!response || !response.data || !response.data.id) throw new Error('消息发送结果尚未确认，请重试');
+				this._clearMessageRequest(requestId);
 				if (this._destroyed) return;
 				if (draftVersion === this._draftVersion) this.setData({ content: '' });
 				// 等待旧刷新完成，再读取发送后的窗口，避免旧响应覆盖新消息。
 				if (this._request) await this._request;
 				if (this._visible) await this._loadMessages({ quiet: true });
 			} catch (err) {
+				if (requestId && err && err.code && err.code !== 500) this._clearMessageRequest(requestId);
 				if (this._visible && !this._destroyed) pageHelper.showModal((err && (err.msg || err.message)) || '发送失败，内容已保留，请重试', '温馨提示');
 			} finally {
 				if (!this._destroyed) this.setData({ isSending: false });

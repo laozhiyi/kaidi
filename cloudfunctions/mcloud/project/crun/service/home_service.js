@@ -18,19 +18,15 @@ class HomeService extends BaseProjectService {
 	async getHomeList() {
 		let t = this._timestamp;
 
-		const mailCnt = await MailModel.count({ MAIL_STATUS: 0, MAIL_PAY_STATUS: 1, MAIL_END_TIME: ['>', t] });
-		const cnt = mailCnt;
-
+		const where = { MAIL_STATUS: 0, MAIL_PAYMENT_MODE: 'offline', MAIL_END_TIME: ['>', t] };
+		const [cnt, mailList] = await Promise.all([
+			MailModel.count({ ...where }),
+			MailModel.getAll({ ...where }, 'MAIL_OBJ.title,MAIL_ADD_TIME', { MAIL_ADD_TIME: 'desc', _id: 'desc' }, 5)
+		]);
 		let list = [];
-		const mailList = await MailModel.getAll(
-			{ MAIL_STATUS: 0, MAIL_PAY_STATUS: 1, MAIL_END_TIME: ['>', t] },
-			'MAIL_OBJ.poster,MAIL_ADD_TIME',
-			{ 'MAIL_ADD_TIME': 'desc' },
-			5
-		);
 		for (let k = 0; k < mailList.length; k++) {
 			list.push({
-				title: mailList[k].MAIL_OBJ.poster + ' 发布了快递代取',
+				title: '新发布了' + (mailList[k].MAIL_OBJ.title || '快递代取'),
 				time: mailList[k].MAIL_ADD_TIME
 			})
 		}

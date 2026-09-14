@@ -24,6 +24,20 @@ const CODE = {
 	WORK_ERROR: 2501 //陪练员错误
 };
 
+const readRequests = new Map();
+let readEpoch = 0;
+let loadingCount = 0, barLoadingCount = 0;
+function isReadRoute(route) {
+	return /(?:\/|_)(list|detail|view|summary|stats|stat|records|context|featured|get|is_fav|my_code|chat)$/.test(route)
+		|| ['passport/login', 'operations/config', 'operations/notifications', 'admin/home', 'admin/operations_config', 'admin/operations_order', 'admin/operations_orders', 'admin/operations_overview'].includes(route);
+}
+function stableKey(value) {
+	if (Array.isArray(value)) return '[' + value.map(stableKey).join(',') + ']';
+	if (value && typeof value === 'object') return '{' + Object.keys(value).sort().filter(key => value[key] !== undefined).map(key => JSON.stringify(key) + ':' + stableKey(value[key])).join(',') + '}';
+	return JSON.stringify(value);
+}
+function invalidateReadRequests() { readEpoch++; readRequests.clear(); }
+
 function callCloudSumbitAsync(route, params = {}, options) {
 	if (!helper.isDefined(options)) options = {
 		hint: false
@@ -54,7 +68,7 @@ async function callCloudData(route, params = {}, options) {
 		result = result.data;
 		if (Array.isArray(result)) {
 			// 数组处理
-		} else if (Object.keys(result).length == 0) {
+		} else if (result && typeof result === 'object' && Object.keys(result).length == 0) {
 			result = null; //对象处理
 		}
 
@@ -62,7 +76,29 @@ async function callCloudData(route, params = {}, options) {
 	return result;
 }
 
-function callCloud(route, params = {}, options) {
+function callCloud(route, params = {}, options = {}) {
+	options = options || {};
+	if (typeof route !== 'string' || !route) return Promise.reject(new Error('请求地址无效'));
+	let token = '';
+	const cache = cacheHelper.get(route.startsWith('admin/') ? constants.CACHE_ADMIN : route.startsWith('work/') ? constants.CACHE_WORK : constants.CACHE_TOKEN);
+	if (cache) token = route.startsWith('admin/') || route.startsWith('work/') ? cache.token || '' : cache.id || '';
+	const data = { route, token, PID: pageHelper.getPID(), params };
+	const key = isReadRoute(route) && options.dedupe !== false ? readEpoch + ':' + stableKey(data) : '';
+	let request = key && readRequests.get(key);
+	if (!request) {
+		request = callCloudOnce(data, options);
+		if (key) {
+			readRequests.set(key, request);
+			const clear = () => { if (readRequests.get(key) === request) readRequests.delete(key); };
+			request.then(clear, clear);
+		}
+	}
+	// Callers decorate their DTOs. Sharing a mutable result would corrupt a
+	// concurrent page's data even when sharing the network request is safe.
+	return request.then(result => JSON.parse(JSON.stringify(result)));
+}
+
+function callCloudOnce(data, options) {
 
 	let title = '加载中';
 	let hint = true;
@@ -74,48 +110,33 @@ function callCloud(route, params = {}, options) {
 	if (helper.isDefined(options) && helper.isDefined(options.hint))
 		hint = options.hint;
 
-	if (helper.isDefined(options) && helper.isDefined(options.doFail))
-		doFail = options.doFail;
-
 	if (hint) {
-		if (title == 'bar')
-			wx.showNavigationBarLoading();
-		else
-			wx.showLoading({
-				title: title,
-				mask: true
-			})
-	}
-
-	let token = '';
-	// 管理员token
-	if (route.indexOf('admin/') > -1) {
-		let admin = cacheHelper.get(constants.CACHE_ADMIN);
-		if (admin && admin.token) token = admin.token;
-
-	} else if (route.indexOf('work/') > -1) { 
-		let work = cacheHelper.get(constants.CACHE_WORK);
-		if (work && work.token) token = work.token;
-	}
-	else {
-		//正常用户
-		let user = cacheHelper.get(constants.CACHE_TOKEN);
-		if (user && user.id) token = user.id;
+		if (title == 'bar') { if (barLoadingCount++ === 0) wx.showNavigationBarLoading(); }
+		else { loadingCount++; wx.showLoading({ title, mask: !isReadRoute(data.route) }); }
 	}
 
 	return new Promise(function (resolve, reject) {
-
-		let PID = pageHelper.getPID();
-
-		wx.cloud.callFunction({
+		let settled = false, timer = null;
+		const finish = (error, result) => {
+			if (settled) return;
+			settled = true;
+			if (timer !== null) clearTimeout(timer);
+			if (hint) {
+				if (title === 'bar') { if (--barLoadingCount === 0) wx.hideNavigationBarLoading(); }
+				else if (--loadingCount === 0) wx.hideLoading();
+			}
+			if (error) reject(error); else resolve(result);
+		};
+		const timeout = Math.min(60000, Math.max(1000, Number(options.timeoutMs) || 20000));
+		if (typeof setTimeout === 'function') timer = setTimeout(() => finish({ msg: '网络响应超时，请检查操作结果后重试', retryable: true, errMsg: 'request timeout' }), timeout);
+		const callbacks = {
 			name: 'mcloud',
-			data: {
-				route: route,
-				token,
-				PID,
-				params
-			},
+			data,
 			success: function (res) {
+				if (settled) return;
+				if (!res || !res.result || typeof res.result.code !== 'number') {
+					finish({ msg: '服务响应不完整，请重试', retryable: true }); return;
+				}
 				if (res.result.code == CODE.LOGIC || res.result.code == CODE.DATA) {
 					console.log(res)
 					// 逻辑错误&数据校验错误 
@@ -127,14 +148,15 @@ function callCloud(route, params = {}, options) {
 						});
 					}
 
-					reject(res.result);
+					finish(res.result);
 					return;
 				} else if (res.result.code == CODE.ADMIN_ERROR) {
 					// 后台登录错误
 					wx.reLaunch({
 						url: pageHelper.fmtURLByPID('/pages/admin/index/login/admin_login'),
 					});
-					//reject(res.result);
+					// A login redirect must also release the caller's loading/submission state.
+					finish(res.result);
 					return;
 
 				} else if (res.result.code == CODE.WORK_ERROR) {
@@ -142,7 +164,7 @@ function callCloud(route, params = {}, options) {
 					wx.reLaunch({
 						url: pageHelper.fmtURLByPID('/pages/work/index/login/work_login'),
 					});
-					//reject(res.result);
+					finish(res.result);
 					return;
 				}
 				else if (res.result.code != CODE.SUCC) {
@@ -153,13 +175,15 @@ function callCloud(route, params = {}, options) {
 							showCancel: false
 						});
 					}
-					reject(res.result);
+					finish(res.result);
 					return;
 				}
 
-				resolve(res.result);
+				if (!isReadRoute(data.route)) invalidateReadRequests();
+				finish(null, res.result);
 			},
 			fail: function (err) {
+				if (settled) return;
 				if (hint) {
 					console.log(err)
 					if (err && err.errMsg && err.errMsg.includes('-501000') && err.errMsg.includes('Environment not found')) {
@@ -189,97 +213,54 @@ function callCloud(route, params = {}, options) {
 							showCancel: false
 						});
 				}
-				reject(err.result);
+				const failure = err && err.result || {
+					msg: '网络连接异常，请稍后重试',
+					errCode: err && err.errCode,
+					errMsg: err && err.errMsg
+				};
+				if (!failure.code && /timeout|timed out|network|socket|econn|time.limit|temporarily|service.unavailable|超时|网络/i.test(String(err && (err.errMsg || err.message) || ''))) failure.retryable = true;
+				finish(failure);
 				return;
 			},
-			complete: function (res) {
-				if (hint) {
-					if (title == 'bar')
-						wx.hideNavigationBarLoading();
-					else
-						wx.hideLoading();
-				}
-				// complete
-			}
-		});
+			complete: function () {}
+		};
+		try { wx.cloud.callFunction(callbacks); }
+		catch (error) { callbacks.fail(error); }
 	});
 }
 
 async function dataList(that, listName, route, params, options, isReverse = false) {
-
-	console.log('dataList begin');
-
-	if (!helper.isDefined(that.data[listName]) || !that.data[listName]) {
-		let data = {};
-		data[listName] = {
-			page: 1,
-			size: 20,
-			list: [],
-			count: 0,
-			total: 0,
-			oldTotal: 0
-		};
-		that.setData(data);
+	options = options || {};
+	params = { ...params };
+	const old = that.data[listName], page = Number(params.page) || 1;
+	if (page > 1 && (!old || old.hasMore === false || old.hasMore === undefined && page > old.count)) return { applied: false };
+	const states = that._cloudListStates || (that._cloudListStates = {});
+	const state = states[listName] || (states[listName] = { version: 0 });
+	const version = ++state.version;
+	const current = () => version === state.version && !that._detached && that._pageVisible !== false && (!options.isCurrent || options.isCurrent());
+	if (!helper.isDefined(params.isTotal)) params.isTotal = true;
+	params.oldTotal = old && old.total || 0;
+	if (page > 1 && old.nextCursor) params.cursor = old.nextCursor;
+	try {
+		const res = await callCloud(route, params, options);
+		if (!current()) return { applied: false };
+		const next = res && res.data;
+		if (!next || !Array.isArray(next.list) || Number(next.page) !== page) throw new Error('列表响应不完整，请重试');
+		const previous = that.data[listName];
+		if (page > 1 && (!previous || page !== previous.page + 1)) return { applied: false };
+		const rows = page === 1 ? next.list : isReverse ? next.list.concat(previous.list) : previous.list.concat(next.list);
+		const ids = new Set();
+		next.list = rows.filter(row => { if (!row._id) return true; if (ids.has(row._id)) return false; ids.add(row._id); return true; });
+		next.error = false;
+		that.setData({ [listName]: next });
+		return { applied: true, ok: true };
+	} catch (error) {
+		if (!current()) return { applied: false };
+		const previous = that.data[listName];
+		that.setData({ [listName]: { ...(previous || { page: 1, size: params.size || 20, list: [], total: 0, count: 0 }),
+			error: true, errorMessage: error.msg || error.message || '加载失败，请重试' } });
+		return { applied: true, ok: false, error };
 	}
-
-	//改为后台默认控制
-	//if (!helper.isDefined(params.size))
-	//	params.size = 20;
-
-	if (!helper.isDefined(params.isTotal))
-		params.isTotal = true;
-
-	let page = params.page;
-	let count = that.data[listName].count;
-	if (page > 1 && page > count) {
-		wx.showToast({
-			duration: 500,
-			icon: 'none',
-			title: '没有更多数据了',
-		});
-		return;
-	}
-
-	for (let key in params) {
-		if (!helper.isDefined(params[key]))
-			delete params[key];
-	}
-
-	let oldTotal = 0;
-	if (that.data[listName] && that.data[listName].total)
-		oldTotal = that.data[listName].total;
-	params.oldTotal = oldTotal;
-
-	// 云函数调用 
-	await callCloud(route, params, options).then(function (res) {
-		console.log('cloud begin');
-
-		let dataList = res.data;
-		let tList = that.data[listName].list;
-
-		if (dataList.page == 1) {
-			tList = res.data.list;
-		} else if (dataList.page > that.data[listName].page) {
-			if (isReverse)
-				tList = res.data.list.concat(tList);
-			else
-				tList = tList.concat(res.data.list);
-		} else
-			return;
-
-		dataList.list = tList;
-		let listData = {};
-		listData[listName] = dataList;
-
-		that.setData(listData);
-
-		console.log('cloud END');
-	}).catch(err => {
-		console.log(err)
-	});
-
-	console.log('dataList END');
-
 }
 
 async function getTempFileURLOne(fileID) {
@@ -307,13 +288,14 @@ async function transTempPics(imgList, dir, id, prefix = '') {
 			failedIdx.push(i);
 			continue;
 		}
+		if (typeof filePath === 'string' && filePath.startsWith('cloud://')) continue;
 
 		let ext = (filePath.match(/\.[^.]+?$/) || ['.jpg'])[0];
 
 		// 是否为临时文件
 		if (filePath.includes('tmp') || filePath.includes('temp') || filePath.includes('wxfile')) {
 
-			let rd = prefix + dataHelper.genRandomNum(1000000, 9999999);
+			let rd = prefix + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
 			let cloudPath = id ? dir + id + '/' + rd + ext : dir + rd + ext;
 
 			if (pageHelper.getPID())
@@ -327,16 +309,11 @@ async function transTempPics(imgList, dir, id, prefix = '') {
 				});
 				imgList[i] = res.fileID;
 			} catch (error) {
-				// 标记失败，从列表中剔除
+				// Keep the original path so a retry cannot silently lose this image.
 				console.error('[transTempPics] 图片上传失败:', error, 'path=', filePath);
 				failedIdx.push(i);
 			}
 		}
-	}
-
-	// 剔除上传失败的项（按索引倒序删除避免错位）
-	for (let i = failedIdx.length - 1; i >= 0; i--) {
-		imgList.splice(failedIdx[i], 1);
 	}
 
 	if (failedIdx.length > 0) {
@@ -379,9 +356,8 @@ async function transRichEditorTempPics(content, dir, id, route) {
 		return content;
 	} catch (e) {
 		console.error(e);
+		throw e;
 	}
-
-	return [];
 }
 
 async function transCoverTempPics(imgList, dir, id, route) {
@@ -399,6 +375,7 @@ async function transCoverTempPics(imgList, dir, id, route) {
 		return res.data.urls;
 	} catch (err) {
 		console.error(err);
+		throw err;
 	}
 }
 
@@ -442,7 +419,7 @@ async function transFormsTempPics(forms, dir, id, route) {
 			hasImageForms
 		}
 
-		await callCloudSumbit(route, params);
+		if (route) await callCloudSumbit(route, params);
 	} catch (err) {
 		console.error('[transFormsTempPics] 图片处理失败:', err);
 		// 重新抛出，让调用方感知
@@ -481,6 +458,7 @@ async function transTempPicOne(img, dir, id, isCheck = true) {
 
 module.exports = {
 	CODE,
+	invalidateReadRequests,
 	dataList,
 	callCloud,
 	callCloudSumbit,

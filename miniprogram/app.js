@@ -1,6 +1,16 @@
 const setting = require('./setting/setting.js');
+const InviteBiz = require('./projects/crun/biz/invite_biz.js');
+const Notifications = require('./projects/crun/biz/notification_biz.js');
+const OrderSync = require('./projects/crun/biz/order_sync_biz.js');
 
 App({
+	onShow: function (options = {}) {
+		const code = options.query && options.query.inviteCode;
+		if (code) InviteBiz.capture(code);
+		Notifications.resume();
+		OrderSync.resume();
+	},
+	onHide() { Notifications.pause(); OrderSync.pause(); },
 	onLaunch: function (options) {
 
 		if (!wx.cloud) {

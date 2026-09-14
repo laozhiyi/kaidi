@@ -1,1 +1,15 @@
-<include src="../../../../../tpls/project/my_fav_tpl.wxml" />
+<view class="fav-page">
+  <view class="fav-header"><view class="fav-title">我的收藏</view><view class="fav-subtitle">保存感兴趣的订单与公告，方便随时查看</view></view>
+  <view class="fav-search"><text class="icon-search"></text><input value="{{keyword}}" placeholder="搜索收藏标题" maxlength="30" confirm-type="search" bindinput="bindKeywordInput" bindconfirm="bindSearch" /><button wx:if="{{keyword}}" class="fav-clear" bindtap="bindClearSearch" aria-label="清空搜索"><text class="icon-close"></text></button><button class="fav-search-button" bindtap="bindSearch">搜索</button></view>
+  <view wx:if="{{error}}" class="fav-state"><view>收藏加载失败，请重试</view><button class="fav-button" bindtap="load">重新加载</button></view>
+  <view wx:if="{{loading && !isLoad}}" class="fav-state">正在加载收藏…</view>
+  <view wx:if="{{isLoad && !loading && !error && !list.length}}" class="fav-state"><text class="fav-empty-icon icon-favor"></text><view>{{search ? '没有找到相关收藏' : '还没有收藏内容'}}</view><view class="fav-subtitle">{{search ? '换个关键词试试' : '在可接单列表或订单详情点击收藏，即可在这里查看'}}</view><button wx:if="{{!search}}" class="fav-button" bindtap="bindBrowse">去看看可接单订单</button></view>
+  <view wx:for="{{list}}" wx:key="_id" class="fav-card" data-id="{{item._id}}" bindtap="bindOpen" hover-class="fav-pressed">
+    <view class="fav-card-head"><text class="fav-type">{{item.FAV_TYPE}}</text><button class="fav-delete" catchtap="bindDelete" data-id="{{item._id}}" disabled="{{!!deletingId}}" loading="{{deletingId === item._id}}">移除</button></view>
+    <view class="fav-card-title">{{item.FAV_TITLE}}</view>
+    <view wx:if="{{item.FAV_IS_ORDER}}" class="fav-order-meta"><text class="fav-order-status {{item.FAV_ORDER_AVAILABLE ? 'available' : ''}}">{{item.FAV_MISSING ? '订单已下架' : item.FAV_ORDER_STATUS}}</text><text wx:if="{{!item.FAV_MISSING}}">{{item.FAV_COUNT}} 人收藏</text><text wx:if="{{item.FAV_PRICE !== '' && !item.FAV_MISSING}}" class="fav-price">¥{{item.FAV_PRICE}}</text></view>
+    <view class="fav-card-foot"><text>{{item.FAV_ADD_TIME}}</text><text>{{item.FAV_MISSING ? '可移除收藏' : '查看详情 ›'}}</text></view>
+  </view>
+  <button wx:if="{{hasMore}}" class="fav-button" bindtap="onReachBottom" loading="{{loading}}" disabled="{{loading}}">加载更多</button>
+  <view wx:if="{{list.length && !hasMore && !loading && !error}}" class="fav-end">已显示全部收藏</view>
+</view>

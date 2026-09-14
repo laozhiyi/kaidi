@@ -1,5 +1,5 @@
 <view class="my-page">
-  <view class="my-profile" bindtap="url" data-url="{{user?'../edit/my_edit':'../reg/my_reg'}}" hover-class="my-tap">
+  <view class="my-profile" bindtap="url" data-url="{{user?'../personal/my_personal':'../reg/my_reg'}}" hover-class="my-tap">
     <view class="my-avatar" wx:if="{{!user || !user.USER_PIC}}"><image mode="aspectFit" src="../../../images/tabbar/my_cur.png" /></view>
     <image wx:else class="my-avatar" src="{{user.USER_PIC}}" mode="aspectFill" />
     <view class="my-profile-copy">
@@ -17,10 +17,10 @@
   <view class="my-card">
     <view class="my-section-title">我的服务</view>
     <view class="my-grid">
-      <view class="my-grid-item" bindtap="bindFeedbackTap" hover-class="my-tap"><view class="my-grid-icon"><text class="icon-edit"></text></view><text class="my-grid-label">我的申诉</text></view>
-      <view class="my-grid-item" bindtap="url" data-url="../review/my_review" hover-class="my-tap"><view class="my-grid-icon"><text class="icon-deliver"></text></view><text class="my-grid-label">我的评价</text></view>
+      <view class="my-grid-item" bindtap="bindMyFeedbackTap" hover-class="my-tap"><view class="my-grid-icon"><text class="icon-edit"></text></view><text class="my-grid-label">我的申诉</text></view>
+      <view class="my-grid-item" bindtap="bindMyReviewTap" hover-class="my-tap"><view class="my-grid-icon"><text class="icon-deliver"></text></view><text class="my-grid-label">我的评价</text></view>
       <view class="my-grid-item" bindtap="bindMyFavTap" hover-class="my-tap"><view class="my-grid-icon my-icon-warm"><text class="icon-favor"></text></view><text class="my-grid-label">我的收藏</text></view>
-      <view class="my-grid-item" bindtap="url" data-url="/projects/crun/pages/operations/operations" hover-class="my-tap"><view class="my-grid-icon my-icon-green"><text class="icon-noticefill"></text></view><text class="my-grid-label">消息中心</text></view>
+      <view class="my-grid-item" bindtap="bindMessagesTap" hover-class="my-tap" aria-label="消息中心，{{unreadCount}}条未读"><view class="my-grid-icon my-icon-green my-message-icon"><text class="icon-noticefill"></text><text wx:if="{{unreadCount>0}}" class="my-message-badge">{{messageBadge}}</text></view><text class="my-grid-label">消息中心</text></view>
     </view>
   </view>
 
@@ -36,11 +36,22 @@
   </view>
 
   <view class="my-card my-links">
+    <view class="my-link" bindtap="bindMyReputationTap" hover-class="my-tap"><view class="my-link-icon"><text class="icon-favorfill"></text></view><view class="my-link-copy my-link-title">我的信誉分</view><text class="my-arrow icon-right"></text></view>
     <view class="my-link" bindtap="bindProfileContactTap" hover-class="my-tap"><view class="my-link-icon"><text class="icon-people"></text></view><view class="my-link-copy my-link-title">常用联系人</view><text class="my-arrow icon-right"></text></view>
     <view class="my-link" bindtap="bindProfileAddressTap" hover-class="my-tap"><view class="my-link-icon"><text class="icon-location"></text></view><view class="my-link-copy my-link-title">常用地址</view><text class="my-arrow icon-right"></text></view>
     <view class="my-link" bindtap="bindSetTap" hover-class="my-tap"><view class="my-link-icon"><text class="icon-settings"></text></view><view class="my-link-copy my-link-title">设置与后台管理</view><text class="my-arrow icon-right"></text></view>
   </view>
+  <view wx:if="{{userError}}" class="my-load-error" bindtap="_loadUser">{{userError}}</view>
   <view class="tab-bar-placeholder"></view>
+  <view wx:if="{{settingsVisible}}" class="my-settings-layer">
+    <view class="my-settings-mask" catchtap="bindCloseSettings" catchtouchmove="bindSettingsTouchMove"></view>
+    <view class="my-settings-sheet">
+      <view class="my-settings-head"><view class="my-settings-title">设置与后台管理</view><button class="my-settings-close" bindtap="bindCloseSettings" aria-label="关闭设置"><text class="icon-close"></text></button></view>
+      <view class="my-link" bindtap="bindClearCacheTap" hover-class="my-tap"><view class="my-link-icon"><text class="icon-delete"></text></view><view class="my-link-copy"><view class="my-link-title">清除缓存</view><view class="my-link-desc">清理临时数据，保留登录和未提交的内容</view></view><text class="my-arrow icon-right"></text></view>
+      <view class="my-link" bindtap="bindAdminTap" hover-class="my-tap"><view class="my-link-icon"><text class="icon-settings"></text></view><view class="my-link-copy"><view class="my-link-title">后台管理</view><view class="my-link-desc">使用管理员账号登录管理后台</view></view><text class="my-arrow icon-right"></text></view>
+      <button class="my-settings-cancel" bindtap="bindCloseSettings">关闭</button>
+    </view>
+  </view>
 </view>
 <block wx:if="{{skin.IS_SUB}}">
   <import src="../../tpls/menu_tpl.wxml" />

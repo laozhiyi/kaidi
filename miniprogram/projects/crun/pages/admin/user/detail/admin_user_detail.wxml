@@ -1,39 +1,26 @@
-<view wx:if="{{isLoad===null}}" class="margin-top load notexist text-l text-grey"></view>
-<view wx:if="{{isLoad===false}}" class="margin-top load loading text-l text-grey"></view>
-
-<view wx:if="{{isLoad && isAdmin}}" class="main-admin">
-	<view class="admin-comm-list">
-		<view class="item">
-			<view class="info">
-				<view class="info-item pic" bindtap="url" data-url="{{user.USER_PIC}}" data-type="image" >
-					<view class="title"></view>
-					<view class="mao"> </view>
-					<view class="content text-admin">
-						<image mode="aspectFill" class="loading" src="{{user.USER_PIC}}" />
-					</view>  
-				</view>
-				<view class="info-item">
-					<view class="title">姓名</view>
-					<view class="mao">：</view>
-					<view class="content text-admin  text-l">{{user.USER_NAME}} </view>
-				</view>
-				<view class="info-item" bindtap="url" data-type="phone" data-url="{{user.USER_MOBILE}}">
-					<view class="title">手机号码</view>
-					<view class="mao">：</view>
-					<view class="content">{{user.USER_MOBILE}} <text class="icon-phone text-l margin-left-xs"></text></view>
-				</view>
-				<view class="info-item">
-					<view class="title">注册时间</view>
-					<view class="mao">：</view>
-					<view class="content">{{user.USER_ADD_TIME}} </view>
-				</view>
-			</view>
-		</view>
-	</view>
-	<view style="height:30rpx;"></view>
-
-	<import src="../../../../../../tpls/public/admin_forms_detail_tpl.wxml" />
-	<template is="adminFormsDetailTpl" data="{{forms:user.USER_FORMS}}" />
-
-
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 用户管理</text><text>/</text><text>用户详情</text></view>
+  <view class="ac-heading"><view><view class="ac-title">用户详情</view><view class="ac-subtitle">资料审核与账号状态管理</view></view></view>
+  <view wx:if="{{error}}" class="ac-card ac-state"><view>{{error}}</view><button class="ac-secondary" bindtap="load" disabled="{{busy}}">重新读取</button></view>
+  <view wx:if="{{loading && !user}}" class="ac-card ac-state ac-muted">正在读取用户资料…</view>
+  <view wx:if="{{notFound}}" class="ac-card ac-state"><view class="ac-state-title">用户不存在或已不可访问</view><button class="ac-secondary" bindtap="bindBack">返回用户列表</button></view>
+  <block wx:if="{{user}}">
+    <view class="ac-card ac-detail-hero"><view class="ac-account"><view class="ac-avatar"><text class="icon-profile"></text></view><view><view class="ac-detail-status">{{user.USER_NAME || '未填写姓名'}}</view><text class="ac-badge {{user.tone}}">{{user.statusLabel}}</text></view></view>
+      <view class="ac-row"><text class="ac-muted">手机号码</text><text>{{user.USER_MOBILE || '未填写'}}</text><text wx:if="{{user.USER_MOBILE}}" class="ac-link" bindtap="bindPhone">拨打</text></view>
+      <view class="ac-row"><text class="ac-muted">注册时间</text><text>{{user.USER_ADD_TIME}}</text></view>
+      <view class="ac-row"><text class="ac-muted">最近登录</text><text>{{user.USER_LOGIN_TIME || '未登录'}}</text></view>
+      <view wx:if="{{user.USER_CHECK_REASON}}" class="ac-notice amber">最近处理说明：{{user.USER_CHECK_REASON}}</view>
+    </view>
+    <view wx:if="{{user.USER_FORMS.length}}" class="ac-card"><view class="ac-section-title">注册资料</view>
+      <block wx:for="{{user.USER_FORMS}}" wx:key="mark"><view wx:if="{{item.type!=='line'}}" class="ac-field"><view class="ac-field-label">{{item.title}}</view>
+        <view wx:if="{{item.type==='image'}}" class="ac-images"><image wx:for="{{item.images}}" wx:for-item="src" wx:key="*this" class="ac-image" src="{{src}}" mode="aspectFill" bindtap="url" data-type="image" data-url="{{src}}" show-menu-by-longpress="{{true}}" /><text wx:if="{{!item.images.length}}" class="ac-muted">未上传</text></view>
+        <view wx:elif="{{item.type==='rows'}}" class="ac-field-value"><view wx:for="{{item.val}}" wx:for-item="row" wx:key="title">{{row.title}} {{row.val}}</view></view>
+        <view wx:elif="{{item.type==='switch'}}" class="ac-field-value">{{item.val?'是':'否'}}</view>
+        <view wx:else class="ac-field-value" bindtap="url" data-type="copy" data-url="{{item.displayValue}}">{{item.displayValue}}</view>
+      </view></block>
+    </view>
+    <view class="ac-card"><view class="ac-section-title">账户审核与状态</view><view class="ac-field-label">处理说明（审核不通过时必填）</view><textarea value="{{reason}}" bindinput="bindReason" disabled="{{busy}}" maxlength="200" placeholder="记录审核依据或账号状态调整原因" /><view class="ac-counter">{{reason.length}} / 200</view>
+      <view class="ac-form-actions"><button wx:if="{{user.USER_STATUS!==1}}" class="ac-primary" data-status="1" bindtap="bindStatus" disabled="{{busy || loading || error}}">{{user.USER_STATUS===9?'恢复使用':'审核通过'}}</button><button wx:if="{{user.USER_STATUS===0}}" class="ac-ghost" data-status="8" bindtap="bindStatus" disabled="{{busy || loading || error}}">审核不通过</button><button wx:if="{{user.USER_STATUS!==9}}" class="ac-ghost ac-text-red" data-status="9" bindtap="bindStatus" disabled="{{busy || loading || error}}">停用用户</button></view>
+    </view>
+  </block>
 </view>

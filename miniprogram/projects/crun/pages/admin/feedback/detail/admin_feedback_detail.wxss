@@ -1,0 +1,8 @@
+@import '../../../../style/admin_console.wxss';
+.ac-rating-note { margin-top:14rpx; color:#8392a7; font-size:23rpx; line-height:1.8; }
+.ac-current-rating { display:flex; flex-wrap:wrap; align-items:center; gap:18rpx; margin-top:20rpx; color:#bc8a35; font-size:26rpx; }
+.ac-rating-box { padding:20rpx; margin-top:16rpx; border-radius:16rpx; background:#f7f9fc; text-align:center; }
+.ac-rating-stars { display:flex; justify-content:center; gap:8rpx; }
+.ac-rating-star { margin:0; padding:6rpx 12rpx; color:#cdd6e2; background:transparent; font-size:56rpx; line-height:1.5; }
+.ac-rating-star.active { color:#d6a04d; }
+.ac-rating-star::after { border:0; }

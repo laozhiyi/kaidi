@@ -106,7 +106,7 @@ page {
 .phase-mask {
 	position: fixed;
 	inset: 0;
-	z-index: 200;
+	z-index: 20000;
 	background: rgba(20, 28, 44, .45);
 	display: flex;
 	align-items: flex-end;
@@ -516,42 +516,12 @@ page {
 	line-height: 34rpx;
 }
 
-/* ===== 悬浮发布按钮 ===== */
-.fab-publish {
-	position: fixed;
-	right: 30rpx;
-	bottom: calc(190rpx + env(safe-area-inset-bottom));
-	z-index: 40;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	width: 110rpx;
-	height: 110rpx;
-	border-radius: 50%;
-	background: linear-gradient(135deg, #5C9BEA 0%, #397BC8 100%);
-	box-shadow: 0 10rpx 24rpx rgba(57, 123, 200, .4);
-	transition: transform .15s ease;
-}
-
-.fab-publish:active {
-	transform: scale(.92);
-}
-
-.fab-icon {
-	font-size: 44rpx;
-	font-weight: 300;
-	color: #fff;
-	line-height: 1;
-}
-
-.fab-text {
-	margin-top: 2rpx;
-	font-size: 22rpx;
-	color: #fff;
-	line-height: 1.2;
-	font-weight: 500;
-}
+.order-fav-row { display:flex; align-items:center; justify-content:space-between; margin:-8rpx 0 14rpx; color:#91a0b3; font-size:23rpx; }
+.order-fav-button { display:flex; align-items:center; gap:8rpx; margin:0; padding:0 14rpx; height:64rpx; line-height:64rpx; border-radius:14rpx; background:#f4f7fb; color:#72839a; font-size:24rpx; }
+.order-fav-button::after { border:0; }
+.order-fav-button.saved { background:#fff5e7; color:#c88620; }
+.order-fav-button[disabled] { opacity:.6; }
+.order-fav-error { margin:12rpx 28rpx; padding:12rpx; color:#a47835; font-size:23rpx; text-align:center; }
 
 /* 小屏适配 */
 @media (max-width: 360px) {
@@ -606,5 +576,6 @@ page {
 .code-text { color:#397bc8 !important; font-weight:600; letter-spacing:1rpx; }
 
 .package-proofs { margin-bottom: 4rpx; }
+.package-proof-item + .package-proof-item { margin-top: 14rpx; padding-top: 10rpx; border-top: 1rpx solid #edf1f6; }
 .package-proof-row { display:flex; align-items:center; min-width:0; }
 .package-note-label { flex-shrink:0; margin-left:12rpx; padding:4rpx 10rpx; border-radius:14rpx; color:#397bc8; background:#edf5ff; font-size:20rpx; }

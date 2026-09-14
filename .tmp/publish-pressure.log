@@ -1,0 +1,18 @@
+✔ 100 distinct users publish distinct orders concurrently with production retry limits (358.7861ms)
+ℹ {"users":100,"clients":100,"perUser":1,"imagesPerOrder":0,"syntheticCommitDelayMs":10,"accepted":100,"rejected":0,"stored":100,"succeededWithoutClientRetry":100,"cloudAttempts":100,"clientRetries":0,"lostReplies":0,"failedWrites":0,"textAudits":100,"imageAudits":0,"transactionConflicts":61,"peakTransactions":100,"integrity":{"missing":0,"unexpected":0,"wrongOwner":0,"wrongContent":0,"incomplete":0,"quotaErrors":0,"events":100,"requests":100,"notifications":100,"visible":100,"uniqueVisible":100,"visibleMismatch":0},"errors":[]}
+✔ 300 distinct users publish distinct orders concurrently with production retry limits (899.8398ms)
+ℹ {"users":300,"clients":300,"perUser":1,"imagesPerOrder":0,"syntheticCommitDelayMs":10,"accepted":300,"rejected":0,"stored":300,"succeededWithoutClientRetry":300,"cloudAttempts":300,"clientRetries":0,"lostReplies":0,"failedWrites":0,"textAudits":300,"imageAudits":0,"transactionConflicts":362,"peakTransactions":300,"integrity":{"missing":0,"unexpected":0,"wrongOwner":0,"wrongContent":0,"incomplete":0,"quotaErrors":0,"events":300,"requests":300,"notifications":300,"visible":300,"uniqueVisible":300,"visibleMismatch":0},"errors":[]}
+✔ 1000 distinct users publish distinct orders concurrently with production retry limits (2208.6618ms)
+ℹ {"users":1000,"clients":1000,"perUser":1,"imagesPerOrder":0,"syntheticCommitDelayMs":10,"accepted":1000,"rejected":0,"stored":1000,"succeededWithoutClientRetry":934,"cloudAttempts":1066,"clientRetries":66,"lostReplies":0,"failedWrites":0,"textAudits":1066,"imageAudits":0,"transactionConflicts":2546,"peakTransactions":1000,"integrity":{"missing":0,"unexpected":0,"wrongOwner":0,"wrongContent":0,"incomplete":0,"quotaErrors":0,"events":1000,"requests":1000,"notifications":1000,"visible":1000,"uniqueVisible":1000,"visibleMismatch":0},"errors":[]}
+✔ 100 identities publish five distinct orders each through 500 simultaneous clients without losing quota entries (1393.7204ms)
+ℹ {"users":100,"clients":500,"perUser":5,"imagesPerOrder":0,"syntheticCommitDelayMs":10,"accepted":500,"rejected":0,"stored":500,"succeededWithoutClientRetry":499,"cloudAttempts":501,"clientRetries":1,"lostReplies":0,"failedWrites":0,"textAudits":501,"imageAudits":0,"transactionConflicts":996,"peakTransactions":500,"integrity":{"missing":0,"unexpected":0,"wrongOwner":0,"wrongContent":0,"incomplete":0,"quotaErrors":0,"events":500,"requests":500,"notifications":500,"visible":500,"uniqueVisible":500,"visibleMismatch":0},"errors":[]}
+✔ 200 distinct image orders survive injected write failures and lost post-commit responses without duplication (1667.3261ms)
+ℹ {"users":200,"clients":200,"perUser":1,"imagesPerOrder":6,"syntheticCommitDelayMs":10,"accepted":200,"rejected":0,"stored":200,"succeededWithoutClientRetry":140,"cloudAttempts":270,"clientRetries":70,"lostReplies":50,"failedWrites":20,"textAudits":220,"imageAudits":1320,"transactionConflicts":152,"peakTransactions":200,"integrity":{"missing":0,"unexpected":0,"wrongOwner":0,"wrongContent":0,"incomplete":0,"quotaErrors":0,"events":200,"requests":200,"notifications":200,"visible":200,"uniqueVisible":200,"visibleMismatch":0},"errors":[]}
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6629.6971

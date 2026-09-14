@@ -213,3 +213,8 @@
 	color: #94a3b8;
 	font-size: 28rpx;
 }
+.feedback-retry { height:84rpx; margin-top:24rpx; border-radius:16rpx; color:#397bc8; background:#eaf2fc; font-size:28rpx; line-height:84rpx; }
+.feedback-retry::after { border:0; }
+.feedback-rating-result { margin-top:24rpx; padding:20rpx; border-radius:14rpx; background:#f3f7fc; color:#71859e; font-size:24rpx; line-height:1.8; }
+.feedback-rating-stars { margin:10rpx 0; color:#c9943e; font-size:28rpx; letter-spacing:2rpx; }
+.feedback-rating-stars text { margin-left:10rpx; font-size:23rpx; letter-spacing:0; }

@@ -1,5 +1,7 @@
 {
-	"usingComponents": {},
-	"enablePullDownRefresh": true,
-	"navigationBarTitleText": "客服对话"
+  "usingComponents": {},
+  "navigationBarTitleText": "会话详情",
+  "navigationBarBackgroundColor": "#f3f5f9",
+  "navigationBarTextStyle": "black",
+  "disableScroll": true
 }

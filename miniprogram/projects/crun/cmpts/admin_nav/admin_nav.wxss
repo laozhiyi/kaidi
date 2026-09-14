@@ -1,0 +1,7 @@
+.admin-nav-spacer { height: calc(120rpx + env(safe-area-inset-bottom)); }
+.admin-nav { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; display: flex; padding: 12rpx 16rpx; padding-bottom: calc(12rpx + env(safe-area-inset-bottom)); background: #fff; border-top: 1rpx solid #e5eaf2; box-shadow: 0 -8rpx 28rpx rgba(30,50,80,.035); }
+.admin-nav .admin-nav-item { position: relative; flex: 1; min-width: 0; margin: 0; padding: 6rpx 0 14rpx; border: 0; background: transparent; border-radius: 14rpx; color: #718099; font-size: 22rpx; line-height: 1.5; display: flex; flex-direction: column; align-items: center; }
+.admin-nav-item::after { border: 0; }
+.admin-nav .is-active { color: #2863db; font-weight: 600; background: #f2f6ff; }
+.admin-nav-icon { font-size: 38rpx; line-height: 1.3; margin-bottom: 4rpx; }
+.admin-nav-dot { position: absolute; bottom: 4rpx; width: 6rpx; height: 6rpx; border-radius: 50%; background: #2863db; }

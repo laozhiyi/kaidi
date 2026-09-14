@@ -24,10 +24,14 @@ class AdminUserService extends BaseProjectAdminService {
 		userId,
 		fields = '*'
 	}) {
-		let where = {
-			USER_MINI_OPENID: userId,
+		if (typeof userId !== 'string' || !userId.trim()) this.AppError('请选择有效的用户');
+		// Current lists use the document id. Old links may contain an OpenID or
+		// USER_ID; resolve them here and always mutate the resolved document.
+		for (const field of ['_id', 'USER_MINI_OPENID', 'USER_ID']) {
+			const user = await UserModel.getOne({ [field]: userId.trim() }, fields);
+			if (user) return user;
 		}
-		return await UserModel.getOne(where, fields);
+		return null;
 	}
 
 	/** 取得用户分页列表 */
@@ -54,6 +58,7 @@ class AdminUserService extends BaseProjectAdminService {
 		};
 
 		if (util.isDefined(search) && search) {
+			search = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 			where.or = [{
 				USER_NAME: ['like', search]
 			},
@@ -65,10 +70,12 @@ class AdminUserService extends BaseProjectAdminService {
 			},
 			];
 
-		} else if (sortType && util.isDefined(sortVal)) {
+		}
+		if (sortType && util.isDefined(sortVal)) {
 			// 搜索菜单
 			switch (sortType) {
 				case 'status':
+					if (![0, 1, 8, 9].includes(Number(sortVal))) this.AppError('用户状态无效');
 					where.and.USER_STATUS = Number(sortVal);
 					break;
 				case 'sort': {
@@ -89,35 +96,39 @@ class AdminUserService extends BaseProjectAdminService {
 	async statusUser(id, status, reason) {
 		if (!id) this.AppError('id不能为空');
 		if (![0,1,8,9].includes(Number(status))) this.AppError('用户状态无效');
-		let data = { USER_STATUS: Number(status) };
-		if (reason) data.USER_CHECK_REASON = reason;
-		await UserModel.edit(id, data);
-		return { id };
+		const user = await this.getUser({ userId: id });
+		if (!user) this.AppError('用户不存在');
+		let data = { USER_STATUS: Number(status), USER_CHECK_REASON: String(reason || '').trim() };
+		if (data.USER_CHECK_REASON.length > 200) this.AppError('处理说明不能超过200字');
+		if (Number(status) === 8 && !data.USER_CHECK_REASON) this.AppError('请填写审核不通过的原因');
+		await UserModel.edit({ _id: user._id }, data);
+		return { id: user._id, status: Number(status) };
 	}
 
 	/**删除用户 */
 	async delUser(id) {
 		if (!id) this.AppError('id不能为空');
-		await UserModel.edit(id, { USER_STATUS:9, USER_CHECK_REASON:'管理员停用（保留履约记录）' });
-		return { id };
+		const user = await this.getUser({ userId: id });
+		if (!user) this.AppError('用户不存在');
+		await UserModel.edit({ _id: user._id }, { USER_STATUS:9, USER_CHECK_REASON:'管理员停用（保留履约记录）' });
+		return { id: user._id };
 	}
 
 	// #####################导出用户数据
 
 	/**获取用户数据 */
-	async getUserDataURL() {
-		return await exportUtil.getExportDataURL(EXPORT_USER_DATA_KEY);
+	async getUserDataURL(adminId) {
+		return await exportUtil.getExportDataURL(new (require('./admin_report_service.js'))().key('user', adminId));
 	}
 
 	/**删除用户数据 */
-	async deleteUserDataExcel() {
-		return await exportUtil.deleteDataExcel(EXPORT_USER_DATA_KEY);
+	async deleteUserDataExcel(adminId) {
+		return await exportUtil.deleteDataExcel(new (require('./admin_report_service.js'))().key('user', adminId));
 	}
 
 	/**导出用户数据 */
-	async exportUserDataExcel(condition, fields) {
-
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+	async exportUserDataExcel(condition, fields, adminId) {
+		return new (require('./admin_report_service.js'))().users(condition, adminId);
 
 	}
 

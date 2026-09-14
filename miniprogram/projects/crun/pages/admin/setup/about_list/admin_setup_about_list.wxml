@@ -1,17 +1,9 @@
-<!-- List Begin -->
-<view class="main-admin" wx:if="{{isAdmin}}">
-	<view class="admin-comm-list">
-		<view class="item" wx:for="{{list}}" wx:key="key" bindtap="url" data-url="../about/admin_setup_about?key={{item.key}}">
-			<view class="header">
-				<view class="left text-cut">《{{item.title}}》</view>
-				<view class="right">
-					<view class="btn round margin-right-s"><text class="icon-edit margin-right-xxs"></text>编辑</view>
-
-					<view catchtap="url" data-url="../../../about/index/about_index?key={{item.key}}" class="btn round margin-right-s"><text class="icon-attention margin-right-xxs"></text>预览</view>
-				</view>
-			</view>
-		</view>
-
-	</view>
-	<!-- List END -->
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 管理中心</text><text>/</text><text>关于与联系</text></view>
+  <view class="ac-heading"><view><view class="ac-title">关于与联系</view><view class="ac-subtitle">维护面向用户的介绍与联系信息</view></view></view>
+  <view wx:for="{{list}}" wx:key="key" class="ac-card">
+    <view class="ac-card-title"><view class="ac-icon"><text class="icon-{{item.icon}}"></text></view><view><view class="ac-entry-title">{{item.title}}</view><view class="ac-card-desc">{{item.description}}</view></view></view>
+    <view class="ac-card-actions two"><button class="ac-secondary" bindtap="url" data-url="../about/admin_setup_about?key={{item.key}}">编辑内容</button><button class="ac-ghost" bindtap="url" data-url="../../../about/index/about_index?key={{item.key}}">查看页面</button></view>
+  </view>
+  <view class="ac-card ac-about-service" bindtap="bindServices"><view class="ac-entry-main"><view class="ac-row-title">校区客服联系方式</view><view class="ac-row-desc">在校区客服配置中统一维护负责人和电话</view></view><text class="ac-chevron">›</text></view>
 </view>

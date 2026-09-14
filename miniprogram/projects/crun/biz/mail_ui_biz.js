@@ -33,21 +33,27 @@ function detail(mail, now = Date.now()) {
   : STATUS[status] || { title: '订单状态待确认', note: '请刷新订单或联系校区客服', icon: 'info', tone: 'muted', step: -1 };
  const fee = obj.price == null ? Number(mail.MAIL_TOTAL_FEE) / 100 : Number(obj.price);
  const packages = ['small', 'medium', 'large'].map((key, i) => ({ key, label: ['小件', '中件', '大件'][i], count: Number(obj[key]) || 0 })).filter(x => x.count > 0);
+ const pickupItems = participant && Array.isArray(obj.packages) ? obj.packages.map((item, index) => item && typeof item === 'object' ? ({
+  index, label: '第' + (index + 1) + '件 · ' + ({ small: '小件', medium: '中件', large: '大件' }[item.type] || '包裹'),
+  pickupPoint: item.pickupPoint || obj.address1 || '请联系发布者确认', code: item.code || '', note: item.note || '',
+  images: mail.MAIL_MEDIA && mail.MAIL_MEDIA.packages && mail.MAIL_MEDIA.packages[index] || []
+ }) : null).filter(Boolean) : [];
  const phone = participant ? (mail.mypost ? mail.acceptUser && mail.acceptUser.USER_MOBILE : obj.tel) : '';
  const contactName = participant ? (mail.mypost ? mail.acceptUser && mail.acceptUser.USER_NAME : obj.poster) : '';
  let primary = 'orders', primaryLabel = '返回订单列表';
  if (participant && mail.mypost && status === 0 && !expired && !legacyPayment) { primary = 'edit'; primaryLabel = '编辑订单'; }
  else if (participant && mail.myaccept && status === 1) { primary = 'deliver'; primaryLabel = '提交送达凭证'; }
  else if (participant && mail.mypost && status === 2) { primary = 'confirm'; primaryLabel = '确认收到物品'; }
+ else if (participant && status === 9 && (mail.MAIL_CAN_REVIEW || mail.MAIL_REVIEWED)) { primary = 'review'; primaryLabel = mail.MAIL_REVIEWED ? '查看我的评价' : '评价对方'; }
  else if (phone) { primary = 'contact'; primaryLabel = mail.mypost ? '联系骑手' : '联系发布者'; }
  const actions = { overdue: '已超过预计送达时间', archive: '订单已归档', expire: '已超过接单截止时间', hold: '管理员已介入', resume: '配送已恢复', admin_cancel: '管理员已取消订单', admin_finish: '管理员已完结订单', publish: '订单已发布', accept: '骑手已接单', edit: '订单信息已更新', deliver: '骑手已提交送达凭证', finish: '已确认收货', confirm: '已确认收货', cancel: '订单已取消', exception: '已提交配送异常', resolve: '异常处理已更新' };
- const history = participant && Array.isArray(mail.MAIL_HISTORY) ? mail.MAIL_HISTORY.filter(x => x && typeof x === 'object').map((x, i) => ({
+ const history = mail.mypost && Array.isArray(mail.MAIL_HISTORY) ? mail.MAIL_HISTORY.filter(x => x && typeof x === 'object').map((x, i) => ({
   id: x.id || String(i), title: actions[x.action] || '订单状态已更新', note: x.note || '',
   actor: x.actor === 'admin' ? '管理员' : x.actor === 'poster' ? '发布者' : x.actor === 'rider' ? '骑手' : '系统', time: time(x.at) || '时间待确认'
  })).reverse() : [];
  const title = mail.myaccept && status === 1 ? '配送进行中' : mail.myaccept && status === 2 ? '等待发布者确认' : state.title;
  const note = !participant && status === 0 && !expired ? '接单后可查看完整取送信息' : mail.myaccept && status === 1 ? '请及时取件配送，送达后上传凭证' : mail.myaccept && status === 2 ? '已通知发布者核对，请等待对方确认收货' : state.note;
- return { ...state, title, note, participant, expired, status, legacyPayment, fee: Number.isFinite(fee) && fee >= 0 ? fee.toFixed(2) : '—', packages,
+ return { ...state, title, note, participant, expired, status, legacyPayment, fee: Number.isFinite(fee) && fee >= 0 ? fee.toFixed(2) : '—', packages, pickupItems,
   count: packages.reduce((sum, x) => sum + x.count, 0) || Number(obj.num) || 1,
   role: mail.mypost ? '我的发布' : mail.myaccept ? '我的接单' : '订单详情',
   steps: ['已发布', '配送中', '待收货', '已完成'].map((label, index) => ({ label, index, done: state.step >= index, current: state.step === index })),

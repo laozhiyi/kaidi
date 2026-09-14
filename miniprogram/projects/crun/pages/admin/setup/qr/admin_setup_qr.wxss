@@ -1,37 +1,10 @@
-@import '../../../../../../style/public/admin.wxss';
-
-.load.loading::after {
-	content: "小程序码生成中...";
-}
-
-.form-box .checkin {
-	width: 100%;
-	padding: 40rpx 40rpx 80rpx;
-	padding-bottom: 150rpx;
-	display: flex;
-	flex-direction: column;
-	justify-content: flex-start;
-	align-items: center;
-}
-
-.form-box .checkin .notice {
-	width: 100%;
-	font-size: 36rpx;
-	text-align: center;
-	color: #000;
-	margin-bottom: 30rpx;
-}
-
-.form-box .checkin image {
-	width: 500rpx;
-	height: 500rpx;
-	margin: 30rpx 0rpx;
-}
-
-.form-box .checkin .oprt {
-	margin-top: 0rpx;
-	text-align: center;
-	font-size: 30rpx;
-	color: var(--adminColor);
-	padding: 20rpx 10rpx;
-}
+@import '../../../../style/admin_console.wxss';
+.ac-page .ac-qr-card { text-align: center; padding: 38rpx 28rpx; }
+.ac-qr-mark { display: flex; align-items: center; justify-content: center; width: 76rpx; height: 76rpx; margin: 0 auto 18rpx; border-radius: 20rpx; background: #edf3ff; color: #2863db; font-size: 36rpx; }
+.ac-qr-title { font-size: 32rpx; font-weight: 600; margin-bottom: 8rpx; word-break: break-word; }
+.ac-qr-frame { width: 100%; max-width: 450rpx; margin: 32rpx auto 24rpx; padding: 22rpx; border: 1rpx solid #e4eaf4; border-radius: 20rpx; background: #fff; }
+.ac-qr-image { display: block; width: 100%; height: 400rpx; }
+.ac-qr-placeholder { height: 400rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24rpx; font-size: 24rpx; color: #8995a8; }
+.ac-qr-placeholder > text { color: #b2c2dc; font-size: 100rpx; }
+.ac-qr-tip { font-size: 27rpx; font-weight: 500; }
+.ac-page .ac-qr-guide { margin-top: 26rpx; }

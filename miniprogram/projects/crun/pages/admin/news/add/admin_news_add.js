@@ -76,6 +76,7 @@ Page({
 	 */
 	bindFormSubmit: async function () {
 		if (!AdminBiz.isAdmin(this)) return;
+		if (this.data.isSubmit || this._published) return;
 
 		let data = this.data;
 		if (this.data.formContent.length == 0) {
@@ -84,12 +85,14 @@ Page({
 		data = validate.check(data, AdminNewsBiz.CHECK_FORM, this);
 		if (!data) return; 
 
-		let forms = this.selectComponent("#cmpt-form").getForms(true);
+		const formComponent = this.selectComponent("#cmpt-form");
+		let forms = formComponent ? formComponent.getForms(true) : [];
 		if (!forms) return;
 		data.forms = forms;
 
 		data.cateName = AdminNewsBiz.getCateName(data.cateId);
 
+		this.setData({ isSubmit: true });
 		try {
 			if (this.data.imgList.length == 0) {
 				return pageHelper.showModal('请上传封面图');
@@ -98,9 +101,15 @@ Page({
 			// 提取简介
 			data.desc = PublicBiz.getRichEditorDesc(data.desc, this.data.formContent);
 
-			// 先创建，再上传 
-			let result = await cloudHelper.callCloudSumbit('admin/news_insert', data);
-			let newsId = result.data.id;
+			// 上传完成前保持未发布；失败重试继续使用同一篇草稿。
+			if (!this._draftNewsId) {
+				const result = await cloudHelper.callCloudSumbit('admin/news_insert', { ...data, draft: true });
+				if (!result || !result.data || !result.data.id) throw new Error('未收到公告编号，请重试');
+				this._draftNewsId = result.data.id;
+			} else {
+				await cloudHelper.callCloudSumbit('admin/news_edit', { ...data, id: this._draftNewsId });
+			}
+			let newsId = this._draftNewsId;
 
 			// 封面图片 提交处理 
 			wx.showLoading({
@@ -123,6 +132,8 @@ Page({
 			}
 
 			await cloudHelper.transFormsTempPics(forms, 'news/', newsId, 'admin/news_update_forms');
+			await cloudHelper.callCloudSumbit('admin/news_status', { id: newsId, status: 1 });
+			this._published = true;
 
 			let callback = async function () {
 				PublicBiz.removeCacheList('admin-news-list');
@@ -130,10 +141,13 @@ Page({
 				wx.navigateBack();
 
 			}
-			pageHelper.showSuccToast('添加成功', 2000, callback);
+			pageHelper.showSuccToast('发布成功', 2000, callback);
 
 		} catch (err) {
 			console.log(err);
+		} finally {
+			wx.hideLoading();
+			this.setData({ isSubmit: false });
 		}
 
 	},

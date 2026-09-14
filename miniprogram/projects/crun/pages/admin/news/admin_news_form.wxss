@@ -1,0 +1,4 @@
+@import '../../../style/admin_console.wxss';
+.ac-news-content-link { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; border-top: 1rpx solid #edf0f5; padding-top: 24rpx; margin-top: 8rpx; }
+.ac-news-content-link > view { flex: 1; min-width: 0; }
+.ac-page .ac-upload-card .form-group { padding: 20rpx 0 0; border: 0; }

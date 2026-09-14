@@ -1,2 +1,1 @@
-@import '../../../../../../style/public/admin.wxss';
- 
+@import '../admin_news_form.wxss';

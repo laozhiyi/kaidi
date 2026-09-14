@@ -134,9 +134,9 @@ class AdminMailController extends BaseProjectAdminController {
 		let service = new AdminMailService();
 
 		if (input.isDel === 1)
-			await service.deleteMailDataExcel(); //先删除 
+			await service.deleteMailDataExcel(this._adminId); //先删除
 
-		return await service.getMailDataURL();
+		return await service.getMailDataURL(this._adminId);
 	}
 
 	/** 导出数据 */
@@ -155,7 +155,7 @@ class AdminMailController extends BaseProjectAdminController {
 		let input = this.validateData(rules);
 
 		let service = new AdminMailService();
-		return await service.exportMailDataExcel(input);
+		return await service.exportMailDataExcel(input, this._adminId);
 	}
 
 	/** 删除导出的用户数据 */
@@ -169,7 +169,8 @@ class AdminMailController extends BaseProjectAdminController {
 		let input = this.validateData(rules);
 
 		let service = new AdminMailService();
-		return await service.deleteMailDataExcel();
+		await service.deleteMailDataExcel(this._adminId);
+		return { ok: true };
 	}
 }
 

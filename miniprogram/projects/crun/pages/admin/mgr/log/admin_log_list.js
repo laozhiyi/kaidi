@@ -1,99 +1,11 @@
-const AdminBiz = require('../../../../../../comm/biz/admin_biz.js');
-const pageHelper = require('../../../../../../helper/page_helper.js');
-const cloudHelper = require('../../../../../../helper/cloud_helper.js');
-
-Page({
-
-	/**
-	 * 页面的初始数据
-	 */
-	data: {
-	},
-
-	/**
-	 * 生命周期函数--监听页面加载
-	 */
-	onLoad: function (options) {
-		if (!AdminBiz.isAdmin(this)) return;
-
-		//设置搜索菜单
-		this.setData(this._getSearchMenu());
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面初次渲染完成
-	 */
-	onReady: function () {
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面显示
-	 */
-	onShow: async function () { },
-
-	/**
-	 * 生命周期函数--监听页面隐藏
-	 */
-	onHide: function () {
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面卸载
-	 */
-	onUnload: function () {
-
-	},
-
-	url: async function (e) {
-		pageHelper.url(e, this);
-	},
-
-	bindCommListCmpt: function (e) {
-		pageHelper.commListListener(this, e);
-	},
-
-	bindClearTap: async function (e) {
-		let cb = async () => {
-
-			try {
-				await cloudHelper.callCloudSumbit('admin/log_clear').then(res => {
-					let cb = () =>{
-						wx.reLaunch({
-						  url: '/projects/crun/pages/admin/mgr/log/admin_log_list',
-						})
-					}
-					pageHelper.showSuccToast('清空完成', 1500, cb);
-				})
-			}
-			catch (err) {
-				console.log(err);
-			}
-		}
-
-		pageHelper.showConfirm('确认清空？清空不可恢复', cb);
-	},
-
-	_getSearchMenu: function () {
-
-		let sortItems = [];
-		let sortMenus = [
-			{ label: '全部', type: '', value: '' },
-			{ label: '系统', type: 'type', value: 0 },
-			{ label: '用户', type: 'type', value: 1 },
-			{ label: '文章', type: 'type', value: 2 },
-			{ label: '其他', type: 'type', value: 99 }
-		]
-
-		return {
-			search: '',
-			sortItems,
-			sortMenus,
-			isLoad: true
-		}
-
-	}
-
-})
+const createCatalog = require('../../../../biz/admin_catalog_biz.js');
+Page(createCatalog({
+  route: 'admin/log_list',
+  menus: [{ label: '全部日志' }, { label: '系统', type: 'type', value: 0 }, { label: '用户', type: 'type', value: 1 }, { label: '公告', type: 'type', value: 2 }, { label: '其他', type: 'type', value: 99 }],
+  data: { searchPlaceholder: '搜索操作内容、账号或姓名', countUnit: '条日志', emptyTitle: '暂无符合条件的操作日志', emptyHint: '管理员的操作记录会显示在这里' }
+}, {
+  bindClearTap() {
+    if (!this.data.isSuperAdmin) return;
+    return this.mutate('admin/log_clear', {}, { title: '清空操作日志', content: '确认清空全部操作日志？清空后无法恢复。' });
+  }
+}));

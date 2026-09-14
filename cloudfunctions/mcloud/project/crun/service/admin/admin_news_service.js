@@ -23,9 +23,11 @@ class AdminNewsService extends BaseProjectAdminService {
 		order = 9999,
 		forms,
 		content,
-		qr
+		qr,
+		draft = false
 	}) {
 		if (!title) this.AppError('标题不能为空');
+		if (typeof draft !== 'boolean') this.AppError('发布状态无效');
 
 		const newsId = 'NEWS' + Date.now() + Math.random().toString(36).substr(2, 9);
 
@@ -36,7 +38,7 @@ class AdminNewsService extends BaseProjectAdminService {
 			NEWS_CATE_ID: cateId || '0',
 			NEWS_CATE_NAME: cateName || '',
 			NEWS_ORDER: order,
-			NEWS_STATUS: 1,
+			NEWS_STATUS: draft ? 0 : 1,
 			NEWS_VOUCH: 0,
 			NEWS_QR: qr || '',
 			NEWS_FORMS: forms || [],
@@ -46,8 +48,8 @@ class AdminNewsService extends BaseProjectAdminService {
 			NEWS_EDIT_TIME: this._timestamp,
 		};
 
-		await NewsModel.insert(data);
-		return { id: newsId };
+		const id = await NewsModel.insert(data);
+		return { id };
 	}
 
 	/**删除资讯数据 */
@@ -158,7 +160,7 @@ class AdminNewsService extends BaseProjectAdminService {
 			'NEWS_ORDER': 'asc',
 			'NEWS_ADD_TIME': 'desc'
 		};
-		let fields = 'NEWS_TITLE,NEWS_DESC,NEWS_CATE_ID,NEWS_CATE_NAME,NEWS_EDIT_TIME,NEWS_ADD_TIME,NEWS_ORDER,NEWS_STATUS,NEWS_CATE2_NAME,NEWS_VOUCH,NEWS_QR,NEWS_OBJ';
+		let fields = 'NEWS_TITLE,NEWS_DESC,NEWS_PIC,NEWS_CATE_ID,NEWS_CATE_NAME,NEWS_EDIT_TIME,NEWS_ADD_TIME,NEWS_ORDER,NEWS_STATUS,NEWS_CATE2_NAME,NEWS_VOUCH,NEWS_QR,NEWS_OBJ';
 
 		let where = {};
 		where.and = {
@@ -166,11 +168,13 @@ class AdminNewsService extends BaseProjectAdminService {
 		};
 
 		if (util.isDefined(search) && search) {
+			search = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 			where.or = [
 				{ NEWS_TITLE: ['like', search] },
 			];
 
-		} else if (sortType && util.isDefined(sortVal)) {
+		}
+		if (sortType && util.isDefined(sortVal)) {
 			// 搜索菜单
 			switch (sortType) {
 				case 'cateId': {
@@ -199,6 +203,10 @@ class AdminNewsService extends BaseProjectAdminService {
 	/**修改资讯状态 */
 	async statusNews(id, status) {
 		if (!id) this.AppError('id不能为空');
+		if (![0, 1].includes(Number(status))) this.AppError('公告状态无效');
+		const news = await NewsModel.getOne({ _id: id });
+		if (!news) this.AppError('公告不存在');
+		if (Number(status) === 1 && (!Array.isArray(news.NEWS_CONTENT) || !news.NEWS_CONTENT.length)) this.AppError('请先补全公告正文再发布');
 		await NewsModel.edit(id, { NEWS_STATUS: Number(status), NEWS_EDIT_TIME: this._timestamp });
 		return { id };
 	}

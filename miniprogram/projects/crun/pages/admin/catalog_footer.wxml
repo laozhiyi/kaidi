@@ -1,0 +1,5 @@
+<view class="ac-list-footer">
+  <button wx:if="{{hasMore}}" class="ac-secondary" bindtap="bindMore" loading="{{loading}}" disabled="{{loading}}">加载更多</button>
+  <text wx:if="{{list.length}}">已显示 {{list.length}} / {{total}}{{!hasMore && !loading?' · 已到底':''}}</text>
+  <text wx:elif="{{loading}}">正在读取数据…</text>
+</view>

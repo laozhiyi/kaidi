@@ -4,19 +4,19 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { notificationStub } = require('../test-support/notification-client-harness.cjs');
 const root = path.resolve(__dirname, '../..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const mini = 'miniprogram/projects/crun/pages/';
 const userPage = mini + 'operations/operations.js';
-const adminPage = mini + 'admin/operations/admin_operations.js';
 const tick = () => new Promise(resolve => setImmediate(resolve));
 function deferred() { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; }
 function harness(file, get, options = {}) {
   let definition;
   const calls = [], navigation = [], errors = [], patches = [];
   const wx = {
-    setNavigationBarTitle: value => navigation.push(value), navigateTo: value => navigation.push(value),
-    pageScrollTo() {}, stopPullDownRefresh() {}, showToast() {}, showModal() {}, previewImage() {}
+    setNavigationBarTitle: value => navigation.push(value), navigateTo: value => { navigation.push(value); if (value.complete) value.complete(); },
+    pageScrollTo() {}, stopPullDownRefresh() {}, showToast() {}, showModal(value) { if (value.success) value.success({ confirm: true }); }, previewImage() {}
   };
   const ops = {
     async get(route, params) { calls.push({ route, params }); return get(route, params); },
@@ -25,6 +25,7 @@ function harness(file, get, options = {}) {
   };
   vm.runInNewContext(read(file), { console, wx, Page: p => { definition = p; }, require(module) {
     if (module.includes('operations_biz')) return ops;
+    if (module.includes('notification_biz')) return notificationStub(ops.get);
     if (module.includes('project_biz')) return { initPage() {} };
     if (module.includes('passport_biz')) return { loginMustBackWin: async () => true };
     if (module.includes('admin_biz')) return { isAdmin(page) {
@@ -53,7 +54,7 @@ const config = { campuses: ['东校区', '西校区'], maxActiveOrders: 3 };
 
 test('all registered pages, components, imports and static navigation resolve after consolidation', () => {
   const result = require('../check-miniprogram-pages.cjs').audit();
-  assert.equal(result.pages, 50);
+  assert.equal(result.pages, JSON.parse(read('miniprogram/app.json')).pages.length);
 });
 test('redundant pages are removed while export and role-specific workflows remain registered', () => {
   const app = JSON.parse(read('miniprogram/app.json'));
@@ -65,7 +66,7 @@ test('redundant pages are removed while export and role-specific workflows remai
   const personal = read(mini + 'my/index/my_index.wxml');
   for (const handler of ['bindCampusServiceTap', 'bindInviteTap', 'bindAboutTap']) assert.equal((personal.match(new RegExp('bindtap="' + handler + '"', 'g')) || []).length, 1);
   assert.ok((personal.match(/bindtap="bindFeedbackTap"/g) || []).length >= 1);
-  assert.ok((read(mini + 'admin/index/home/admin_home.wxml').match(/data-url="[^"]*admin_operations[^"]*"/g) || []).length >= 1);
+  for (const key of ['orders', 'feedback', 'analytics', 'settings']) assert.ok(read(mini + 'admin/index/home/admin_home.wxml').includes('data-key="' + key + '"'));
 });
 test('new-page development settings do not use hot reload or unused-file filtering', () => {
   const config = JSON.parse(read('project.private.config.json'));
@@ -86,7 +87,7 @@ test('messages paginate without fetching profile or config again, and stop at th
     throw new Error('Unexpected route');
   });
   h.page.onLoad({ tab: 'invalid' }); await h.page.onShow(); await h.page.bindMore(); await h.page.bindMore();
-  assert.equal(h.page.data.tab, 'messages'); assert.equal(h.page.data.page, 2); assert.equal(h.page.data.list.length, 2);
+  assert.equal(h.page.data.unreadOnly, false); assert.equal(h.page.data.page, 2); assert.equal(h.page.data.list.length, 2);
   assert.equal(h.calls.filter(x => x.route === 'operations/config').length, 1);
   assert.equal(h.calls.filter(x => x.route === 'operations/notifications').length, 2);
 });
@@ -95,12 +96,13 @@ test('unloading ignores pending notification responses', async () => {
   h.page.onLoad(); const load = h.page.onShow(); await tick(); h.page.onUnload(); const count = h.patches.length;
   wait.resolve({ list: [], hasMore: false }); await load; assert.equal(h.patches.length, count);
 });
-test('reading a message updates its badge immediately and feedback links take priority', async () => {
+test('linked messages wait for destination acknowledgement and feedback links take priority', async () => {
   const h = harness(userPage, () => ({})); h.page._visible = true;
   h.page.setData({ list: [{ _id: 'notice', read: false, feedbackId: 'fb?1', orderId: 'order' }] });
   await h.page.bindRead(event({ id: 'notice' }));
-  assert.equal(h.page.data.list[0].read, true);
-  assert.equal(h.navigation[0].url, '/projects/crun/pages/feedback/detail/feedback_detail?id=fb%3F1');
+  assert.equal(h.page.data.list[0].read, false);
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.navigation[0].url, '/projects/crun/pages/feedback/detail/feedback_detail?id=fb%3F1&notificationId=notice');
   h.page.setData({ list: [{ _id: 'operations-result', read: false }] }); await h.page.bindRead(event({ id: 'operations-result' }));
   assert.equal(h.page.data.list[0].read, true); assert.equal(h.navigation.length, 1);
 });
@@ -109,36 +111,8 @@ test('duplicate message clicks do not submit extra requests', async () => {
   h.page.setData({ list: [{ _id: 'n' }] }); const readRequest = h.page.bindRead(event({ id: 'n' })); await h.page.bindRead(event({ id: 'n' })); assert.equal(h.calls.length, 1);
   pending.resolve({}); await readRequest;
 });
-test('admin filtering invalidates in-flight detail on the same tab', async () => {
-  const pending = deferred();
-  const h = harness(adminPage, route => route === 'admin/operations_order' ? pending.promise : { list: [{ _id: 'old' }], hasMore: false });
-  await h.page.onLoad({ tab: 'orders' });
-  const detail = h.page.bindDetail(event({ id: 'old' })); await h.page.bindFilter({ detail: { value: '2' } });
-  pending.resolve({ _id: 'old', MAIL_STATUS: 0 }); await detail;
-  assert.equal(h.page.data.detail, null); assert.equal(h.page.data.detailLoading, false);
-  assert.equal(h.calls.filter(x => x.route === 'admin/operations_orders').at(-1).params.status, 1);
-});
-test('admin detail uses dedicated view and back preserves list and page without refetching', async () => {
-  const h = harness(adminPage, route => route === 'admin/operations_order' ? { _id: 'one' } : { list: [{ _id: 'one' }], hasMore: true });
-  await h.page.onLoad({ tab: 'orders' }); await h.page.bindDetail(event({ id: 'one' }));
-  assert.equal(h.page.data.detail._id, 'one'); const count = h.calls.length;
-  await h.page.bindMore(); assert.equal(h.calls.length, count);
-  h.page.bindClose(); assert.equal(h.page.data.detail, null); assert.equal(h.page.data.list.length, 1); assert.equal(h.page.data.page, 1);
-});
-test('configuration preserves decimal drafts, rejects blank inputs and normalizes on save', async () => {
-  const h = harness(adminPage, () => config); h.page._visible = true;
-  h.page.setData({ tab: 'config', isSuperAdmin: true, config: { ...config }, campusText: '东校区' });
-  for (const field of h.page.data.fields) h.page.data.config[field.key] = 1;
-  h.page.bindConfigNumber({ currentTarget: { dataset: { key: 'smallPrice' } }, detail: { value: '1.' } }); assert.equal(h.page.data.config.smallPrice, '1.');
-  h.page.bindConfigNumber({ currentTarget: { dataset: { key: 'smallPrice' } }, detail: { value: '' } }); await h.page.bindSave(); assert.equal(h.calls.length, 0);
-  h.page.bindConfigNumber({ currentTarget: { dataset: { key: 'smallPrice' } }, detail: { value: '1.5' } }); await h.page.bindSave();
-  assert.equal(h.calls.find(x => x.route === 'admin/operations_config_save').params.value.smallPrice, 1.5);
-});
-test('non-super administrators cannot submit configuration or maintenance, denied admins do not load data', async () => {
-  const h = harness(adminPage, () => config, { superAdmin: false }); await h.page.onLoad({ tab: 'config' });
-  const count = h.calls.length; await h.page.bindSave(); await h.page.bindMaintain(); assert.equal(h.calls.length, count);
-  const denied = harness(adminPage, () => { throw new Error('must not load'); }, { denied: true }); await denied.page.onLoad(); assert.equal(denied.calls.length, 0);
-});
+// Independent admin pages, navigation, drafts and permissions are covered in admin-console.test.js.
+
 test('unified about page defaults to editable about content and refresh retains the contact key', async () => {
   const h = harness(mini + 'about/index/about_index.js', () => [{ type: 'text', val: '后台配置内容' }]);
   h.page.onLoad(); await tick(); assert.equal(h.calls[0].params.key, 'SETUP_CONTENT_ABOUT'); assert.equal(h.page.data.about[0].val, '后台配置内容');

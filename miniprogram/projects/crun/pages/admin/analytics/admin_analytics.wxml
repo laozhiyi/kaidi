@@ -1,0 +1,39 @@
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 管理中心</text><text>/</text><text>数据统计</text></view>
+  <view class="ac-heading"><view><view class="ac-title">数据统计</view><view class="ac-subtitle">订单概览与运营待办，一目了然</view></view><button class="ac-secondary ac-small" bindtap="load" loading="{{loading}}" disabled="{{loading}}">刷新</button></view>
+  <view wx:if="{{error}}" class="ac-notice red">{{error}}</view>
+  <view wx:if="{{loading && !overview}}" class="ac-card ac-state ac-muted">正在汇总数据…</view>
+  <block wx:if="{{overview}}">
+    <view class="ac-card ac-analytics-hero">
+      <view class="ac-analytics-top"><text>累计订单</text><text class="ac-analytics-tag">全部时间</text></view>
+      <view class="ac-analytics-total"><text>{{overview.total}}</text><text class="ac-analytics-unit">单</text></view>
+      <view class="ac-analytics-overview">
+        <view><view class="ac-analytics-caption">累计完成</view><view class="ac-analytics-value">{{overview.completed}}<text> 单</text></view></view>
+        <view><view class="ac-analytics-caption">进行中</view><view class="ac-analytics-value">{{overview.active}}<text> 单</text></view></view>
+        <view><view class="ac-analytics-caption">完成占比</view><view class="ac-analytics-value">{{overview.completionRate}}<text>%</text></view></view>
+      </view>
+    </view>
+    <view class="ac-stat-grid">
+      <view class="ac-stat"><view class="ac-stat-label">今日新增订单</view><view class="ac-number">{{overview.todayOrders}}</view><view class="ac-stat-note">北京时间 00:00 起</view></view>
+      <view class="ac-stat"><view class="ac-stat-label">今日完成订单</view><view class="ac-number ac-text-green">{{overview.todayCompleted}}</view><view class="ac-stat-note">按订单完成时间统计</view></view>
+    </view>
+    <view class="ac-card">
+      <view class="ac-section-head"><text class="ac-section-title">订单状态分布</text><text class="ac-muted">点击查看订单</text></view>
+      <view wx:for="{{overview.rows}}" wx:key="key" class="ac-distribution" data-status="{{item.status}}" bindtap="bindStatus">
+        <view class="ac-distribution-head"><view class="ac-distribution-label"><view class="ac-distribution-dot {{item.tone}}"></view><text>{{item.label}}</text></view><view class="ac-distribution-data"><text class="ac-distribution-count">{{item.value}} 单</text><text class="ac-distribution-percent">{{item.percent}}%</text><text class="ac-chevron">›</text></view></view>
+        <view class="ac-chart-track"><view class="ac-chart-bar {{item.tone}}" style="width: {{item.percent}}%;"></view></view>
+      </view>
+      <view class="ac-field-hint">{{overview.total?'占比按全部订单计算，包含已取消订单。':'暂无订单，产生业务后将展示实际数据。'}}</view>
+    </view>
+    <view class="ac-card">
+      <view class="ac-section-head"><text class="ac-section-title">运营待办</text><text class="ac-muted">及时跟进</text></view>
+      <view class="ac-analytics-todos">
+        <view class="ac-analytics-todo" bindtap="bindNavigate" data-key="orders" data-status="3"><text class="ac-todo-label">异常订单</text><view><text class="ac-todo-number ac-text-red">{{overview.exceptions}}</text><text class="ac-chevron">›</text></view><text class="ac-field-hint">核实并处理异常</text></view>
+        <view class="ac-analytics-todo" bindtap="bindNavigate" data-key="orders" data-overdue="true"><text class="ac-todo-label">履约超时</text><view><text class="ac-todo-number">{{overview.overdue}}</text><text class="ac-chevron">›</text></view><text class="ac-field-hint">跟进配送进度</text></view>
+        <view class="ac-analytics-todo" bindtap="bindNavigate" data-key="feedback" data-status="0"><text class="ac-todo-label">待处理投诉</text><view><text class="ac-todo-number">{{overview.complaints}}</text><text class="ac-chevron">›</text></view><text class="ac-field-hint">查看用户反馈</text></view>
+        <view class="ac-analytics-todo" bindtap="bindNavigate" data-key="monitor"><text class="ac-todo-label">通知发送失败</text><view><text class="ac-todo-number">{{overview.failedNotifications}}</text><text class="ac-chevron">›</text></view><text class="ac-field-hint">进入系统维护</text></view>
+      </view>
+    </view>
+    <view class="ac-footnote">待办可能重叠，例如同一订单同时异常、超时。<view>更新于 {{overview.updatedText}}</view></view>
+  </block>
+</view>

@@ -1,19 +1,16 @@
-<view wx:if="{{!isLoad}}" class="margin-top load loading text-l text-grey"></view>
-
-
-<view class="main-admin" wx:if="{{isAdmin&&isLoad}}">
-
-	<view class="form-box shadow margin-top-xs">
-
-		<view class="checkin">
-			<view class="notice"><text class="icon-scan margin-right-s text-bold"></text>放在推广的地方展示</view>
-
-			<image bindtap="url" data-type="img" data-url="{{qrUrl}}" mode="aspectFill" class="loading" show-menu-by-longpress="{{true}}" src="{{qrUrl}}"></image>
-			<view class="oprt text-l">长按图片保存小程序码</view>
-
-			<view wx:if="{{title}}" class="oprt text-black text-normal">《{{title}}》小程序码</view>
-		</view>
-
-	</view>
-
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 管理中心</text><text>/</text><text>小程序码</text></view>
+  <view class="ac-heading"><view><view class="ac-title">小程序码</view><view class="ac-subtitle">展示与分享，让用户扫码直达服务</view></view></view>
+  <view wx:if="{{error}}" class="ac-notice red">{{error}}</view>
+  <view class="ac-card ac-qr-card">
+    <view class="ac-qr-brand"><view class="ac-qr-mark"><text class="icon-scan"></text></view><view class="ac-qr-title">{{title}}</view><view class="ac-muted">{{sc==='qr'?'校园快递代取服务':'扫码查看公告详情'}}</view></view>
+    <view class="ac-qr-frame">
+      <image wx:if="{{qrUrl && !imageError}}" class="ac-qr-image" src="{{qrUrl}}" mode="aspectFit" show-menu-by-longpress="{{true}}" bindtap="bindPreview" binderror="bindImageError" />
+      <view wx:else class="ac-qr-placeholder"><text class="icon-qr_code"></text><view>{{loading?'正在生成小程序码…':imageError?'图片加载失败，请重新生成':'小程序码暂未生成'}}</view></view>
+    </view>
+    <view class="ac-qr-tip">微信扫一扫，即可打开</view>
+    <view class="ac-field-hint">长按图片保存，也可点击图片放大查看</view>
+  </view>
+  <view class="ac-form-actions"><button wx:if="{{qrUrl && !imageError}}" class="ac-primary" bindtap="bindPreview">查看大图</button><button class="ac-secondary" bindtap="load" disabled="{{loading}}" loading="{{loading}}">{{qrUrl?'重新生成':'生成小程序码'}}</button></view>
+  <view class="ac-card ac-qr-guide"><view class="ac-section-title">推广使用</view><view class="ac-row-desc">可用于校区服务点、宣传海报或群内分享。展示时请保持图片清晰，保留四周留白。</view></view>
 </view>

@@ -16,12 +16,14 @@ class AdminFeedbackController extends BaseProjectAdminController {
 		await this.isAdmin();
 
 		let rules = {
-			search: 'string|min:1|max:30|name=搜索条件',
+			search: 'string|max:50|name=搜索条件',
+			status: 'int',
+			type: 'string|max:30',
 			sortType: 'string|name=搜索类型',
 			sortVal: 'name=搜索类型值',
 			orderBy: 'object|name=排序',
 			whereEx: 'object|name=附加查询条件',
-			page: 'must|int|default=1',
+			page: 'must|int|default=1|min:1|max:500',
 			size: 'int',
 			isTotal: 'bool',
 			oldTotal: 'int',
@@ -41,6 +43,7 @@ class AdminFeedbackController extends BaseProjectAdminController {
 			id: 'must|id',
 			reply: 'must|string|min:1|max:500|name=回复内容',
 			version:'must|int', requestId:'must|string|min:16|max:100', status:'int|default=1',
+			ratingAction: 'string|max:10', reviewScore: 'int|min:1|max:5',
 		};
 
 		let input = this.validateData(rules);
@@ -49,7 +52,7 @@ class AdminFeedbackController extends BaseProjectAdminController {
 		await contentCheck.checkTextMultiAdmin(input);
 
 		let service = new FeedbackService();
-		return await service.replyFeedback(input.id, input.reply, this._adminId, input.version, input.requestId, input.status);
+		return await service.replyFeedback(input.id, input.reply, this._adminId, input.version, input.requestId, input.status, { ratingAction: input.ratingAction, reviewScore: input.reviewScore });
 	}
 
 	/** 修改状态 */

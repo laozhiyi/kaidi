@@ -1,9 +1,7 @@
 {
-	"usingComponents": { 
-		"cmpt-picker-time": "/cmpts/public/picker_time/picker_time_cmpt"
-	},
-	"navigationBarBackgroundColor": "#2499f2",
-	"navigationBarTextStyle": "white", 
-	"enablePullDownRefresh": true,  
-	"navigationBarTitleText": "后台-快递代取记录导出"
+  "usingComponents": {},
+  "enablePullDownRefresh": true,
+  "navigationBarTitleText": "订单报表",
+  "navigationBarBackgroundColor": "#f3f5f9",
+  "navigationBarTextStyle": "black"
 }

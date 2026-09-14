@@ -7,8 +7,10 @@
 const BaseProjectController = require('./base_project_controller.js');
 const NewsService = require('../service/news_service.js');
 const timeUtil = require('../../../framework/utils/time_util.js');
+const NotificationService = require('../service/notification_service.js');
 
 class NewsController extends BaseProjectController {
+	async featured() { return new NotificationService().featured(); }
 
 	// 把列表转换为显示模式
 	transNewsList(list) {
@@ -20,7 +22,9 @@ class NewsController extends BaseProjectController {
 			node.title = list[k].NEWS_TITLE;
 			node.desc = list[k].NEWS_DESC;
 			node.ext = list[k].NEWS_ADD_TIME;
-			node.pic = list[k].NEWS_PIC[0];
+			node.pic = (list[k].NEWS_PIC || [])[0] || '';
+			node.read = list[k].read;
+			node.important = list[k].NEWS_ORDER === 0;
 			ret.push(node);
 		}
 		return ret;
@@ -50,8 +54,10 @@ class NewsController extends BaseProjectController {
 
 		// 数据格式化
 		let list = result.list;
+		const readIds = await new NotificationService().readNewsIds(this._userId, list.map(row => row._id));
 
 		for (let k = 0; k < list.length; k++) {
+			list[k].read = readIds.has(list[k]._id);
 			list[k].NEWS_ADD_TIME = timeUtil.timestamp2Time(list[k].NEWS_ADD_TIME, 'Y-M-D');
 
 			if (list[k].NEWS_OBJ && list[k].NEWS_OBJ.desc)

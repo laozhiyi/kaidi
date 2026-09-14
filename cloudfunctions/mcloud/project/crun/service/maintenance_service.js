@@ -4,18 +4,25 @@ const store = require('./operation_store.js');
 const Mail = require('./mail_service.js');
 const cloudBase = require('../../../framework/cloud/cloud_base.js');
 class MaintenanceService extends Base {
+ async _batch(rows, work) {
+  let cursor=0,failed=0;
+  await Promise.all(Array.from({length:Math.min(4,rows.length)},async()=>{
+   while(cursor<rows.length){const row=rows[cursor++];try{await work(row);}catch(error){failed++;console.error('[maintenance] item failed',{code:error && (error.code||error.errCode)||'PROCESS_FAILED'});}}
+  }));
+  return failed;
+ }
  async run() {
   const db=store.database(),pid=this.getProjectId(),now=Date.now(),cmd=db.command;
   const expired=await db.collection(store.collection('mail')).where({_pid:pid,MAIL_STATUS:0,MAIL_PAYMENT_MODE:'offline',MAIL_END_TIME:cmd.lt(now)}).orderBy('MAIL_END_TIME','asc').limit(30).get();
-  for(const item of expired.data)await store.transaction(async tx=>{const row=await store.get(tx,'mail',item._id);if(!row||row.MAIL_STATUS!==0||row.MAIL_END_TIME>=Date.now())return;row._id=item._id;row.MAIL_STATUS=99;const svc=new Mail();await svc._quota(tx,row.MAIL_USER_ID,'poster',row._id,false,0);await svc._record(tx,row,{userId:row.MAIL_USER_ID},'expire',store.key('expire',row._id),'超过接单截止时间，自动关闭');});
-  const overdue=await db.collection(store.collection('mail')).where({_pid:pid,MAIL_STATUS:cmd.in([1,2,3]),MAIL_DUE_TIME:cmd.lt(now),MAIL_OVERDUE_NOTIFIED:cmd.neq(true)}).orderBy('MAIL_DUE_TIME','asc').limit(30).get();
-  for(const item of overdue.data)await store.transaction(async tx=>{const row=await store.get(tx,'mail',item._id);if(!row||![1,2,3].includes(row.MAIL_STATUS)||row.MAIL_OVERDUE_NOTIFIED)return;row._id=item._id;row.MAIL_OVERDUE_NOTIFIED=true;await new Mail()._record(tx,row,{userId:row.MAIL_USER_ID},'overdue',store.key('overdue',row._id),'订单已超过预计履约时限，请联系对方或提交异常');});
+  const expiredFailed=await this._batch(expired.data,item=>store.transaction(async tx=>{const row=await store.get(tx,'mail',item._id);if(!row||row._pid!==pid||row.MAIL_STATUS!==0||row.MAIL_END_TIME>=Date.now())return;row._id=item._id;row.MAIL_STATUS=99;const svc=new Mail();await svc._quota(tx,row.MAIL_USER_ID,'poster',row._id,false,0);await svc._record(tx,row,{userId:row.MAIL_USER_ID},'expire',store.key('expire',row._id),'超过接单截止时间，自动关闭');}));
+  const overdue=await db.collection(store.collection('mail')).where({_pid:pid,MAIL_STATUS:cmd.in([1,2,3,4]),MAIL_DUE_TIME:cmd.lt(now),MAIL_OVERDUE_NOTIFIED:cmd.neq(true)}).orderBy('MAIL_DUE_TIME','asc').limit(30).get();
+  const overdueFailed=await this._batch(overdue.data,item=>store.transaction(async tx=>{const row=await store.get(tx,'mail',item._id);if(!row||row._pid!==pid||![1,2,3,4].includes(row.MAIL_STATUS)||row.MAIL_OVERDUE_NOTIFIED||!(row.MAIL_DUE_TIME>0&&row.MAIL_DUE_TIME<Date.now()))return;row._id=item._id;row.MAIL_OVERDUE_NOTIFIED=true;await new Mail()._record(tx,row,{userId:row.MAIL_USER_ID},'overdue',store.key('overdue',row._id),'订单已超过预计履约时限，请联系对方或提交异常');}));
   const pending=await db.collection(store.collection('notification')).where({_pid:pid,delivery:cmd.in(['pending','retry','sending']),nextAttemptAt:cmd.lte(now)}).orderBy('nextAttemptAt','asc').limit(30).get();
-  for(const message of pending.data)await this.dispatch(message._id);
+  const notificationFailed=await this._batch(pending.data,message=>this.dispatch(message._id));
   // Only transient rate-limit buckets are pruned. Orders, audit and idempotency records are retained.
   const buckets=await db.collection(store.collection('operation_limit')).where({_pid:pid,expiresAt:cmd.lt(now)}).limit(100).get();
-  for(const row of buckets.data)await db.collection(store.collection('operation_limit')).doc(row._id).remove();
-  return {expired:expired.data.length,overdue:overdue.data.length,notifications:pending.data.length,cleaned:buckets.data.length};
+  const cleanupFailed=await this._batch(buckets.data,row=>db.collection(store.collection('operation_limit')).doc(row._id).remove());
+  return {expired:expired.data.length-expiredFailed,overdue:overdue.data.length-overdueFailed,notifications:pending.data.length-notificationFailed,cleaned:buckets.data.length-cleanupFailed,failed:expiredFailed+overdueFailed+notificationFailed+cleanupFailed};
  }
  async dispatch(id) {
   const claim=store.key(id,Date.now(),Math.random());

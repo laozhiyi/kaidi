@@ -7,12 +7,16 @@
 		</view>
 		<view class="header-title">反馈投诉</view>
 		<view class="header-desc">您的建议和投诉是我们改进的动力</view>
+		<view class="feedback-history" bindtap="bindMyListTap">查看我的反馈 ›</view>
 	</view>
 
 	<view class="form-wrap">
+		<view wx:if="{{orderLoading}}" class="card">正在核实关联订单…</view>
+		<view wx:if="{{orderError}}" class="card"><view>{{orderError}}</view><button bindtap="loadOrder">重新加载订单</button></view>
+		<view wx:if="{{orderTarget}}" class="card"><view class="card-title"><text class="card-title-text">申诉对象</text></view><view>{{orderTarget.name}} · {{orderTarget.role}}</view><view class="tips">来自关联订单的另一位参与者。提交后由管理员核实并评定星级，审核前不影响对方信誉分。</view></view>
 
 		<!-- 选择投诉对象 -->
-		<view class="card">
+		<view wx:if="{{!orderTarget && !orderLoading && !orderError}}" class="card">
 			<view class="card-title">
 				<text class="card-title-text">投诉对象</text>
 				<text class="card-title-required">*</text>
@@ -23,7 +27,7 @@
 					bindtap="bindTargetTap" data-idx="{{index}}">
 					<text class="tag-label">{{item.label}}</text>
 				</view>
-				<view class="tag-item tag-custom {{targetIdx==-1?'tag-active':''}}"
+				<view class="tag-item tag-custom {{customShow?'tag-active':''}}"
 					bindtap="bindCustomTap">
 					<text class="tag-label">自定义</text>
 				</view>
@@ -32,7 +36,7 @@
 			<!-- 自定义输入框 -->
 			<view wx:if="{{customShow}}" class="custom-input-wrap">
 				<input class="custom-input" maxlength="20" placeholder="请输入投诉对象"
-					value="{{customTarget}}" bindinput="bindCustomInput" />
+					value="{{customTarget}}" bindinput="bindCustomInput" disabled="{{isSubmit}}" />
 			</view>
 		</view>
 
@@ -44,7 +48,7 @@
 			</view>
 			<textarea class="textarea" maxlength="500"
 				placeholder="请详细描述您遇到的问题，便于我们快速处理…"
-				value="{{content}}" bindinput="bindContentInput">
+				value="{{content}}" bindinput="bindContentInput" disabled="{{isSubmit}}">
 			</textarea>
 			<view class="input-counter">{{content.length}}/500</view>
 		</view>
@@ -52,9 +56,8 @@
 		<!-- 上传凭证 -->
 		<view class="card">
 			<view class="card-title">
-				<text class="card-title-text">上传凭证</text>
-				<text class="card-title-required">*</text>
-				<text class="card-title-sub">（最多9张，已上传 {{img.length}}/9）</text>
+					<text class="card-title-text">上传凭证</text>
+					<text class="card-title-sub">（选填，最多6张，已上传 {{img.length}}/6）</text>
 			</view>
 			<view class="img-list">
 				<view wx:for="{{img}}" wx:key="*this" class="img-item">
@@ -62,7 +65,7 @@
 						bindtap="bindPreviewImage" data-url="{{item}}"></image>
 					<view class="img-del" bindtap="bindDelImage" data-idx="{{index}}">×</view>
 				</view>
-				<view wx:if="{{img.length<9}}" class="img-add" bindtap="bindChooseImage">
+				<view wx:if="{{img.length<6}}" class="img-add" bindtap="bindChooseImage">
 					<view class="add-icon">+</view>
 					<view class="add-label">添加图片</view>
 				</view>
@@ -79,8 +82,9 @@
 
 	<!-- 底部固定提交按钮 -->
 	<view class="footer">
+		<view wx:if="{{submitError}}" class="submit-error">{{submitError}}</view>
 		<view class="btn-submit {{isSubmit?'btn-disabled':''}}" bindtap="bindSubmitTap">
-			<text>{{isSubmit ? '提交中…' : '提交反馈'}}</text>
+			<text>{{isSubmit ? submitHint : submitError ? '重试提交' : '提交反馈'}}</text>
 		</view>
 	</view>
 

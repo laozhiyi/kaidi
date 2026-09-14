@@ -1,9 +1,7 @@
 {
-	"usingComponents": {
-		 
-	},
-	"navigationBarBackgroundColor": "#2499f2",
-	"navigationBarTextStyle": "white",
-	"enablePullDownRefresh": true, 
-	"navigationBarTitleText": "单页文章"
+  "usingComponents": {},
+  "navigationBarTitleText": "关于与联系",
+  "navigationBarBackgroundColor": "#f3f5f9",
+  "navigationBarTextStyle": "black",
+  "enablePullDownRefresh": false
 }

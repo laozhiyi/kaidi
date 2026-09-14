@@ -40,8 +40,8 @@ Component({
 		_params: { // 路由的附加参数
 			type: Object,
 			value: null,
-			observer: function (newVal, oldVal) { //TODO????
-				if (!oldVal || !newVal) return; //页面data里赋值会引起触发，除非在组件标签里直接赋值,或者提前赋值
+			observer: function (newVal, oldVal) {
+				if (!this._ready || JSON.stringify(newVal) === JSON.stringify(oldVal)) return;
 
 				// 清空当前选择
 				if (newVal) {
@@ -152,6 +152,7 @@ Component({
 	 */
 	data: {
 		refresherTriggered: false, //下拉刷新是否完成
+		listLoading: false, listError: '', updatesPending: false,
 
 		sortItems: [], //下拉
 		sortMenus: [], //一级菜单非下拉
@@ -174,10 +175,12 @@ Component({
 			// 组件实例化，但节点树还未导入，因此这时不能用setData
 		},
 		attached: function () {
+			this._detached = false; this._pageVisible = true;
 			// 在组件实例进入页面节点树时执行 
 			// 节点树完成，可以用setData渲染节点，但无法操作节点 
 		},
 		ready: async function () {
+			this._ready = true;
 
 			// 组件布局完成，这时可以获取节点信息，也可以操作节点
 			this._fmtSearchData();
@@ -206,12 +209,14 @@ Component({
 			// 组件实例被移动到树的另一个位置
 		},
 		detached: function () {
-			// 在组件实例被从页面节点树移除时执行
+			this._detached = true; this._generation = (this._generation || 0) + 1;
+			this._refreshAfter = false;
 		},
 	},
 
 	pageLifetimes: {
 		async show() {
+			this._pageVisible = true;
 			// 页面被展示   
 			if (!this.data.isCache || !PublicBiz.isCacheList(this.data.type)) {
 				// 非缓存状态下或者 list缓存过期下加载
@@ -220,7 +225,8 @@ Component({
 
 		},
 		hide() {
-			// 页面被隐藏
+			this._pageVisible = false; this._generation = (this._generation || 0) + 1;
+			this._refreshAfter = false; this._listRequest = null;
 		},
 		resize(size) {
 			// 页面尺寸变化
@@ -231,11 +237,19 @@ Component({
 	 * 组件的方法列表
 	 */
 	methods: {
-		reload: async function () {
-			await this._getList(1);
+		reload: function () { this.setData({ updatesPending: false }); this.bindTopTap(); return this._getList(1); },
+		refresh: function () {
+			if (this.data._dataList && this.data._dataList.page > 1 && this._scrollTop > 400) {
+				if (!this.data.updatesPending) this.setData({ updatesPending: true });
+				return Promise.resolve();
+			}
+			if (this._listRequest) { this._refreshAfter = true; return this._listRequest.promise; }
+			return this._getList(1, { silent: true });
 		},
 		// 数据列表
-		_getList: async function (page) {
+		_getList: async function (page, options = {}) {
+			if (this._detached || this._pageVisible === false || !this.data.route) return;
+			if (page > 1 && (!this.data._dataList || this._listRequest)) return;
 			let params = {
 				page: page,
 				...this.data._params
@@ -257,34 +271,62 @@ Component({
 				params.sortVal = this.data.sortVal;
 			}
 
+			const requestKey = this.data.route + ':' + JSON.stringify(params);
+			if (this._listRequest && this._listRequest.key === requestKey)
+				return this._listRequest.promise;
+
+			const queryKey = this.data.route + ':' + JSON.stringify({ ...params, page: 1 });
+			if (this._queryKey && this._queryKey !== queryKey) {
+				this.data._dataList = null;
+				this.triggerEvent('list', { dataList: null, type: this.data.type });
+			}
+			this._queryKey = queryKey;
+			const request = { key: requestKey, generation: this._generation = (this._generation || 0) + 1 };
+			request.promise = this._requestList(page, params, options, request.generation).finally(() => {
+				if (this._listRequest !== request) return;
+				this._listRequest = null;
+				if (this._refreshAfter && !this._detached && this._pageVisible !== false) {
+					this._refreshAfter = false;
+					this._getList(1, { silent: true });
+				}
+			});
+			this._listRequest = request;
+			return request.promise;
+		},
+
+		_requestList: async function (page, params, options = {}, generation) {
+			const isCurrent = () => !this._detached && this._pageVisible !== false && generation === this._generation;
+
 			//if (page == 1 && !this.data._dataList) { TODO???
-			if (page == 1) {
+			if (page == 1 && !this.data._dataList) {
 				this.triggerEvent('list', {
 					dataList: null //第一页面且没有数据提示加载中
 				});
 			}
 
 
-			let opt = {};
-			//if (this.data._dataList && this.data._dataList.list && this.data._dataList.list.length > 0)
-			opt.title = 'bar';
-			await cloudHelper.dataList(this, '_dataList', this.data.route, params, opt);
+			this.setData({ listLoading: true, listError: '' });
+			const result = await cloudHelper.dataList(this, '_dataList', this.data.route, params, { hint: false, isCurrent });
+			if (!isCurrent() || result && result.applied === false) return;
+			this.setData({ listLoading: false, listError: result && result.ok === false ? '暂时无法更新，点击重试' : '' });
 
 			this.triggerEvent('list', { //TODO 考虑改为双向数据绑定model
+				type: this.data.type,
 				sortType: this.data.sortType,
 				dataList: this.data._dataList
 			});
 
-			if (this.data.isCache)
+			if (this.data.isCache && (!result || result.ok))
 				PublicBiz.setCacheList(this.data.type);
-			if (page == 1) this.bindTopTap();
+			if (page == 1 && !options.silent && !this.data._dataList) this.bindTopTap();
+			return result;
 
 
 		},
 
 		bindReachBottom: function () {
 			// 上拉触底 
-			this._getList(this.data._dataList.page + 1);
+			if (this.data._dataList && !this._listRequest) return this._getList(this.data._dataList.page + 1);
 		},
 
 		bindPullDownRefresh: async function () {
@@ -292,10 +334,8 @@ Component({
 			this.setData({
 				refresherTriggered: true
 			});
-			await this._getList(1);
-			this.setData({
-				refresherTriggered: false
-			});
+			try { await this._getList(1); }
+			finally { if (!this._detached) this.setData({ refresherTriggered: false }); }
 
 		},
 
@@ -304,6 +344,9 @@ Component({
 		 * @param {*} e 
 		 */
 		bindScrollTop: function (e) {
+			this._scrollTop = Number(e.detail.scrollTop) || 0;
+			if (this._scrollTop < 100 && this.data.updatesPending) { this.setData({ updatesPending: false }); this.refresh(); }
+			if (!!this.data.topShow === (e.detail.scrollTop > 100)) return;
 			if (e.detail.scrollTop > 100) {
 				this.setData({
 					topShow: true

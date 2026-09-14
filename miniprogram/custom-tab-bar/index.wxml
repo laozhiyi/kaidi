@@ -1,6 +1,6 @@
 <view class="custom-tab-bar">
 	<view wx:for="{{list}}" wx:key="pagePath" class="tab-item {{selected === index ? 'selected' : ''}}" data-index="{{index}}" bindtap="switchTab">
-		<view class="tab-icon {{selected === index ? item.selectedIcon : item.icon}}"></view>
+		<view class="tab-icon-wrap"><view class="tab-icon {{selected === index ? item.selectedIcon : item.icon}}"></view><view wx:if="{{index===2 && unreadCount>0}}" class="tab-unread-dot" aria-label="有未读消息"></view></view>
 		<view class="tab-text">{{item.text}}</view>
 	</view>
 </view>

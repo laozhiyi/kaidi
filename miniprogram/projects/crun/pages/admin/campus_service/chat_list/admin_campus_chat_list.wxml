@@ -1,23 +1,13 @@
-<block wx:if="{{isAdmin&&isLoad}}">
-	<cmpt-comm-list isCache="{{false}}" source="admin" type="admin-campus-chat-list" search="{{search||''}}" _menus="{{sortMenus}}" route="admin/campus_chat_list" sortMenusDefaultIndex="0" topBottom="50" placeholder="搜索校区、负责人或用户" bind:list="bindCommListCmpt">
-		<view class="campus-toolbar"><picker range="{{campusOptions}}" value="{{campusIndex}}" bindchange="bindCampusChange"><view>{{campusOptions[campusIndex]}}<text class="icon-unfold margin-left-s"></text></view></picker><view bindtap="url" data-url="../list/admin_campus_service_list">校区客服管理</view></view>
-		<view class="admin-comm-list">
-			<view wx:if="{{dataList && dataList.total}}" class="load text-grey">共有{{dataList.total}}条会话</view>
-			<view class="item" wx:for="{{dataList.list}}" wx:key="CSM_SESSION_ID" bindtap="url" data-url="../chat_detail/admin_campus_chat_detail?sessionId={{item.CSM_SESSION_ID}}">
-				<view class="no">{{index+1}}</view>
-				<view class="header">
-					<view class="left text-cut">{{item.CS_CAMPUS}} · {{item.CS_NAME}}</view>
-					<view class="right"><text wx:if="{{item.unread}}" class="text-orange">{{item.unread}}条未读</text><text wx:else class="text-green">已读</text></view>
-				</view>
-				<view class="info">
-					<view class="info-item"><view class="title">用户</view><view class="mao">：</view><view class="content">{{item.CSM_USER_ID}}</view></view>
-					<view class="info-item"><view class="title">最新消息</view><view class="mao">：</view><view class="content">{{item.lastContent}}</view></view>
-					<view class="info-item"><view class="title">更新时间</view><view class="mao">：</view><view class="content">{{item.lastTime}}</view></view>
-					<view class="oprt"><view class="btn round">查看对话</view></view>
-				</view>
-			</view>
-		</view>
-		<import src="../../../../../../tpls/public/list_load_tpl.wxml" />
-		<template is="listLoadTpl" data="{{dataList,skin:'text-grey'}}" />
-	</cmpt-comm-list>
-</block>
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 管理中心</text><text>/</text><text>客服会话</text></view>
+  <view class="ac-heading"><view><view class="ac-title">客服会话</view><view class="ac-subtitle">查看校区咨询，及时回复用户消息</view></view></view>
+  <view class="ac-toolbar"><picker range="{{campusOptions}}" value="{{campusIndex}}" bindchange="bindCampusChange"><view class="ac-filter-value"><text>{{campusOptions[campusIndex]}}</text><text>⌄</text></view></picker><text class="ac-link" bindtap="bindNavigate" data-key="services">校区客服配置 ›</text></view>
+  <include src="../../catalog_filters.wxml" />
+  <view wx:for="{{list}}" wx:key="_id" class="ac-card ac-conversation" bindtap="url" data-url="../chat_detail/admin_campus_chat_detail?sessionId={{item.CSM_SESSION_ID}}">
+    <view class="ac-entry-head"><view class="ac-avatar"><text class="icon-message"></text></view><view class="ac-entry-main"><view class="ac-entry-title">{{item.CS_CAMPUS}}客服</view><view class="ac-entry-meta">{{item.CS_NAME || '校区客服'}}</view></view><text class="ac-badge {{item.unread?'red':'muted'}}">{{item.unread?item.unread+' 条未读':'已读'}}</text></view>
+    <view class="ac-message-preview ac-clamp">{{item.lastContent || '暂无消息内容'}}</view>
+    <view class="ac-conversation-user"><text class="icon-profile"></text><text class="ac-id">{{item.CSM_USER_ID}}</text></view>
+    <view class="ac-order-foot"><text>{{item.lastTime}}</text><text class="ac-link">查看对话 ›</text></view>
+  </view>
+  <include src="../../catalog_footer.wxml" />
+</view>

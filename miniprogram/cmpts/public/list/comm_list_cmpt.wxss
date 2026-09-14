@@ -158,3 +158,4 @@
 .search-date .search-date-picker {
 	width: 150rpx;
 }
+.list-retry { padding: 20rpx 28rpx; color: #9a6500; background: #fff6df; font-size: 26rpx; text-align: center; }

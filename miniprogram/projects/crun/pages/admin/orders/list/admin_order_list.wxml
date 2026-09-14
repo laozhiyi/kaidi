@@ -1,0 +1,20 @@
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-eyebrow">业务管理 / 订单</view>
+  <view class="ac-heading"><view><view class="ac-title">订单管理</view><view class="ac-subtitle">查询订单，跟进配送与处理异常</view></view><button class="ac-secondary ac-small" bindtap="bindExport">导出订单</button></view>
+  <view class="ac-search"><text class="icon-search ac-search-icon"></text><input value="{{searchDraft}}" bindinput="bindInput" bindconfirm="bindSearch" confirm-type="search" maxlength="50" placeholder="搜索订单编号或任务名称" /><button class="ac-secondary ac-small" bindtap="bindSearch">搜索</button></view>
+  <scroll-view scroll-x class="ac-tabs"><view wx:for="{{statuses}}" wx:key="value" class="ac-tab {{status===item.value?'active':''}}" bindtap="bindStatus" data-value="{{item.value}}">{{item.label}}</view></scroll-view>
+  <view class="ac-filter-row"><picker class="ac-filter" range="{{campuses}}" value="{{campusIndex}}" bindchange="bindCampus"><view class="ac-filter-value"><text>{{campuses[campusIndex]}}</text><text>⌄</text></view></picker><picker class="ac-filter" range="{{sortLabels}}" value="{{sortIndex}}" bindchange="bindSort"><view class="ac-filter-value"><text>{{sortLabels[sortIndex]}}</text><text>⌄</text></view></picker></view>
+  <view wx:if="{{campusError}}" class="ac-notice amber" bindtap="loadCampuses">校区选项未能读取，点击重试；仍可查询订单。</view>
+  <view class="ac-filter-summary"><view class="ac-overdue"><switch checked="{{overdue}}" bindchange="bindOverdue" color="#2863db" /> <text>仅看超时</text></view><text class="ac-link" bindtap="bindReset">重置筛选</text></view>
+  <view class="ac-filter-summary"><text>{{loading?'正在查询…':'共 '+total+' 笔订单'}}</text><text wx:if="{{search}}">关键词：{{search}}</text></view>
+  <view wx:if="{{error}}" class="ac-card ac-state"><view class="ac-state-title">订单未能更新</view><view class="ac-muted">{{error}}</view><button class="ac-secondary ac-small" bindtap="bindRetry">重试</button></view>
+  <view wx:if="{{!loading && !error && !list.length}}" class="ac-card ac-state"><view class="ac-empty-icon"><text class="icon-form"></text></view><view class="ac-state-title">没有符合条件的订单</view><view class="ac-muted">可以更换关键词或调整筛选条件</view><button class="ac-secondary ac-small" bindtap="bindReset">查看全部订单</button></view>
+  <view wx:for="{{list}}" wx:key="_id" class="ac-card" data-id="{{item._id}}" bindtap="bindDetail">
+    <view class="ac-order-head"><text class="ac-order-id">{{item.orderNo}}</text><text class="ac-badge {{item.tone}}">{{item.statusLabel}}</text></view>
+    <view class="ac-order-main"><view><view class="ac-order-title">{{item.MAIL_OBJ.title || '快递代取'}}</view><view class="ac-order-meta">{{item.MAIL_OBJ.campus || '未标注校区'}} · {{item.MAIL_OBJ.num || 0}} 件 <text wx:if="{{item.MAIL_OBJ.urgent}}" class="ac-text-red">· 加急</text></view></view><view class="ac-price">¥{{item.priceText}}</view></view>
+    <view wx:if="{{item.overdue}}" class="ac-order-warning">履约已超时 · 预计 {{item.dueText}}</view>
+    <view class="ac-order-foot"><text>{{item.createdText}} 发布</text><text class="ac-link">订单详情 ›</text></view>
+  </view>
+  <view class="ac-list-footer"><button wx:if="{{hasMore}}" class="ac-secondary" bindtap="bindMore" loading="{{loading}}" disabled="{{loading}}">加载更多</button><text wx:if="{{list.length}}">已显示 {{list.length}} / {{total}} 笔{{!hasMore && !loading?' · 已到底':''}}</text><text wx:elif="{{loading}}">正在读取订单…</text></view>
+  <admin-nav active="orders" />
+</view>

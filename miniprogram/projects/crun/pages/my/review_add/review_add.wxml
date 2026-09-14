@@ -1,11 +1,18 @@
 ﻿<view class="review-add-page">
-  <view class="review-add-card">
-    <view class="review-add-title">评价本次服务</view>
-    <view class="review-add-sub">你的评价会帮助校园跑腿持续改进</view>
+  <view wx:if="{{loading && !context}}" class="review-add-state">正在读取订单评价信息…</view>
+  <view wx:if="{{error}}" class="review-add-state"><view>{{error}}</view><button wx:if="{{orderId}}" class="review-submit" bindtap="load" loading="{{loading}}" disabled="{{loading}}">重新加载</button><button class="review-secondary" bindtap="bindOrders">查看已完成订单</button></view>
+  <view wx:if="{{context && !error}}" class="review-add-card">
+    <view class="review-add-title">{{context.reviewed ? '我给出的评价' : '评价订单对方'}}</view>
+    <view class="review-target-card"><view>{{context.targetName}} <text>{{context.targetRole}}</text></view><view class="review-add-sub">{{context.orderTitle}}</view></view>
+    <view class="review-add-sub">{{context.reviewed ? '每人每单可评价一次，评价已记录' : '请根据真实合作体验评分，评价将影响对方信誉分'}}</view>
     <view class="score-row">
       <text wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="score-star {{item<=score?'active':''}}" data-score="{{item}}" bindtap="bindScore">★</text>
     </view>
-    <textarea class="review-input" maxlength="300" placeholder="说说这次服务的体验（选填）" value="{{content}}" bindinput="bindContent"></textarea>
-    <button class="review-submit" bindtap="bindSubmit" loading="{{busy}}" disabled="{{busy}}">提交评价</button>
+    <view class="review-score-label">{{score ? scoreLabels[score] : '请选择星级'}}</view>
+    <view wx:if="{{context.reviewed}}" class="review-saved-content">{{content || '未填写文字评价'}}</view>
+    <textarea wx:else class="review-input" maxlength="300" placeholder="说说这次合作的体验（选填）" value="{{content}}" bindinput="bindContent" disabled="{{busy || loading}}"></textarea>
+    <view class="review-add-rule">1～5 星分别计 -4 / -2 / 0 / +2 / +4 分</view>
+    <button wx:if="{{context.canReview}}" class="review-submit" bindtap="bindSubmit" loading="{{busy}}" disabled="{{busy || loading || !score}}">提交评价</button>
+    <view wx:elif="{{context.review && context.review.time}}" class="review-add-sub">评价时间：{{context.review.time}}</view>
   </view>
 </view>

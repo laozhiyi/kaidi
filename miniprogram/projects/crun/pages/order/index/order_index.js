@@ -4,6 +4,8 @@ const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
 const PublicBiz = require('../../../../../comm/biz/public_biz.js');
+const Favorites = require('../../../biz/order_fav_biz.js');
+const OrderSync = require('../../../biz/order_sync_biz.js');
 
 /**
  * 快递代取 - 接单/订单 Tab 页
@@ -43,6 +45,7 @@ Page({
 
 		// 列表数据（cmpt-comm-list 通过 bind:list 回填）
 		dataList: null,
+		favoriteBusyId: '', favoriteSyncError: false, acceptingId: '', actionBusyId: '', orderSyncError: false,
 	},
 
 	onLoad: async function (options) {
@@ -57,14 +60,16 @@ Page({
 
 		this.setData({ isLoad: true });
 
-		// 每次进入都清掉缓存列表，强制刷新一次
-		PublicBiz.removeCacheList('order-mail-take');
-		PublicBiz.removeCacheList('order-mail-mine');
-		PublicBiz.removeCacheList('order-mail-posted');
-		PublicBiz.removeCacheList('order-mail-done');
 	},
 
 	onShow: function () {
+		this._visible = true;
+		const identity = PassportBiz.getUserId ? PassportBiz.getUserId() : '';
+		if (this._dataListUser !== undefined && this._dataListUser !== identity) {
+			this._tabSnapshots = new Map(); this.setData({ dataList: null });
+		}
+		if (this._stopOrderSync) this._stopOrderSync();
+		this._stopOrderSync = OrderSync.subscribe(() => this._syncOrders());
 		const tabBar = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
 		if (tabBar) tabBar.setData({ selected: 1 });
 		const pendingTab = wx.getStorageSync('crun-order-tab');
@@ -72,11 +77,57 @@ Page({
 			wx.removeStorageSync('crun-order-tab');
 			const idx = Number(pendingTab);
 			if (idx >= 0 && idx <= 3 && idx !== this.data.tabIndex) {
-				this.setData({ tabIndex: idx, dataList: null }, () => this._reloadActiveList());
+				this.bindTabTap({ currentTarget: { dataset: { idx } } });
 				return;
 			}
 		}
-		this._reloadActiveList();
+		this._startFavoriteSync();
+		if (this._shownBefore) this._syncOrders();
+		this._shownBefore = true;
+	},
+	onHide: function () { this._visible = false; this._stopFavoriteSync(); if (this._stopOrderSync) this._stopOrderSync(); this._stopOrderSync = null; },
+	onUnload: function () { this._unloaded = true; this.onHide(); },
+	_stopFavoriteSync: function () { if (this._favoriteWatcher) this._favoriteWatcher.stop(); this._favoriteWatcher = null; },
+	_startFavoriteSync: function () {
+		this._stopFavoriteSync();
+		if (!this._visible || this.data.tabIndex !== 0) return;
+		this._favoriteWatcher = Favorites.watch(
+			() => (this.data.dataList && this.data.dataList.list || []).map(order => order._id),
+			rows => this._applyFavoriteStats(rows),
+			() => this.setData({ favoriteSyncError: true })
+		);
+		return this._favoriteWatcher.refresh();
+	},
+	_applyFavoriteStats: function (rows) {
+		if (!this._visible || this.data.tabIndex !== 0) return;
+		const updates = new Map(rows.map(row => [row.id, row]));
+		const dataList = this.data.dataList;
+		const patch = { favoriteSyncError: false };
+		let changed = !!this.data.favoriteSyncError;
+		if (dataList && Array.isArray(dataList.list)) patch.dataList = { ...dataList, list: dataList.list.map(order => {
+			const stat = updates.get(order._id);
+			if (stat && (order.MAIL_FAV_CNT !== stat.count || order.MAIL_IS_FAV !== !!stat.isFav || order.MAIL_CAN_FAV !== !!stat.available)) changed = true;
+			return stat ? { ...order, MAIL_FAV_CNT: stat.count, MAIL_IS_FAV: !!stat.isFav, MAIL_CAN_FAV: !!stat.available } : order;
+		}) };
+		if (changed) this.setData(patch);
+	},
+	bindRefreshFavorites: function () { if (this._favoriteWatcher) return this._favoriteWatcher.refresh(); },
+	bindFavoriteTap: async function (e) {
+		const id = e.currentTarget.dataset.id;
+		const order = (this.data.dataList && this.data.dataList.list || []).find(row => row._id === id);
+		if (!order || this.data.favoriteBusyId || (!order.MAIL_IS_FAV && order.MAIL_CAN_FAV === false)) return;
+		this.setData({ favoriteBusyId: id });
+		if (this._favoriteWatcher) this._favoriteWatcher.invalidate();
+		try {
+			if (!await PassportBiz.loginMustCancelWin(this) || !this._visible) return;
+			const result = await Favorites.setFavorite(id, !order.MAIL_IS_FAV);
+			if (this._favoriteWatcher) this._favoriteWatcher.invalidate();
+			if (this._visible) {
+				this._applyFavoriteStats([result]);
+				pageHelper.showSuccToast(result.isFav ? '已收藏订单' : '已取消收藏');
+			}
+		} catch (error) { if (this._visible) Ops.error(error); }
+		finally { if (!this._unloaded) this.setData({ favoriteBusyId: '' }); }
 	},
 
 	_reloadActiveList: function () {
@@ -84,21 +135,37 @@ Page({
 		const ids = ['#cmpt-list-take', '#cmpt-list-mine', '#cmpt-list-posted', '#cmpt-list-done'];
 		const list = this.selectComponent(ids[this.data.tabIndex]);
 		if (list && typeof list.reload === 'function') {
-			list.reload();
+			return list.reload();
 		}
+	},
+	_syncOrders: async function () {
+		if (!this._visible) return;
+		const tab = this.data.tabIndex;
+		const list = this.selectComponent(['#cmpt-list-take', '#cmpt-list-mine', '#cmpt-list-posted', '#cmpt-list-done'][tab]);
+		if (!list) return;
+		const result = await (typeof list.refresh === 'function' ? list.refresh() : list.reload());
+		if (this._visible && this.data.tabIndex === tab) this.setData({ orderSyncError: !!(result && result.ok === false) });
+		return result;
 	},
 
 	onPullDownRefresh: async function () {
-		wx.stopPullDownRefresh();
+		try { await this._reloadActiveList(); await this.bindRefreshFavorites(); }
+		finally { wx.stopPullDownRefresh(); }
 	},
 
 	/**
 	 * cmpt-comm-list 回传列表数据
 	 */
 	bindCommListCmpt: function (e) {
+		if (!this._visible) return;
+		const type = e.detail && e.detail.type;
+		if (type && type !== ['order-mail-take', 'order-mail-mine', 'order-mail-posted', 'order-mail-done'][this.data.tabIndex]) return;
         if (e.detail && e.detail.dataList && Array.isArray(e.detail.dataList.list)) {
+			this._dataListUser = PassportBiz.getUserId ? PassportBiz.getUserId() : '';
             const dataList = Object.assign({}, e.detail.dataList, { list: e.detail.dataList.list.map(order => this._decorateOrder(order)) });
             this.setData({ dataList });
+			// Older cached lists do not contain the counts included by mail/list.
+			if (e.detail.dataList.list.some(order => order.MAIL_FAV_CNT === undefined)) this.bindRefreshFavorites();
             if (e.detail.sortType) this.setData({ sortType: e.detail.sortType });
             return;
         }
@@ -111,20 +178,31 @@ Page({
         if (!packages.length && obj.code) {
             packages = String(obj.code).split(/\r?\n/).filter(Boolean).map(code => ({ code }));
         }
-        return Object.assign({}, order, { packageProofs: packages.map(item => ({ code: item.code || '无取件码', noteLabel: item.note ? '有备注' : '无备注' })) });
+		return Object.assign({}, order, { MAIL_FAV_CNT: Number(order.MAIL_FAV_CNT) || 0, MAIL_IS_FAV: !!order.MAIL_IS_FAV, packageProofs: packages.map(item => ({ pickupPoint: item.pickupPoint || obj.address1 || '', code: item.code || '查看取件截图', noteLabel: item.note ? '有备注' : '无备注' })) });
     },
+	_snapshotKey: function (tab) {
+		const user = PassportBiz.getUserId ? PassportBiz.getUserId() : '';
+		return user + ':' + tab + ':' + JSON.stringify(this.data.listParams[['take', 'mine', 'posted', 'done'][tab]]);
+	},
 
 	/**
 	 * 顶部 tab 切换
 	 */
 	bindTabTap: function (e) {
 		const idx = Number(e.currentTarget.dataset.idx);
-		if (idx === this.data.tabIndex) return;
-		// 切换分段时清掉旧列表，避免新组件加载期间短暂显示上一分段内容。
+		if (!Number.isInteger(idx) || idx < 0 || idx > 3 || idx === this.data.tabIndex) return;
+		const snapshots = this._tabSnapshots || (this._tabSnapshots = new Map());
+		const identity = PassportBiz.getUserId ? PassportBiz.getUserId() : '';
+		if (this.data.dataList && !this.data.dataList.error && this._dataListUser === identity) snapshots.set(this._snapshotKey(this.data.tabIndex), { at: Date.now(), value: this.data.dataList });
+		const saved = snapshots.get(this._snapshotKey(idx));
+		// Show this tab's recent data immediately; its component still fetches the
+		// current server state. Snapshots are scoped by identity and filters.
 		this.setData({
 			tabIndex: idx,
-			dataList: null,
+			dataList: saved && Date.now() - saved.at < 60000 ? saved.value : null,
 		});
+		if (snapshots.size > 12) snapshots.delete(snapshots.keys().next().value);
+		this._startFavoriteSync();
 	},
 
 	_buildTakeParams: function (sortVal, phaseVal) {
@@ -140,7 +218,7 @@ Page({
 
 		if (phaseVal) {
 			params.whereEx = Object.assign({}, params.whereEx, {
-				'MAIL_OBJ.address1': ['like', phaseVal],
+				'MAIL_OBJ.address2': ['like', phaseVal],
 			});
 		}
 		return params;
@@ -214,31 +292,27 @@ Page({
 	bindAcceptTap: async function (e) {
 		const id = e.currentTarget.dataset.id;
 		if (!id || this._accepting) return;
-
-		if (!await PassportBiz.loginMustCancelWin(this)) return;
-
-		const confirm = await pageHelper.showConfirm('确认接单后请尽快前往快递点取件，是否继续？');
-		if (!confirm || this._accepting) return;
-
+		this._accepting = true;
+		this.setData({ acceptingId: id });
 		try {
-			wx.showLoading({ title: '接单中...' });
-			this._accepting=true;
+			if (!await PassportBiz.loginMustCancelWin(this) || !this._visible) return;
+			const confirm = await pageHelper.showConfirm('确认接单后请尽快前往快递点取件，是否继续？');
+			if (!confirm || !this._visible) return;
 			const res = {data:await Ops.command('mail/accept', { id })};
-			wx.hideLoading();
+			if (!this._visible) return;
 
 			if (res && res.data && res.data.id) {
 				pageHelper.showSuccToast('接单成功');
 				PublicBiz.removeCacheList('order-mail-take');
-				setTimeout(() => wx.redirectTo({
+				wx.navigateTo({
 					url: pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id=' + id),
-				}), 700);
+				});
 			} else {
 				pageHelper.showNoneToast('手慢了，订单已被接走');
 			}
 		} catch (err) {
-			wx.hideLoading();
-			Ops.error(err);
-		}finally{this._accepting=false;}
+			if (this._visible) { Ops.error(err); await this._syncOrders(); }
+		} finally { this._accepting = false; if (!this._unloaded) this.setData({ acceptingId: '' }); }
 	},
 
 	/** 为尚未支付的自有订单发起支付，并在成功后刷新发布列表。 */
@@ -265,6 +339,7 @@ Page({
 		const action = e.currentTarget.dataset.action;
 		if (!id || !['pickup', 'deliver'].includes(action) || this._orderActionBusy) return;
 		this._orderActionBusy = true;
+		this.setData({ actionBusyId: id });
 		try {
 			const message = action === 'pickup' ? '确认已经从快递点取到该包裹吗？' : '确认已经将包裹送到收件地址吗？';
 			if (!await pageHelper.showConfirm(message)) return;
@@ -275,8 +350,9 @@ Page({
 			await Ops.command('mail/pickup', { id });
 			pageHelper.showSuccToast('已更新为已取件');
 			PublicBiz.removeCacheList('order-mail-mine');
-			this.setData({ dataList: null }, () => this._reloadActiveList());
-		} catch (err) { Ops.error(err); } finally { this._orderActionBusy = false; }
+			await this._syncOrders();
+		} catch (err) { if (this._visible) { Ops.error(err); await this._syncOrders(); } }
+		finally { this._orderActionBusy = false; if (!this._unloaded) this.setData({ actionBusyId: '' }); }
 	},
 
 	bindComplaintTap: function (e) {
@@ -286,13 +362,10 @@ Page({
 
 	bindOverTap: function (e) { this.bindDetailTap(e); },
 
-	/**
-	 * 跳转到发布订单
-	 */
-	bindPublishTap: function () {
-		wx.navigateTo({
-			url: '/projects/crun/pages/mail/add/mail_add',
-		});
+	bindReviewTap: function (e) {
+		const id = e.currentTarget.dataset.id;
+		const order = (this.data.dataList && this.data.dataList.list || []).find(row => row._id === id);
+		if (order && (order.MAIL_CAN_REVIEW || order.MAIL_REVIEWED)) wx.navigateTo({ url: '/projects/crun/pages/my/review_add/review_add?orderId=' + encodeURIComponent(id) });
 	},
 
 	/**

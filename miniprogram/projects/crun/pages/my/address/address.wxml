@@ -1,1 +1,24 @@
-<view wx:if="{{isLoad}}" class="profile-page"><view class="profile-hero"><view class="profile-title">常用地址</view><view class="profile-desc">发布订单时可快速选择地址</view></view><view class="profile-section"><view class="profile-section-title-row"><view class="profile-section-title">地址</view><button class="profile-add-button" bindtap="bindAddAddress">+ 添加</button></view><view wx:if="{{addresses.length}}" class="profile-item-list"><view wx:for="{{addresses}}" wx:key="index" class="profile-item-card"><view class="profile-item-main"><view class="profile-item-title">{{item.label}} <text wx:if="{{item.isDefault}}" class="default">默认</text></view><view class="profile-item-detail">{{item.detail}}</view></view><view class="profile-item-actions"><text bindtap="bindSetDefaultAddress" data-index="{{index}}">设默认</text><text bindtap="bindEditAddress" data-index="{{index}}">编辑</text><text class="danger" bindtap="bindDeleteAddress" data-index="{{index}}">删除</text></view></view></view><view wx:else class="profile-empty">暂无常用地址</view><view wx:if="{{addressEditorVisible}}" class="profile-editor"><input value="{{addressDraft.label}}" placeholder="地址名称" bindinput="bindAddressInput" data-field="label"/><input value="{{addressDraft.detail}}" placeholder="详细地址" bindinput="bindAddressInput" data-field="detail"/><view class="profile-editor-actions"><button bindtap="bindCancelAddress">取消</button><button class="primary" bindtap="bindSaveAddress">保存</button></view></view></view><button class="save" bindtap="bindSubmitTap">保存地址</button><view class="tab-bar-placeholder"></view></view>
+<view wx:if="{{isLoad}}" class="profile-page">
+  <view class="profile-hero"><view class="profile-title">常用地址</view><view class="profile-desc">选择所属期数，填写楼栋和门牌号</view></view>
+  <view class="profile-section">
+    <view class="profile-section-title-row"><view class="profile-section-title">地址</view><button class="profile-add-button" bindtap="bindAddAddress">+ 添加</button></view>
+    <view wx:if="{{addresses.length}}" class="profile-item-list">
+      <view wx:for="{{addresses}}" wx:key="index" class="profile-item-card">
+        <view class="profile-item-main"><view class="profile-item-title">{{item.label}} <text wx:if="{{item.isDefault}}" class="default">默认</text></view><view class="profile-item-detail">{{item.detail}}</view></view>
+        <view class="profile-item-actions"><text bindtap="bindSetDefaultAddress" data-index="{{index}}">设默认</text><text bindtap="bindEditAddress" data-index="{{index}}">编辑</text><text class="danger" bindtap="bindDeleteAddress" data-index="{{index}}">删除</text></view>
+      </view>
+    </view>
+    <view wx:else class="profile-empty">暂无常用地址</view>
+    <view wx:if="{{addressEditorVisible}}" class="profile-editor">
+      <view class="address-editor-title">{{editingAddressIndex >= 0 ? '编辑地址' : '添加地址'}}</view>
+      <view class="address-field-label">所属期数 <text>*</text></view>
+      <view class="address-phase-options"><button wx:for="{{addressPhaseOptions}}" wx:key="*this" class="address-phase {{addressDraft.label === item ? 'selected' : ''}}" data-phase="{{item}}" bindtap="bindAddressPhase" disabled="{{collectionSaving}}">{{item}}</button></view>
+      <view class="address-field-label">详细地址 <text>*</text></view>
+      <textarea class="address-detail" value="{{addressDraft.detail}}" placeholder="详细地址，例如：3栋201室" auto-height maxlength="180" bindinput="bindAddressInput" data-field="detail" disabled="{{collectionSaving}}" />
+      <view class="profile-editor-actions"><button bindtap="bindCancelAddress" disabled="{{collectionSaving}}">取消</button><button class="primary" bindtap="bindSaveAddress" loading="{{collectionSaving}}" disabled="{{collectionSaving}}">{{collectionSaving ? '保存中' : '保存并关闭'}}</button></view>
+    </view>
+  </view>
+  <view wx:if="{{loadError}}" class="profile-save-error">{{loadError}}<button class="profile-retry" bindtap="bindRetryLoad">重新加载</button></view>
+  <view wx:if="{{saveError}}" class="profile-save-error">{{saveError}}</view>
+  <view class="tab-bar-placeholder"></view>
+</view>

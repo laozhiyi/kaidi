@@ -18,7 +18,7 @@ function deferred() {
 	return { promise, resolve, reject };
 }
 
-function mount(admin = false) {
+function mount(admin = false, storage = new Map()) {
 	const requests = [], submits = [], modals = [], timers = new Map();
 	let sequence = 0, stopped = 0;
 	const cloud = {
@@ -40,7 +40,7 @@ function mount(admin = false) {
 			if (name.endsWith('/page_helper.js')) return { showModal: text => modals.push(text) };
 			throw new Error('Unexpected dependency ' + name);
 		},
-		wx: { stopPullDownRefresh: () => { stopped++; } },
+		wx: { stopPullDownRefresh: () => { stopped++; }, getStorageSync:key=>storage.get(key),setStorageSync:(key,value)=>storage.set(key,structuredClone(value)) },
 		setTimeout: (callback, ms) => { const key = ++sequence; timers.set(key, { callback, ms }); return key; },
 		clearTimeout: key => timers.delete(key)
 	};
@@ -242,6 +242,16 @@ test('send preserves a retyped identical draft and keeps failed-send content', a
 	assert.equal(h.page.data.content, '原文');
 	assert.equal(h.modals.at(-1), '网络不可用');
 	assert.equal(h.page.data.isSending, false);
+});
+
+test('a lost chat reply reuses its request id after reopening the conversation',async()=>{
+ const storage=new Map(), first=mount(false,storage);await first.show();
+ first.cloud.send=async()=>{throw Error('response lost');};
+ first.page.bindContentInput({detail:{value:'请确认订单'}});await first.page.bindSendTap();
+ const requestId=first.submits[0].params.requestId;first.page.onUnload();
+ const second=mount(false,storage);await second.show();second.page.bindContentInput({detail:{value:'请确认订单'}});
+ await second.page.bindSendTap();assert.equal(second.submits[0].params.requestId,requestId);
+ assert.equal(second.page.data.content,'');assert.equal([...storage.values()][0].length,0);second.page.onUnload();
 });
 
 test('send completing while hidden does not restart polling or fetch messages', async () => {

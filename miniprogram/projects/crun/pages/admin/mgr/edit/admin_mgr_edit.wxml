@@ -1,40 +1,17 @@
-<view wx:if="{{isLoad===null}}" class="margin-top load notexist text-l text-admin"></view>
-<view wx:if="{{isLoad===false}}" class="margin-top load loading text-l text-admin"></view>
-
-<view class="main-admin" wx:if="{{isLoad&&isAdmin}}">
-	<!-- edit form begin -->
-	<view class="form-box shadow">
-		<view class="form-group">
-			<view class="title must">登录账号</view>
-			<input maxlength="30" placeholder="请填写登录账号" placeholder-class="phc" model:value="{{formName}}" focus="{{formNameFocus}}"></input>
-		</view>
-		<view wx:if="{{formNameFocus}}" class="hint-desc error">{{formNameFocus}}</view>
-
-		<view class="form-group">
-			<view class="title must">姓名</view>
-			<input maxlength="30" placeholder="请填写管理员姓名" model:value="{{formDesc}}" focus="{{formDescFocus}}"></input>
-		</view>
-		<view wx:if="{{formDescFocus}}" class="hint-desc error">{{formDescFocus}}</view>
-
-		<view class="form-group">
-			<view class="title">手机</view>
-			<input maxlength="11" placeholder="请填写手机号码" model:value="{{formPhone}}" focus="{{formPhoneFocus}}"></input>
-		</view>
-		<view wx:if="{{formPhoneFocus}}" class="hint-desc error">{{formPhoneFocus}}</view>
-
-	</view>
-	<view class="form-box shadow">
-		<view class="form-group text-orange">
-			<text class="icon-info">不修改密码则保持以下为空</text>
-		</view>  
-		<view class="form-group">
-			<view class="title must">新密码</view>
-			<input maxlength="128" type="password" placeholder="请输入新密码" model:value="{{formPassword}}" focus="{{formPasswordFocus}}"></input>
-		</view>
-		<view wx:if="{{formPasswordFocus}}" class="hint-desc error">{{formPasswordFocus}}</view>
-
-	</view>
-
-	<button bindtap="bindFormSubmit" class="btn-admin margin-top">确定修改</button>
-
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 管理员账号</text><text>/</text><text>编辑管理员</text></view>
+  <view class="ac-heading"><view><view class="ac-title">编辑管理员</view><view class="ac-subtitle">维护管理员身份与登录信息</view></view></view>
+  <view wx:if="{{loading}}" class="ac-card ac-state ac-muted">正在读取管理员资料…</view>
+  <view wx:if="{{error}}" class="ac-card ac-state"><view>{{error}}</view><button class="ac-secondary ac-small" bindtap="load">重新读取</button></view>
+  <view wx:if="{{notFound}}" class="ac-card ac-state"><view class="ac-state-title">管理员账号不存在</view><button class="ac-secondary ac-small" bindtap="bindBack">返回账号列表</button></view>
+  <block wx:if="{{isLoad}}">
+    <view class="ac-card"><view class="ac-card-title"><view class="ac-icon"><text class="icon-profile"></text></view><view><view class="ac-section-title">基本资料</view><view class="ac-card-desc">更新账号名称与联系方式</view></view></view>
+    <view class="ac-form-field"><view class="ac-label">登录账号<text class="ac-required">*</text></view><input class="ac-input" model:value="{{formName}}" placeholder="输入 5～30 位登录账号" placeholder-class="ac-placeholder" disabled="{{busy}}" focus="{{formNameFocus}}" maxlength="30" /><view wx:if="{{formNameFocus}}" class="ac-field-error">{{formNameFocus}}</view></view>
+    <view class="ac-form-field"><view class="ac-label">管理员姓名<text class="ac-required">*</text></view><input class="ac-input" model:value="{{formDesc}}" placeholder="输入管理员姓名" placeholder-class="ac-placeholder" disabled="{{busy}}" focus="{{formDescFocus}}" maxlength="30" /><view wx:if="{{formDescFocus}}" class="ac-field-error">{{formDescFocus}}</view></view>
+    <view class="ac-form-field"><view class="ac-label">联系手机<text class="ac-optional">选填</text></view><input class="ac-input" model:value="{{formPhone}}" placeholder="输入手机号码" placeholder-class="ac-placeholder" disabled="{{busy}}" focus="{{formPhoneFocus}}" type="number" maxlength="11" /><view wx:if="{{formPhoneFocus}}" class="ac-field-error">{{formPhoneFocus}}</view></view>
+    </view><view class="ac-card"><view class="ac-section-title">重置密码</view>
+    <view class="ac-form-field"><view class="ac-label">新密码<text class="ac-optional">选填</text></view><input class="ac-input" model:value="{{formPassword}}" placeholder="留空则保持原密码" placeholder-class="ac-placeholder" disabled="{{busy}}" focus="{{formPasswordFocus}}" type="text" password="{{true}}" maxlength="128" /><view wx:if="{{formPasswordFocus}}" class="ac-field-error">{{formPasswordFocus}}</view></view>
+    <view class="ac-field-hint">不修改密码时，请将此项留空。</view></view>
+    <button class="ac-primary" bindtap="bindFormSubmit" disabled="{{busy}}" loading="{{busy}}">{{busy?'正在保存…':'保存修改'}}</button>
+  </block>
 </view>

@@ -1,0 +1,11 @@
+<view class="ac-search">
+  <text class="icon-search ac-search-icon"></text>
+  <input value="{{searchDraft}}" bindinput="bindInput" bindconfirm="bindSearch" confirm-type="search" maxlength="30" placeholder="{{searchPlaceholder}}" placeholder-class="ac-placeholder" />
+  <button class="ac-secondary ac-small" bindtap="bindSearch">搜索</button>
+</view>
+<scroll-view wx:if="{{menus.length}}" scroll-x class="ac-tabs">
+  <view wx:for="{{menus}}" wx:key="label" class="ac-tab {{menuIndex===index?'active':''}}" data-index="{{index}}" bindtap="bindMenu">{{item.label}}</view>
+</scroll-view>
+<view class="ac-filter-summary"><text>{{loading?'正在查询…':'共 '+total+' '+countUnit}}</text><text class="ac-link" bindtap="bindReset">重置筛选</text></view>
+<view wx:if="{{error}}" class="ac-card ac-state"><view class="ac-state-title">列表暂未更新</view><view class="ac-muted">{{error}}</view><button class="ac-secondary ac-small" bindtap="bindRetry">重新加载</button></view>
+<view wx:if="{{!loading && !error && !list.length}}" class="ac-card ac-state"><view class="ac-empty-icon"><text class="icon-search"></text></view><view class="ac-state-title">{{emptyTitle}}</view><view class="ac-muted">{{emptyHint || '可以更换关键词或调整筛选条件'}}</view></view>

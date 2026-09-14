@@ -1,0 +1,45 @@
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 订单管理</text><text>/</text><text>订单详情</text></view>
+  <view class="ac-heading"><view><view class="ac-title">订单详情</view><view class="ac-subtitle">核对订单、配送凭证与处理记录</view></view></view>
+  <view wx:if="{{error}}" class="ac-card ac-state"><view>{{error}}</view><button class="ac-secondary ac-small" bindtap="load" disabled="{{busy}}">重新读取详情</button></view>
+  <view wx:if="{{loading && !detail}}" class="ac-card ac-state ac-muted">正在读取订单…</view>
+  <view wx:if="{{notFound}}" class="ac-card ac-state"><view class="ac-state-title">订单不存在或已不可访问</view><button class="ac-secondary" bindtap="bindBack">返回订单列表</button></view>
+  <block wx:if="{{detail}}">
+    <view class="ac-card ac-detail-hero">
+      <view class="ac-order-head"><text class="ac-order-id">{{detail.orderNo}}</text><text class="ac-link" bindtap="bindCopy">复制编号</text></view>
+      <view class="ac-order-main"><view><view class="ac-badge {{detail.tone}}">{{detail.statusLabel}}</view><view class="ac-detail-status">{{detail.MAIL_OBJ.title || '快递代取'}}</view><view class="ac-order-meta">{{detail.MAIL_OBJ.campus || '未标注校区'}} · {{detail.MAIL_OBJ.num || 0}} 件{{detail.MAIL_OBJ.urgent?' · 加急':''}}</view></view><view><view class="ac-price">¥{{detail.priceText}}</view><view class="ac-muted">订单费用</view></view></view>
+      <view wx:if="{{detail.MAIL_STATUS!==3 && detail.MAIL_STATUS!==99}}" class="ac-progress"><view wx:for="{{detail.steps}}" wx:key="label" class="ac-progress-step {{item.done?'done':''}}"><view class="ac-step-dot"></view><text>{{item.label}}</text></view></view>
+      <view wx:if="{{detail.overdue}}" class="ac-order-warning">已超过履约时限 · 预计 {{detail.dueText}}</view>
+    </view>
+    <view class="ac-card">
+      <view class="ac-section-title">取送与包裹信息</view>
+      <view class="ac-address"><view class="ac-address-mark">取</view><view><view class="ac-field-label">取件地址</view><view class="ac-field-value">{{detail.MAIL_OBJ.address1 || '未填写'}}</view></view></view>
+      <view class="ac-address"><view class="ac-address-mark green">送</view><view><view class="ac-field-label">送达地址</view><view class="ac-field-value">{{detail.MAIL_OBJ.address2 || '未填写'}}</view></view></view>
+      <view class="ac-field"><view class="ac-field-label">取件码</view><view class="ac-code"><text user-select>{{detail.MAIL_OBJ.code || '请查看取件凭证'}}</text></view></view>
+      <view wx:if="{{detail.MAIL_OBJ.desc}}" class="ac-field"><view class="ac-field-label">订单备注</view><view class="ac-field-value">{{detail.MAIL_OBJ.desc}}</view></view>
+      <view class="ac-row"><text class="ac-muted">包裹组成</text><text>小件 {{detail.MAIL_OBJ.small || 0}} · 中件 {{detail.MAIL_OBJ.medium || 0}} · 大件 {{detail.MAIL_OBJ.large || 0}}</text></view>
+      <view class="ac-images"><image wx:for="{{detail.MAIL_MEDIA.pickup}}" wx:key="*this" class="ac-image" mode="aspectFill" src="{{item}}" data-url="{{item}}" bindtap="bindImage" /></view>
+      <view wx:if="{{detail.MAIL_MEDIA_ERROR}}" class="ac-notice amber">{{detail.MAIL_MEDIA_ERROR}}</view>
+    </view>
+    <view class="ac-card"><view class="ac-section-title">联系人与参与人</view>
+      <view class="ac-row"><view><view class="ac-row-title">收件联系人 · {{detail.MAIL_OBJ.poster || '未填写'}}</view><view class="ac-row-desc">{{detail.MAIL_OBJ.tel || '未填写电话'}}</view></view><button wx:if="{{detail.MAIL_OBJ.tel}}" class="ac-secondary ac-small" data-phone="{{detail.MAIL_OBJ.tel}}" bindtap="bindPhone">拨打电话</button></view>
+      <view wx:if="{{detail.poster}}" class="ac-row"><view><view class="ac-row-title">发布人 · {{detail.poster.name}}</view><view class="ac-row-desc">{{detail.poster.phone || '未填写电话'}}</view></view><text class="ac-link" bindtap="bindUser" data-id="{{detail.poster.id}}">用户资料 ›</text></view>
+      <view class="ac-row"><view><view class="ac-row-title">接单人 · {{detail.rider?detail.rider.name:'暂无人员信息'}}</view><view wx:if="{{detail.rider}}" class="ac-row-desc">{{detail.rider.phone || '未填写电话'}}</view></view><button wx:if="{{detail.rider.phone}}" class="ac-secondary ac-small" data-phone="{{detail.rider.phone}}" bindtap="bindPhone">拨打电话</button></view>
+    </view>
+    <view wx:if="{{detail.MAIL_EXCEPTION || detail.MAIL_DELIVERY_PROOF}}" class="ac-card"><view class="ac-section-title">履约与异常凭证</view>
+      <view wx:if="{{detail.MAIL_DELIVERY_PROOF}}" class="ac-field"><view class="ac-field-label">送达说明</view><view class="ac-field-value">{{detail.MAIL_DELIVERY_PROOF.note || '无补充说明'}}</view><view class="ac-images"><image wx:for="{{detail.MAIL_MEDIA.proof}}" wx:key="*this" class="ac-image" mode="aspectFill" src="{{item}}" data-url="{{item}}" bindtap="bindImage" /></view></view>
+      <view wx:if="{{detail.MAIL_EXCEPTION}}" class="ac-field"><view class="ac-field-label">异常原因 · {{detail.MAIL_EXCEPTION.reason}}</view><view class="ac-field-value">{{detail.MAIL_EXCEPTION.note}}</view><view wx:if="{{detail.MAIL_EXCEPTION.result}}" class="ac-notice">最近处理结果：{{detail.MAIL_EXCEPTION.result}}</view><view class="ac-images"><image wx:for="{{detail.MAIL_MEDIA.exception}}" wx:key="*this" class="ac-image" mode="aspectFill" src="{{item}}" data-url="{{item}}" bindtap="bindImage" /></view></view>
+    </view>
+    <view class="ac-card"><view class="ac-section-title">订单记录</view><view class="ac-row"><text class="ac-muted">发布时间</text><text>{{detail.createdText}}</text></view><view class="ac-row"><text class="ac-muted">接单截止</text><text>{{detail.endText}}</text></view><view class="ac-row"><text class="ac-muted">预计送达</text><text>{{detail.dueText}}</text></view><view class="ac-row"><text class="ac-muted">结算方式</text><text>{{detail.MAIL_PAYMENT_MODE==='offline'?'双方线下结算':'历史支付订单'}}</text></view></view>
+    <view wx:if="{{detail.history.length}}" class="ac-card"><view class="ac-section-head"><text class="ac-section-title">履约与处理时间线</text><text class="ac-muted">{{detail.history.length}} 条</text></view><view class="ac-timeline"><view class="ac-event" wx:for="{{detail.history}}" wx:key="key"><view class="ac-event-title"><text>{{item.label}}</text><text class="ac-muted">{{item.actorText}}</text></view><view class="ac-event-time">{{item.timeText}}</view><view wx:if="{{item.note}}" class="ac-event-note">{{item.note}}</view></view></view></view>
+    <view wx:if="{{detail.canProcess}}" class="ac-card">
+      <view class="ac-section-head"><text class="ac-section-title">{{detail.MAIL_STATUS===3?'处理异常':'人工介入'}}</text><text class="ac-badge">记录处理依据</text></view>
+      <view wx:if="{{detail.MAIL_PAYMENT_MODE!=='offline'}}" class="ac-notice amber">历史支付订单请先人工核对资金情况，再决定处理方式。</view>
+      <picker wx:if="{{detail.MAIL_STATUS===3}}" range="{{resolutions}}" value="{{resolutionIndex}}" bindchange="bindResolution" disabled="{{busy}}"><view class="ac-form-picker"><text>{{resolutions[resolutionIndex]}}</text><text>⌄</text></view></picker>
+      <view wx:else class="ac-notice">转入异常处理后，订单将暂停正常履约流程。</view>
+      <view class="ac-field-label">核实情况与处理依据 <text class="ac-text-red">*</text></view><textarea value="{{note}}" bindinput="bindNote" maxlength="500" disabled="{{busy}}" placeholder="记录与双方核实的情况、凭证和处理结论" /><view class="ac-counter">{{note.length}} / 500</view>
+      <button class="ac-primary" bindtap="bindProcess" loading="{{busy}}" disabled="{{busy || loading || error}}">{{detail.MAIL_STATUS===3?'提交异常处理结果':'转入异常处理'}}</button>
+    </view>
+    <view wx:else class="ac-notice">订单已结束，可查看订单信息与历史处理记录。</view>
+  </block>
+</view>

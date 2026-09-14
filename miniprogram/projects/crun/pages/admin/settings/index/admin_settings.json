@@ -1,0 +1,1 @@
+{ "usingComponents": { "admin-nav": "/projects/crun/cmpts/admin_nav/admin_nav" }, "navigationBarTitleText": "管理中心", "navigationBarBackgroundColor": "#f3f5f9", "navigationBarTextStyle": "black" }

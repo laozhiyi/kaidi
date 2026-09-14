@@ -122,6 +122,7 @@ Page({
 	 */
 	bindFormSubmit: async function () {
 		if (!AdminBiz.isAdmin(this)) return;
+		if (this.data.isSubmit) return;
 
 		// 数据校验
 		let data = this.data;
@@ -131,12 +132,14 @@ Page({
 		data = validate.check(data, AdminNewsBiz.CHECK_FORM, this);
 		if (!data) return;
 
-		let forms = this.selectComponent("#cmpt-form").getForms(true);
+		const formComponent = this.selectComponent("#cmpt-form");
+		let forms = formComponent ? formComponent.getForms(true) : [];
 		if (!forms) return;
 		data.forms = forms; 
 
 		data.cateName = AdminNewsBiz.getCateName(data.cateId);
 
+		this.setData({ isSubmit: true });
 		try {
 			let newsId = this.data.id;
 			data.id = newsId;
@@ -188,6 +191,9 @@ Page({
 
 		} catch (err) {
 			console.log(err);
+		} finally {
+			wx.hideLoading();
+			this.setData({ isSubmit: false });
 		}
 
 	},

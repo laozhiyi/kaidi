@@ -33,7 +33,9 @@ class AdminSetupService extends BaseProjectAdminService {
 		let cloud = cloudBase.getCloud();
 
 		if (page.startsWith('/')) page = page.substring(1);
-		console.log('page=' + page, ', scene=' + sc);
+		sc = sc || 'qr';
+		if (!page || page.includes('?') || page.includes('#')) this.AppError('小程序码页面路径无效');
+		if (sc.length > 32) this.AppError('小程序码场景参数过长');
 
 		let result = await cloud.openapi.wxacode.getUnlimited({
 			scene: sc,
@@ -43,7 +45,7 @@ class AdminSetupService extends BaseProjectAdminService {
 			page
 		});
 
-		let cloudPath = PID + '/' + 'setup/' + md5Lib.md5(page) + '.png';
+		let cloudPath = this.getProjectId() + '/setup/' + md5Lib.md5(page + ':' + sc) + '.png';
 		let upload = await cloud.uploadFile({
 			cloudPath,
 			fileContent: result.buffer,
@@ -52,7 +54,8 @@ class AdminSetupService extends BaseProjectAdminService {
 		if (!upload || !upload.fileID) return;
 
 		let ret = await cloudUtil.getTempFileURLOne(upload.fileID);
-		return ret + '?rd=' + this._timestamp;
+		if (!ret) this.AppError('小程序码地址获取失败，请重试');
+		return ret + (ret.includes('?') ? '&' : '?') + 'rd=' + this._timestamp;
 	}
 
 }

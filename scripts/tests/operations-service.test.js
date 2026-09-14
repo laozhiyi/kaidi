@@ -20,6 +20,49 @@ test('public DTO never contains forms, pickup codes, contact details or file ide
  await assert.rejects(f.service.getMailDetail('other',id),/无权限/);
 });
 
+test('pickup details unlock only for the accepting rider and order history remains publisher-only',async()=>{
+ const f=fixture(),id=await f.publish();
+ const row=f.table('mail').get(id);
+ row.MAIL_OBJ.packages=[{type:'small',price:1.5,code:'PRIVATE_PACKAGE_CODE',note:'PRIVATE_PACKAGE_NOTE',images:[]}];
+ row.MAIL_OBJ.imgUrls=['cloud://env/private/poster/secret.jpg'];
+ row.MAIL_HISTORY[0].note='PRIVATE_HISTORY';
+ const assertPublic=mail=>{
+  assert.equal(mail.mypost,false);assert.equal(mail.myaccept,false);
+  for(const value of ['MAIL_FORMS','MAIL_HISTORY','MAIL_MEDIA','123-456','PRIVATE_PACKAGE_CODE','PRIVATE_PACKAGE_NOTE','PRIVATE_HISTORY','secret.jpg','13800000000','宿舍101'])assert.ok(!JSON.stringify(mail).includes(value),value);
+ };
+ for(const user of ['rider','other']) {
+  assertPublic(await f.service.viewMail(user,id));
+  const list=await f.service.getMailList(user,{sortType:'wait'});
+  assert.equal(list.list.length,1);assertPublic(list.list[0]);
+ }
+ const before=await f.service.viewMail('poster',id);
+ assert.equal(before.MAIL_OBJ.code,'123-456');assert.equal(before.MAIL_HISTORY[0].note,'PRIVATE_HISTORY');
+ await f.service.acceptMail('rider',id,{requestId:f.req('accept')});
+ const rider=await f.service.viewMail('rider',id);
+ assert.equal(rider.myaccept,true);assert.equal(rider.MAIL_OBJ.code,'123-456');
+ assert.equal(rider.MAIL_OBJ.packages[0].code,'PRIVATE_PACKAGE_CODE');assert.equal(rider.MAIL_MEDIA.pickup.length,1);
+ assert.equal(rider.MAIL_HISTORY,undefined);
+ assertPublic(await f.service.viewMail('other',id));
+ const poster=await f.service.viewMail('poster',id),admin=await f.service.getMailDetail(null,id);
+ assert.equal(poster.MAIL_HISTORY.length,2);assert.equal(admin.MAIL_HISTORY.length,2);
+ assert.equal(poster.MAIL_HISTORY[0].note,'PRIVATE_HISTORY');
+ assert.equal(f.table('mail').get(id).MAIL_HISTORY.length,2);
+});
+
+test('anonymous viewers never match unassigned or missing order identities',async()=>{
+ const f=fixture(),id=await f.publish(),rules=f.load('order_rules.js');
+ const row=f.table('mail').get(id);
+ for(const userId of ['',null,undefined]) {
+  for(const mail of [row,{...row,MAIL_USER_ID:userId,MAIL_ACCEPT_USER_ID:userId}]) {
+   const view=rules.project(mail,userId);
+   assert.equal(view.mypost,false);assert.equal(view.myaccept,false);
+   assert.equal(view.MAIL_OBJ.code,undefined);assert.equal(view.MAIL_FORMS,undefined);assert.equal(view.MAIL_HISTORY,undefined);
+  }
+ }
+ const anonymous=await f.service.viewMail('',id);
+ assert.equal(anonymous.mypost,false);assert.equal(anonymous.myaccept,false);
+});
+
 test('publish retry is idempotent even after closure, and changed payload cannot reuse the key',async()=>{
  const f=fixture(),id=await f.publish();f.config.enabled=false;assert.equal(await f.publish(),id);assert.equal(f.table('mail').size,1);assert.equal(f.table('order_event').size,1);
  const changed=f.forms();changed.find(x=>x.mark==='small').val=2;await assert.rejects(f.publish({forms:changed}),/不同内容/);

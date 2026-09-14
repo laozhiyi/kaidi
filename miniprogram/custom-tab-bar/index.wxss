@@ -34,6 +34,9 @@
 	line-height: 52rpx;
 }
 
+.tab-icon-wrap { position: relative; }
+.tab-unread-dot { position: absolute; right: -8rpx; top: 0; width: 16rpx; height: 16rpx; border: 3rpx solid #fff; border-radius: 50%; background: #e74b4b; }
+
 .tab-text {
 	margin-top: 2rpx;
 	font-size: 22rpx;

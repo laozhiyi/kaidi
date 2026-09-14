@@ -1,4 +1,7 @@
 page { background: #f3f6fb; }
+.delivery-page .od-parcel-proof + .od-parcel-proof { border-top: 1rpx solid #edf1f6; margin-top: 26rpx; padding-top: 26rpx; }
+.delivery-page .od-parcel-pickup { display: flex; align-items: flex-start; gap: 10rpx; margin-top: 10rpx; color: #334f72; font-size: 27rpx; line-height: 1.6; word-break: break-all; }
+.delivery-page .od-parcel-pickup .icon-location { flex-shrink: 0; color: #397bc8; }
 .delivery-page { min-height: 100vh; padding-bottom: calc(154rpx + env(safe-area-inset-bottom)); background: #f3f6fb; color: #25364d; font-size: 28rpx; line-height: 1.5; box-sizing: border-box; }
 .delivery-page view, .delivery-page text, .delivery-page button { box-sizing: border-box; }
 .delivery-page button { margin: 0; padding: 0; border: 0; font-size: inherit; font-weight: 500; line-height: 1.5; border-radius: 0; }

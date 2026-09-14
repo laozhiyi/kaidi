@@ -2,6 +2,12 @@ const MailUI = require('../../../biz/mail_ui_biz.js');
 const Ops = require('../../../biz/operations_biz.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
+const Notifications = require('../../../biz/notification_biz.js');
+const OrderSync = require('../../../biz/order_sync_biz.js');
+function invalidateOrderLists() {
+ if (!wx.removeStorageSync) return;
+ for (const key of ['order-mail-take', 'order-mail-mine', 'order-mail-posted', 'order-mail-done']) wx.removeStorageSync(key.toUpperCase() + '_LIST');
+}
 // Historical records can contain numeric strings or invalid legacy timestamps.
 function historyTime(value) {
  const numeric = typeof value === 'number' || typeof value === 'string' && /^\d+$/.test(value);
@@ -14,10 +20,20 @@ Page({
  onLoad(options = {}) {
   ProjectBiz.initPage(this);
   this._openPanelAfterLoad = options.panel === 'deliver' ? 'deliver' : '';
+  this._notificationId = options.notificationId || '';
   this.setData({ id: typeof options.id === 'string' ? options.id.trim() : '' });
  },
- onShow() { this._visible = true; return this.load(); },
- onHide() { this._visible = false; this._seq = (this._seq || 0) + 1; this._clearConfirmTimer(); },
+ onShow() {
+  this._visible = true;
+  if (this._stopOrderSync) this._stopOrderSync();
+  this._stopOrderSync = OrderSync.subscribe(() => this.load({ silent: true }));
+  return this.load();
+ },
+ onHide() {
+  this._visible = false; this._seq = (this._seq || 0) + 1; this._clearConfirmTimer();
+  this._confirming = false; this.setData({ confirmGate: false, confirmCountdown: 0 });
+  if (this._stopOrderSync) this._stopOrderSync(); this._stopOrderSync = null;
+ },
  onUnload() { this.onHide(); },
  async onPullDownRefresh() { try { await this.load(); } finally { wx.stopPullDownRefresh(); } },
  async _loadConfig(seq) {
@@ -31,15 +47,16 @@ Page({
    if (this._visible && seq === this._seq) this.setData({ configError: true });
   }
  },
- async load() {
+ async load(options = {}) {
+  if (options.silent && (this.data.busy || this._confirming)) return;
   if (!this.data.id) {
    this.setData({ mail: null, loading: false, error: true, notFound: true, errorMessage: '缺少订单编号，请返回订单列表重新进入' });
    return;
   }
   const seq = this._seq = (this._seq || 0) + 1;
-  this.setData({ loading: true, error: false, errorMessage: '', notFound: false });
+  this.setData({ loading: !this.data.mail, error: false, errorMessage: '', notFound: false });
   // Subscription/config is optional: a failed or slow request must not block the order.
-  this._loadConfig(seq);
+  if (!options.silent || !this.data.config) this._loadConfig(seq);
   try {
    const mail = await Ops.get('mail/view', { id: this.data.id });
    if (!this._visible || seq !== this._seq) return;
@@ -50,12 +67,14 @@ Page({
    mail.history = (Array.isArray(mail.MAIL_HISTORY) ? mail.MAIL_HISTORY : [])
     .filter(x => x && typeof x === 'object').map(x => ({ ...x, time: historyTime(x.at) }));
    this.setData({ mail, detailUI: MailUI.detail(mail), loading: false }, () => {
+    if (this._notificationId && this._visible && seq === this._seq) Notifications.markRead(this._notificationId).catch(() => {});
     if (this._openPanelAfterLoad) { const panel = this._openPanelAfterLoad; this._openPanelAfterLoad = ''; this.bindPanel({ currentTarget: { dataset: { action: panel } } }); }
    });
   } catch (e) {
    console.error('[mail_my_detail] load', e);
    if (this._visible && seq === this._seq) this.setData({ error: true, loading: false,
     errorMessage: e && (e.msg || e.message) || '订单加载失败，请检查网络后重试' });
+   return { ok: false };
   }
  },
  bindReload() { return this.load(); },
@@ -65,14 +84,20 @@ Page({
  bindNoticeTap() { wx.showModal({ title: this.data.detailUI && this.data.detailUI.legacyPayment ? '结算核对说明' : '线下结算说明', content: this.data.detailUI && this.data.detailUI.legacyPayment ? '本单未标记为线下结算订单，请联系校区客服核对支付与退款记录，勿重复向对方转账。' : this.data.offlineNotice, showCancel: false, confirmText: '我知道了' }); },
  bindEditTap() { if (this.data.detailUI && this.data.detailUI.primary === 'edit') wx.navigateTo({ url: '../add/mail_add?id=' + this.data.id }); },
  bindCallTap() { const ui = this.data.detailUI; if (ui && ui.participant && ui.phone) wx.makePhoneCall({ phoneNumber: String(ui.phone) }); },
- bindCopyCodeTap() { const mail = this.data.mail; const code = mail && mail.MAIL_OBJ && mail.MAIL_OBJ.code; if (mail && (mail.mypost || mail.myaccept) && code) wx.setClipboardData({ data: String(code) }); },
+ bindCopyCodeTap(e) { const mail = this.data.mail; if (!mail || !(mail.mypost || mail.myaccept)) return; const index = e && e.currentTarget.dataset.index; const item = index != null && this.data.detailUI && this.data.detailUI.pickupItems[index]; const code = index != null ? item && item.code : mail.MAIL_OBJ && mail.MAIL_OBJ.code; if (code) wx.setClipboardData({ data: String(code) }); },
  bindPreviewImageTap(e) { const mail = this.data.mail; if (!mail || !(mail.mypost || mail.myaccept)) return; const { url, group } = e.currentTarget.dataset; const urls = mail.MAIL_MEDIA && mail.MAIL_MEDIA[group] || []; if (url && urls.includes(url)) wx.previewImage({ urls, current: url }); },
  bindFeedbackTap() { wx.navigateTo({ url: '../../feedback/index/feedback_index?orderId=' + this.data.id }); },
+ bindReviewTap() {
+  const mail = this.data.mail;
+  if (!mail || this.data.busy || this.data.loading || this.data.error || !(mail.MAIL_CAN_REVIEW || mail.MAIL_REVIEWED)) return;
+  wx.navigateTo({ url: '/projects/crun/pages/my/review_add/review_add?orderId=' + encodeURIComponent(this.data.id) });
+ },
  bindSubscription() { Ops.subscribe(this.data.config || {}); },
  bindPrimaryAction() {
   if (this.data.busy || this.data.loading || this.data.error || !this.data.detailUI) return;
   const action = this.data.detailUI.primary;
   if (action === 'edit') return this.bindEditTap();
+  if (action === 'review') return this.bindReviewTap();
   if (action === 'deliver') return this.bindPanel({ currentTarget: { dataset: { action } } });
   if (action === 'confirm') return this.bindConfirm({ currentTarget: { dataset: { action } } });
   if (action === 'contact') return this.bindCallTap();
@@ -108,10 +133,10 @@ Page({
   this._confirming = true;
   try {
    const result = await new Promise(resolve => wx.showModal({ title: action === 'confirm' ? '确认收货' : '取消待接单订单', content: action === 'confirm' ? '请先核对包裹、数量和外观是否无误。确认后订单将从双方的日常订单列表中移除。' : '确定取消这个尚未接单的订单吗？', success: resolve, fail: () => resolve({ confirm: false }) }));
-   if (!result.confirm) return;
+   if (!result.confirm || !this._visible) return;
    if (action === 'confirm') return this._startConfirmGate();
    await this.perform(action);
-  } finally { if (action !== 'confirm') this._confirming = false; }
+  } finally { if (!this.data.confirmGate) this._confirming = false; }
  },
  _clearConfirmTimer() { if (this._confirmTimer) { clearInterval(this._confirmTimer); this._confirmTimer = null; } },
  _startConfirmGate() {
@@ -153,8 +178,9 @@ Page({
    }
    const route = { deliver: 'mail/deliver', exception: 'mail/exception', confirm: 'mail/finish', cancel: 'mail/cancel' }[action];
    await Ops.command(route, params);
+   invalidateOrderLists();
    if (this._visible) { this.setData({ panel: '' }); await this.load(); wx.showToast({ title: '操作成功' }); }
-  } catch (e) { if (this._visible) Ops.error(e); }
+  } catch (e) { if (this._visible) { Ops.error(e); await this.load(); } }
   finally { this._performing = false; if (this._visible) this.setData({ busy: false }); else this.data.busy = false; }
  }
 });

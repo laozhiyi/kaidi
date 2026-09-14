@@ -1,0 +1,6 @@
+{
+  "usingComponents": {},
+  "navigationBarTitleText": "我的信誉分",
+  "enablePullDownRefresh": true,
+  "backgroundColor": "#f3f6fb"
+}

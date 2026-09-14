@@ -104,13 +104,13 @@ class AdminMailService extends BaseProjectAdminService {
 
 	// #####################导出数据
 	/**获取数据 */
-	async getMailDataURL() {
-		return await exportUtil.getExportDataURL(EXPORT_MAIL_DATA_KEY);
+	async getMailDataURL(adminId) {
+		return await exportUtil.getExportDataURL(new (require('./admin_report_service.js'))().key('mail', adminId));
 	}
 
 	/**删除数据 */
-	async deleteMailDataExcel() {
-		return await exportUtil.deleteDataExcel(EXPORT_MAIL_DATA_KEY);
+	async deleteMailDataExcel(adminId) {
+		return await exportUtil.deleteDataExcel(new (require('./admin_report_service.js'))().key('mail', adminId));
 	}
 
 	/**导出数据 */
@@ -119,8 +119,8 @@ class AdminMailService extends BaseProjectAdminService {
 		status,
 		start,
 		end,
-	}) {
-		this.AppError('[跑腿]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+	}, adminId) {
+		return new (require('./admin_report_service.js'))().mail({ start, end, status }, adminId);
 
 	}
 }

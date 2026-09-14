@@ -1,5 +1,7 @@
 {
-	"usingComponents": {"cmpt-comm-list": "/cmpts/public/list/comm_list_cmpt"},
-	"enablePullDownRefresh": true,
-	"navigationBarTitleText": "客服对话"
+  "usingComponents": {},
+  "navigationBarTitleText": "客服会话",
+  "navigationBarBackgroundColor": "#f3f5f9",
+  "navigationBarTextStyle": "black",
+  "enablePullDownRefresh": true
 }

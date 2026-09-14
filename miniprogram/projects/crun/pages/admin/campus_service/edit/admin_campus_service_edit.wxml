@@ -1,42 +1,6 @@
-<view wx:if="{{isAdmin && isLoad}}">
-<view class="campus-heading">广西师范大学 · 校区客服</view>
-<view class="form-box shadow">
-	<view class="form-group">
-		<view class="title must">校区名称</view>
-		<picker class="campus-picker" range="{{campusOptions}}" value="{{campusIndex}}" bindchange="bindCampusChange"><view>{{formCampus || '请选择校区'}}<text class="icon-right margin-left-s"></text></view></picker>
-	</view>
-
-	<view class="form-group">
-		<view class="title must">负责人姓名</view>
-		<input placeholder="请输入负责人姓名" placeholder-class="phc" model:value="{{formName}}" maxlength="30"></input>
-	</view>
-
-	<view class="form-group">
-		<view class="title must">手机号</view>
-		<input placeholder="请输入联系电话" type="number" placeholder-class="phc" model:value="{{formMobile}}" maxlength="11"></input>
-	</view>
-
-	<view class="form-group">
-		<view class="title">微信号</view>
-		<input placeholder="选填，请输入微信号" placeholder-class="phc" model:value="{{formWechat}}" maxlength="40"></input>
-	</view>
-
-	<view class="form-group">
-		<view class="title">QQ号</view>
-		<input placeholder="选填，请输入QQ号" type="number" placeholder-class="phc" model:value="{{formQQ}}" maxlength="20"></input>
-	</view>
-
-	<view class="form-group">
-		<view class="title">工作时间</view>
-		<input placeholder="例如：周一至周五 9:00-18:00" placeholder-class="phc" model:value="{{formWorkTime}}" maxlength="50"></input>
-	</view>
-
-	<view class="form-group">
-		<view class="title">排序号</view>
-		<input placeholder="小的先显示，默认9999" type="number" placeholder-class="phc" model:value="{{formOrder}}" maxlength="6"></input>
-	</view>
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="url" data-type="back">‹ 校区客服配置</text><text>/</text><text>编辑客服</text></view>
+  <view class="ac-heading"><view><view class="ac-title">编辑校区客服</view><view class="ac-subtitle">完善负责人资料，方便用户联系与咨询</view></view></view>
+  <view wx:if="{{!isLoad}}" class="ac-card ac-state"><view class="ac-muted">{{loadError || '正在读取客服信息…'}}</view><button wx:if="{{loadError}}" bindtap="_loadDetail" class="ac-secondary ac-small">重新加载</button></view>
+  <block wx:if="{{isLoad}}"><include src="../service_form.wxml" /></block>
 </view>
-
-<button bindtap="bindFormSubmit" disabled="{{isSubmit}}" loading="{{isSubmit}}" class="btn-admin margin-top-xs">保存修改</button>
-</view>
-<view wx:if="{{isAdmin && !isLoad}}" class="campus-heading">{{loadError || '正在加载客服信息…'}}<button wx:if="{{loadError}}" bindtap="_loadDetail" class="btn-admin margin-top-xs">重新加载</button></view>

@@ -11,7 +11,7 @@ class OperationConfigService extends Base {
    enabled: row ? !!(row.value && row.value.enabled === true) : DEFAULTS.enabled,
    configured: !!row, paymentMode: 'offline' };
  }
- async saveConfig(value, adminId) {
+ normalize(value) {
   const next = {}; if (!value || typeof value !== 'object') this.AppError('配置不能为空');
   for (const name of ['enabled','urgentEnabled','registrationReview']) { if (typeof value[name] !== 'boolean') this.AppError('配置开关无效'); next[name] = value[name]; }
   const ranges = { smallPrice:[0,100], mediumPrice:[0,100], largePrice:[0,100], maxPackages:[1,100], maxActiveOrders:[1,20], maxOpenOrders:[1,50], deliveryMinutes:[10,1440], urgentMinutes:[10,1440], openHour:[0,23], closeHour:[1,24] };
@@ -20,7 +20,27 @@ class OperationConfigService extends Base {
   if (!Array.isArray(value.campuses) || !value.campuses.length || value.campuses.length > 20 || value.campuses.some(x => typeof x !== 'string' || !x.trim() || x.length > 30)) this.AppError('请设置1至20个有效校区');
   next.campuses = [...new Set(value.campuses.map(x => x.trim()))]; next.paymentMode = 'offline';
   next.offlineNotice = String(value.offlineNotice || DEFAULTS.offlineNotice).trim(); if (next.offlineNotice.length > 300) this.AppError('结算说明过长');
-  const id = store.key(this.getProjectId(), 'config'); await store.transaction(async tx => { const admin = await store.get(tx,'admin',adminId); if (!admin || admin._pid !== this.getProjectId() || admin.ADMIN_STATUS !== 1 || admin.ADMIN_TYPE !== 1) this.AppError('超级管理员权限已失效'); const old = await store.get(tx,'operation_config',id); await store.set(tx,'operation_config',id,{ _pid:this.getProjectId(), value:next, updatedAt:Date.now(), adminId }); await store.set(tx,'operation_audit',store.key(id,Date.now(),adminId),{ _pid:this.getProjectId(), adminId, action:'config', before:old && old.value || {}, after:next, createdAt:Date.now() }); }); return next;
+  return next;
+ }
+ async saveConfig(value, adminId, section) {
+  const sections = {
+   service: ['enabled', 'openHour', 'closeHour', 'campuses'],
+   pricing: ['smallPrice', 'mediumPrice', 'largePrice', 'maxPackages', 'offlineNotice'],
+   rules: ['maxActiveOrders', 'maxOpenOrders', 'deliveryMinutes', 'urgentMinutes', 'urgentEnabled', 'registrationReview']
+  };
+  if (!value || typeof value !== 'object' || Array.isArray(value)) this.AppError('配置不能为空');
+  if (section && (!Object.prototype.hasOwnProperty.call(sections, section) || Object.keys(value).some(key => !sections[section].includes(key)))) this.AppError('不允许修改其他分组的配置');
+  const id = store.key(this.getProjectId(), 'config');
+  return store.transaction(async tx => {
+   const admin = await store.get(tx, 'admin', adminId);
+   if (!admin || admin._pid !== this.getProjectId() || admin.ADMIN_STATUS !== 1 || admin.ADMIN_TYPE !== 1) this.AppError('超级管理员权限已失效');
+   const old = await store.get(tx, 'operation_config', id);
+   const next = this.normalize(section ? { ...DEFAULTS, ...(old && old.value || {}), ...value } : value);
+   const now = Date.now();
+   await store.set(tx, 'operation_config', id, { _pid: this.getProjectId(), value: next, updatedAt: now, adminId });
+   await store.set(tx, 'operation_audit', store.key(id, now, adminId), { _pid: this.getProjectId(), adminId, action: 'config', section: section || 'all', before: old && old.value || {}, after: next, createdAt: now });
+   return next;
+  });
  }
 }
 OperationConfigService.DEFAULTS = DEFAULTS;

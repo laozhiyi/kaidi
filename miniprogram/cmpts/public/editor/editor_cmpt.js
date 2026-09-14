@@ -13,6 +13,7 @@ Component({
 	 * 组件的属性列表
 	 */
 	properties: {
+		consoleMode: { type: Boolean, value: false },
 		nodeList: { // [{type:'text/img',val:'txt/cloudId'}]
 			type: Array,
 			value: [{
@@ -57,6 +58,9 @@ Component({
 	 * 组件的方法列表
 	 */
 	methods: {
+		bindViewModeTap: function (e) {
+			this.setData({ isView: e.currentTarget.dataset.view === 'true' || e.currentTarget.dataset.view === true });
+		},
 		url: function (e) {
 			pageHelper.url(e, this);
 		},

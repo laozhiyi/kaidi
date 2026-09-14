@@ -1,0 +1,2 @@
+@import '../../../../style/admin_console.wxss';
+.ac-page .ac-input-unit > text { min-width: 55rpx; }

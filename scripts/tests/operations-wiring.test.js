@@ -1,11 +1,12 @@
 const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const vm=require('node:vm');
+const {runMiniProgram}=require('../test-support/miniprogram-module.cjs');
 const root=path.resolve(__dirname,'../..'),mini=path.join(root,'miniprogram'),backend=path.join(root,'cloudfunctions/mcloud');
 const read=p=>fs.readFileSync(p,'utf8').replace(/^\uFEFF/,'');
 const pages=['projects/crun/pages/mail/add/mail_add','projects/crun/pages/mail/detail/mail_detail','projects/crun/pages/mail/my_detail/mail_my_detail','projects/crun/pages/order/index/order_index','projects/crun/pages/operations/operations','projects/crun/pages/admin/operations/admin_operations','projects/crun/pages/feedback/index/feedback_index','projects/crun/pages/feedback/my_list/feedback_my_list','projects/crun/pages/feedback/detail/feedback_detail'];
 test('operational pages are registered, syntactically valid, and template handlers exist',()=>{
  const app=JSON.parse(read(path.join(mini,'app.json')));
  for(const relative of pages){assert.ok(app.pages.includes(relative),relative);for(const ext of ['js','json','wxml','wxss'])assert.ok(fs.existsSync(path.join(mini,relative+'.'+ext)),relative+'.'+ext);
-  const source=read(path.join(mini,relative+'.js'));new vm.Script(source);let page;vm.runInNewContext(source,{Page:p=>page=p,require:()=>({}),console});
+  const source=read(path.join(mini,relative+'.js'));new vm.Script(source);let page;runMiniProgram(path.join(mini,relative+'.js'),{Page:p=>page=p,require:()=>({}),console});
   const template=read(path.join(mini,relative+'.wxml'));for(const m of template.matchAll(/(?:bind|catch):?[\w-]+\s*=\s*["']([\w]+)["']/g))assert.equal(typeof page[m[1]],'function',relative+': '+m[1]);
  }
 });

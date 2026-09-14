@@ -1,4 +1,5 @@
 @import "../../../style/skin.wxss";
+.submit-error { margin-bottom:16rpx; color:#b87539; font-size:24rpx; line-height:1.5; text-align:center; word-break:break-all; }
 
 /* ============================================================
    反馈投诉提交页（左右贴边、宽度撑满屏幕）
@@ -314,3 +315,4 @@
 .btn-disabled {
 	opacity: .6;
 }
+.feedback-history { margin-top:18rpx; font-size:25rpx; text-decoration:underline; }

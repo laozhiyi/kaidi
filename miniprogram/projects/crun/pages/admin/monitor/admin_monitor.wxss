@@ -1,0 +1,13 @@
+@import '../../../style/admin_console.wxss';
+.ac-monitor-number { display: flex; align-items: baseline; gap: 10rpx; color: #718099; font-size: 23rpx; flex-wrap: wrap; }
+.ac-page .ac-monitor-number .ac-number { color: #21304a; }
+.ac-page .ac-monitor-number .ac-text-red { color: #bd4848; }
+.ac-maintenance-task { display: flex; align-items: flex-start; gap: 22rpx; padding: 26rpx 0; border-top: 1rpx solid #edf0f5; }
+.ac-task-step { width: 54rpx; height: 54rpx; flex: 0 0 54rpx; display: flex; align-items: center; justify-content: center; border-radius: 14rpx; background: #eff4ff; color: #2863db; font-size: 23rpx; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ac-task-copy { min-width: 0; flex: 1; }
+.ac-page .ac-task-copy .ac-row-desc { margin-top: 10rpx; line-height: 1.7; }
+.ac-maintenance-action button { width: 100%; }
+.ac-result-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16rpx; padding: 16rpx 0; text-align: center; }
+.ac-result-grid > view { min-width: 0; }
+.ac-result-value { color: #277954; font-size: 42rpx; font-weight: 600; }
+.ac-result-label { margin-top: 8rpx; font-size: 22rpx; color: #718099; }

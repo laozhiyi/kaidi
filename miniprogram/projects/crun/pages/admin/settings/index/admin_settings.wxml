@@ -1,0 +1,15 @@
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-eyebrow">管理中心</view>
+  <view class="ac-heading"><view><view class="ac-title">业务与系统管理</view><view class="ac-subtitle">按业务分组，各项设置独立管理</view></view></view>
+  <view class="ac-card ac-account"><view class="ac-avatar"><text class="icon-profile"></text></view><view><view class="ac-section-title">{{admin.name}}</view><view class="ac-row-desc">{{isSuperAdmin?'超级管理员 · 可维护业务设置':'普通管理员 · 业务设置只读'}}</view></view></view>
+  <block wx:for="{{groups}}" wx:key="title" wx:for-item="group">
+    <view class="ac-section-label">{{group.title}}</view>
+    <view class="ac-card ac-menu-card">
+      <block wx:for="{{group.items}}" wx:key="key">
+        <view wx:if="{{!item.superOnly || isSuperAdmin}}" class="ac-row" data-key="{{item.key}}" bindtap="bindNavigate"><view class="ac-menu-icon"><text class="{{item.icon}}"></text></view><view class="ac-menu-copy"><view class="ac-row-title">{{item.title}}</view><view class="ac-row-desc">{{item.desc}}</view></view><text class="ac-chevron">›</text></view>
+      </block>
+    </view>
+  </block>
+  <button class="ac-ghost" bindtap="bindLogout">退出后台登录</button>
+  <admin-nav active="settings" />
+</view>

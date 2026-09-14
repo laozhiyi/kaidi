@@ -2,14 +2,13 @@
 
 page {
 	background-color: #f1f6ff;
+	/* The tab-bar placeholder already includes the bottom safe area. */
+	padding-bottom: 0;
 }
 
 .main {
 	width: 100%;
-	min-height: 100vh;
-	padding: 18rpx 24rpx 44rpx;
-	padding-bottom: calc(44rpx + constant(safe-area-inset-bottom));
-	padding-bottom: calc(44rpx + env(safe-area-inset-bottom));
+	padding: 18rpx 24rpx 16rpx;
 	box-sizing: border-box;
 	display: flex;
 	flex-direction: column;
@@ -17,10 +16,18 @@ page {
 	justify-content: flex-start;
 }
 
+/* Keep the final action reachable above the custom tab bar without creating a large blank band. */
+.home-tab-clearance {
+	height: calc(56rpx + env(safe-area-inset-bottom));
+}
+
+.home-tab-clearance-form {
+	height: calc(100rpx + env(safe-area-inset-bottom));
+}
+
 .notice {
 	display: flex;
 	align-items: center;
-	width: 100%;
 	min-height: 92rpx;
 	margin: 0 0 18rpx;
 	padding: 14rpx 18rpx;
@@ -65,7 +72,19 @@ page {
 	font-weight: 600;
 	line-height: 34rpx;
 	color: #1f2a44;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
+
+.home-message-row { display: flex; align-items: center; justify-content: space-between; min-height: 64rpx; margin-bottom: 10rpx; }
+.home-section-label { color: #536a87; font-size: 24rpx; font-weight: 600; }
+.home-message-entry { display: flex; align-items: center; gap: 12rpx; padding: 8rpx 14rpx 8rpx 20rpx; color: #315f97; font-size: 25rpx; border-radius: 12rpx; }
+.home-message-icon { position: relative; font-size: 36rpx; line-height: 40rpx; }
+.home-message-badge { position: absolute; right: -15rpx; top: -9rpx; min-width: 27rpx; padding: 1rpx 6rpx; box-sizing: border-box; border: 2rpx solid #f1f6ff; border-radius: 20rpx; background: #e74b4b; color: #fff; text-align: center; font-size: 18rpx; line-height: 25rpx; }
+.notice-new-dot { display: inline-block; width: 12rpx; height: 12rpx; margin-right: 8rpx; border-radius: 50%; background: #e74b4b; vertical-align: middle; }
+.notice-priority { display: inline-block; padding: 0 8rpx; margin-right: 8rpx; border-radius: 5rpx; background: #fff0da; color: #a66617; font-size: 19rpx; vertical-align: top; }
+.notice-important { border-left-color: #d59a41; }
 
 .notice-text {
 	width: 100%;
@@ -76,12 +95,6 @@ page {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-}
-
-.notice-count {
-	font-size: 26rpx;
-	font-weight: 700;
-	color: #397bc8;
 }
 
 .notice-action {
@@ -122,7 +135,6 @@ page {
 }
 
 .express-card {
-	width: 100%;
 	margin: 18rpx 0 20rpx;
 	padding: 0 28rpx;
 	box-sizing: border-box;
@@ -130,6 +142,13 @@ page {
 	border-radius: 18rpx;
 	box-shadow: 0 8rpx 24rpx rgba(94, 128, 184, .08);
 	overflow: hidden;
+}
+
+.main > .notice, .main > .express-card {
+	width: calc(100% + 24rpx);
+	max-width: calc(100vw - 24rpx);
+	align-self: center;
+	box-sizing: border-box;
 }
 
 .express-card-head {
@@ -310,7 +329,7 @@ page {
 }
 
 
-.service-tabs { display:flex; gap:16rpx; margin:4rpx 0 20rpx; }
+.service-tabs { display:flex; gap:16rpx; margin:18rpx 0 20rpx; }
 .service-tab { flex:1; min-width:0; padding:24rpx 10rpx 20rpx; text-align:center; background:#fff; border:1rpx solid #e6eef8; border-radius:18rpx; box-shadow:0 8rpx 20rpx rgba(94,128,184,.06); transition:all .2s; }
 .service-tab-active { border-color:#397bc8; background:#f3f8ff; box-shadow:0 8rpx 20rpx rgba(57,123,200,.14); }
 .service-tab-hover { opacity:.75; transform:translateY(2rpx); }

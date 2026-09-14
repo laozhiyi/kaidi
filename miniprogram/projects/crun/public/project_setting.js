@@ -45,7 +45,6 @@ module.exports = { //crun
 		{ mark: 'price', title: '打赏金额(元)', type: 'digit', must: true },
 		{ mark: 'poster', title: '联系人', type: 'text', must: true },
 		{ mark: 'tel', title: '联系人电话', type: 'mobile', ext: { hint: '请放心填写电话，仅接单后可见' }, must: true },
-		{ mark: 'address1', title: '取件地址', type: 'textarea', must: true },
 		{ mark: 'address2', title: '送货地址', type: 'textarea', must: true },
 		{ mark: 'desc', title: '补充说明', type: 'textarea', must: false },
 		{ mark: 'code', title: '取件码', type: 'textarea', ext: { hint: '请放心填写取件码，仅接单后可见' }, must: true },

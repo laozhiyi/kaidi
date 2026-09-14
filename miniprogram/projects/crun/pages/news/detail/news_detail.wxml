@@ -1,5 +1,6 @@
 <view wx:if="{{isLoad===null}}" class="margin-top load notexist text-l load-project"></view>
-<view wx:if="{{isLoad===false}}" class="margin-top load loading text-l load-project"></view>
+<view wx:if="{{isLoad===false && !error}}" class="margin-top load loading text-l load-project"></view>
+<view wx:if="{{error}}" class="news-load-error"><view>公告加载失败，请检查网络后重试</view><button bindtap="_loadDetail">重新加载</button></view>
 
 <block wx:if="{{isLoad}}">
 	<view class="main padding-project">
@@ -29,5 +30,5 @@
 
 	</view>
 
-	<cmpt-detail mode="mode1" doFav="{{false}}" topBtnShow="{{topBtnShow}}" oid="{{news._id}}" cate="{{news.NEWS_CATE_NAME}}" title="{{news.NEWS_TITLE}}" cover="{{news.NEWS_PIC[0]}}" qr="{{news.NEWS_QR}}" desc="查看详情"  bg="{{skin.PROJECT_COLOR}}"></cmpt-detail>
+	<cmpt-detail mode="mode1" doFav="{{true}}" type="news" topBtnShow="{{topBtnShow}}" oid="{{news._id}}" cate="{{news.NEWS_CATE_NAME}}" title="{{news.NEWS_TITLE}}" cover="{{news.NEWS_PIC[0]}}" qr="{{news.NEWS_QR}}" desc="查看详情"  bg="{{skin.PROJECT_COLOR}}"></cmpt-detail>
 </block>

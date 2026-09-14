@@ -1,12 +1,4 @@
-@import '../../../../../../style/public/admin.wxss';
-
-.form-box .title-desc {
-	padding-bottom: 10rpx;
-	border: 0;
-	font-size: 29rpx;
-	color: #888;
-}
-
-.btn-admin{
-	margin-bottom: 20rpx;
-}
+@import '../../../../style/admin_console.wxss';
+.ac-export-result { margin-top: 26rpx; }
+.ac-page .ac-delete-export { margin-top: 18rpx; color: #718099; }
+.ac-page .ac-form-picker { margin-bottom: 0; }

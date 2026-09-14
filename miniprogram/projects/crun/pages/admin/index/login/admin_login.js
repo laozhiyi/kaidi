@@ -10,7 +10,8 @@ Page({
 	data: {
 		name: 'admin',
 		pwd: '123456',
-		remember: false
+		remember: false,
+		loggingIn: false
 	},
 
 	/**
@@ -58,8 +59,8 @@ Page({
 	},
 
 	bindLoginTap: async function (e) {
-		if(this._loggingIn)return;this._loggingIn=true;
-		try{return await AdminBiz.adminLogin(this,this.data.name,this.data.pwd);}finally{this._loggingIn=false;this.setData({pwd:''});}
+		if(this._loggingIn)return;this._loggingIn=true;this.setData({loggingIn:true});
+		try{return await AdminBiz.adminLogin(this,this.data.name,this.data.pwd);}finally{this._loggingIn=false;this.setData({pwd:'',loggingIn:false});}
 	},
 
 	bindRememberTap: function (e) {

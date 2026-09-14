@@ -1,7 +1,7 @@
 {
 	"usingComponents": {
 		"cmpt-form-show": "/cmpts/public/form/form_show/form_show_cmpt",
-		"cmpt-picker-time": "/cmpts/public/picker_time/picker_time_cmpt"
+		"deadline-picker": "/projects/crun/cmpts/deadline_picker/deadline_picker"
 	},
 	"enablePullDownRefresh": true,
 	"navigationBarTitleText": "快递代取"

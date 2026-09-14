@@ -16,13 +16,19 @@ class FavController extends BaseProjectController {
 		let rules = {
 			oid: 'id|must',
 			type: 'string|must',
+			favorite: 'bool',
 		};
 
 		// 取得数据
 		let input = this.validateData(rules);
 
 		let service = new FavService();
-		return await service.updateFav(this._userId, input.oid, input.type);
+		return await service.updateFav(this._userId, input.oid, input.type, input.favorite);
+	}
+
+	async orderStats() {
+		const input = this.validateData({ ids: 'must|array' });
+		return new FavService().orderStats(this._userId, input.ids);
 	}
 
 
@@ -37,7 +43,7 @@ class FavController extends BaseProjectController {
 		let input = this.validateData(rules);
 
 		let service = new FavService();
-		return await service.updateFav(this._userId, input.oid);
+		return await service.delFav(this._userId, input.oid);
 	}
 
 

@@ -1,9 +1,7 @@
-@import '../../../../../../style/public/admin.wxss';
-
-page {
-	background-color: #f8f8f8;
-}
- 
-.admin-comm-list .item .info { 
-	padding: 15rpx 20rpx 0rpx; 
-}
+@import '../../../../style/admin_console.wxss';
+.ac-log-time { min-width: 0; font-size: 22rpx; color: #8995a8; text-align: right; font-variant-numeric: tabular-nums; }
+.ac-log-content { font-size: 28rpx; line-height: 1.8; white-space: pre-wrap; word-break: break-word; }
+.ac-log-actor { display: flex; align-items: center; gap: 16rpx; border-top: 1rpx solid #edf0f5; margin-top: 24rpx; padding-top: 22rpx; font-size: 25rpx; }
+.ac-log-avatar { width: 54rpx; height: 54rpx; display: flex; align-items: center; justify-content: center; border-radius: 14rpx; background: #f0f4fb; color: #718099; }
+.ac-log-address { margin-top: 16rpx; color: #8995a8; font-size: 22rpx; word-break: break-all; }
+.ac-log-clean { margin-top: 26rpx; padding: 24rpx 0; border-top: 1rpx solid #e2e8f1; display: flex; flex-direction: column; align-items: center; gap: 20rpx; }

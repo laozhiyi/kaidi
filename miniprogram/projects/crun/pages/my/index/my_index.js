@@ -1,172 +1,100 @@
-/** 
- * Ver : CCMiniCloud Framework 2.0.1 ALL RIGHTS RESERVED BY cclinux0730 (wechat)
- * Date: 2020-10-29 07:48:00 
- */
-
-const cacheHelper = require('../../../../../helper/cache_helper.js');
 const pageHelper = require('../../../../../helper/page_helper.js');
 const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 const AdminBiz = require('../../../../../comm/biz/admin_biz.js');
-const setting = require('../../../../../setting/setting.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
+const profileMethods = require('../profile_methods.js');
+const InviteBiz = require('../../../biz/invite_biz.js');
+const Notifications = require('../../../biz/notification_biz.js');
 
 Page({
-	data: {
-	},
-
-	/**
-	 * 生命周期函数--监听页面加载
-	 */
-	onLoad: async function (options) {
-		if (PassportBiz.isLogin()) {
-			let user = {};
-			user.USER_NAME = PassportBiz.getUserName();
-			this.setData({ user });
-		}
-
-		ProjectBiz.initPage(this);
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面初次渲染完成
-	 */
-	onReady: function () { },
-
-	/**
-	 * 生命周期函数--监听页面显示
-	 */
-	onShow: async function () {
-		const tabBar = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
-		if (tabBar) tabBar.setData({ selected: 2 });
-		await PassportBiz.loginSilenceMust(this);
-		await this._loadUser();
-	},
-
-	/**
-	 * 生命周期函数--监听页面隐藏
-	 */
-	onHide: function () {
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面卸载
-	 */
-	onUnload: function () {
-
-	},
-
-	_loadUser: async function (e) {
-
-		let opts = {
-			title: 'bar'
-		}
-		let user = await cloudHelper.callCloudData('passport/my_detail', {}, opts);
-		if (!user) {
-			this.setData({
-				user: null
-			});
-			return;
-		}
-
-		this.setData({
-			user
-		})
-	},
-
-	/**
-	 * 页面相关事件处理函数--监听用户下拉动作
-	 */
-	onPullDownRefresh: async function () {
-		await this._loadUser();
-		wx.stopPullDownRefresh();
-	},
-
-	/**
-	 * 页面上拉触底事件的处理函数
-	 */
-	onReachBottom: function () {
-
-	},
-
-
-	/**
-	 * 用户点击右上角分享
-	 */
-	onShareAppMessage: function () { },
-
-	url: function (e) {
-		pageHelper.url(e, this);
-	},
-
-	bindSetTap: function (e, skin) {
-		let itemList = ['清除缓存', '后台管理'];
-		wx.showActionSheet({
-			itemList,
-			success: async res => {
-				let idx = res.tapIndex;
-				if (idx == 0) {
-					cacheHelper.clear();
-					pageHelper.showNoneToast('清除缓存成功');
-				}
-
-				if (idx == 1) {
-					if (setting.IS_SUB) {
-						AdminBiz.adminLogin(this, 'admin', '123456');
-					} else {
-						wx.reLaunch({
-							url: '../../admin/index/login/admin_login',
-						});
-					}
-
-				}
-
-			},
-			fail: function (res) { }
-		})
-	},
-
-
-	bindMyAcceptTap: function (e) {
-		wx.setStorageSync('crun-order-tab', 1);
-		wx.switchTab({ url: '/projects/crun/pages/order/index/order_index' });
-	},
-
-	bindMyFavTap: function (e) {
-		wx.navigateTo({
-			url: '../fav/my_fav',
-		});
-	},
-
-
-	bindMyPostTap: function (e) { this.bindFeedbackTap(e); },
-
-	bindAboutTap: function (e) {
-		wx.navigateTo({
-			url: '/projects/crun/pages/about/index/about_index',
-		});
-	},
-
-	bindCampusServiceTap: function (e) {
-		wx.navigateTo({
-			url: '/projects/crun/pages/campus_service/list/campus_service_list',
-		});
-	},
-
-	bindFeedbackTap: function (e) {
-		wx.navigateTo({
-			url: '/projects/crun/pages/feedback/my_list/feedback_my_list',
-		});
-	},
-
-	bindProfileContactTap: function () { wx.navigateTo({ url: '../contact/contact' }); },
-	bindProfileAddressTap: function () { wx.navigateTo({ url: '../address/address' }); },
-
-	bindInviteTap: function (e) {
-		wx.navigateTo({
-			url: '/projects/crun/pages/invite/index/invite_index',
-		});
-	}
-})
+  data: { user: null, loading: false, userError: '', settingsVisible: false, unreadCount: 0, messageBadge: '' },
+  onLoad() {
+    ProjectBiz.initPage(this);
+    if (PassportBiz.isLogin()) {
+      const token = PassportBiz.getToken();
+      this.setData({ user: { USER_NAME: token.name, USER_PIC: token.pic || '', USER_STATUS: token.status } });
+    }
+  },
+  async onShow() {
+    this._visible = true;
+    if (this._stopMessages) this._stopMessages();
+    this._stopMessages = Notifications.subscribe(summary => this.setData({ unreadCount: summary.unreadCount, messageBadge: summary.badge }));
+    const tabBar = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
+    if (tabBar) tabBar.setData({ selected: 2 });
+    await PassportBiz.loginSilenceMust(this);
+    if (this._visible) Notifications.refresh(true);
+    if (!this._unloaded) await this._loadUser();
+  },
+  onHide() { this._visible = false; if (this._stopMessages) this._stopMessages(); this._stopMessages = null; this.setData({ settingsVisible: false }); },
+  onUnload() { this._unloaded = true; this.onHide(); },
+  _loadUser() {
+    if (this._userRequest) return this._userRequest;
+    this.setData({ loading: true, userError: '' });
+    this._userRequest = (async () => {
+      try {
+        const user = await cloudHelper.callCloudData('passport/my_detail', {}, { hint: false });
+        if (this._unloaded) return;
+        this.setData({ user: user || null });
+        if (user && user.USER_STATUS !== 9) InviteBiz.acceptPending().catch(() => {});
+      } catch (error) {
+        if (!this._unloaded) this.setData({ userError: '资料加载失败，点击重试' });
+      } finally {
+        this._userRequest = null;
+        if (!this._unloaded) this.setData({ loading: false });
+      }
+    })();
+    return this._userRequest;
+  },
+  async onPullDownRefresh() {
+    try { await Promise.all([this._loadUser(), Notifications.refresh(true)]); } finally { wx.stopPullDownRefresh(); }
+  },
+  async _openUserPage(url) {
+    if (this._openingPage) return;
+    this._openingPage = true;
+    try {
+      if (!await PassportBiz.loginMustCancelWin(this) || this._unloaded) return;
+      wx.navigateTo({ url, fail: () => pageHelper.showNoneToast('页面打开失败，请重试') });
+    } catch (error) {
+      pageHelper.showNoneToast('暂时无法打开，请稍后重试');
+    } finally { this._openingPage = false; }
+  },
+  url(e) { pageHelper.url(e, this); },
+  bindMyFeedbackTap() { return this._openUserPage('/projects/crun/pages/feedback/my_list/feedback_my_list'); },
+  bindMyReviewTap() { return this._openUserPage('/projects/crun/pages/my/review/my_review'); },
+  bindMyFavTap() { return this._openUserPage('/projects/crun/pages/my/fav/my_fav'); },
+  bindMyReputationTap() { return this._openUserPage('/projects/crun/pages/my/reputation/my_reputation'); },
+  bindMessagesTap() { return this._openUserPage('/projects/crun/pages/operations/operations'); },
+  bindFeedbackTap() { return this._openUserPage('/projects/crun/pages/feedback/index/feedback_index'); },
+  bindProfileContactTap() { return this._openUserPage('/projects/crun/pages/my/contact/contact'); },
+  bindProfileAddressTap() { return this._openUserPage('/projects/crun/pages/my/address/address'); },
+  bindInviteTap() { return this._openUserPage('/projects/crun/pages/invite/index/invite_index'); },
+  bindAboutTap() { wx.navigateTo({ url: '/projects/crun/pages/about/index/about_index' }); },
+  bindCampusServiceTap() { wx.navigateTo({ url: '/projects/crun/pages/campus_service/list/campus_service_list' }); },
+  bindMyAcceptTap() {
+    wx.setStorageSync('crun-order-tab', 1);
+    wx.switchTab({ url: '/projects/crun/pages/order/index/order_index' });
+  },
+  bindMyPostTap() {
+    wx.setStorageSync('crun-order-tab', 2);
+    wx.switchTab({ url: '/projects/crun/pages/order/index/order_index' });
+  },
+  bindSetTap() { this.setData({ settingsVisible: true }); },
+  bindCloseSettings() { this.setData({ settingsVisible: false }); },
+  bindSettingsTouchMove() {},
+  bindClearCacheTap() {
+    try {
+      profileMethods.clearLocalCaches();
+      this.bindCloseSettings();
+      pageHelper.showSuccToast('缓存已清除');
+    } catch (error) { pageHelper.showNoneToast('缓存清除失败，请重试'); }
+  },
+  bindAdminTap() {
+    this.bindCloseSettings();
+    const url = AdminBiz.getAdminToken() ? '/projects/crun/pages/admin/index/home/admin_home' : '/projects/crun/pages/admin/index/login/admin_login';
+    wx.navigateTo({ url });
+  },
+  onShareAppMessage() {
+    return { title: '校园跑腿，便捷互助', path: '/projects/crun/pages/default/index/default_index' };
+  }
+});

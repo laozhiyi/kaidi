@@ -19,21 +19,23 @@ function detailFixture(name, status, role, patch = {}) {
  if (role === 'public') { // Extra private sentinel values exercise the actual WXML privacy guards.
   Object.assign(order.MAIL_OBJ, { address2: 'PRIVATE_ADDRESS', tel: 'PRIVATE_PHONE', code: 'PRIVATE_CODE', desc: 'PRIVATE_NOTE' });
   order.MAIL_DELIVERY_PROOF = { note: 'PRIVATE_PROOF' }; order.MAIL_EXCEPTION = { note: 'PRIVATE_EXCEPTION' };
-  order.MAIL_HISTORY = [{ action: 'publish', note: 'PRIVATE_HISTORY', at: now }];
  }
+ if (role !== 'poster') order.MAIL_HISTORY = [{ action: 'publish', note: 'PRIVATE_HISTORY', at: now }];
  const detailUI = UI.detail(order, now);
  return { name, page: role === 'public' ? 'detail/mail_detail' : 'my_detail/mail_my_detail', expected: detailUI.title,
-  absent: role === 'public' ? ['PRIVATE_ADDRESS','PRIVATE_PHONE','PRIVATE_CODE','PRIVATE_NOTE','PRIVATE_PROOF','PRIVATE_EXCEPTION','PRIVATE_HISTORY','取件凭证'] : [],
+  present: role === 'public' ? [] : ['订单信息','取件凭证',order.MAIL_ID,...order.MAIL_OBJ.code.split('\n'),...(role === 'poster' ? ['订单动态'] : [])],
+  absent: role === 'public' ? ['PRIVATE_ADDRESS','PRIVATE_PHONE','PRIVATE_CODE','PRIVATE_NOTE','PRIVATE_PROOF','PRIVATE_EXCEPTION','PRIVATE_HISTORY','取件凭证','订单信息','订单动态',order.MAIL_ID] : role === 'rider' ? ['PRIVATE_HISTORY','订单动态'] : [],
   data: { isLoad: true, loading: false, id: order._id, mail: { ...order, canAccept: role === 'public' && status === 0, canSeeCode: role !== 'public' }, detailUI } };
 }
 function scenarios() {
  const publish = { isLoad: true, config, campuses: config.campuses, campus: '育才校区', campusIndex: 0, serviceState: UI.service(config, now), formEnd: '2026-09-10 18:00', formForms: [], fields: [] };
  const fixtures = [
   { name: 'publish-open', page: 'add/mail_add', data: publish, expected: '正常接单', absent: ['暂时停止接单'] },
+  { name: 'publish-pending-recovery', page: 'add/mail_add', data: { ...publish, hasPendingSubmission: true }, expected: '核对上次提交' },
   { name: 'publish-paused', page: 'add/mail_add', data: { ...publish, config: { ...config, enabled: false }, serviceState: UI.service({ ...config, enabled: false }, now) }, expected: '管理员已暂停新订单' },
-  { name: 'publish-closed', page: 'add/mail_add', data: { ...publish, serviceState: UI.service(config, Date.parse('2026-09-07T23:00:00+08:00')) }, expected: '休息中，营业后可发布' },
+  { name: 'publish-late-hours', page: 'add/mail_add', data: { ...publish, serviceState: UI.service(config, Date.parse('2026-09-07T23:00:00+08:00')) }, expected: '正常接单', absent: ['休息中，营业后可发布'] },
   { name: 'publish-error', page: 'add/mail_add', data: { isLoad: false, configError: true, loadError: '网络暂不可用，请检查连接后重试' }, expected: '重新加载' },
-  { name: 'publish-stations', page: 'add/mail_add', data: { ...publish, pickStationVisible: true }, expected: '选择常用快递点' },
+  { name: 'publish-stations', page: 'add/mail_add', data: { ...publish, packagePickupVisible: true, packagePickupNumber: 1, pickupStations: require('../../miniprogram/projects/crun/biz/address_biz.js').PICKUP_STATIONS }, expected: '选择常用快递点', present: ['中通','邮政','京东','其他取件点','确认取件点'], absent: ['从哪里取，送到哪里','取件快递点'] },
   detailFixture('detail-waiting', 0, 'poster'), detailFixture('detail-rider', 1, 'rider'), detailFixture('detail-confirm', 2, 'poster'),
   detailFixture('detail-exception', 3, 'poster'), detailFixture('detail-complete', 9, 'poster'), detailFixture('detail-cancelled', 99, 'poster'),
   detailFixture('detail-expired', 0, 'poster', { MAIL_END_TIME: now - 1 }), detailFixture('detail-public', 0, 'public'),
@@ -45,6 +47,12 @@ function scenarios() {
  const attached = detailFixture('detail-attached-sheet', 1, 'rider'); attached.data.panel = 'deliver'; attached.data.note = '已放到门口，请及时查收。'; attached.data.images = [image,image]; fixtures.push(attached);
  const sheet = detailFixture('detail-delivery-sheet', 1, 'rider'); sheet.data.panel = 'deliver'; fixtures.push(sheet);
  const exception = detailFixture('detail-exception-sheet', 1, 'rider'); exception.data.panel = 'exception'; fixtures.push(exception);
+ for (const [role, status] of [['public',0],['public',1],['rider',1],['rider',9],['poster',0],['poster',1]]) {
+  for (const page of ['detail/mail_detail','my_detail/mail_my_detail']) {
+   const fixture = detailFixture('detail-privacy-' + role + '-' + status + '-' + page, status, role);
+   fixture.page = page; fixtures.push(fixture);
+  }
+ }
  return fixtures;
 }
 module.exports = { scenarios };

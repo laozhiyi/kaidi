@@ -1,0 +1,17 @@
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-eyebrow">业务管理 / 投诉反馈</view>
+  <view class="ac-heading"><view><view class="ac-title">投诉与反馈</view><view class="ac-subtitle">核实问题，记录处理结果并回复用户</view></view></view>
+  <view class="ac-search"><text class="icon-search ac-search-icon"></text><input value="{{searchDraft}}" bindinput="bindInput" bindconfirm="bindSearch" confirm-type="search" maxlength="50" placeholder="搜索标题、内容或提交人" /><button class="ac-secondary ac-small" bindtap="bindSearch">搜索</button></view>
+  <scroll-view scroll-x class="ac-tabs"><view wx:for="{{statuses}}" wx:key="value" class="ac-tab {{status===item.value?'active':''}}" bindtap="bindStatus" data-value="{{item.value}}">{{item.label}}</view></scroll-view>
+  <view class="ac-filter-summary"><text>{{loading?'正在查询…':'共 '+total+' 条反馈'}}</text><text class="ac-link" bindtap="bindReset">重置筛选</text></view>
+  <view wx:if="{{error}}" class="ac-card ac-state"><view class="ac-state-title">反馈未能更新</view><view class="ac-muted">{{error}}</view><button class="ac-secondary ac-small" bindtap="bindRetry">重试</button></view>
+  <view wx:if="{{!loading && !error && !list.length}}" class="ac-card ac-state"><view class="ac-state-title">暂无符合条件的反馈</view><view class="ac-muted">用户提交的反馈会显示在这里</view></view>
+  <view wx:for="{{list}}" wx:key="_id" class="ac-card" bindtap="bindDetail" data-id="{{item._id}}">
+    <view class="ac-order-head"><text class="ac-order-meta">{{item.FB_TYPE || '用户反馈'}}</text><text class="ac-badge {{item.tone}}">{{item.statusLabel}}</text></view>
+    <view class="ac-order-title">{{item.FB_TITLE}}</view><view class="ac-summary-text ac-clamp ac-feedback-summary">{{item.FB_CONTENT}}</view>
+    <view wx:if="{{item.FB_ORDER_ID}}" class="ac-feedback-order"><text class="icon-form"></text><text>已关联订单</text></view>
+    <view class="ac-order-foot"><view>{{item.FB_USER_NAME || '用户'}}<view>{{item.createdText}}</view></view><text class="ac-link">{{item.FB_STATUS===0?'查看并处理':'查看详情'}} ›</text></view>
+  </view>
+  <view class="ac-list-footer"><button wx:if="{{hasMore}}" class="ac-secondary" bindtap="bindMore" loading="{{loading}}" disabled="{{loading}}">加载更多</button><text wx:if="{{list.length}}">已显示 {{list.length}} / {{total}} 条{{!hasMore && !loading?' · 已到底':''}}</text><text wx:elif="{{loading}}">正在读取反馈…</text></view>
+  <admin-nav active="feedback" />
+</view>

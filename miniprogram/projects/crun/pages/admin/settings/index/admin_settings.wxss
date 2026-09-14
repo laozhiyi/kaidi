@@ -1,0 +1,4 @@
+@import '../../../../style/admin_console.wxss';
+.ac-page .ac-menu-card { padding: 6rpx 26rpx; }
+.ac-page .ac-menu-icon { flex: 0 0 40rpx !important; width: 40rpx; font-size: 32rpx; color: #6b83a9; }
+.ac-page .ac-menu-copy { flex: 1; min-width: 0; }

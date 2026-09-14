@@ -1,26 +1,12 @@
-<view class="main-admin" wx:if="{{isAdmin}}"> 
-	 
-	<view class="form-box shadow"> 
-		<view class="form-group">
-			<view class="title must">旧密码</view>
-			<input maxlength="128" type="password" placeholder="请填写旧密码" model:value="{{formOldPassword}}" focus="{{formOldPasswordFocus}}"></input>
-		</view>
-		<view wx:if="{{formOldPasswordFocus}}" class="hint-desc error">{{formOldPasswordFocus}}</view>
-
-		<view class="form-group">
-			<view class="title must">新密码</view>
-			<input maxlength="128" type="password" placeholder="请填写新密码" model:value="{{formPassword}}" focus="{{formPasswordFocus}}"></input>
-		</view>
-		<view wx:if="{{formPasswordFocus}}" class="hint-desc error">{{formPasswordFocus}}</view>
-
-		<view class="form-group">
-			<view class="title must">新密码再次填写</view>
-			<input maxlength="128" type="password" placeholder="请再次填写新密码" model:value="{{formPassword2}}" focus="{{formPassword2Focus}}"></input>
-		</view>
-		<view wx:if="{{formPassword2Focus}}" class="hint-desc error">{{formPassword2Focus}}</view>
-
-	</view>
-
-	<button bindtap="bindFormSubmit" class="btn-admin margin-top">提交修改</button>
-
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 管理中心</text><text>/</text><text>修改我的密码</text></view>
+  <view class="ac-heading"><view><view class="ac-title">修改我的密码</view><view class="ac-subtitle">更新当前账号的登录密码</view></view></view>
+  <block wx:if="{{isLoad}}">
+    <view class="ac-card"><view class="ac-card-title"><view class="ac-icon"><text class="icon-lock"></text></view><view><view class="ac-section-title">账号安全</view><view class="ac-card-desc">当前账号 · {{admin.name}}</view></view></view>
+    <view class="ac-form-field"><view class="ac-label">当前密码<text class="ac-required">*</text></view><input class="ac-input" model:value="{{formOldPassword}}" placeholder="输入当前登录密码" placeholder-class="ac-placeholder" disabled="{{busy}}" focus="{{formOldPasswordFocus}}" type="text" password="{{true}}" maxlength="128" /><view wx:if="{{formOldPasswordFocus}}" class="ac-field-error">{{formOldPasswordFocus}}</view></view>
+    <view class="ac-form-field"><view class="ac-label">新密码<text class="ac-required">*</text></view><input class="ac-input" model:value="{{formPassword}}" placeholder="输入新的登录密码" placeholder-class="ac-placeholder" disabled="{{busy}}" focus="{{formPasswordFocus}}" type="text" password="{{true}}" maxlength="128" /><view wx:if="{{formPasswordFocus}}" class="ac-field-error">{{formPasswordFocus}}</view></view>
+    <view class="ac-form-field"><view class="ac-label">确认新密码<text class="ac-required">*</text></view><input class="ac-input" model:value="{{formPassword2}}" placeholder="再次输入新密码" placeholder-class="ac-placeholder" disabled="{{busy}}" focus="{{formPassword2Focus}}" type="text" password="{{true}}" maxlength="128" /><view wx:if="{{formPassword2Focus}}" class="ac-field-error">{{formPassword2Focus}}</view></view>
+    </view><view class="ac-notice">修改成功后，需要使用新密码重新登录。</view>
+    <button class="ac-primary" bindtap="bindFormSubmit" disabled="{{busy}}" loading="{{busy}}">{{busy?'正在保存…':'确认修改密码'}}</button>
+  </block>
 </view>

@@ -8,8 +8,6 @@ const cloudBase = require('../../framework/cloud/cloud_base.js');
 const cloudUtil = require('../../framework/cloud/cloud_util.js');
 const timeUtil = require('../../framework/utils/time_util.js');
 const util = require('../../framework/utils/util.js');
-const md5Lib = require('../../framework/lib/md5_lib.js');
-const config = require('../../config/config.js');
 const setupUtil = require('../utils/setup/setup_util.js');
 
 // 获得当前导出链接
@@ -22,7 +20,8 @@ async function getExportDataURL(key) {
 		url = '';
 	else {
 		url = expData.EXPORT_CLOUD_ID;
-		url = await cloudUtil.getTempFileURLOne(url) + '?rd=' + timeUtil.time();
+		url = await cloudUtil.getTempFileURLOne(url);
+		if (!url) throw new Error('暂时无法获取报表下载链接，请重试');
 		time = timeUtil.timestamp2Time(expData.EXPORT_ADD_TIME);
 	}
 
@@ -50,6 +49,8 @@ async function deleteDataExcel(key) {
 		fileList: [xlsPath],
 	}).then(async res => {
 		console.log(res.fileList);
+		const file = res && res.fileList && res.fileList[0];
+		if (!file || ![0, -503003].includes(Number(file.status))) throw new Error('导出文件删除失败');
 		if (res.fileList && res.fileList[0] && res.fileList[0].status == -503003) {
 			console.log('[deleteUserExcel]  ERROR = ', res.fileList[0].status + ' >> ' + res.fileList[0].errMsg);
 			//this.AppError('文件不存在或者已经删除');
@@ -63,7 +64,7 @@ async function deleteDataExcel(key) {
 	}).catch(error => {
 		if (error.name != 'AppError') {
 			console.log('[deleteExcel]  ERROR = ', error);
-			this.AppError('操作失败，请重新删除');
+			throw new Error('操作失败，请重新删除');
 		} else
 			throw error;
 	});
@@ -73,12 +74,9 @@ async function deleteDataExcel(key) {
 
 // 导出数据  
 async function exportDataExcel(key, title, total, data, options = {}) {
-	// 删除导出表
-
-	await setupUtil.remove(key);
-
-	let fileName = key + '_' + md5Lib.md5(key + config.CLOUD_ID);
-	let xlsPath = util.getProjectId() + '/' + 'export/' + fileName + '.xlsx';
+	const previous = await setupUtil.get(key);
+	let fileName = key + '_' + require('crypto').randomBytes(12).toString('hex');
+	let xlsPath = util.getProjectId() + '/private-export/' + fileName + '.xlsx';
 
 	// 操作excel用的类库
 	const xlsx = require('node-xlsx');
@@ -97,7 +95,17 @@ async function exportDataExcel(key, title, total, data, options = {}) {
 		cloudPath: xlsPath,
 		fileContent: buffer, //excel二进制文件
 	});
-	if (!upload || !upload.fileID) return;
+	if (!upload || !upload.fileID) throw new Error('导出文件生成失败，请重试');
+	// Signed URLs must be returned unchanged. Obtain a usable URL before
+	// replacing the previous report so a signing failure keeps it available.
+	let url;
+	try {
+		url = await cloudUtil.getTempFileURLOne(upload.fileID);
+		if (!url) throw new Error('暂时无法获取报表下载链接，请重试');
+	} catch (error) {
+		try { await cloud.deleteFile({ fileList: [upload.fileID] }); } catch (_) { console.warn('[ExportData] incomplete report cleanup failed'); }
+		throw error;
+	}
 
 	// 入导出表 
 	let dataExport = {
@@ -107,10 +115,12 @@ async function exportDataExcel(key, title, total, data, options = {}) {
 	}
 	//console.log(dataExport)
 	await setupUtil.set(key, dataExport, 'export');
+	if (previous && previous.EXPORT_CLOUD_ID && previous.EXPORT_CLOUD_ID !== upload.fileID) {
+		try { await cloud.deleteFile({ fileList: [previous.EXPORT_CLOUD_ID] }); } catch (_) { console.warn('[ExportData] previous report cleanup failed'); }
+	}
 
 	console.log('[ExportData]  OVER.')
 
-	let url = await cloudUtil.getTempFileURLOne(upload.fileID) + '?rd=' + timeUtil.time();
 	return {
 		total,
 		url

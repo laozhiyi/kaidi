@@ -5,15 +5,18 @@
  */
 
 const config = require('../../config/config.js');
+let instance;
 
 /**
  * 获得云实例
  */
 function getCloud() {
+	if (instance) return instance;
 	const cloud = require('wx-server-sdk');
 	cloud.init({
 		env: config.CLOUD_ID || cloud.DYNAMIC_CURRENT_ENV
 	});
+	instance = cloud;
 	return cloud;
 }
 

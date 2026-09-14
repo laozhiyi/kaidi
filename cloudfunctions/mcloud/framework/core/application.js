@@ -154,7 +154,7 @@ async function app(event, context) {
 
 
 			// 系统error
-			return appUtil.handlerSvrErr();
+			return { ...appUtil.handlerSvrErr(), ...(ex.retryable === true ? { retryable: true } : {}) };
 		}
 	}
 }

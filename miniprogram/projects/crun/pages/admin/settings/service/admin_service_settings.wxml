@@ -1,0 +1,11 @@
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 管理中心</text><text>/</text><text>服务设置</text></view>
+  <view class="ac-heading"><view><view class="ac-title">服务范围与营业时间</view><view class="ac-subtitle">维护服务开关、校区与营业安排</view></view></view>
+  <include src="../settings_state.wxml" />
+  <block wx:if="{{config}}">
+    <view class="ac-card"><view class="ac-section-title">服务状态</view><view class="ac-row"><view><view class="ac-row-title">开放发布与接单</view><view class="ac-row-desc">关闭后暂停新订单，已有订单继续履约</view></view><switch color="#2863db" checked="{{config.enabled}}" data-key="enabled" bindchange="bindEdit" disabled="{{!isSuperAdmin || busy}}" /></view></view>
+    <view class="ac-card"><view class="ac-section-head"><text class="ac-section-title">公示营业时间</text><text class="ac-muted">24 小时制</text></view><view class="ac-row" wx:for="{{fields}}" wx:key="key"><view>{{item.label}}</view><view class="ac-input-unit"><input class="ac-number-input" type="{{item.type}}" value="{{config[item.key]}}" data-key="{{item.key}}" bindinput="bindEdit" disabled="{{!isSuperAdmin || busy}}" /><text>{{item.unit}}</text></view></view><view class="ac-row-desc">以北京时间展示营业安排，订单是否开放由上方服务开关控制。</view></view>
+    <view class="ac-card"><view class="ac-section-head"><text class="ac-section-title">服务校区</text><text class="ac-muted">每行一个</text></view><textarea value="{{campusText}}" data-key="campuses" bindinput="bindEdit" disabled="{{!isSuperAdmin || busy}}" maxlength="620" placeholder="例如：育才校区&#10;雁山校区" /><view class="ac-row-desc">最多 20 个校区；新订单只能选择服务范围内的校区。</view></view>
+  </block>
+  <include src="../settings_actions.wxml" />
+</view>

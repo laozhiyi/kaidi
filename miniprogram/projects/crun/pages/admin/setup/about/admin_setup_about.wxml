@@ -1,14 +1,10 @@
-<view wx:if="{{!isLoad}}" class="margin-top load loading text-l text-grey"></view>
-
-<block wx:if="{{isAdmin&&isLoad}}">
-	<view class="main-admin">
-		<view class="form-box shadow">
-			<view class="form-group" style="width: 100%;">
-				<cmpt-editor nodeList="{{formContent}}" viewMode="{{true}}" style="width: 100%;" id="contentEditor"></cmpt-editor>
-			</view>
-		</view>
-	</view>
-	<view class="btn-bottom-admin"> 
-		<view bindtap="bindFormSubmit" class="save">保存修改</view>
-	</view>
-</block>
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 关于与联系</text><text>/</text><text>编辑内容</text></view>
+  <view class="ac-heading"><view><view class="ac-title">{{title}}</view><view class="ac-subtitle">编辑图文内容，保存后同步到用户页面</view></view></view>
+  <view wx:if="{{loading}}" class="ac-card ac-state ac-muted">正在读取内容…</view>
+  <view wx:if="{{error}}" class="ac-card ac-state"><view>{{error}}</view><button wx:if="{{key}}" class="ac-secondary ac-small" bindtap="load">重新读取</button></view>
+  <block wx:if="{{isLoad}}">
+    <view class="ac-card"><cmpt-editor class="ac-editor" nodeList="{{formContent}}" viewMode="{{true}}" consoleMode="{{true}}" id="contentEditor" /></view>
+    <button class="ac-primary" bindtap="bindFormSubmit" disabled="{{busy}}" loading="{{busy}}">{{busy?'正在保存…':'保存修改'}}</button>
+  </block>
+</view>

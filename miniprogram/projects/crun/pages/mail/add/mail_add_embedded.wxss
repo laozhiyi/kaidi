@@ -1,2 +1,78 @@
+@import '../../../../../style/base/icon.wxss';
 @import './mail_add.wxss';
 
+.publish-page.publish-embedded {
+	min-height: 0;
+	padding-bottom: 0;
+}
+
+/* The home page supplies the outer gutter and tab-bar clearance. */
+.publish-page.publish-embedded .pub-content {
+	padding: 0;
+}
+
+.publish-page.publish-embedded .pub-submit-bar {
+	position: static;
+	width: 100%;
+	flex-wrap: nowrap;
+	margin-top: 12rpx;
+	padding: 24rpx;
+	background: #fff;
+	border: 1rpx solid #edf0f5;
+	border-radius: 24rpx;
+	box-shadow: none;
+}
+
+.publish-page.publish-embedded .pub-total {
+	margin-right: 16rpx;
+}
+
+.publish-page.publish-embedded .pub-total-label {
+	font-size: 21rpx;
+	line-height: 1.35;
+	color: #71829a;
+}
+
+.publish-page.publish-embedded .pub-total-price {
+	display: flex;
+	align-items: baseline;
+	margin-top: 2rpx;
+	font-size: 38rpx;
+	font-weight: 700;
+	line-height: 1.1;
+	color: #285f9f;
+	white-space: nowrap;
+}
+
+.publish-page.publish-embedded .pub-total-price text {
+	margin-right: 3rpx;
+	font-size: 23rpx;
+	font-weight: 500;
+}
+
+.publish-page.publish-embedded .pub-submit {
+	flex: 0 1 282rpx;
+	width: 282rpx;
+	min-width: 240rpx;
+	height: 76rpx;
+	min-height: 44px;
+	padding: 0 14rpx;
+	border-radius: 16rpx;
+	font-size: 26rpx;
+	font-weight: 600;
+	white-space: nowrap;
+	box-shadow: none;
+}
+
+.publish-page.publish-embedded .pub-submit text {
+	margin-left: 6rpx;
+	font-size: 20rpx;
+}
+
+@media (max-width: 360px) {
+	.publish-page.publish-embedded .pub-submit {
+		flex-basis: 250rpx;
+		min-width: 220rpx;
+		font-size: 24rpx;
+	}
+}

@@ -1,0 +1,29 @@
+<view class="review-page">
+  <view class="review-hero">
+    <view class="review-title">{{direction === 'received' ? '别人对我的评价' : '我对别人的评价'}}</view>
+    <view class="review-desc">{{direction === 'received' ? '来自其他用户的评分与反馈' : '记录我给出的评分与反馈'}}</view>
+  </view>
+  <view class="review-tabs"><button class="review-tab {{direction === 'sent' ? 'active' : ''}}" bindtap="bindDirection" data-direction="sent">我对别人的评价</button><button class="review-tab {{direction === 'received' ? 'active' : ''}}" bindtap="bindDirection" data-direction="received">别人对我的评价</button></view>
+  <view wx:if="{{loading && !isLoad}}" class="review-state">正在加载…</view>
+  <view wx:if="{{error}}" class="review-state"><view>加载失败，请稍后重试</view><button class="review-more" bindtap="load">重新加载</button></view>
+  <view wx:if="{{isLoad && !loading && !error && !list.length}}" class="review-empty">
+    <view class="review-empty-icon">★</view>
+    <view>{{direction === 'received' ? '还没有收到评价' : '还没有发出评价'}}</view>
+    <view class="review-empty-desc">{{direction === 'received' ? '收到的评价会显示在这里' : '发出的评价会显示在这里'}}</view>
+  </view>
+  <view wx:for="{{list}}" wx:key="_id" class="review-card">
+    <view class="review-card-top">
+      <view class="review-avatar">
+        <image wx:if="{{item.avatar}}" class="review-avatar-image" src="{{item.avatar}}" mode="aspectFill" binderror="bindAvatarError" data-id="{{item._id}}" data-src="{{item.avatar}}" />
+        <image wx:else class="review-avatar-fallback" src="../../../images/tabbar/my_cur.png" mode="aspectFit" />
+      </view>
+      <view class="review-person">
+        <view class="review-target">{{item.name}}</view>
+        <view class="review-stars" aria-label="{{item.score}}星评价">{{item.stars}}</view>
+      </view>
+    </view>
+    <view class="review-content {{item.content ? '' : 'review-content-empty'}}">{{item.content || '未填写文字评价'}}</view>
+  </view>
+  <button wx:if="{{hasMore}}" class="review-more" bindtap="onReachBottom" loading="{{loading}}" disabled="{{loading}}">加载更多</button>
+  <view class="tab-bar-placeholder"></view>
+</view>

@@ -1,9 +1,6 @@
 {
-	"usingComponents": {
-		"cmpt-foot": "/cmpts/biz/foot/foot_cmpt"
-	},
-	"disableScroll": true,
-	"navigationBarBackgroundColor": "#2499f2",
-	"navigationBarTextStyle": "white",
-	"navigationBarTitleText": "管理员登录"
+  "usingComponents": {},
+  "navigationBarTitleText": "管理员登录",
+  "navigationBarBackgroundColor": "#f3f5f9",
+  "navigationBarTextStyle": "black"
 }

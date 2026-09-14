@@ -1,0 +1,11 @@
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 管理中心</text><text>/</text><text>价格与结算</text></view>
+  <view class="ac-heading"><view><view class="ac-title">价格与结算说明</view><view class="ac-subtitle">维护发布订单时展示的参考费用</view></view></view>
+  <include src="../settings_state.wxml" />
+  <block wx:if="{{config}}">
+    <view class="ac-card"><view class="ac-section-head"><text class="ac-section-title">参考价格与件数</text><text class="ac-badge">线下结算</text></view><view class="ac-row" wx:for="{{fields}}" wx:key="key"><view>{{item.label}}</view><view class="ac-input-unit"><input class="ac-number-input" type="{{item.type}}" value="{{config[item.key]}}" data-key="{{item.key}}" bindinput="bindEdit" disabled="{{!isSuperAdmin || busy}}" /><text>{{item.unit}}</text></view></view></view>
+    <view class="ac-notice">参考价用于新订单的费用提示，已发布订单保留原费用。</view>
+    <view class="ac-card"><view class="ac-section-head"><text class="ac-section-title">结算说明</text><text class="ac-muted">用户可见</text></view><textarea value="{{config.offlineNotice}}" data-key="offlineNotice" bindinput="bindEdit" disabled="{{!isSuperAdmin || busy}}" maxlength="300" placeholder="说明线下结算方式与注意事项" /><view class="ac-counter">{{config.offlineNotice.length}} / 300</view></view>
+  </block>
+  <include src="../settings_actions.wxml" />
+</view>

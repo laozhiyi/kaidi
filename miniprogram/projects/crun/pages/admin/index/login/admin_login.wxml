@@ -1,28 +1,10 @@
-<view class="main-admin bg-admin">
-	<view class="login shadow">
-
-		<view class=pic"><text class="icon-settingsfill text-blue"></text></view>
-		<view class="hint">后台管理系统</view>
-
-		<view class="form-group margin-top">
-			<view class="title">账号：</view>
-			<input placeholder="请输入管理员账号" maxlength="30" placeholder-class="phc" model:value="{{name}}"></input>
-		</view>
-
-		<view class="form-group">
-			<view class="title">密码：</view>
-			<input placeholder="请输入管理员密码" maxlength="128" type="password" placeholder-class="phc" model:value="{{pwd}}"></input>
-		</view>
-
-		<button class="btn bg-admin margin-bottom" bindtap="bindLoginTap">点击登录</button>
-		<view class="return text-grey">本系统仅限于系统管理员登录</view>
-		<view bindtap="bindBackTap" class="return text-grey"><text class="icon-back"></text>返回用户端</view>
-
-
-	</view>
-
-	<view class="foot-bottom">
-		<cmpt-foot />
-	</view>
-
+<view class="ac-page ac-login-page">
+  <view class="ac-login-brand"><view class="ac-login-icon"><text class="icon-settings"></text></view><view class="ac-eyebrow">GXNU 随手取</view><view class="ac-title">管理后台</view><view class="ac-subtitle">登录后管理校区服务与日常运营</view></view>
+  <view class="ac-card">
+    <view class="ac-form-field"><view class="ac-label">管理员账号</view><input class="ac-input" placeholder="输入管理员账号" maxlength="30" placeholder-class="ac-placeholder" model:value="{{name}}" disabled="{{loggingIn}}" /></view>
+    <view class="ac-form-field"><view class="ac-label">登录密码</view><input class="ac-input" placeholder="输入管理员密码" maxlength="128" type="text" password="{{true}}" placeholder-class="ac-placeholder" model:value="{{pwd}}" disabled="{{loggingIn}}" bindconfirm="bindLoginTap" confirm-type="go" /></view>
+    <button class="ac-primary ac-login-submit" bindtap="bindLoginTap" loading="{{loggingIn}}" disabled="{{loggingIn}}">{{loggingIn?'正在登录…':'登录管理后台'}}</button>
+  </view>
+  <view class="ac-footnote">仅限已授权的管理员使用</view>
+  <button class="ac-ghost" bindtap="bindBackTap">返回用户端</button>
 </view>

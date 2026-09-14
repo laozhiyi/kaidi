@@ -1,0 +1,3 @@
+@import '../../../../style/admin_console.wxss';
+.ac-feedback-summary { margin-top: 14rpx; }
+.ac-feedback-order { display: flex; gap: 12rpx; align-items: center; color: #7588a6; font-size: 23rpx; margin-top: 20rpx; }

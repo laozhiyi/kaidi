@@ -53,6 +53,7 @@ Page({
 		}
 
 		if (isSubmit) return;
+		if (!/^\d{1,6}$/.test(String(formOrder))) return pageHelper.showModal('排序号须为 0～999999 的整数', '温馨提示');
 		this.setData({ isSubmit: true });
 
 		try {
@@ -63,7 +64,7 @@ Page({
 				wechat: (formWechat || '').trim(),
 				qq: (formQQ || '').trim(),
 				workTime: (formWorkTime || '').trim(),
-				order: Number(formOrder) || 9999,
+				order: Number(formOrder),
 			};
 			await cloudHelper.callCloudSumbit('admin/campus_service_insert', params, { hint: false });
 			if (this._destroyed) return;

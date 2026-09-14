@@ -1,128 +1,43 @@
-const AdminBiz = require('../../../../../../comm/biz/admin_biz.js');
-const pageHelper = require('../../../../../../helper/page_helper.js');
-const cloudHelper = require('../../../../../../helper/cloud_helper.js');
+const UI = require('../../../../biz/admin_console_biz.js');
+const Ops = require('../../../../biz/operations_biz.js');
+const cloud = require('../../../../../../helper/cloud_helper.js');
 const projectSetting = require('../../../../public/project_setting.js');
-
 Page({
-
-	/**
-	 * 页面的初始数据
-	 */
-	data: {
-		isLoad: false,
-		key: '',
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面加载
-	 */
-	onLoad: async function (options) {
-		if (!AdminBiz.isAdmin(this)) return;
-
-		if (options && options.key) {
-			let key = options.key;
-			for (let k = 0; k < projectSetting.SETUP_CONTENT_ITEMS.length; k++) {
-				let item = projectSetting.SETUP_CONTENT_ITEMS[k];
-				if (item.key == key) {
-					this._loadDetail(item);
-					wx.setNavigationBarTitle({
-						title: '编辑' + item.title,
-					});
-					this.setData({ key: item.key });
-					break;
-				}
-			}
-		}
-	},
-
-	/**
-	 * 生命周期函数--监听页面初次渲染完成
-	 */
-	onReady: function () {
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面显示
-	 */
-	onShow: function () {
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面隐藏
-	 */
-	onHide: function () {
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面卸载
-	 */
-	onUnload: function () {
-
-	},
-
-	/**
-	 * 页面相关事件处理函数--监听用户下拉动作
-	 */
-	onPullDownRefresh: async function () {
-		await this._loadDetail();
-		wx.stopPullDownRefresh();
-	},
-
-	_loadDetail: async function (item) {
-		if (!AdminBiz.isAdmin(this)) return;
-
-		let opts = {
-			'title': 'bar'
-		};
-		let params = {
-			key: item.key
-		}
-
-		try {
-			await cloudHelper.callCloudSumbit('home/setup_get', params, opts).then(res => {
-				let formContent = [{ type: 'text', val: item.title }];
-				let content = res.data;
-				if (content && Array.isArray(content)) {
-					formContent = content;
-				}
-				this.setData({
-					isLoad: true,
-
-					// 表单数据   
-					formContent
-
-				});
-
-
-			});
-		}
-		catch (err) {
-			console.log(err);
-		}
-
-
-	},
-
-
-	/** 
-	 * 数据提交
-	 */
-	bindFormSubmit: async function () {
-		if (!AdminBiz.isAdmin(this)) return;
-
-		let formContent = this.selectComponent("#contentEditor").getNodeList();
-
-		await cloudHelper.transRichEditorTempPics(formContent, 'setup/', this.data.key, 'admin/setup_set_content');
-
-		let callback = () => {
-			wx.navigateBack();
-		}
-		pageHelper.showSuccToast('修改成功', 1500, callback);
-
-	},
-
-})
+  data: { key: '', title: '编辑内容', isLoad: false, loading: false, error: '', busy: false, formContent: [] },
+  onLoad(options = {}) {
+    if (!UI.start(this)) return;
+    const item = projectSetting.SETUP_CONTENT_ITEMS.find(item => item.key === options.key);
+    if (!item) { this.setData({ error: '内容页面不存在，请返回重新选择' }); return; }
+    this.setData({ key: item.key, title: item.title });
+    wx.setNavigationBarTitle({ title: '编辑' + item.title });
+    return this.load();
+  },
+  onShow() { const reload = this._visible === false && !this.data.isLoad; this._visible = true; if (reload && this.data.key) return this.load(); },
+  onHide() { UI.hide(this); },
+  onUnload() { this._unloaded = true; UI.hide(this); },
+  bindBack() { UI.back('about'); },
+  async load() {
+    if (!UI.authorize(this) || !this.data.key || this.data.busy) return;
+    const seq = this._seq = (this._seq || 0) + 1;
+    this.setData({ loading: true, error: '' });
+    try {
+      const content = await Ops.get('home/setup_get', { key: this.data.key });
+      if (this._visible && seq === this._seq) this.setData({ isLoad: true, formContent: Array.isArray(content) && content.length ? content : [{ type: 'text', val: '' }] });
+    } catch (error) { if (this._visible && seq === this._seq) this.setData({ error: UI.message(error) }); }
+    finally { if (this._visible && seq === this._seq) this.setData({ loading: false }); }
+  },
+  async bindFormSubmit() {
+    if (!UI.authorize(this) || !this.data.isLoad || this.data.busy) return;
+    const editor = this.selectComponent('#contentEditor');
+    if (!editor) return;
+    const content = editor.getNodeList();
+    this.setData({ busy: true });
+    try {
+      await cloud.transRichEditorTempPics(content, 'setup/', this.data.key, 'admin/setup_set_content');
+      if (this._unloaded) return;
+      wx.showToast({ title: '内容已保存' });
+      UI.back('about');
+    } catch (error) { if (!this._unloaded) Ops.error(error); }
+    finally { if (!this._unloaded) this.setData({ busy: false }); }
+  }
+});

@@ -1,157 +1,33 @@
-const pageHelper = require('../../../../../helper/page_helper.js');
-const helper = require('../../../../../helper/helper.js');
-const cloudHelper = require('../../../../../helper/cloud_helper.js');
-const validate = require('../../../../../helper/validate.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
-const projectSetting = require('../../../public/project_setting.js');
-const setting = require('../../../../../setting/setting.js');
-const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
+const InviteBiz = require('../../../biz/invite_biz.js');
 const profileMethods = require('../profile_methods.js');
-
 Page(Object.assign({
-	/**
-	 * 页面的初始数据
-	 */
-	data: {
-		isLoad: false,
-		isEdit: false,
-
-		mobileCheck: setting.MOBILE_CHECK
-	},
-
-	/**
-	 * 生命周期函数--监听页面加载
-	 */
-	onLoad: async function (options) {
-		ProjectBiz.initPage(this);
-		await profileMethods.loadCampuses(this);
-
-		if (options && options.retUrl)
-			this.data.retUrl = decodeURIComponent(options.retUrl);
-
-		await this._loadDetail();
-	},
-
-	_loadDetail: async function (e) {
-		let opts = {
-			title: 'bar'
-		}
-		let user = await cloudHelper.callCloudData('passport/my_detail', {}, opts);
-		if (user) {
-			return wx.redirectTo({ url: '../index/my_index' });
-		}
-
-		this.setData({
-			isLoad: true,
-
-			fields: projectSetting.USER_FIELDS,
-
-			formName: '',
-			formMobile: '',
-			formPic: '',
-			formForms: []
-		});
-		profileMethods.applyUser(this, { USER_NAME: '', USER_MOBILE: '', USER_PIC: '', USER_FORMS: [] });
-	},
-
-	/**
-	 * 生命周期函数--监听页面初次渲染完成
-	 */
-	onReady: function () {
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面显示
-	 */
-	onShow: function () {
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面隐藏
-	 */
-	onHide: function () {
-
-	},
-
-	/**
-	 * 生命周期函数--监听页面卸载
-	 */
-	onUnload: function () {
-
-	},
-
-	/**
-	 * 页面相关事件处理函数--监听用户下拉动作
-	 */
-	onPullDownRefresh: async function () {
-	},
-
-	/**
-	 * 页面上拉触底事件的处理函数
-	 */
-	onReachBottom: function () {
-
-	},
-
-	bindGetPhoneNumber: async function (e) {
-		PassportBiz.getPhone(e, this);
-	},
-
-	bindPicTap: function (e) {  
-		this.setData({
-			formPic: e.detail.avatarUrl
-		})
-	},
-
-	bindSubmitTap: async function (e) {
-		try {
-			let data = this.data;
-
-			// 数据校验 
-			data = validate.check(data, projectSetting.USER_CHECK_FORM, this);
-			if (!data) return;
-
-			let forms = this.selectComponent("#cmpt-form").getForms(true);
-			if (!forms) return;
-			data.forms = forms;
-
-			wx.showLoading({ title: '头像上传中' });
-			let pic = await cloudHelper.transTempPicOne(this.data.formPic, 'user/', '', false);
-			data.pic = pic;
-			wx.hideLoading();
-
-			data.status = projectSetting.USER_REG_CHECK ? 0 : 1;
-
-			let opts = {
-				title: '提交中'
-			}
-			await cloudHelper.callCloudSumbit('passport/register', data, opts).then(result => {
-				if (result && helper.isDefined(result.data.token) && result.data.token) {
-
-					// 用户需要审核，不能登录
-					if (!projectSetting.USER_REG_CHECK) PassportBiz.setToken(result.data.token);
-
-					let callback = () => {
-						if (this.data.retUrl == 'back')
-							wx.navigateBack();
-						else if (this.data.retUrl)
-							wx.redirectTo({
-								url: this.data.retUrl,
-							})
-						else
-							wx.reLaunch({ url: '../index/my_index' });
-					}
-
-					if (projectSetting.USER_REG_CHECK)
-						pageHelper.showModal('注册完成，等待系统审核', '温馨提示', callback);
-					else
-						pageHelper.showSuccToast('注册成功', 1500, callback);
-				}
-			});
-		} catch (err) {
-			console.error(err);
-		}
-	}
+  data: { isLoad: false, isEdit: false, loadError: '', inviteCode: '', retUrl: '' },
+  async onLoad(options = {}) {
+    ProjectBiz.initPage(this);
+    let retUrl = '';
+    try { retUrl = decodeURIComponent(options.retUrl || ''); } catch (_) {}
+    if (options.inviteCode) InviteBiz.capture(options.inviteCode);
+    this.setData({ retUrl, inviteCode: InviteBiz.getPendingCode() });
+    await Promise.all([profileMethods.loadCampuses(this), this._loadDetail()]);
+  },
+  onUnload() { this._unloaded = true; },
+  async _loadDetail() {
+    this.setData({ loadError: '' });
+    try {
+      const user = await profileMethods.getProfileUser({ hint: false }, true);
+      if (this._unloaded) return;
+      if (user) return wx.switchTab({ url: '/projects/crun/pages/my/index/my_index' });
+      profileMethods.applyUser(this, { USER_NAME: '', USER_MOBILE: '', USER_PIC: '', USER_FORMS: [] });
+      this.setData({ isLoad: true });
+    } catch (error) {
+      if (!this._unloaded) this.setData({ loadError: '注册信息加载失败，请重试' });
+    }
+  },
+  bindInviteCodeInput(e) { this.setData({ inviteCode: InviteBiz.normalize(e.detail.value) }); },
+  bindPicTap(e) {
+    if (!e.detail.avatarUrl) return;
+    this._profileDirty = true;
+    this.setData({ formPic: e.detail.avatarUrl });
+  }
 }, profileMethods));

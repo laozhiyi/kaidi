@@ -1,0 +1,11 @@
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 管理中心</text><text>/</text><text>接单与履约规则</text></view>
+  <view class="ac-heading"><view><view class="ac-title">接单与履约规则</view><view class="ac-subtitle">设置接单数量、时效与用户准入</view></view></view>
+  <include src="../settings_state.wxml" />
+  <block wx:if="{{config}}">
+    <view class="ac-card"><view class="ac-section-title">数量与配送时效</view><view class="ac-row" wx:for="{{fields}}" wx:key="key"><view>{{item.label}}</view><view class="ac-input-unit"><input class="ac-number-input" type="{{item.type}}" value="{{config[item.key]}}" data-key="{{item.key}}" bindinput="bindEdit" disabled="{{!isSuperAdmin || busy}}" /><text>{{item.unit}}</text></view></view></view>
+    <view class="ac-card"><view class="ac-section-title">服务规则</view><view class="ac-row"><view><view class="ac-row-title">开放加急订单</view><view class="ac-row-desc">允许用户选择加急配送时效</view></view><switch color="#2863db" checked="{{config.urgentEnabled}}" data-key="urgentEnabled" bindchange="bindEdit" disabled="{{!isSuperAdmin || busy}}" /></view><view class="ac-row"><view><view class="ac-row-title">新用户注册审核</view><view class="ac-row-desc">开启后，新用户需审核通过才能下单</view></view><switch color="#2863db" checked="{{config.registrationReview}}" data-key="registrationReview" bindchange="bindEdit" disabled="{{!isSuperAdmin || busy}}" /></view></view>
+    <view class="ac-notice">配送时效在发布订单时确定；调整后，新订单使用新的时效设置。</view>
+  </block>
+  <include src="../settings_actions.wxml" />
+</view>

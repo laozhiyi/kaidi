@@ -4,6 +4,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { runMiniProgram } = require('../test-support/miniprogram-module.cjs');
+const { notificationStub } = require('../test-support/notification-client-harness.cjs');
 const root = path.resolve(__dirname, '../..');
 const pages = 'miniprogram/projects/crun/pages/';
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
@@ -11,22 +13,30 @@ const quiet = { log() {}, warn() {}, error() {} };
 const tick = () => new Promise(resolve => setImmediate(resolve));
 function deferred() { let resolve, reject; const promise = new Promise((a,b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; }
 const config = { enabled: true, paymentMode: 'offline', campuses: ['东校区', '西校区'], smallPrice: 2.5, mediumPrice: 4, largePrice: 6, maxPackages: 20, offlineNotice: '线下结算' };
-function pageHarness(file, get) {
+function pageHarness(file, get, profile) {
  let definition;
+ const module = { exports: {} };
  const calls = [], patches = [], errors = [], navigation = [];
  const wx = { setNavigationBarTitle() {}, showLoading() {}, hideLoading() {}, showToast() {}, stopPullDownRefresh() {},
   navigateTo: p => navigation.push(p), showModal: p => errors.push(p), setStorageSync() {}, switchTab: p => navigation.push(p) };
- const ops = { async get(route, params) { calls.push({ route, params }); return get(route, params); }, error: e => errors.push(e), subscribe() {} };
- vm.runInNewContext(read(pages + file), { Page: p => definition = p, console: quiet, wx, require(request) {
+ const ops = { async get(route, params) { calls.push({ route, params }); return get(route, params); }, error: e => errors.push(e), subscribe() {}, pendingCommand: () => null };
+ runMiniProgram(path.join(root, pages, file), { module, Page: p => definition = p, console: quiet, wx, require(request) {
   if (request.includes('mail_ui_biz')) return require('../../miniprogram/projects/crun/biz/mail_ui_biz.js');
+  if (request.includes('address_biz')) return require('../../miniprogram/projects/crun/biz/address_biz.js');
+  if (request.includes('deadline_biz')) return require('../../miniprogram/projects/crun/biz/deadline_biz.js');
+  if (request.includes('profile_biz')) return require('../../miniprogram/projects/crun/biz/profile_biz.js');
+  if (request.includes('order_fav_biz')) return { watch: () => ({ refresh: async () => {}, invalidate() {}, stop() {} }) };
+  if (request.includes('order_sync_biz')) return { subscribe: () => () => {} };
   if (request.includes('operations_biz')) return ops;
+  if (request.includes('notification_biz')) return notificationStub(ops.get);
   if (request.includes('project_biz')) return { initPage() {} };
-  if (request.includes('passport_biz')) return { loginMustBackWin: async () => true, loginMustCancelWin: async () => true };
+  if (request.includes('passport_biz')) return { isLogin: () => !!profile, loginMustBackWin: async () => true, loginMustCancelWin: async () => true };
   if (request.includes('mail_biz')) return { initFormData: () => ({ formCateId: 1, fields: [{ mark: 'code', must: true }] }) };
-  if (request.includes('cloud_helper')) return { callCloudSumbit: async (route, params) => ({ data: await ops.get(route, params) }) };
+  if (request.includes('cloud_helper')) return { callCloudSumbit: async (route, params) => ({ data: await ops.get(route, params) }), callCloudData: async () => profile };
   if (request.includes('page_helper')) return { fmtURLByPID: url => '/projects/crun' + url };
   return {};
  } });
+ definition = definition || module.exports;
  const page = { ...definition, data: JSON.parse(JSON.stringify(definition.data)), setData(patch, callback) {
   patches.push(patch);
   for (const [key, value] of Object.entries(patch)) {
@@ -35,15 +45,65 @@ function pageHarness(file, get) {
    target[parts.at(-1)] = value;
   }
   if (callback) callback();
- }, selectComponent() { return this.data.isLoad ? { setOneFormVal() {}, reload() {} } : null; } };
- return { page, calls, patches, errors, navigation };
+ }, selectComponent() { return this.data.isLoad ? { data: { forms: [] }, setOneFormVal() {}, reload() {} } : null; } };
+ return { page, calls, patches, errors, navigation, ops };
 }
 
-test('home express entry goes straight to the registered publishing page', () => {
+test('home express entry opens the embedded take form and upcoming services keep its draft mounted', () => {
  const h = pageHarness('default/index/default_index.js', () => ({}));
+ assert.equal(h.page.data.activeService, 'take');
  h.page.bindExpressTap();
- assert.equal(h.navigation[0].url, '/projects/crun/pages/mail/add/mail_add');
+ h.page.bindServiceTap({ currentTarget: { dataset: { key: 'send' } } });
+ h.page.bindServiceTap({ currentTarget: { dataset: { key: 'buy' } } });
+ h.page.bindServiceTap({ currentTarget: { dataset: { key: 'take' } } });
+ assert.equal(h.page.data.activeService, 'take');
+ assert.equal(h.navigation.length, 0);
  assert.ok(!read('miniprogram/app.json').includes('mail_choose'));
+});
+
+test('home starts independent requests together and coalesces repeated loads', async () => {
+ const list = deferred();
+ const h = pageHarness('default/index/default_index.js', route => route === 'home/list' ? list.promise : config);
+ const first = h.page._loadList();
+ const second = h.page._loadList();
+ await tick();
+ assert.deepEqual(Array.from(h.calls, call => call.route), ['home/list', 'operations/config']);
+ list.resolve({ list: [], cnt: 0 });
+ await Promise.all([first, second]);
+ assert.equal(h.calls.length, 2);
+ assert.equal(h.page.data.referencePrice, '2.50');
+});
+
+test('saved address and contact choices support cancel, explicit confirmation and stable values after returning', async () => {
+ const profile = { USER_NAME: '本人', USER_MOBILE: '13800000000', USER_FORMS: [
+  { mark: 'campus', val: '东校区' },
+  { mark: 'addresses', val: [{ label: '一期', detail: '1栋101室', isDefault: true }, { label: '五期', detail: '5栋201室（从东门进，第二个楼梯口）' }] },
+  { mark: 'contacts', val: [{ name: '甲同学', phone: '13800000001', isDefault: true }, { name: '乙同学', phone: '13800000002' }] }
+ ] };
+ const h = pageHarness('mail/add/mail_add.js', () => config, profile), page = h.page;
+ await page.onLoad({});
+ assert.equal(page.data.mailValues.address2, '一期 1栋101室');
+ page.bindChooseProfileAddress(); page.bindSelectProfileAddress({ currentTarget: { dataset: { index: 1 } } }); page.bindCloseProfilePicker();
+ assert.equal(page.data.mailValues.address2, '一期 1栋101室');
+ page.bindChooseProfileAddress(); page.bindSelectProfileAddress({ currentTarget: { dataset: { index: 1 } } }); page.bindConfirmProfilePicker();
+ assert.equal(page.data.mailValues.address2, '五期 5栋201室（从东门进，第二个楼梯口）');
+ page.bindChooseProfileContact(); page.bindSelectProfileContact({ currentTarget: { dataset: { index: 1 } } }); page.bindConfirmProfilePicker();
+ await page.onShow();
+ assert.equal(page.data.mailValues.address2, '五期 5栋201室（从东门进，第二个楼梯口）');
+ assert.equal(page.data.mailValues.poster, '乙同学'); assert.equal(page.data.mailValues.tel, '13800000002');
+ page.bindChooseProfileAddress(); page.bindManageProfilePicker();
+ assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/my/address/address');
+ await page.onShow(); assert.equal(page.data.addressPickerVisible, true);
+});
+
+test('publishing from the home form leaves a fresh editable parcel ready for the next order', async () => {
+ const h = pageHarness('mail/add/mail_add_logic.js', () => config), page = h.page;
+ await page.onLoad({ embedded: true });
+ page.bindPackageItemInput({ currentTarget: { dataset: { index: 0, mark: 'code' } }, detail: { value: 'old-code' } });
+ page.resetAfterPublish();
+ assert.equal(page.data.packageItems.length, 1); assert.equal(page.data.packageItems[0].code, '');
+ page.bindPackageItemInput({ currentTarget: { dataset: { index: 0, mark: 'code' } }, detail: { value: 'new-code' } });
+ assert.equal(page.data.packageItems[0].code, 'new-code'); assert.equal(page.data.totalFee, '2.50');
 });
 
 test('publish config failure exits loading and retries without a modal loop or duplicate form fields', async () => {
@@ -163,12 +223,12 @@ function moduleHarness(file, mocks) {
 }
 
 test('failed collection creation cannot be cached as successful setup; recovery retries in the same instance', async () => {
- let available = false, creates = 0;
+ let available = false, creates = 0, schemaReady = false;
  class Base { AppError(msg) { throw Error(msg); } }
  const Service = moduleHarness('cloudfunctions/mcloud/project/crun/service/base_project_service.js', {
   '../../../framework/database/db_util.js': {
-   isExistCollection: async name => name !== 'bx_operation_config' || available,
-   createCollection: async () => { creates++; return false; }
+   isExistCollection: async name => name === 'bx_setup_crun_20260914' ? schemaReady : name !== 'bx_operation_config' || available,
+   createCollection: async name => { if (name === 'bx_setup_crun_20260914') { schemaReady = true; return true; } creates++; return false; }
   }, '../../../framework/utils/util.js': {}, '../../../framework/platform/model/admin_model.js': {}, '../model/news_model.js': {},
   '../../../framework/platform/service/base_service.js': Base
  });
@@ -187,6 +247,32 @@ test('concurrent collection creation tolerates a false result only when the coll
  });
  await new Service()._ensureCollection('bx_operation_config');
 });
+
+test('an initialized cold instance performs one schema lookup and shares that result with concurrent calls', async () => {
+ const lookups=[];
+ const Service=moduleHarness('cloudfunctions/mcloud/project/crun/service/base_project_service.js',{
+  '../../../framework/database/db_util.js':{isExistCollection:async name=>{lookups.push(name);return true;},createCollection:async()=>{throw Error('already initialized');}},
+  '../../../framework/utils/util.js':{},'../../../framework/platform/model/admin_model.js':{},'../model/news_model.js':{},
+  '../../../framework/platform/service/base_service.js':class {}
+ });
+ await Promise.all([new Service().initSetup(),new Service().initSetup()]);
+ assert.deepEqual(lookups,['bx_setup_crun_20260914']);
+});
+
+for(const file of ['mail/add/mail_add.js','mail/add/mail_add_logic.js']) {
+ test(file+' can recover a saved submission without erasing the current draft',async()=>{
+  const h=pageHarness(file,()=>config);let pending=true;
+  h.ops.pendingCommand=()=>pending?{requestId:'request'}:null;
+  await h.page.onLoad({});assert.equal(h.page.data.hasPendingSubmission,true);
+  h.page.setData({mailValues:{poster:'当前草稿'},packageItems:[{code:'新的取件码'}]});
+  const wait=deferred();h.ops.recoverCommand=()=>wait.promise;
+  const recovery=h.page.bindRecoverSubmission();assert.equal(h.page.data.submitting,true);
+  pending=false;wait.resolve({state:'committed',result:{_id:'old-order'}});await recovery;
+  assert.equal(h.page.data.hasPendingSubmission,false);assert.equal(h.page.data.mailValues.poster,'当前草稿');
+  assert.equal(h.page.data.packageItems[0].code,'新的取件码');assert.equal(h.page.data.submitting,false);
+  h.errors.at(-1).success({confirm:true});assert.match(h.navigation.at(-1).url,/old-order/);
+ });
+}
 
 test('unavailable private images do not block text details or leak files to public callers', async () => {
  let calls = 0;
@@ -217,4 +303,16 @@ test('personal layout uses a native safe navigation bar, scoped full-width cards
  assert.match(css, /\.my-page \.my-card\s*\{[^}]*width: 100%/);
  assert.match(css, /\.my-page \.my-profile-copy\s*\{[^}]*min-width: 0/);
  assert.ok(!/margin[^:]*:\s*-\d/.test(css)); assert.match(css, /safe-area-inset-bottom/);
+});
+
+test('profile entry opens personal information directly and legacy profile routes are removed', () => {
+ const app = JSON.parse(read('miniprogram/app.json'));
+ const index = read(pages + 'my/index/my_index.wxml');
+ const publish = read(pages + 'mail/add/mail_add_logic.js');
+ assert.match(index, /user\?'\.\.\/personal\/my_personal':'\.\.\/reg\/my_reg'/);
+ assert.match(publish, /pages\/my\/contact\/contact/);
+ assert.match(publish, /pages\/my\/address\/address/);
+ assert.ok(!app.pages.some(route => /my\/edit\/my_edit|my\/(?:contact|address)\/my_(?:contact|address)/.test(route)));
+ assert.ok(!index.includes('../edit/my_edit'));
+ assert.ok(!publish.includes('/pages/my/edit/my_edit'));
 });

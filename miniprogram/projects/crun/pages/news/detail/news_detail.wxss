@@ -1,2 +1,4 @@
 @import "../../../../../style/public/detail.wxss"; 
+.news-load-error { margin: 40rpx 24rpx; padding: 32rpx; border-radius: 18rpx; background: #fff; color: #66758a; text-align: center; font-size: 26rpx; }
+.news-load-error button { margin-top: 24rpx; background: #eaf2fe; color: #397bc8; font-size: 26rpx; }
 @import "../../../style/skin.wxss"; 

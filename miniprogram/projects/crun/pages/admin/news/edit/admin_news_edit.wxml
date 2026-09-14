@@ -1,6 +1,7 @@
-<view wx:if="{{isLoad===null}}" class="margin-top load notexist text-l text-grey"></view>
-<view wx:if="{{isLoad===false}}" class="margin-top load loading text-l text-grey"></view>
-
-<view class="main-admin" wx:if="{{isAdmin&&isLoad}}">
-	<include src="../admin_news_form_tpl.wxml" /> 
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="url" data-type="back">‹ 公告管理</text><text>/</text><text>编辑公告</text></view>
+  <view class="ac-heading"><view><view class="ac-title">编辑公告</view><view class="ac-subtitle">完善公告内容与封面，及时传达服务信息</view></view></view>
+  <view wx:if="{{isLoad===false}}" class="ac-card ac-state ac-muted">正在读取公告…</view>
+  <view wx:if="{{isLoad===null}}" class="ac-card ac-state"><view class="ac-state-title">公告暂时无法读取</view><button class="ac-secondary ac-small" bindtap="_loadDetail">重新读取</button></view>
+  <block wx:if="{{isLoad}}"><include src="../admin_news_form_tpl.wxml" /></block>
 </view>

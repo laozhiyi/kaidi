@@ -1,57 +1,26 @@
-/**
- * Notes: 预约模块业务逻辑
- * Ver : CCMiniCloud Framework 2.0.1 ALL RIGHTS RESERVED BY cclinux0730 (wechat)
- * Date: 2021-12-10 07:48:00 
- */
-
-const BaseBiz = require('./base_biz.js');
 const cloudHelper = require('../../helper/cloud_helper.js');
 const pageHelper = require('../../helper/page_helper.js');
-
-class FavBiz extends BaseBiz {
-
-	static async isFav(that, oid, type = '') {
-		if (!oid) return;
-
-		that.setData({
-			isFav: -1
-		});
-
-		// 异步获取是否收藏
-		let params = {
-			oid,
-			type
-		};
-		cloudHelper.callCloudSumbit('fav/is_fav', params, { title: 'bar' }).then(result => {
-			that.setData({
-				isFav: result.data.isFav
-			});
-		}).catch(error => { })
-	}
-
-	static async updateFav(that, oid, isFav, type, title) {
-		let path = pageHelper.getCurrentPageUrlWithArgs();
-		if (!oid || !path || !title || !type) return;
-
-		let params = {
-			oid,
-			title,
-			type,
-			path
-		}
-		let opts = {
-			title: (isFav == 0) ? '收藏中' : '取消中'
-		}
-		try {
-			let result = await cloudHelper.callCloudSumbit('fav/update', params, opts);
-			that.setData({
-				isFav: result.data.isFav,
-			});
-		} catch (e) {
-			console.log(e);
-		}
-	}
-
+const PassportBiz = require('./passport_biz.js');
+class FavBiz {
+  static async isFav(that, oid, type = '') {
+    if (!oid) return;
+    that.setData({ isFav: -1 });
+    try {
+      const result = await cloudHelper.callCloudSumbit('fav/is_fav', { oid, type }, { hint: false });
+      that.setData({ isFav: result.data.isFav });
+    } catch (_) { /* 保留未知状态，点击收藏时可重新加载。 */ }
+  }
+  static async updateFav(that, oid, isFav, type, title) {
+    if (that._favSaving) return;
+    that._favSaving = true;
+    try {
+      if (!await PassportBiz.loginMustCancelWin(that) || !oid || !type) return;
+      const result = await cloudHelper.callCloudSumbit('fav/update', { oid, type }, { hint: false });
+      that.setData({ isFav: result.data.isFav });
+      pageHelper.showSuccToast(result.data.isFav ? '已收藏' : '已取消收藏');
+    } catch (error) {
+      pageHelper.showNoneToast(error && (error.msg || error.message) || '收藏失败，请重试');
+    } finally { that._favSaving = false; }
+  }
 }
-
 module.exports = FavBiz;

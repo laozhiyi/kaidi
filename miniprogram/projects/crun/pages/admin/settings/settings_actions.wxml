@@ -1,0 +1,4 @@
+<view wx:if="{{config && isSuperAdmin}}" class="ac-settings-footer">
+  <view class="ac-muted">{{dirty?'有未保存的修改':'修改后点击保存生效'}}</view>
+  <view class="ac-form-actions"><button class="ac-ghost" bindtap="bindDiscard" disabled="{{!dirty || busy}}">恢复已保存</button><button class="ac-primary" bindtap="bindSave" loading="{{busy}}" disabled="{{!dirty || busy || loading || error}}">保存设置</button></view>
+</view>

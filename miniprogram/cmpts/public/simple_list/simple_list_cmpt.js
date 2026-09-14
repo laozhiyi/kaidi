@@ -83,12 +83,13 @@ Component({
             // 组件实例被移动到树的另一个位置
         },
         detached: function () {
-            // 在组件实例被从页面节点树移除时执行
+            this._detached = true; this._generation = (this._generation || 0) + 1;
         },
     },
 
     pageLifetimes: {
         async show() {
+            this._pageVisible = true;
             // 页面被展示   
             if (!this.data.isCache || !PublicBiz.isCacheList(this.data.type)) {
                 // 非缓存状态下或者 list缓存过期下加载
@@ -97,7 +98,7 @@ Component({
 
         },
         hide() {
-            // 页面被隐藏
+            this._pageVisible = false; this._generation = (this._generation || 0) + 1; this._listRequest = null;
         },
         resize(size) {
             // 页面尺寸变化
@@ -109,11 +110,24 @@ Component({
      */
     methods: {
         reload: async function () {
-            await this._getList(1);
+            return this._getList(1);
         },
         // 数据列表
         _getList: async function (page) {
-            this.setData({ isLoad: false });
+            if (this._detached || this._pageVisible === false || !this.data.route) return;
+            if (page > 1 && (!this.data._dataList || this._listRequest)) return;
+            const key = this.data.route + ':' + JSON.stringify({ ...this.data._params, page });
+            if (this._listRequest && this._listRequest.key === key) return this._listRequest.promise;
+            const request = { key, generation: this._generation = (this._generation || 0) + 1 };
+            request.promise = this._requestList(page, request.generation).finally(() => {
+                if (this._listRequest === request) this._listRequest = null;
+            });
+            this._listRequest = request;
+            return request.promise;
+        },
+        _requestList: async function (page, generation) {
+            const isCurrent = () => !this._detached && this._pageVisible !== false && generation === this._generation;
+            this.setData({ isLoad: !!this.data._dataList });
 
             let params = {
                 page: page,
@@ -127,10 +141,8 @@ Component({
             }
 
 
-            let opt = {};
-            //if (this.data._dataList && this.data._dataList.list && this.data._dataList.list.length > 0)
-            opt.title = 'bar';
-            await cloudHelper.dataList(this, '_dataList', this.data.route, params, opt);
+            const result = await cloudHelper.dataList(this, '_dataList', this.data.route, params, { hint: false, isCurrent });
+            if (!isCurrent() || result && result.applied === false) return;
 
             this.setData({ isLoad: true });
 
@@ -138,15 +150,15 @@ Component({
                 dataList: this.data._dataList
             });
 
-            if (this.data.isCache)
+            if (this.data.isCache && (!result || result.ok))
                 PublicBiz.setCacheList(this.data.type);
-            if (page == 1) this.bindTopTap();
+            return result;
 
         },
 
         bindReachBottom: async function () {
             // 上拉触底  
-            await this._getList(this.data._dataList.page + 1);
+            if (this.data._dataList) await this._getList(this.data._dataList.page + 1);
 
         },
 
@@ -155,10 +167,8 @@ Component({
             this.setData({
                 refresherTriggered: true
             });
-            await this._getList(1);
-            this.setData({
-                refresherTriggered: false
-            });
+            try { await this._getList(1); }
+            finally { if (!this._detached) this.setData({ refresherTriggered: false }); }
 
         },
 
@@ -167,6 +177,7 @@ Component({
          * @param {*} e 
          */
         bindScrollTop: function (e) {
+            if (!!this.data.topShow === (e.detail.scrollTop > 100)) return;
             if (e.detail.scrollTop > 100) {
                 this.setData({
                     topShow: true

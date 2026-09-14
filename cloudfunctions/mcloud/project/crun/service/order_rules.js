@@ -10,7 +10,7 @@ function validateForms(forms, config, now) {
  const input = Object.create(null);
  for (const item of forms) { if (!item || typeof item.mark !== 'string' || Object.prototype.hasOwnProperty.call(input,item.mark)) fail('表单字段重复或无效'); input[item.mark] = item.val; }
  const obj = {};
- for (const [key,name,max,required] of [['title','任务名称',50,true],['code','取件码',500,false],['address1','快递点',100,true],['address2','收件地址',200,true],['poster','联系人',30,true],['tel','手机号',11,true],['desc','备注',500,false],['tel2','\u7b2c\u4e8c\u8054\u7cfb\u65b9\u5f0f',100,false],['campus','校区',30,true]]) obj[key] = text(input[key] == null ? '' : input[key],name,max,required);
+ for (const [key,name,max,required] of [['title','任务名称',50,true],['code','取件码',500,false],['address2','收件地址',200,true],['poster','联系人',30,true],['tel','手机号',11,true],['desc','备注',500,false],['tel2','\u7b2c\u4e8c\u8054\u7cfb\u65b9\u5f0f',100,false],['campus','校区',30,true]]) obj[key] = text(input[key] == null ? '' : input[key],name,max,required);
  if (!/^1[3-9][0-9]{9}$/.test(obj.tel)) fail('手机号格式不正确');
  if (!config.campuses.includes(obj.campus)) fail('该校区不在服务范围');
  obj.imgUrls = images(input.img || []); obj.imgUrl = obj.imgUrls[0] || '';
@@ -22,10 +22,13 @@ function validateForms(forms, config, now) {
  if (!Array.isArray(parcelItems) || parcelItems.length > config.maxPackages) fail('package proof count invalid');
  if (parcelItems.length) {
   const counts = { small:0, medium:0, large:0 };
-  parcelItems = parcelItems.map(item => { if (!item || !['small','medium','large'].includes(item.type)) fail('package type invalid'); counts[item.type]++; const price = Number(item.price); if (!Number.isFinite(price) || price < 0.01 || price > 10000) fail('package price invalid'); const code = text(item.code || '','code',200,false); const note = text(item.note || '','note',300,false); const packageImages = images(item.images || []); if (code && packageImages.length) fail('package proof must choose code or image'); return { type:item.type, price:Number(price.toFixed(2)), code, note, images:packageImages }; });
+  // Normalize payloads from older clients into the same per-parcel representation.
+  const legacyPickup = parcelItems.some(item => item && Object.prototype.hasOwnProperty.call(item,'pickupPoint')) ? '' : text(input.address1 || '', '取件点', 100, false);
+  parcelItems = parcelItems.map((item, index) => { if (!item || !['small','medium','large'].includes(item.type)) fail('package type invalid'); counts[item.type]++; const price = Number(item.price); if (!Number.isFinite(price) || price < 0.01 || price > 10000) fail('package price invalid'); const pickupPoint = text(item.pickupPoint == null ? legacyPickup : item.pickupPoint, '第' + (index + 1) + '件包裹的取件点', 100, true); const code = text(item.code || '','code',200,false); const note = text(item.note || '','note',300,false); const packageImages = images(item.images || []); if (code && packageImages.length) fail('package proof must choose code or image'); return { type:item.type, price:Number(price.toFixed(2)), pickupPoint, code, note, images:packageImages }; });
   if (counts.small !== obj.small || counts.medium !== obj.medium || counts.large !== obj.large) fail('package proof count mismatch');
   obj.packages = parcelItems;
- } else obj.packages = [];
+  obj.address1 = [...new Set(parcelItems.map(item => item.pickupPoint))].join('；');
+ } else { obj.packages = []; obj.address1 = text(input.address1 || '', '取件点', 100, true); }
  const packageCodes = obj.packages.map(item => item.code).filter(Boolean);
  const packageImages = obj.packages.reduce((all, item) => all.concat(item.images || []), []);
  if (obj.imgUrls.length + packageImages.length > 6) fail('\u56fe\u7247\u5fc5\u987b\u5148\u6210\u529f\u4e0a\u4f20\uff0c\u6700\u591a6\u5f20');
@@ -49,13 +52,16 @@ function validateForms(forms, config, now) {
 }
 function requireOpen(config) { if (!config.enabled) fail('服务暂停中，请联系校区客服'); }
 function project(mail, userId, admin = false) {
- const privateAccess = admin || !!userId && [mail.MAIL_USER_ID,mail.MAIL_ACCEPT_USER_ID].includes(userId);
- const keys = ['_id','MAIL_ID','MAIL_STATUS','MAIL_END_TIME','MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_PICKUP_TIME','MAIL_OVER_TIME','MAIL_TOTAL_FEE','MAIL_PAYMENT_MODE','MAIL_CATE_ID','MAIL_CATE_NAME','MAIL_DUE_TIME','MAIL_DELIVERED_TIME'];
- if (privateAccess) keys.push('MAIL_FORMS','MAIL_HISTORY','MAIL_EXCEPTION','MAIL_DELIVERY_PROOF','MAIL_PAY_STATUS');
+ const mypost = !!userId && mail.MAIL_USER_ID === userId;
+ const myaccept = !!userId && mail.MAIL_ACCEPT_USER_ID === userId;
+ const privateAccess = admin || mypost || myaccept;
+ const keys = ['_id','MAIL_ID','MAIL_STATUS','MAIL_END_TIME','MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_PICKUP_TIME','MAIL_OVER_TIME','MAIL_TOTAL_FEE','MAIL_PAYMENT_MODE','MAIL_CATE_ID','MAIL_CATE_NAME','MAIL_DUE_TIME','MAIL_DELIVERED_TIME','MAIL_VERSION'];
+ if (privateAccess) keys.push('MAIL_FORMS','MAIL_EXCEPTION','MAIL_DELIVERY_PROOF','MAIL_PAY_STATUS','MAIL_CAN_REVIEW','MAIL_REVIEWED');
+ if (admin || mypost) keys.push('MAIL_HISTORY');
  const out = {}; keys.forEach(k => { if (mail[k] !== undefined) out[k] = mail[k]; });
  const publicFields = ['title','small','medium','large','num','price','referencePrice','urgent','campus']; const obj = mail.MAIL_OBJ || {};
  out.MAIL_OBJ = privateAccess ? { ...obj } : Object.fromEntries(publicFields.filter(k => obj[k] !== undefined).map(k => [k,obj[k]]));
- out.mypost = mail.MAIL_USER_ID === userId; out.myaccept = mail.MAIL_ACCEPT_USER_ID === userId;
+ out.mypost = mypost; out.myaccept = myaccept;
  out.status = LABELS[mail.MAIL_STATUS] || '状态未知'; if (mail.MAIL_STATUS === 0 && mail.MAIL_END_TIME < Date.now()) out.status = '已过期';
  out.overdue = ACTIVE.includes(mail.MAIL_STATUS) && mail.MAIL_DUE_TIME > 0 && mail.MAIL_DUE_TIME < Date.now();
  const progressMap = { 0: 0, 1: 0, 4: 2, 2: 3, 9: 4 };

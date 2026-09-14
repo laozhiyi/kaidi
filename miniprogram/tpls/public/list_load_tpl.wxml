@@ -1,5 +1,5 @@
 <template name="listLoadTpl">
-	<view wx:if="{{!dataList || (dataList && dataList.page < dataList.count)}}"
+	<view wx:if="{{!dataList || (!dataList.error && dataList && (dataList.hasMore === true || dataList.hasMore === undefined && dataList.page < dataList.count))}}"
 		class="load text-grey loading {{skin}}"></view>
 	<view wx:if="{{dataList && dataList.page > 1 && dataList.page == dataList.count }}"
 		class="load text-grey over {{skin}}"></view>
@@ -9,7 +9,7 @@
 	</block>
 
 	<block wx:else> 
-		<view wx:if="{{dataList && dataList.total == 0}}" class="load text-grey {{skin}}">{{noHint?noHint:'暂无记录哦~'}}</view>
+		<view wx:if="{{dataList && !dataList.error && dataList.total == 0}}" class="load text-grey {{skin}}">{{noHint?noHint:'暂无记录哦~'}}</view>
 	</block>
 
 	<view style="height:200rpx;"></view>

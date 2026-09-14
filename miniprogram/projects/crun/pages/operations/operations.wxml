@@ -1,29 +1,21 @@
-<view class="op-page">
-  <view wx:if="{{error}}" class="op-card op-state">
-    <view>加载失败，请检查网络后重试</view>
-    <button class="op-button-secondary" bindtap="load">重新加载</button>
+<view class="op-page inbox-page">
+  <view class="inbox-header">
+    <view><view class="inbox-title">我的消息</view><view class="op-muted">{{summaryLoaded ? (unreadCount ? unreadCount+' 条未读消息' : '消息都读完了') : '校园公告、订单动态与处理通知'}}</view></view>
+    <button class="inbox-read-all" bindtap="bindReadAll" disabled="{{!unreadCount || markingAll}}" loading="{{markingAll}}">全部已读</button>
   </view>
+  <view class="inbox-tools"><text class="inbox-filter {{unreadOnly?'inbox-filter-active':''}}" bindtap="bindUnreadFilter" role="button">{{unreadOnly?'✓ 只看未读':'只看未读'}}</text><text class="inbox-tip">点击消息查看详情</text></view>
+  <view wx:if="{{hasUpdates}}" class="inbox-update" bindtap="bindRefreshMessages" role="button">消息有更新，点击刷新 <text>↻</text></view>
+  <view wx:if="{{summaryError}}" class="inbox-sync-error" bindtap="bindRefreshMessages">未读数量暂未同步，点击重试</view>
+  <view wx:if="{{error}}" class="op-card op-state"><view>加载失败，请检查网络后重试</view><button class="op-button-secondary" bindtap="load">重新加载</button></view>
   <view wx:if="{{loading}}" class="op-state op-muted">正在加载…</view>
-
-  <block wx:if="{{tab==='messages'}}">
-    <view class="op-card">
-      <view class="op-title">订单动态与处理通知</view>
-      <view class="op-muted">微信提醒需要主动订阅，不能替代查看订单。未读消息以蓝点标记，点击查看详情。</view>
-      <button wx:if="{{config.templateId}}" class="op-button-primary" bindtap="bindSubscribe">订阅下一次订单通知</button>
-    </view>
-    <view class="op-card op-message" wx:for="{{list}}" wx:key="_id" data-id="{{item._id}}" bindtap="bindRead">
-      <view class="op-card-head">
-        <view class="op-message-title"><text wx:if="{{!item.read}}" class="op-unread"></text><text>{{item.title}}</text></view>
-        <text class="op-badge {{item.read?'op-badge-neutral':''}}">{{item.read?'已读':'未读'}}</text>
-      </view>
-      <view class="op-message-content">{{item.content}}</view>
-      <view class="op-card-foot"><text>{{item.time}}</text><text wx:if="{{item.orderId || item.feedbackId}}">查看详情 ›</text></view>
-    </view>
-    <view wx:if="{{!loading && !error && !list.length}}" class="op-card op-state">
-      <view class="op-title">暂无消息</view><view class="op-muted">订单进展和申诉处理结果会显示在这里</view>
-    </view>
-    <button wx:if="{{hasMore}}" class="op-button-secondary" bindtap="bindMore" loading="{{loading}}" disabled="{{loading}}">加载更多消息</button>
-    <view wx:if="{{list.length && !hasMore && !loading && !error}}" class="op-state op-muted">已显示全部消息</view>
-  </block>
-
+  <view class="op-card op-message inbox-message {{!item.read?'inbox-message-unread':''}}" wx:for="{{list}}" wx:key="key" data-key="{{item.key}}" bindtap="bindRead" hover-class="inbox-message-hover" role="button">
+    <view class="inbox-message-meta"><text class="inbox-category {{item.kind==='news'?'inbox-category-news':''}}">{{item.category}}</text><text wx:if="{{item.important}}" class="inbox-important">重要</text><text class="inbox-time">{{item.time}}</text></view>
+    <view class="op-card-head"><view class="op-message-title"><text wx:if="{{!item.read}}" class="op-unread"></text><text>{{item.title}}</text></view><text wx:if="{{!item.read}}" class="inbox-unread-label">未读</text></view>
+    <view class="op-message-content inbox-preview">{{item.content || '点击查看完整内容'}}</view>
+    <view class="op-card-foot"><text>{{item.read?'已读':'待阅读'}}</text><text class="inbox-detail-link">查看详情 ›</text></view>
+  </view>
+  <view wx:if="{{!loading && !error && !list.length}}" class="op-card op-state inbox-empty"><text class="icon-notice"></text><view class="op-title">{{unreadOnly?'暂无未读消息':'暂无消息'}}</view><view class="op-muted">{{unreadOnly?'有新消息时会在这里提醒你':'校园公告、订单进展和申诉处理结果会显示在这里'}}</view><button wx:if="{{unreadOnly}}" class="op-button-secondary" bindtap="bindUnreadFilter">查看全部消息</button></view>
+  <button wx:if="{{hasMore}}" class="op-button-secondary" bindtap="bindMore" loading="{{loading}}" disabled="{{loading}}">加载更多消息</button>
+  <view wx:if="{{list.length && !hasMore && !loading && !error}}" class="op-state op-muted">已显示全部{{unreadOnly?'未读':''}}消息</view>
+  <view wx:if="{{config.templateId}}" class="op-card inbox-subscribe"><view class="inbox-subscribe-title">微信订单提醒</view><view class="op-muted">主动订阅后，下一次订单动态可通过微信提醒你。</view><button class="op-button-secondary" bindtap="bindSubscribe" loading="{{subscribing}}" disabled="{{subscribing}}">订阅下一次订单通知</button></view>
 </view>

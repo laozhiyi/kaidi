@@ -95,9 +95,10 @@ class AdminMgrService extends BaseProjectAdminService {
 			LOG_ADD_TIME: 'desc'
 		};
 		let fields = '*';
-		let where = {};
+		let where = { and: { _pid: this.getProjectId() } };
 
 		if (util.isDefined(search) && search) {
+			search = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 			where.or = [{
 				LOG_CONTENT: ['like', search]
 			}, {
@@ -106,12 +107,13 @@ class AdminMgrService extends BaseProjectAdminService {
 				LOG_ADMIN_NAME: ['like', search]
 			}];
 
-		} else if (sortType && util.isDefined(sortVal)) {
+		}
+		if (sortType && util.isDefined(sortVal)) {
 			// 搜索菜单
 			switch (sortType) {
 				case 'type':
 					// 按类型
-					where.LOG_TYPE = Number(sortVal);
+					where.and.LOG_TYPE = Number(sortVal);
 					break;
 			}
 		}
@@ -143,6 +145,7 @@ class AdminMgrService extends BaseProjectAdminService {
 			_pid: this.getProjectId() //复杂的查询在此处标注PID
 		};
 		if (util.isDefined(search) && search) {
+			search = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 			where.or = [{
 				ADMIN_NAME: ['like', search]
 			},
@@ -153,7 +156,8 @@ class AdminMgrService extends BaseProjectAdminService {
 				ADMIN_DESC: ['like', search]
 			}
 			];
-		} else if (sortType && util.isDefined(sortVal)) {
+		}
+		if (sortType && util.isDefined(sortVal)) {
 			// 搜索菜单
 			switch (sortType) {
 				case 'status':

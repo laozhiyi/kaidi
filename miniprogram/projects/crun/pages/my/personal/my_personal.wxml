@@ -1,4 +1,6 @@
-<view wx:if="{{isLoad}}" class="main padding-project">
+<view wx:if="{{!isLoad && !loadError}}" class="profile-load-state">正在加载个人资料…</view>
+<view wx:if="{{loadError}}" class="profile-load-state"><view>{{loadError}}</view><button class="profile-save" bindtap="_loadDetail">重新加载</button></view>
+<view wx:if="{{isLoad}}" class="profile-page">
   <include src="personal_form.wxml" />
-  <button bindtap="bindSubmitTap" disabled="{{saving}}" class="btn-base btn-project shadow">修改资料</button><view wx:if="{{saveError}}" class="profile-required-hint">{{saveError}}</view>
+  <button bindtap="bindSubmitTap" disabled="{{saving}}" class="profile-save">保存资料</button><view wx:if="{{saveError}}" class="profile-save-error">{{saveError}}</view>
 </view>

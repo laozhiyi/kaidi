@@ -17,6 +17,7 @@ FeedbackModel.CL = BaseProjectModel.C('feedback');
 FeedbackModel.DB_STRUCTURE = {
 	_pid: 'string|true',
 	FB_ID: 'string|true',
+	FB_SOURCE_FINGERPRINT: 'string|false|comment=原始提交指纹，用于网络重试核对',
 
 	FB_USER_ID: 'string|true|comment=反馈用户ID',
 	FB_USER_NAME: 'string|false|comment=用户姓名',
@@ -27,6 +28,15 @@ FeedbackModel.DB_STRUCTURE = {
 	FB_CONTENT: 'string|true|comment=反馈内容',
 	FB_CONTACT: 'string|false|comment=用户填写的联系方式',
 	FB_IMG: 'array|true|default=[]|comment=反馈图片列表',
+	FB_ORDER_ID: 'string|false|comment=关联订单',
+	FB_TARGET_USER_ID: 'string|false|comment=由订单关系确定的被申诉用户',
+	FB_TARGET_NAME: 'string|false',
+	FB_TARGET_ROLE: 'string|false',
+	FB_REVIEW_SCORE: 'int|false|default=0|comment=审核星级 0=未评分,1至5=星级',
+	FB_REVIEW_POINTS: 'int|false|default=0',
+	FB_REVIEW_TIME: 'int|false|default=0',
+	FB_REVIEW_ADMIN_ID: 'string|false',
+	FB_REVIEW_REASON: 'string|false',
 
 	FB_STATUS: 'int|true|default=0|comment=处理状态 0=待处理,1=已处理,2=已忽略',
 	FB_REPLY: 'string|false|comment=管理员回复',

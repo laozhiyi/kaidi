@@ -198,7 +198,8 @@ class PassportBiz extends BaseBiz {
 
 		}).catch(err => {
 			console.log(err);
-			PassportBiz.clearToken();
+			// A temporary network/server failure does not revoke a confirmed login.
+			if (err && err.code && err.code !== 500) PassportBiz.clearToken();
 			return false;
 		});
 

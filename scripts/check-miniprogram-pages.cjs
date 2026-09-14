@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const vm = require('node:vm');
+const { runMiniProgram } = require('./test-support/miniprogram-module.cjs');
 const workspace = path.resolve(__dirname, '..');
 const mini = path.join(workspace, 'miniprogram');
 const read = file => fs.readFileSync(file, 'utf8');
@@ -51,7 +52,7 @@ function audit() {
         if (!match[1].includes('{{')) assert.ok(fs.existsSync(localTarget(file, match[1])), relative + ' 缺少模板/样式：' + match[1]);
       }
     }
-    if (relative.startsWith('projects/crun/pages/') && file.endsWith('.js') && /\bPage\s*\(/.test(read(file))) {
+    if (file.endsWith('.js') && /\bPage\s*\(/.test(read(file))) {
       assert.ok(registered.has(relative.slice(0, -3)), 'Page 未注册：' + relative);
     }
     if (/\.(js|wxml)$/.test(file)) {
@@ -64,6 +65,8 @@ function audit() {
         }
       }
       for (const url of urls) {
+        // Directory constants used to construct routes are not navigation targets.
+        if (file.endsWith('.js') && url.endsWith('/')) continue;
         if (url.includes('{{') || /\.(png|jpg|jpeg|gif|webp|js|wxml)$/.test(url)) continue;
         const route = slash(path.relative(mini, localTarget(file, url)));
         assert.ok(registered.has(route), relative + ' 引用了未注册页面：' + url);
@@ -78,20 +81,30 @@ function smokeRender(code) {
   const config = { campuses: ['东校区'], smallPrice: 1.5, maxActiveOrders: 3, deliveryMinutes: 60, urgentMinutes: 30 };
   const order = { _id: 'order', MAIL_ID: 'order-no', status: '待接单', MAIL_STATUS: 0, MAIL_PAYMENT_MODE: 'offline', MAIL_OBJ: { title: '快递代取', campus: '东校区', price: 1.5 }, MAIL_MEDIA: {}, MAIL_HISTORY: [] };
   const scenarios = [
-    ['operations/operations', { tab: 'messages' }, '暂无消息'],
-    ['operations/operations', { tab: 'messages', error: true }, '加载失败'],
-    ['operations/operations', { tab: 'messages', list: [{ _id: 'n', title: '订单已接取', content: '请等待配送', read: false }] }, '订单已接取'],
-    ['admin/operations/admin_operations', { tab: 'overview', overview: { waiting: 1 } }, '运营概况'],
-    ['admin/operations/admin_operations', { tab: 'orders', list: [order] }, '导出订单'],
-    ['admin/operations/admin_operations', { tab: 'orders', detail: order }, '订单详情'],
-    ['admin/operations/admin_operations', { tab: 'feedback', detail: { FB_TITLE: '反馈内容', FB_CONTENT: '请协助处理' } }, '回复并处理完成'],
-    ['admin/operations/admin_operations', { tab: 'config', config, isSuperAdmin: false }, '当前为只读模式'],
+    ['operations/operations', {}, '暂无消息'],
+    ['operations/operations', { error: true }, '加载失败'],
+    ['operations/operations', { list: [{ _id: 'n', title: '订单已接取', content: '请等待配送', read: false }] }, '订单已接取'],
+    ['admin/index/home/admin_home', { loading: false, overview: { todayOrders: 1, rows: [] } }, '待办事项'],
+    ['admin/operations/admin_operations', {}, '正在打开管理页面'],
+    ['admin/orders/list/admin_order_list', { list: [order] }, '导出订单'],
+    ['admin/orders/detail/admin_order_detail', { detail: { ...order, history: [], canProcess: true } }, '人工介入'],
+    ['admin/orders/detail/admin_order_detail', { detail: null, notFound: true }, '订单不存在'],
+    ['admin/feedback/list/admin_feedback_list', { loading: false, list: [] }, '暂无符合条件的反馈'],
+    ['admin/feedback/detail/admin_feedback_detail', { detail: { _id: 'fb', FB_TITLE: '反馈内容', FB_CONTENT: '请协助处理', history: [] } }, '提交处理结果'],
+    ['admin/user/list/admin_user_list', { list: [] }, '用户管理'],
+    ['admin/user/detail/admin_user_detail', { user: { USER_STATUS: 0, USER_NAME: '小陈', USER_FORMS: [] } }, '审核通过'],
+    ['admin/settings/index/admin_settings', {}, '业务与系统管理'],
+    ['admin/settings/service/admin_service_settings', { config, isSuperAdmin: false }, '当前为只读模式'],
+    ['admin/settings/pricing/admin_pricing_settings', { config, isSuperAdmin: false }, '当前为只读模式'],
+    ['admin/settings/rules/admin_rules_settings', { config, isSuperAdmin: false }, '当前为只读模式'],
+    ['admin/analytics/admin_analytics', { overview: { total: 0, rows: [] } }, '订单状态分布'],
+    ['admin/monitor/admin_monitor', { isSuperAdmin: false }, '执行维护需要超级管理员权限'],
     ['about/index/about_index', { loading: false, about: [] }, '联系校区客服']
   ];
   for (const [pagePath, patch, expected] of scenarios) {
     const base = 'projects/crun/pages/' + pagePath;
     let page;
-    vm.runInNewContext(read(path.join(mini, base + '.js')), { Page: p => { page = p; }, require: () => ({}) });
+    runMiniProgram(path.join(mini, base + '.js'), { Page: p => { page = p; }, require: () => ({}) });
     const render = context.$gwx('./' + base + '.wxml');
     assert.equal(typeof render, 'function', base + ' 未生成渲染函数');
     const data = { ...page.data, isAdmin: true, isSuperAdmin: true, ...patch };
@@ -99,19 +112,52 @@ function smokeRender(code) {
     const content = JSON.stringify(tree);
     assert.ok(content.includes(expected), base + ' 渲染结果缺少：' + expected);
     if (patch.detail) assert.ok(!content.includes('点击记录查看详情并处理'), '详情模式不应仍展示列表');
-    if (patch.tab === 'config') assert.ok(!content.includes('保存运营配置'), '只读模式不应展示保存按钮');
+    if (patch.config && patch.isSuperAdmin === false) assert.ok(!content.includes('保存设置'), '只读模式不应展示保存按钮');
   }
   const mailCases = require('./test-support/mail-ui-fixtures.cjs').scenarios();
   for (const fixture of mailCases) {
     const base = 'projects/crun/pages/mail/' + fixture.page;
     let page;
-    vm.runInNewContext(read(path.join(mini, base + '.js')), { Page: p => { page = p; }, require: () => ({}) });
+    runMiniProgram(path.join(mini, base + '.js'), { Page: p => { page = p; }, require: () => ({}) });
     const render = context.$gwx('./' + base + '.wxml');
     const content = JSON.stringify(render({ ...page.data, ...fixture.data }, {}, {}));
     assert.ok(content.includes(fixture.expected), fixture.name + ' 缺少预期状态：' + fixture.expected);
+    for (const value of fixture.present || []) assert.ok(content.includes(value), fixture.name + ' 缺少应展示的内容：' + value);
     for (const value of fixture.absent || []) assert.ok(!content.includes(value), fixture.name + ' 泄露/展示了不应出现的内容：' + value);
   }
-  console.log('WXML 渲染冒烟检查通过：' + (scenarios.length + mailCases.length) + ' 个页面状态（含发单、详情角色/状态与隐私检查）。');
+  const reputationCases = require('./test-support/favorites-reputation-fixtures.cjs').scenarios();
+  const packageFixtures = require('./test-support/package-pickup-fixtures.cjs');
+  const packageCases = packageFixtures.scenarios();
+  for (const fixture of packageCases) {
+    const content = JSON.stringify(context.$gwx('./' + fixture.base + '.wxml')(packageFixtures.pageState(fixture), {}, {}));
+    for (const value of [fixture.expected, ...(fixture.present || [])]) assert.ok(content.includes(value), fixture.title + ' 缺少：' + value);
+    for (const value of fixture.absent || []) assert.ok(!content.includes(value), fixture.title + ' 不应展示：' + value);
+  }
+  for (const fixture of reputationCases) {
+    const base = 'projects/crun/pages/' + fixture.page;
+    let page;
+    vm.runInNewContext(read(path.join(mini, base + '.js')), { Page: value => { page = value; }, require: () => ({}) });
+    const render = context.$gwx('./' + base + '.wxml');
+    const content = JSON.stringify(render({ ...page.data, ...fixture.data }, {}, {}));
+    assert.ok(content.includes(fixture.expected), fixture.page + ' 渲染结果缺少：' + fixture.expected);
+    for (const hidden of fixture.absent || []) assert.ok(!content.includes(hidden), fixture.page + ' 不应展示：' + hidden);
+  }
+  const adminLayouts = require('./test-support/admin-layout-fixtures.cjs');
+  const adminCases = adminLayouts.scenarios();
+  for (const fixture of adminCases) {
+    const base = 'projects/crun/pages/admin/' + fixture.page;
+    const render = context.$gwx('./' + base + '.wxml');
+    const content = JSON.stringify(render(adminLayouts.pageState(fixture), {}, {}));
+    assert.ok(content.includes(fixture.expected), fixture.title + ' 渲染结果缺少：' + fixture.expected);
+  }
+  const notificationLayouts = require('./test-support/notification-layout-fixtures.cjs');
+  const notificationCases = notificationLayouts.scenarios();
+  for (const fixture of notificationCases) {
+    const render = context.$gwx('./' + fixture.base + '.wxml');
+    const content = JSON.stringify(render(notificationLayouts.pageState(fixture), {}, {}));
+    assert.ok(content.includes(fixture.expected), fixture.title + ' 渲染结果缺少：' + fixture.expected);
+  }
+  console.log('WXML 渲染冒烟检查通过：' + (scenarios.length + mailCases.length + packageCases.length + reputationCases.length + adminCases.length + notificationCases.length) + ' 个页面状态（含公告未读、后台表单、会话、失败重试与隐私检查）。');
 }
 function compile(compiler, kind, files) {
   const extensions = kind === 'wxml' ? /\.(wxml|wxs)$/ : /\.wxss$/;

@@ -46,13 +46,13 @@ class AdminUserController extends BaseProjectAdminController {
 
 		// 数据校验
 		let rules = {
-			search: 'string|min:1|max:30|name=搜索条件',
+			search: 'string|max:30|name=搜索条件',
 			sortType: 'string|name=搜索类型',
 			sortVal: 'name=搜索类型值',
 			orderBy: 'object|name=排序',
 			whereEx: 'object|name=附加查询条件',
-			page: 'must|int|default=1',
-			size: 'int',
+			page: 'must|int|default=1|min:1|max:500',
+			size: 'int|min:1|max:50',
 			isTotal: 'bool',
 			oldTotal: 'int',
 		};
@@ -104,14 +104,16 @@ class AdminUserController extends BaseProjectAdminController {
 		let rules = {
 			id: 'must|id',
 			status: 'must|int',
-			reason: 'string'
+			reason: 'string|max:200'
 		};
 
 		// 取得数据
 		let input = this.validateData(rules);
 
 		let service = new AdminUserService();
-		await service.statusUser(input.id, input.status, input.reason);
+		const result = await service.statusUser(input.id, input.status, input.reason);
+		this.logUser('更新用户「' + input.id + '」的状态为 ' + input.status);
+		return result;
 	}
 
 	/************** 用户数据导出 BEGIN ********************* */
@@ -130,9 +132,9 @@ class AdminUserController extends BaseProjectAdminController {
 		let service = new AdminUserService();
 
 		if (input.isDel === 1)
-			await service.deleteUserDataExcel(); //先删除 
+			await service.deleteUserDataExcel(this._adminId); //先删除
 
-		return await service.getUserDataURL();
+		return await service.getUserDataURL(this._adminId);
 	}
 
 	/** 导出数据 */
@@ -149,7 +151,7 @@ class AdminUserController extends BaseProjectAdminController {
 		let input = this.validateData(rules);
 
 		let service = new AdminUserService();
-		return await service.exportUserDataExcel(input.condition, input.fields);
+		return await service.exportUserDataExcel(input.condition, input.fields, this._adminId);
 	}
 
 	/** 删除导出的用户数据 */
@@ -163,7 +165,8 @@ class AdminUserController extends BaseProjectAdminController {
 		let input = this.validateData(rules);
 
 		let service = new AdminUserService();
-		return await service.deleteUserDataExcel();
+		await service.deleteUserDataExcel(this._adminId);
+		return { ok: true };
 	}
 }
 

@@ -1,1 +1,3 @@
 @import "../../../style/mail_detail.wxss";
+.delivery-page .od-favorite.saved, .delivery-page .od-favorite.saved text:first-child { color:#c88620; }
+.delivery-page .od-favorite { min-width:92rpx; white-space:nowrap; }

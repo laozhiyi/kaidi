@@ -114,9 +114,9 @@ class AdminCampusServiceController extends BaseProjectAdminController {
 	/** 回复会话 */
 	async replyCampusMessage() {
 		await this.isAdmin();
-		let input = this.validateData({ sessionId: 'must|string|min:1|max:200', content: 'must|string|min:1|max:500|name=回复内容' });
+		let input = this.validateData({ sessionId: 'must|string|min:1|max:200', content: 'must|string|min:1|max:500|name=回复内容', requestId: 'must|string|min:16|max:100' });
 		let service = new CampusServiceService();
-		return await service.replyCampusMessage(input.sessionId, input.content);
+		return await service.replyCampusMessage(input.sessionId, input.content, input.requestId, this._adminId);
 	}
 
 

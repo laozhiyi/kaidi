@@ -13,7 +13,7 @@ class BaseProjectController extends BaseController {
 	async initSetup() {
 		let service = new BaseProjectService();
 		await service.initSetup();
-  const publicRoutes = ['passport/login','passport/register','passport/phone','passport/my_detail','passport/edit_base','home/setup_get','home/list','news/list','news/view','mail/view','mail/list','operations/config','campus_service/list','campus_service/detail','check/img'];
+  const publicRoutes = ['passport/login','passport/register','passport/phone','passport/my_detail','passport/edit_base','home/setup_get','home/list','news/list','news/view','news/featured','mail/view','mail/list','fav/order_stats','operations/config','campus_service/list','campus_service/detail','check/img'];
   if(!publicRoutes.includes(this._route)) await new (require('../service/mail_service.js'))()._user(this._userId);
 	}
 }

@@ -1,4 +1,6 @@
-<view class="page" wx:if="{{isLoad && detail}}">
+<view wx:if="{{error}}" class="empty"><view class="empty-text">反馈详情加载失败，请重试</view><button class="feedback-retry" bindtap="_loadDetail">重新加载</button></view>
+<view wx:if="{{loading && !isLoad}}" class="empty"><view class="empty-text">正在加载反馈详情…</view></view>
+<view class="page" wx:if="{{isLoad && detail && !error}}">
 	<!-- 头部状态 -->
 	<view class="status-bar">
 		<view class="status-pill" style="color:{{detail._statusDesc.color}};background-color:{{detail._statusDesc.bgColor}};">
@@ -39,6 +41,7 @@
 			</view>
 		</view>
 		<view class="reply-content">{{detail.FB_REPLY}}</view>
+		<view wx:if="{{detail.FB_STATUS === 1 && detail._reviewStars}}" class="feedback-rating-result"><view>对 {{detail.FB_TARGET_NAME || '订单对方'}} 的审核评分</view><view class="feedback-rating-stars">{{detail._reviewStars}} <text>{{detail.FB_REVIEW_SCORE}} 星</text></view><view>对应信誉分：{{detail.FB_REVIEW_POINTS > 0 ? '+' : ''}}{{detail.FB_REVIEW_POINTS}} 分</view></view>
 	</view>
 
 	<view wx:else class="reply-wait">
@@ -47,6 +50,6 @@
 	</view>
 </view>
 
-<view wx:elif="{{isLoad}}" class="empty">
+<view wx:elif="{{isLoad && !error}}" class="empty">
 	<view class="empty-text">反馈记录不存在或已被删除</view>
 </view>

@@ -1,1 +1,15 @@
 @import "../contact/contact.wxss";
+.profile-item-card { align-items:stretch; flex-direction:column; }
+.profile-item-main { width:100%; }
+.profile-item-title, .profile-item-detail { white-space:normal; word-break:break-all; line-height:1.6; }
+.profile-item-actions { justify-content:flex-end; flex-wrap:wrap; margin:16rpx 0 0; padding-top:12rpx; border-top:1rpx solid #edf1f6; }
+.profile-item-actions text { padding:8rpx 12rpx; }
+.profile-editor { margin-top:24rpx; padding-top:24rpx; border-top:1rpx solid #e5edf6; }
+.address-editor-title { margin-bottom:22rpx; color:#24344c; font-size:30rpx; font-weight:600; }
+.address-field-label { margin:20rpx 0 14rpx; color:#62748b; font-size:25rpx; }
+.address-field-label text { color:#c27b42; }
+.address-phase-options { display:flex; flex-wrap:wrap; gap:12rpx; }
+.address-phase { display:flex; align-items:center; justify-content:center; width:calc((100% - 24rpx) / 3); height:82rpx; margin:0; padding:0; border-radius:14rpx; font-size:27rpx; color:#62748b; background:#f0f4f9; line-height:1.5; }
+.address-phase::after { border:0; }
+.address-phase.selected { background:#e8f1ff; color:#397bc8; box-shadow:inset 0 0 0 2rpx #397bc8; font-weight:600; }
+.address-detail { width:100%; min-height:110rpx; box-sizing:border-box; padding:20rpx; border-radius:14rpx; background:#f5f8fc; color:#24344c; font-size:27rpx; line-height:1.6; }

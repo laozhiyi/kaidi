@@ -1,16 +1,4 @@
-@import '../../../../../../style/public/admin.wxss';
-
-.main-admin {
-	padding: 30rpx 0rpx;
-}
-
-.info-item.pic {
-	display: flex;
-}
-
-.info-item.pic image{
-	width: 180rpx;
-	height: 180rpx;
-	margin-left: 20rpx;
-	border-radius: 2rpx;
-}
+@import '../../../../style/admin_console.wxss';
+.ac-page .ac-account > view:last-child { flex: 1; min-width: 0; }
+.ac-page .ac-form-actions button { flex-basis: 220rpx; }
+.ac-page .ac-account + .ac-row { margin-top: 18rpx; }
