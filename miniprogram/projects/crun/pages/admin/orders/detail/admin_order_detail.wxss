@@ -1,1 +1,4 @@
 @import '../../../../style/admin_console.wxss';
+
+.ac-danger-zone { border: 1rpx solid #f5d6d6; }
+.ac-danger { margin-top: 22rpx !important; width: 100%; padding: 18rpx 24rpx !important; border-radius: 14rpx !important; background: #fff1f1 !important; color: #c74747 !important; }

@@ -22,7 +22,7 @@ class AdminHomeService extends BaseProjectAdminService {
 		let userCnt = await UserModel.count(where);
 		let newsCnt = await NewsModel.count(where);
  
-		let mailCnt = await MailModel.count(where); 
+		let mailCnt = await MailModel.count({ MAIL_ADMIN_DELETED: ['<>', true] }); 
 		return [
 			{ title: '用户数', cnt: userCnt },
 			{ title: '公告数', cnt: newsCnt },

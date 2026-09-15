@@ -45,6 +45,7 @@ class AdminMailService extends BaseProjectAdminService {
 
 		let where = {};
 		where.and = {
+			MAIL_ADMIN_DELETED: ['<>', true],
 			_pid: this.getProjectId() //复杂的查询在此处标注PID
 		};
 

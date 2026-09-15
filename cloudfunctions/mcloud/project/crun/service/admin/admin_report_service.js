@@ -38,7 +38,7 @@ class AdminReportService extends Base {
   const key = this.key('mail', adminId), from = this.day(start), until = this.day(end) + 86400000 - 1;
   if (from > until) this.AppError('开始日期不能晚于结束日期');
   if (![999, 0, 1, 4, 2, 3, 9, 99].includes(status)) this.AppError('订单状态无效');
-  const where = { _pid: this.getProjectId(), MAIL_ADD_TIME: ['between', from, until] };
+  const where = { _pid: this.getProjectId(), MAIL_ADMIN_DELETED: ['<>', true], MAIL_ADD_TIME: ['between', from, until] };
   if (status !== 999) where.MAIL_STATUS = status;
   const rows = await this.rows(Mail, where, 'MAIL_ADD_TIME');
   const data = [['订单编号', '状态', '校区', '任务名称', '包裹数', '订单费用（元）', '结算方式', '发布时间', '接单时间', '取件时间', '送达时间', '完成时间']];

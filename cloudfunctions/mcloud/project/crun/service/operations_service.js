@@ -35,7 +35,7 @@ class OperationsService extends Base {
  async markAllRead(userId) {return new (require('./notification_service.js'))().markAllRead(userId);}
  async subscribe(userId,enabled) {await new Mail()._user(userId);if(typeof enabled!=='boolean')this.AppError('订阅设置无效');await store.set(store.database(),'subscription',store.key(this.getProjectId(),userId),{_pid:this.getProjectId(),userId,enabled,updatedAt:Date.now()});return {ok:true};}
  async orders(page, status, options = {}) {
-  const db = store.database(), where = {};
+  const db = store.database(), where = { MAIL_ADMIN_DELETED: db.command.neq(true) };
   if (status !== undefined && status !== -1) {
    if (![0, 1, 2, 3, 4, 9, 99].includes(status)) this.AppError('状态无效');
    where.MAIL_STATUS = status;
@@ -52,7 +52,7 @@ class OperationsService extends Base {
  }
  async orderDetail(id) {
   const mail = await store.get(store.database(), 'mail', id);
-  if (!mail || mail._pid !== this.getProjectId()) return null;
+  if (!mail || mail._pid !== this.getProjectId() || mail.MAIL_ADMIN_DELETED === true) return null;
   const User = require('../model/user_model.js');
   const contact = async userId => {
    if (!userId) return null;
@@ -65,7 +65,7 @@ class OperationsService extends Base {
  async overview() {
   const db = store.database(), pid = this.getProjectId();
   const count = async (name, where, extra = []) => {
-   const conditions = [{ ...where, _pid: pid }, ...extra];
+   const conditions = [{ ...where, _pid: pid, ...(name === 'mail' ? { MAIL_ADMIN_DELETED: db.command.neq(true) } : {}) }, ...extra];
    const result = await db.collection(store.collection(name)).where(conditions.length === 1 ? conditions[0] : db.command.and(conditions)).count();
    return result.total;
   };

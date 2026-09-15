@@ -18,7 +18,7 @@ class HomeService extends BaseProjectService {
 	async getHomeList() {
 		let t = this._timestamp;
 
-		const where = { MAIL_STATUS: 0, MAIL_PAYMENT_MODE: 'offline', MAIL_END_TIME: ['>', t] };
+		const where = { MAIL_ADMIN_DELETED: ['<>', true], MAIL_STATUS: 0, MAIL_PAYMENT_MODE: 'offline', MAIL_END_TIME: ['>', t] };
 		const [cnt, mailList] = await Promise.all([
 			MailModel.count({ ...where }),
 			MailModel.getAll({ ...where }, 'MAIL_OBJ.title,MAIL_ADD_TIME', { MAIL_ADD_TIME: 'desc', _id: 'desc' }, 5)

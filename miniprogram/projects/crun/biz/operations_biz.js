@@ -102,7 +102,7 @@ async function sendCommand(route, params, options, key, signature) {
  return result;
 }
 function orderChanged(route, result) {
- if (route.startsWith('mail/') || ['admin/operations_hold', 'admin/operations_resolve'].includes(route)) {
+ if (route.startsWith('mail/') || ['admin/operations_hold', 'admin/operations_resolve', 'admin/operations_delete_order'].includes(route)) {
   for (const name of ['order-mail-take', 'order-mail-mine', 'order-mail-posted', 'order-mail-done', 'mail-list', 'admin-mail-list']) wx.removeStorageSync(name.toUpperCase() + '_LIST');
   for (const listener of changeListeners) { try { listener({ route, id: result._id || result.id }); } catch (_) {} }
  }

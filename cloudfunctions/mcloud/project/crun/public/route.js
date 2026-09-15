@@ -22,6 +22,7 @@ module.exports = {
 "admin/operations_config_save":"admin/admin_operations_controller@saveConfig",
 "admin/operations_orders":"admin/admin_operations_controller@orders",
 "admin/operations_order":"admin/admin_operations_controller@orderDetail",
+	"admin/operations_delete_order":"admin/admin_operations_controller@deleteOrder",
 "admin/operations_resolve":"admin/admin_operations_controller@resolve",
 "admin/operations_overview":"admin/admin_operations_controller@overview",
 "admin/operations_maintain":"admin/admin_operations_controller@maintain",

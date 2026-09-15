@@ -30,6 +30,18 @@ Page({
   bindPhone(e) { const phone = e.currentTarget.dataset.phone; if (phone) wx.makePhoneCall({ phoneNumber: String(phone) }); },
   bindUser(e) { const id = e.currentTarget.dataset.id; if (id) UI.go('user', { id }); },
   bindImage(e) { const url = e.currentTarget.dataset.url; if (url) wx.previewImage({ urls: [url], current: url }); },
+  async bindDelete() {
+    if (this.data.busy || this.data.loading || this.data.error || !this.data.detail || !UI.authorize(this)) return;
+    if (!await UI.confirm('删除订单', '删除后订单将不再显示，订单历史记录会保留。确定继续吗？')) return;
+    this.setData({ busy: true });
+    try {
+      await Ops.command('admin/operations_delete_order', { id: this.data.detail._id });
+      UI.changed(this);
+      wx.showToast({ title: '订单已删除' });
+      setTimeout(() => { if (this._visible && !this._unloaded) UI.back('orders'); }, 500);
+    } catch (error) { if (this._visible) Ops.error(error); }
+    finally { if (!this._unloaded) this.setData({ busy: false }); }
+  },
   async bindProcess() {
     if (this.data.busy || this.data.loading || this.data.error || !UI.authorize(this) || !this.data.detail || !this.data.detail.canProcess) return;
     const detail = this.data.detail, note = this.data.note.trim();

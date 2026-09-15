@@ -1,5 +1,6 @@
 @import "../../../style/mail_detail.wxss";
 
+.delivery-page .confirm-gate-mask { align-items: center; justify-content: center; }
 .confirm-gate { width: 650rpx; padding: 48rpx 38rpx 34rpx; border-radius: 28rpx; background: #fff; text-align: center; box-sizing: border-box; }
 .confirm-gate-icon { width: 86rpx; height: 86rpx; margin: 0 auto 22rpx; border-radius: 50%; background: #e7f7ef; color: #28a36a; font-size: 54rpx; line-height: 86rpx; }
 .confirm-gate-title { color: #25364d; font-size: 33rpx; font-weight: 700; }

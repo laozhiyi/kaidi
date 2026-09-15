@@ -41,5 +41,6 @@
       <button class="ac-primary" bindtap="bindProcess" loading="{{busy}}" disabled="{{busy || loading || error}}">{{detail.MAIL_STATUS===3?'提交异常处理结果':'转入异常处理'}}</button>
     </view>
     <view wx:else class="ac-notice">订单已结束，可查看订单信息与历史处理记录。</view>
+    <view class="ac-card ac-danger-zone"><view class="ac-section-title">危险操作</view><view class="ac-muted">删除后订单将从管理员和用户端列表中隐藏，订单历史记录会保留。</view><button class="ac-danger" bindtap="bindDelete" loading="{{busy}}" disabled="{{busy || loading || error}}">删除订单</button></view>
   </block>
 </view>

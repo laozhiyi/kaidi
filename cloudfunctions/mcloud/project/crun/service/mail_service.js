@@ -6,7 +6,7 @@ const ConfigService = require('./operation_config_service.js');
 const store = require('./operation_store.js');
 const rules = require('./order_rules.js');
 const media = require('./private_media_service.js');
-const REQUEST_ROUTES = {publish:'mail/insert',edit:'mail/edit',accept:'mail/accept',pickup:'mail/pickup',cancel:'mail/cancel',deliver:'mail/deliver',update_proof:'mail/update_proof',confirm:'mail/finish',exception:'mail/exception',archive:'mail/del',hold:'admin/operations_hold',resolve:'admin/operations_resolve'};
+const REQUEST_ROUTES = {publish:'mail/insert',edit:'mail/edit',accept:'mail/accept',pickup:'mail/pickup',cancel:'mail/cancel',deliver:'mail/deliver',update_proof:'mail/update_proof',confirm:'mail/finish',exception:'mail/exception',archive:'mail/del',hold:'admin/operations_hold',resolve:'admin/operations_resolve',admin_delete:'admin/operations_delete_order'};
 class MailService extends Base {
  getStatusDesc(mail) { return rules.project(mail, '').status; }
  getFormObj(forms) { return Object.fromEntries((forms || []).map(x => [x.mark,x.val])); }
@@ -37,7 +37,7 @@ class MailService extends Base {
  }
  async _seed(userId, role) {
   if (await store.get(store.database(), 'order_quota', store.key(this.getProjectId(), userId, role))) return [];
-  return (await MailModel.getAll({ [role === 'rider' ? 'MAIL_ACCEPT_USER_ID' : 'MAIL_USER_ID']:userId, MAIL_STATUS:['in',role === 'rider' ? rules.ACTIVE : [0,...rules.ACTIVE]] },'_id',{},1000)).map(x => x._id);
+  return (await MailModel.getAll({ [role === 'rider' ? 'MAIL_ACCEPT_USER_ID' : 'MAIL_USER_ID']:userId, MAIL_ADMIN_DELETED:['<>',true], MAIL_STATUS:['in',role === 'rider' ? rules.ACTIVE : [0,...rules.ACTIVE]] },'_id',{},1000)).map(x => x._id);
  }
  async _quota(tx, userId, role, orderId, add, maximum, seed = []) {
   const id = store.key(this.getProjectId(),userId,role); const old = await store.get(tx,'order_quota',id);
@@ -49,7 +49,7 @@ class MailService extends Base {
    const current = [];
    for (const candidate of active) {
     const row = await store.get(tx, 'mail', candidate);
-    if (row && row._pid === this.getProjectId() && row[role === 'rider' ? 'MAIL_ACCEPT_USER_ID' : 'MAIL_USER_ID'] === userId
+    if (row && row.MAIL_ADMIN_DELETED !== true && row._pid === this.getProjectId() && row[role === 'rider' ? 'MAIL_ACCEPT_USER_ID' : 'MAIL_USER_ID'] === userId
      && (rules.ACTIVE.includes(row.MAIL_STATUS) || role === 'poster' && row.MAIL_STATUS === 0 && row.MAIL_END_TIME > Date.now())) current.push(candidate);
    }
    active = current;
@@ -99,7 +99,7 @@ class MailService extends Base {
   const seed = action === 'accept' ? await this._seed(userId,'rider') : [];
   return store.transaction(async tx => {
    const currentUser = await this._actor(tx,actor);
-   const mail = await store.get(tx,'mail',id); if (!mail || mail._pid !== this.getProjectId()) this.AppError('订单不存在'); mail._id = id;
+   const mail = await store.get(tx,'mail',id); if (!mail || mail.MAIL_ADMIN_DELETED === true || mail._pid !== this.getProjectId()) this.AppError('订单不存在'); mail._id = id;
    const seen = await store.get(tx,'order_request',store.key(this.getProjectId(),adminId || userId,input.requestId));
    if (seen) { if (seen.orderId !== id || seen.action !== action || seen.fingerprint !== store.key(input)) this.AppError('请求标识已被使用'); return {id,statusDesc:this.getStatusDesc(mail)}; }
    await store.assertRequestOpen(tx,this.getProjectId(),adminId || userId,REQUEST_ROUTES[action],input.requestId);
@@ -178,12 +178,40 @@ class MailService extends Base {
  async exceptionMail(userId,id,input) { return this._change(userId,id,'exception',input); }
  async holdMail(adminId,id,input) { return this._change('',id,'hold',input,adminId); }
  async resolveMail(adminId,id,input) { return this._change('',id,'resolve',input,adminId); }
+ async deleteOrder(adminId,id,input) {
+  if (!adminId) this.AppError('仅管理员可删除订单');
+  if (typeof id !== 'string' || !id || id.length > 100) this.AppError('订单标识无效');
+  this._request(input.requestId);
+  return store.transaction(async tx => {
+   await this._actor(tx,{adminId});
+   const mail = await store.get(tx,'mail',id);
+   if (!mail || mail._pid !== this.getProjectId()) this.AppError('订单不存在');
+   mail._id = id;
+   const fingerprint = store.key(input), requestKey = store.key(this.getProjectId(),adminId,input.requestId);
+   const seen = await store.get(tx,'order_request',requestKey);
+   if (seen) {
+    if (seen.orderId !== id || seen.action !== 'admin_delete' || seen.fingerprint !== fingerprint) this.AppError('请求标识已被使用');
+    return {id,deleted:true};
+   }
+   await store.assertRequestOpen(tx,this.getProjectId(),adminId,REQUEST_ROUTES.admin_delete,input.requestId);
+   if (mail.MAIL_ADMIN_DELETED === true) {
+    await store.set(tx,'order_request',requestKey,{_pid:this.getProjectId(),orderId:id,action:'admin_delete',fingerprint,createdAt:Date.now()});
+    return {id,deleted:true};
+   }
+   await store.limitInTransaction(tx,this.getProjectId(),adminId,'order_delete',30,60000);
+   mail.MAIL_ADMIN_DELETED = true; mail.MAIL_ADMIN_DELETED_AT = Date.now(); mail.MAIL_ADMIN_DELETED_BY = adminId;
+   await this._quota(tx,mail.MAIL_USER_ID,'poster',id,false,0);
+   if (mail.MAIL_ACCEPT_USER_ID) await this._quota(tx,mail.MAIL_ACCEPT_USER_ID,'rider',id,false,0);
+   await this._record(tx,mail,{adminId},'admin_delete',input.requestId,'管理员删除订单',fingerprint);
+   return {id,deleted:true};
+  });
+ }
  async editMail(userId,input) { return this._change(userId,input.id,'edit',input); }
  async statusMail() { this.AppError('已禁用直接修改状态，请使用对应订单操作'); }
  async delMail(userId,id,input) { return this._change(userId,id,'archive',input); }
  async updateMailForms() { this.AppError('请在提交订单前上传图片，并通过编辑订单更新，禁止独立覆盖表单'); }
  async viewMail(userId,id) {
-  const mail = await MailModel.getOne(id); if (!mail) return null;
+  const mail = await MailModel.getOne(id); if (!mail || mail.MAIL_ADMIN_DELETED === true) return null;
   await new (require('./review_service.js'))().decorateOrders(userId, [mail]);
   const result = rules.project(mail,userId);
   if (result.mypost || result.myaccept) { await this._user(userId); if (mail.MAIL_ACCEPT_USER_ID) result.acceptUser = await UserModel.getOne({USER_MINI_OPENID:mail.MAIL_ACCEPT_USER_ID},'USER_NAME,USER_MOBILE'); }
@@ -195,14 +223,14 @@ class MailService extends Base {
   return media.order(result);
  }
  async getMailDetail(userId,id) {
-  const mail = await MailModel.getOne(id); if (!mail) return null;
+  const mail = await MailModel.getOne(id); if (!mail || mail.MAIL_ADMIN_DELETED === true) return null;
   if (userId !== null) { await this._user(userId); if (mail.MAIL_USER_ID !== userId) this.AppError('无权限查看该订单'); }
   return media.order(rules.project(mail,userId,userId === null));
  }
  async getMailList(userId,input) {
   let {search,sortType,sortVal,whereEx,page=1,size=20} = input;
   if (!Number.isInteger(page) || page < 1 || page > 500 || !Number.isInteger(size) || size < 1 || size > 50) this.AppError('分页参数无效');
-  const where = {and:{_pid:this.getProjectId()}};
+  const where = {and:{_pid:this.getProjectId(),MAIL_ADMIN_DELETED:['<>',true]}};
   const now = Date.now();
   const completedSince = now - 12 * 60 * 60 * 1000;
   if (search === '我的发布') sortType = 'my_post'; if (search === '我的接单') sortType = 'my_accept';

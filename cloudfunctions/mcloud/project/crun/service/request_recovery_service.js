@@ -7,7 +7,8 @@ const ORDER_ACTIONS = {
  'mail/pickup': 'pickup', 'mail/cancel': 'cancel', 'mail/deliver': 'deliver',
  'mail/update_proof': 'update_proof',
  'mail/finish': 'confirm', 'mail/exception': 'exception', 'mail/del': 'archive',
- 'admin/operations_hold': 'hold', 'admin/operations_resolve': 'resolve'
+ 'admin/operations_hold': 'hold', 'admin/operations_resolve': 'resolve',
+ 'admin/operations_delete_order': 'admin_delete'
 };
 
 // Resolve an unknown response without storing personal form contents on a phone.

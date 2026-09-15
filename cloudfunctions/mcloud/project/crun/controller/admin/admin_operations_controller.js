@@ -15,6 +15,7 @@ class AdminOperationsController extends Base {
   return new Service().orders(p.page,p.status,p);
  }
  async orderDetail(){await this.isAdmin();const p=this.validateData({id:'must|id'});return new Service().orderDetail(p.id);}
+ async deleteOrder(){await this.isAdmin();const p=this.validateData({id:'must|id',requestId:'must|string|min:16|max:100'});return new Mail().deleteOrder(this._adminId,p.id,p);}
  async hold(){await this.isAdmin();const p=this.validateData({id:'must|id',requestId:'must|string|min:16|max:100',note:'must|string|max:500'});await check.checkTextMultiAdmin(p);return new Mail().holdMail(this._adminId,p.id,p);}
  async resolve(){await this.isAdmin();const p=this.validateData({id:'must|id',requestId:'must|string|min:16|max:100',resolution:'must|string|max:20',note:'must|string|max:500'});await check.checkTextMultiAdmin(p);return new Mail().resolveMail(this._adminId,p.id,p);}
  async overview(){await this.isAdmin();return new Service().overview();}
