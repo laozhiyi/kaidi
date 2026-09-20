@@ -16,7 +16,7 @@ function progress(mail, now = Date.now()) {
  const index = { 1: 0, 4: 2, 2: 3, 9: 4 }[status];
  const step = expired || index === undefined ? -1 : index;
  return { step, visible: !expired && (status === 0 || step >= 0),
-  steps: ['已接单', '已取件', '配送中', '待收货', '已完成'].map((label, index) => ({ label, index, done: step >= index, current: step === index })) };
+  steps: ['已接单', (mail.MAIL_OBJ || {}).serviceType === 'buy' ? '已购齐' : '已取件', '配送中', '待收货', '已完成'].map((label, index) => ({ label, index, done: step >= index, current: step === index })) };
 }
 function time(value) {
  if (typeof value === 'string' && /^\d{4}[-/]\d{2}[-/]\d{2} \d{2}:\d{2}/.test(value)) return value.slice(0, 16).replace(/\//g, '-');
@@ -51,6 +51,8 @@ function receipt(mail, now = Date.now()) {
 }
 function detail(mail, now = Date.now()) {
  const obj = mail.MAIL_OBJ || {}, status = mail.MAIL_STATUS == null ? -1 : Number(mail.MAIL_STATUS);
+ const serviceType = obj.serviceType || 'take';
+ const serviceName = { take: '快递代取', send: '物品代送', buy: '商品代买' }[serviceType] || '快递代取';
  const participant = !!(mail.mypost || mail.myaccept);
  const legacyPayment = mail.MAIL_PAYMENT_MODE !== 'offline';
  const expired = status === 0 && Number(mail.MAIL_END_TIME) > 0 && Number(mail.MAIL_END_TIME) <= now;
@@ -68,7 +70,7 @@ function detail(mail, now = Date.now()) {
  const contactName = participant ? (mail.mypost ? mail.acceptUser && mail.acceptUser.USER_NAME : obj.poster) : '';
  let primary = 'orders', primaryLabel = '返回订单列表';
  if (participant && mail.mypost && status === 0 && !expired && !legacyPayment) { primary = 'edit'; primaryLabel = '编辑订单'; }
- else if (participant && mail.myaccept && status === 1) { primary = 'pickup'; primaryLabel = '已取件'; }
+ else if (participant && mail.myaccept && status === 1) { primary = 'pickup'; primaryLabel = serviceType === 'buy' ? '已购齐' : '已取件'; }
  else if (participant && mail.myaccept && status === 4) { primary = 'deliver'; primaryLabel = '已送达'; }
  else if (participant && mail.mypost && status === 2) { primary = 'confirm'; primaryLabel = '确认收货'; }
  else if (participant && status === 9 && (mail.MAIL_CAN_REVIEW || mail.MAIL_REVIEWED)) { primary = 'review'; primaryLabel = mail.MAIL_REVIEWED ? '查看我的评价' : '评价对方'; }
@@ -78,9 +80,14 @@ function detail(mail, now = Date.now()) {
   id: x.id || String(i), title: actions[x.action] || '订单状态已更新', note: x.note || '',
   actor: x.actor === 'admin' ? '管理员' : x.actor === 'poster' ? '发布者' : x.actor === 'rider' ? '骑手' : '系统', time: time(x.at) || '时间待确认'
  })).reverse() : [];
- const title = mail.myaccept && status === 1 ? '请前往快递点取件' : mail.myaccept && status === 4 ? '配送进行中' : mail.myaccept && status === 2 ? '等待发布者确认' : state.title;
- const note = !participant && status === 0 && !expired ? '接单后可查看联系人信息、取件码和截图' : mail.myaccept && status === 1 ? '取齐本单包裹后，点击“已取件”开始配送' : mail.myaccept && status === 4 ? '送到收件地址后，点击“已送达”填写说明并上传照片' : mail.myaccept && status === 2 ? '已通知发布者核对，请等待对方确认收货' : state.note;
- return { ...state, title, note, participant, expired, status, legacyPayment, fee: Number.isFinite(fee) && fee >= 0 ? fee.toFixed(2) : '—', packages, pickupItems,
+ let title = mail.myaccept && status === 1 ? '请前往快递点取件' : mail.myaccept && status === 4 ? '配送进行中' : mail.myaccept && status === 2 ? '等待发布者确认' : state.title;
+ let note = !participant && status === 0 && !expired ? '接单后可查看联系人信息、取件码和截图' : mail.myaccept && status === 1 ? '取齐本单包裹后，点击“已取件”开始配送' : mail.myaccept && status === 4 ? '送到收件地址后，点击“已送达”填写说明并上传照片' : mail.myaccept && status === 2 ? '已通知发布者核对，请等待对方确认收货' : state.note;
+ if (serviceType !== 'take') {
+  if (status === 1) { title = serviceType === 'buy' ? (mail.myaccept ? '请前往购买商品' : '等待骑手购买') : (mail.myaccept ? '请前往取件地址' : '等待骑手取件'); note = serviceType === 'buy' ? '请按要求购买，超出预算先联系发布者；购齐后开始配送' : '请按填写的取件位置交接物品，取齐后开始配送'; }
+  if (!participant && status === 0 && !expired) note = '接单后可查看联系人信息并开始服务';
+  if (status === 99) note = '本次服务已结束，可重新发布订单';
+ }
+ return { ...state, title, note, serviceType, serviceName, feeLabel: serviceType === 'take' ? '代取费用' : serviceType === 'send' ? '代送费用' : '跑腿费（不含商品款）', participant, expired, status, legacyPayment, fee: Number.isFinite(fee) && fee >= 0 ? fee.toFixed(2) : '—', packages, pickupItems,
   count: packages.reduce((sum, x) => sum + x.count, 0) || Number(obj.num) || 1,
   role: mail.mypost ? '我的发布' : mail.myaccept ? '我的接单' : '订单详情',
   step: orderProgress.step, showProgress: orderProgress.visible, steps: orderProgress.steps, deliveryAddress: Address.formatOrderAddress(mail),

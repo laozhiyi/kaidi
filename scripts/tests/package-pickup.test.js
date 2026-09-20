@@ -73,13 +73,13 @@ async function formHarness(entry = 'mail_add.js', options = {}) {
    if (name.includes('public_biz')) return { removeCacheList() {} };
    if (name.includes('operations_biz')) return { get: async () => f.config, pendingCommand: () => null, error: error => errors.push(error.message),
     upload: async images => { uploads.push(copy(images)); return images.map(image => image.startsWith('cloud://') ? image : 'cloud://fixture/private-evidence/poster/' + image); },
-    command: async (route, params) => { calls.push({ route, params: copy(params) }); return Controller ? new Controller({ ...params, requestId: f.req('client-publish') }, 'poster')[route === 'mail/edit' ? 'editMail' : 'insertMail']() : { _id: 'saved' }; }
+    command: async (route, params) => { calls.push({ route, params: copy(params) }); return Controller ? new Controller({ ...params, requestId: f.req('client-' + route.replace('/', '-') + '-' + calls.length) }, 'poster')[route === 'mail/edit' ? 'editMail' : 'insertMail']() : { _id: 'saved' }; }
    };
    return {};
   }
  });
  if (component) definition = { data: component.data, ...component.methods };
- const page = { ...definition, data: copy(definition.data), triggerEvent() {}, setData(patch, callback) {
+ const page = { ...definition, data: { ...copy(definition.data), service: options.service || 'take' }, triggerEvent() {}, setData(patch, callback) {
   for (const [key, value] of Object.entries(patch)) {
    const parts = key.split('.'); let target = this.data;
    for (const part of parts.slice(0, -1)) target = target[part] ||= {};
@@ -88,7 +88,7 @@ async function formHarness(entry = 'mail_add.js', options = {}) {
   if (callback) callback();
  }, selectComponent() { return { data: { forms: this.data.formForms || [] }, getForms: () => this.data.formForms, setOneFormVal() {}, reload() {} }; } };
  if (component) { component.lifetimes.attached.call(page); await new Promise(resolve => setImmediate(resolve)); }
- else await page.onLoad(options.mail ? { id: options.mail._id } : {});
+ else await page.onLoad(options.mail ? { id: options.mail._id } : { service: options.service });
  assert.equal(page.data.isLoad, true);
  return { page, calls, errors, uploads, backend: f, Controller, async show() {
   if (component) { component.pageLifetimes.show.call(page); await new Promise(resolve => setImmediate(resolve)); }
@@ -101,6 +101,87 @@ function setPickup(page, index, phase, name) {
  page.bindSelectPackagePickup(event({ phase, name }));
  page.bindConfirmPackagePickup();
 }
+
+for (const service of ['send', 'buy']) {
+ for (const entry of ['mail_add.js', 'mail_add_embedded.js']) {
+  test(entry + ': ' + service + ' publishes without pickup credentials, edits and completes delivery', async () => {
+   const f = fixture({ projectFields: true });
+   const h = await formHarness(entry, { backend: f, service });
+   const page = h.page;
+   assert.equal(page.data.serviceType, service);
+   page.bindOpenPackagePickup(event({ id: page.data.packageItems[0].id }));
+   page.bindPackagePickupInput(event({}, service === 'buy' ? '二期超市' : '一期2栋101室门口'));
+   page.bindConfirmPackagePickup();
+   page.bindPackageItemInput(event({ index: 0, mark: 'price' }, '4.50'));
+   for (const [mark, value] of Object.entries({ address2: '三期3栋102室', poster: '小王', tel: '13800000000',
+    ...(service === 'buy' ? { goods: '纯牛奶250ml', buyQuantity: '3', goodsBudget: '18.50' } : {}) })) page.bindMailInput(event({ mark }, value));
+   await page.bindFormSubmit();
+   assert.deepEqual(h.errors, []); assert.equal(h.calls.length, 1);
+   const id = page.data.mailId, stored = f.table('mail').get(id);
+   assert.equal(stored.MAIL_OBJ.serviceType, service);
+   assert.equal(stored.MAIL_CATE_NAME, service === 'buy' ? '商品代买' : '物品代送');
+   assert.equal(stored.MAIL_CATE_ID, service === 'buy' ? '3' : '2');
+   assert.equal(stored.MAIL_TOTAL_FEE, 450);
+   if (service === 'send') {
+    assert.equal(stored.MAIL_OBJ.code, '');
+    assert.deepEqual(stored.MAIL_OBJ.imgUrls, []);
+    assert.ok(!h.calls[0].params.forms.some(field => ['code', 'img'].includes(field.mark)));
+   }
+   const publicOrder = (await f.service.getMailList('rider', { sortType: 'wait' })).list[0];
+   assert.equal(publicOrder.MAIL_OBJ.serviceType, service);
+   assert.equal(publicOrder.MAIL_OBJ.tel, undefined);
+   if (service === 'buy') {
+    assert.equal(publicOrder.MAIL_OBJ.goods, '纯牛奶250ml');
+    assert.equal(publicOrder.MAIL_OBJ.buyQuantity, 3);
+    assert.equal(publicOrder.MAIL_OBJ.goodsBudget, 18.5);
+   }
+   const mail = await f.service.viewMail('poster', id);
+   const edit = await formHarness('mail_add.js', { backend: f, mail });
+   assert.equal(edit.page.data.serviceType, service);
+   assert.equal(edit.page.data.packageItems[0].pickupPoint, stored.MAIL_OBJ.address1);
+   if (service === 'buy') assert.equal(edit.page.data.mailValues.goodsBudget, '18.5');
+   edit.page.setData({ formEnd: Deadline.after() });
+   edit.page.bindPackageItemInput(event({ index: 0, mark: 'price' }, '5.00'));
+   await edit.page.bindFormSubmit(); assert.deepEqual(edit.errors, []);
+   assert.equal(f.table('mail').get(id).MAIL_TOTAL_FEE, 500);
+   const altered = copy(f.table('mail').get(id).MAIL_FORMS);
+   altered.find(item => item.mark === 'serviceType').val = service === 'buy' ? 'send' : 'buy';
+   if (service === 'send') altered.push(...Object.entries({goods:'水',buyQuantity:1,goodsBudget:2}).map(([mark,val])=>({mark,val})));
+   await assert.rejects(f.service.editMail('poster', { id, forms: altered, requestId: f.req('change-service') }), /服务类型/);
+   await f.service.acceptMail('rider', id, { requestId: f.req('accept') });
+   const accepted = await f.service.viewMail('rider', id);
+   assert.equal(UI.detail(accepted).primaryLabel, service === 'buy' ? '已购齐' : '已取件');
+   await f.service.pickupMail('rider', id, { requestId: f.req('pickup') });
+   await f.service.deliverMail('rider', id, { requestId: f.req('deliver'), note: '物品已交付', images: ['cloud://fixture/proof.png'] });
+   await f.service.finishMail('poster', id, { requestId: f.req('confirm') });
+   assert.equal(f.table('mail').get(id).MAIL_STATUS, 9);
+   page.resetAfterPublish();
+   assert.equal(page.data.serviceType, service); assert.equal(page.data.packageItems[0].pickupPoint, '');
+   assert.ok(!page.data.mailValues.goods); assert.ok(!page.data.mailValues.goodsBudget);
+  });
+ }
+}
+
+test('buy form rejects missing goods, invalid quantities and budgets before submission', async () => {
+ const { page, calls, errors } = await formHarness('mail_add_embedded.js', { service: 'buy' });
+ page.bindPackageItemInput(event({ index: 0, mark: 'pickupPoint' }, '就近购买'));
+ for (const patch of [{}, { goods:'牛奶',buyQuantity:'1.5',goodsBudget:'10' }, { goods:'牛奶',buyQuantity:'1',goodsBudget:'0' }]) {
+  for (const [mark,value] of Object.entries(patch)) page.bindMailInput(event({mark},value));
+  await page.bindFormSubmit();
+ }
+ assert.equal(errors.length, 3); assert.equal(calls.length, 0);
+});
+
+test('server validates service and buying fields and preserves legacy pickup proof requirements', () => {
+ const f = fixture(), rules = f.load('order_rules.js');
+ const forms = (extra) => [...f.forms().filter(item => item.mark !== 'code'), ...Object.entries(extra).map(([mark,val])=>({mark,val}))];
+ for (const serviceType of ['bogus','',{},'__proto__']) assert.throws(() => rules.validateForms(forms({serviceType}),f.config,Date.now()), /服务类型/);
+ assert.throws(() => rules.validateForms(forms({}),f.config,Date.now()), /取件码/);
+ for (const extra of [{goods:''},{buyQuantity:0},{buyQuantity:1.5},{buyQuantity:100},{goodsBudget:0},{goodsBudget:'1.001'},{goodsBudget:10001}]) {
+  assert.throws(() => rules.validateForms(forms({serviceType:'buy',goods:'牛奶',buyQuantity:1,goodsBudget:10,...extra}),f.config,Date.now()));
+ }
+ assert.equal(rules.validateForms(forms({serviceType:'send'}),f.config,Date.now()).obj.serviceType, 'send');
+});
 
 for (const entry of ['mail_add.js', 'mail_add_embedded.js']) {
  test(entry + ': the typed delivery address survives profile refresh and reaches the order unchanged', async () => {

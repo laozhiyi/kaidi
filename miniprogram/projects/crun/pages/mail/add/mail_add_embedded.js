@@ -12,7 +12,7 @@ Component({
   },
   data: Object.assign(componentData, { embedded: true }),
   lifetimes: {
-    attached() { if (typeof logic.onLoad === 'function') logic.onLoad.call(this, { embedded: true }); },
+    attached() { if (typeof logic.onLoad === 'function') logic.onLoad.call(this, { embedded: true, service: this.data.service }); },
     detached() { if (typeof logic.onUnload === 'function') logic.onUnload.call(this); }
   },
   pageLifetimes: {

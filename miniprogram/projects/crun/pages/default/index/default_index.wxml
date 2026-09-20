@@ -8,6 +8,8 @@
   <view class="hero"><image mode="aspectFill" src="../../../images/home_banner.jpg" /></view>
   <view class="service-tabs" wx:if="{{isLoad}}"><view wx:for="{{serviceOptions}}" wx:key="key" class="service-tab {{activeService===item.key?'service-tab-active':''}}" data-key="{{item.key}}" bindtap="bindServiceTap" hover-class="service-tab-hover"><view class="service-tab-icon service-{{item.key}}"><text class="icon-{{item.icon}}"></text></view><view class="service-tab-title">{{item.title}}</view><view class="service-tab-desc">{{item.desc}}</view></view></view>
   <view class="express-card" wx:if="{{isLoad && activeService === 'take'}}"><view class="express-card-head"><view class="express-card-icon icon-mail"></view><view class="express-card-copy"><view class="express-card-title">快递代取</view><view class="express-card-subtitle">帮我取 · 填好信息，即可发布代取需求</view></view><view class="express-card-badge">{{cnt || 0}} 个需求</view></view></view>
-  <mail-publish-form id="home-take-form" wx:if="{{isLoad}}" hidden="{{activeService !== 'take'}}" embedded="true" service="take" bind:published="bindEmbeddedPublished" />
+  <mail-publish-form id="home-take-form" wx:if="{{isLoad && activeService === 'take'}}" embedded="true" service="take" bind:published="bindEmbeddedPublished" />
+  <mail-publish-form id="home-send-form" wx:elif="{{isLoad && activeService === 'send'}}" embedded="true" service="send" bind:published="bindEmbeddedPublished" />
+  <mail-publish-form id="home-buy-form" wx:elif="{{isLoad && activeService === 'buy'}}" embedded="true" service="buy" bind:published="bindEmbeddedPublished" />
   <view class="home-tab-clearance home-tab-clearance-form"></view>
 </view>

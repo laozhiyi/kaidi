@@ -88,7 +88,7 @@ class MailService extends Base {
    const config = await new ConfigService().getConfig(tx);
    const normalized=rules.validateForms(input.forms,config,Date.now());rules.requireOpen(config,Date.now());
    await this._quota(tx,userId,'poster',id,true,config.maxOpenOrders,seed);
-   const mail = { _id:id,_pid:this.getProjectId(),MAIL_ID:'MAIL'+id.slice(0,28),MAIL_PUBLISH_FINGERPRINT:fingerprint,MAIL_STATUS:0,MAIL_USER_ID:userId,MAIL_USER_NAME:user.USER_NAME,MAIL_ACCEPT_USER_ID:'',MAIL_ORDER:9999,MAIL_CATE_ID:String(input.cateId || '1'),MAIL_CATE_NAME:'快递代取',MAIL_OBJ:normalized.obj,MAIL_FORMS:normalized.forms,MAIL_END_TIME:normalized.endTime,MAIL_TOTAL_FEE:normalized.totalFee,MAIL_PAYMENT_MODE:'offline',MAIL_PAY_STATUS:0,MAIL_ADD_TIME:now,MAIL_ACCEPT_TIME:0,MAIL_OVER_TIME:0,MAIL_DELIVERY_MINUTES:normalized.obj.urgent ? config.urgentMinutes : config.deliveryMinutes };
+   const mail = { _id:id,_pid:this.getProjectId(),MAIL_ID:'MAIL'+id.slice(0,28),MAIL_PUBLISH_FINGERPRINT:fingerprint,MAIL_STATUS:0,MAIL_USER_ID:userId,MAIL_USER_NAME:user.USER_NAME,MAIL_ACCEPT_USER_ID:'',MAIL_ORDER:9999,MAIL_CATE_ID:rules.SERVICES[normalized.obj.serviceType].id,MAIL_CATE_NAME:rules.SERVICES[normalized.obj.serviceType].name,MAIL_OBJ:normalized.obj,MAIL_FORMS:normalized.forms,MAIL_END_TIME:normalized.endTime,MAIL_TOTAL_FEE:normalized.totalFee,MAIL_PAYMENT_MODE:'offline',MAIL_PAY_STATUS:0,MAIL_ADD_TIME:now,MAIL_ACCEPT_TIME:0,MAIL_OVER_TIME:0,MAIL_DELIVERY_MINUTES:normalized.obj.urgent ? config.urgentMinutes : config.deliveryMinutes };
    await this._record(tx,mail,{userId},'publish',input.requestId,'发布订单；线下结算',fingerprint,input._sourceFingerprint || '');
    return {id:mail.MAIL_ID,_id:id,fee:normalized.totalFee/100,paymentMode:'offline'};
   });
@@ -149,8 +149,9 @@ class MailService extends Base {
     mail.MAIL_EXCEPTION = {...mail.MAIL_EXCEPTION,resolution:input.resolution,resolvedAt:now,resolvedBy:adminId,result:note};
    } else if (action === 'edit') {
     if (!poster || state !== 0) this.AppError('仅可编辑尚未被接取的订单'); const normalized = rules.validateForms(input.forms,config,now);
+    if (normalized.obj.serviceType !== (mail.MAIL_OBJ.serviceType || 'take')) this.AppError('不能修改订单服务类型');
     if (mail.MAIL_PAYMENT_MODE !== 'offline') this.AppError('旧支付订单不可编辑，请联系管理员核对');
-    Object.assign(mail,{MAIL_OBJ:normalized.obj,MAIL_FORMS:normalized.forms,MAIL_END_TIME:normalized.endTime,MAIL_TOTAL_FEE:normalized.totalFee,MAIL_DELIVERY_MINUTES:normalized.obj.urgent ? config.urgentMinutes : config.deliveryMinutes});
+    Object.assign(mail,{MAIL_CATE_ID:rules.SERVICES[normalized.obj.serviceType].id,MAIL_CATE_NAME:rules.SERVICES[normalized.obj.serviceType].name,MAIL_OBJ:normalized.obj,MAIL_FORMS:normalized.forms,MAIL_END_TIME:normalized.endTime,MAIL_TOTAL_FEE:normalized.totalFee,MAIL_DELIVERY_MINUTES:normalized.obj.urgent ? config.urgentMinutes : config.deliveryMinutes});
    } else if (action === 'archive') {
     if (!poster || ![9,99].includes(state)) this.AppError('仅可隐藏已结束的本人订单'); mail.MAIL_POSTER_ARCHIVED = true;
    } else this.AppError('不支持的订单操作');

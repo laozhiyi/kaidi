@@ -12,7 +12,7 @@
  </view>
  <block wx:if="{{isLoad}}">
   <view class="pub-hero">
-   <view class="pub-hero-copy"><view class="pub-eyebrow">校园生活 · 少跑一趟</view><view class="pub-hero-title">{{editId ? '修改代取订单' : '快递，帮你带回来'}}</view><view class="pub-hero-note">选好包裹，填好地址，剩下交给骑手</view></view>
+   <view class="pub-hero-copy"><view class="pub-eyebrow">校园生活 · 少跑一趟</view><view class="pub-hero-title">{{editId ? '修改' + serviceName + '订单' : serviceType === 'buy' ? '想买的，帮你带回来' : serviceType === 'send' ? '物品，帮你送过去' : '快递，帮你带回来'}}</view><view class="pub-hero-note">{{serviceType === 'buy' ? '写清商品与预算，购买后送到你手中' : serviceType === 'send' ? '填好取件点和送达地址，剩下交给骑手' : '选好包裹，填好地址，剩下交给骑手'}}</view></view>
    <view class="pub-hero-symbol"><text class="icon-deliver"></text></view>
   </view>
   <view class="pub-content">
@@ -30,7 +30,16 @@
     <view wx:if="{{formEndFocus}}" class="pub-validation">{{formEndFocus}}</view>
    </view>
 
-   <view class="pub-card">
+   <view wx:if="{{serviceType === 'buy'}}" class="pub-card">
+    <view class="pub-heading"><view><text class="pub-section-no">01</text><text>买些什么</text></view></view>
+    <view class="pub-field-row"><view class="pub-field-label">商品及规格 <text class="pub-required">*</text></view><view class="pub-input-box"><textarea class="pub-address-input" value="{{mailValues.goods}}" maxlength="500" auto-height placeholder="例如：某品牌纯牛奶250ml，缺货时请先联系我" bindinput="bindMailInput" data-mark="goods" disabled="{{submitting}}" /></view></view>
+    <view class="pub-field-row"><view class="pub-field-label">购买数量 <text class="pub-required">*</text></view><view class="pub-input-box"><input type="number" maxlength="2" value="{{mailValues.buyQuantity}}" placeholder="1至99件" bindinput="bindMailInput" data-mark="buyQuantity" disabled="{{submitting}}" /></view></view>
+    <view class="pub-field-row"><view class="pub-field-label">商品总预算（元） <text class="pub-required">*</text></view><view class="pub-input-box"><input type="digit" value="{{mailValues.goodsBudget}}" placeholder="全部商品的预算，不含跑腿费" bindinput="bindMailInput" data-mark="goodsBudget" disabled="{{submitting}}" /></view></view>
+    <view class="pub-field-row"><view class="pub-field-label">购买地点 <text class="pub-required">*</text></view><view class="pub-input-box"><textarea class="pub-address-input" value="{{packageItems[0].pickupPoint}}" maxlength="100" auto-height placeholder="填写店铺与位置，或填写就近购买" bindinput="bindPackageItemInput" data-index="0" data-mark="pickupPoint" disabled="{{submitting}}" /></view></view>
+    <view class="pub-field-row"><view class="pub-field-label">跑腿费（元） <text class="pub-required">*</text></view><view class="pub-input-box"><input type="digit" value="{{packageItems[0].price}}" placeholder="请填写本单跑腿费" bindinput="bindPackageItemInput" data-index="0" data-mark="price" disabled="{{submitting}}" /></view></view>
+    <view class="pub-footnote">商品款按实际小票与骑手线下结算；超出预算须先确认。跑腿费另计。</view>
+   </view>
+   <view wx:else class="pub-card">
     <view class="pub-heading"><view><text class="pub-section-no">01</text><text>选择包裹</text></view><text class="pub-caption">按件计费</text></view>
     <view class="pub-price-editor"><view><view class="pub-price-title">参考价格与本单合计</view><view class="pub-price-tip">参考价会随件型显示；每件费用可在下方单独调整</view></view><view class="pub-price-total">¥{{totalFee}}</view></view>
     <view class="pub-packages">
@@ -41,21 +50,21 @@
      </view>
     </view>
     <view wx:if="{{packageItems.length}}" class="pub-package-details">
-     <view class="pub-detail-title">每件包裹信息 <text>价格独立设置，取件码和截图二选一</text></view>
+     <view class="pub-detail-title">每件包裹信息 <text>{{serviceType === 'send' ? '价格独立设置，请填写取件位置和物品说明' : '价格独立设置，取件码和截图二选一'}}</text></view>
      <view wx:for="{{packageItems}}" wx:key="id" class="pub-package-detail">
       <view class="pub-package-detail-head"><text>{{index + 1}}. {{item.label}}</text><text class="pub-package-reference">参考 ¥{{item.referencePrice || item.price}}</text></view>
       <view class="pub-package-options-row">
        <view class="pub-package-custom-price"><text class="pub-package-input-label">自定义价格</text><view class="pub-package-price-value"><input type="digit" value="{{item.price}}" data-index="{{index}}" data-mark="price" bindinput="bindPackageItemInput" placeholder="本件费用" disabled="{{submitting}}"/><text>元</text></view></view>
-       <button class="pub-package-pickup" bindtap="bindOpenPackagePickup" data-id="{{item.id}}" disabled="{{submitting}}" aria-label="选择第{{index + 1}}件包裹的取件点"><text class="pub-package-input-label">取件点</text><view class="pub-package-pickup-value"><text class="pub-package-pickup-name {{!item.pickupPoint ? 'pub-package-pickup-empty' : ''}}">{{item.pickupPoint || '选择快递点'}}</text><text class="icon-right"></text></view></button>
+       <button class="pub-package-pickup" bindtap="bindOpenPackagePickup" data-id="{{item.id}}" disabled="{{submitting}}" aria-label="填写第{{index + 1}}件包裹的取件点"><text class="pub-package-input-label">取件点</text><view class="pub-package-pickup-value"><text class="pub-package-pickup-name {{!item.pickupPoint ? 'pub-package-pickup-empty' : ''}}">{{item.pickupPoint || (serviceType === 'send' ? '填写取件位置' : '选择快递点')}}</text><text class="icon-right"></text></view></button>
       </view>
-      <view class="pub-package-proof-row">
+      <view wx:if="{{serviceType === 'take'}}" class="pub-package-proof-row">
        <input class="pub-package-proof-input" value="{{item.code}}" data-index="{{index}}" data-mark="code" bindinput="bindPackageItemInput" placeholder="取件码"/>
        <view class="pub-package-upload" bindtap="bindPackageImageTap" data-index="{{index}}">
         <block wx:if="{{item.images && item.images.length}}"><image class="pub-package-thumb" src="{{item.images[0]}}" mode="aspectFill" catchtap="bindPackagePreviewImage" data-index="{{index}}"/></block>
         <block wx:else><text class="icon-camera"></text><text>上传截图</text></block>
        </view>
       </view>
-      <input class="pub-package-note-input" value="{{item.note}}" data-index="{{index}}" data-mark="note" bindinput="bindPackageItemInput" placeholder="备注（选填）"/>
+      <input class="pub-package-note-input" value="{{item.note}}" maxlength="300" data-index="{{index}}" data-mark="note" bindinput="bindPackageItemInput" placeholder="{{serviceType === 'send' ? '物品名称、交接方式等（选填）' : '备注（选填）'}}"/>
      </view>
     </view>
     <view class="pub-footnote">共 {{totalCount}} 件包裹 · 请按实际大小选择规格</view>
@@ -95,7 +104,7 @@
    <view class="pub-settlement" bindtap="bindSettlementTap"><text class="icon-info"></text><view><text>费用线下结算，请勿提前转账</text><view>平台不代收、不担保 · 查看结算说明</view></view><text class="icon-right"></text></view>
   </view>
 
-  <view class="pub-submit-bar"><view class="pub-total"><view class="pub-total-label">共 {{totalCount}} 件 · 线下费用</view><view class="pub-total-price"><text>¥</text>{{totalFee}}</view></view><button class="pub-submit" hover-class="pub-submit-hover" bindtap="bindFormSubmit" loading="{{submitting}}" disabled="{{submitting || pageLoading || configError || (!serviceState.canPublish && !editId)}}">{{editId ? '保存修改' : serviceState.kind==='paused' ? '暂时停止接单' : serviceState.kind==='closed' ? '营业后可发布' : '发布代取订单'}}<text wx:if="{{!submitting && serviceState.canPublish}}" class="icon-right"></text></button></view>
+  <view class="pub-submit-bar"><view class="pub-total"><view class="pub-total-label">{{serviceType === 'buy' ? '跑腿费 · 不含商品款' : '共 ' + totalCount + ' 件 · 线下费用'}}</view><view class="pub-total-price"><text>¥</text>{{totalFee}}</view></view><button class="pub-submit" hover-class="pub-submit-hover" bindtap="bindFormSubmit" loading="{{submitting}}" disabled="{{submitting || pageLoading || configError || (!serviceState.canPublish && !editId)}}">{{editId ? '保存修改' : serviceState.kind==='paused' ? '暂时停止接单' : serviceState.kind==='closed' ? '营业后可发布' : serviceType === 'buy' ? '发布代买订单' : serviceType === 'send' ? '发布代送订单' : '发布代取订单'}}<text wx:if="{{!submitting && serviceState.canPublish}}" class="icon-right"></text></button></view>
   <view class="pub-form-engine"><cmpt-form-show id="cmpt-form" mark="mail-add-engine" isCacheMatch="{{false}}" fields="{{fields}}" forms="{{formForms}}" isDefMatch="{{true}}"/></view>
  </block>
  <include src="./mail_profile_picker.wxml" />

@@ -49,12 +49,14 @@ function pageHarness(file, get, profile) {
  return { page, calls, patches, errors, navigation, ops };
 }
 
-test('home express entry opens the embedded take form and upcoming services keep its draft mounted', () => {
+test('home service tabs activate only the selected form', () => {
  const h = pageHarness('default/index/default_index.js', () => ({}));
  assert.equal(h.page.data.activeService, 'take');
  h.page.bindExpressTap();
  h.page.bindServiceTap({ currentTarget: { dataset: { key: 'send' } } });
+ assert.equal(h.page.data.activeService, 'send');
  h.page.bindServiceTap({ currentTarget: { dataset: { key: 'buy' } } });
+ assert.equal(h.page.data.activeService, 'buy');
  h.page.bindServiceTap({ currentTarget: { dataset: { key: 'take' } } });
  assert.equal(h.page.data.activeService, 'take');
  assert.equal(h.navigation.length, 0);

@@ -184,7 +184,7 @@ Page({
 			showProgress: progress.visible, progressStep: progress.step, progressLabels: progress.steps.map(step => step.label),
 			deliveryAddress: MailUI.deliveryAddress(order), receipt: MailUI.receipt(order),
 			MAIL_FAV_CNT: Number(order.MAIL_FAV_CNT) || 0, MAIL_IS_FAV: !!order.MAIL_IS_FAV,
-			packageProofs: packages.filter(item => item && typeof item === 'object').map(item => ({ pickupPoint: item.pickupPoint || obj.address1 || '', code: item.code || '查看取件截图', noteLabel: item.note ? '有备注' : '无备注' }))
+			packageProofs: packages.filter(item => item && typeof item === 'object').map(item => ({ pickupPoint: item.pickupPoint || obj.address1 || '', code: obj.serviceType === 'send' ? item.note || '请联系发布者交接' : item.code || '查看取件截图', noteLabel: item.note ? '有备注' : '无备注' }))
 		});
     },
 	_snapshotKey: function (tab) {
@@ -303,7 +303,7 @@ Page({
 		this.setData({ acceptingId: id });
 		try {
 			if (!await PassportBiz.loginMustCancelWin(this) || !this._visible) return;
-			const confirm = await pageHelper.showConfirm('确认接单后请尽快前往快递点取件，是否继续？');
+			const confirm = await pageHelper.showConfirm('确认接单后请按订单要求尽快取件或购买，是否继续？');
 			if (!confirm || !this._visible) return;
 			const res = {data:await Ops.command('mail/accept', { id })};
 			if (!this._visible) return;
@@ -357,7 +357,7 @@ Page({
 		this._orderActionBusy = true;
 		this.setData({ actionBusyId: id });
 		try {
-			const message = action === 'pickup' ? '确认已经从快递点取齐本单所有包裹吗？确认后将进入配送中。' : '确认已将本单所有包裹送到收件地址吗？接下来将进入订单详情，请填写送达说明并上传至少1张照片，提交后通知发布者确认收货。';
+			const message = action === 'pickup' ? '确认已经取齐或购齐本单所有物品吗？确认后将进入配送中。' : '确认已将本单所有包裹送到收件地址吗？接下来将进入订单详情，请填写送达说明并上传至少1张照片，提交后通知发布者确认收货。';
 			if (!await pageHelper.showConfirm(message) || !this._visible || this.data.tabIndex !== 1) return;
 			const current = (this.data.dataList && this.data.dataList.list || []).find(row => row._id === id);
 			if (!current || !current.myaccept || Number(current.MAIL_STATUS) !== expectedStatus) return;

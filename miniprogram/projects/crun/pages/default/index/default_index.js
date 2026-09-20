@@ -11,8 +11,8 @@ Page({
     featuredNews: null, unreadCount: 0, messageBadge: '', noticeLoaded: false, noticeError: false,
     serviceOptions: [
       { key: 'take', title: '帮我取', desc: '快递代取', icon: 'mail' },
-      { key: 'send', title: '帮我送', desc: '待上线', icon: 'deliver' },
-      { key: 'buy', title: '帮我买', desc: '待上线', icon: 'shop' }
+      { key: 'send', title: '帮我送', desc: '物品代送', icon: 'deliver' },
+      { key: 'buy', title: '帮我买', desc: '商品代买', icon: 'shop' }
     ]
   },
   onLoad() { ProjectBiz.initPage(this); },
@@ -61,17 +61,17 @@ Page({
     return this._listRequest;
   },
   bindServiceTap(e) {
-    if (e.currentTarget.dataset.key !== 'take') {
-      wx.showToast({ title: '此功能待上线', icon: 'none' });
-      return;
-    }
-    this.setData({ activeService: 'take' });
+    const key = e.currentTarget.dataset.key;
+    if (!this.data.serviceOptions.some(item => item.key === key)) return;
+    const current = this.selectComponent('#home-' + this.data.activeService + '-form');
+    if (current && current.data.submitting) return;
+    this.setData({ activeService: key });
   },
   bindExpressTap() { this.setData({ activeService: 'take' }); },
-  bindEmbeddedPublished() {
-    const form = this.selectComponent('#home-take-form');
+  bindEmbeddedPublished(e) {
+    const service = e && e.detail && e.detail.service || this.data.activeService;
+    const form = this.selectComponent('#home-' + service + '-form');
     if (form && typeof form.resetAfterPublish === 'function') form.resetAfterPublish();
-    this.setData({ activeService: 'take' });
     wx.showToast({ title: '发布成功', icon: 'success' });
     this._loadList();
   },
@@ -79,7 +79,7 @@ Page({
   url(e) { pageHelper.url(e, this); },
   async onPullDownRefresh() {
     try {
-      const form = this.selectComponent('#home-take-form');
+      const form = this.selectComponent('#home-' + this.data.activeService + '-form');
       await Promise.all([this._loadList(), Notifications.refresh(true), form && form.onPullDownRefresh ? form.onPullDownRefresh() : Promise.resolve()]);
     } finally { wx.stopPullDownRefresh(); }
   },

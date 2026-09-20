@@ -165,7 +165,7 @@ Page({
   let loading = false;
   try {
    if (!await PassportBiz.loginMustCancelWin(this)) return;
-   const confirm = await pageHelper.showConfirm('确认接单后请尽快前往快递点取件。费用由双方线下协商结算，是否继续？');
+   const confirm = await pageHelper.showConfirm('确认接单后请按订单要求尽快取件或购买。费用由双方线下协商结算，是否继续？');
    if (!confirm) return;
    wx.showLoading({ title: '接单中...' }); loading = true;
    const result = await Ops.command('mail/accept', { id: mail._id });

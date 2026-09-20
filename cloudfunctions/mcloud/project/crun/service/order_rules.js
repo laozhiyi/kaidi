@@ -4,6 +4,7 @@ const deliveryAddress = require('./delivery_address.js');
 const fail = message => { throw new AppError(message); };
 const ACTIVE = [1, 2, 3, 4];
 const LABELS = { 0: '待接单', 1: '已接单', 2: '待收货', 3: '异常处理中', 4: '已取件', 9: '已完成', 99: '已取消' };
+const SERVICES = { take: { id: '1', name: '快递代取' }, send: { id: '2', name: '物品代送' }, buy: { id: '3', name: '商品代买' } };
 function text(value, name, max, required = false) { if (typeof value !== 'string' || value.trim().length > max || required && !value.trim()) fail(name + '格式不正确'); return value.trim(); }
 function images(value) { if (!Array.isArray(value) || value.length > 6 || value.some(x => typeof x !== 'string' || !x.startsWith('cloud://') || x.length > 500)) fail('图片必须先成功上传，最多6张'); return [...new Set(value)]; }
 function validateForms(forms, config, now) {
@@ -11,6 +12,15 @@ function validateForms(forms, config, now) {
  const input = Object.create(null);
  for (const item of forms) { if (!item || typeof item.mark !== 'string' || Object.prototype.hasOwnProperty.call(input,item.mark)) fail('表单字段重复或无效'); input[item.mark] = item.val; }
  const obj = {};
+ obj.serviceType = input.serviceType == null ? 'take' : text(input.serviceType, '服务类型', 10, true);
+ if (!Object.prototype.hasOwnProperty.call(SERVICES, obj.serviceType)) fail('服务类型无效');
+ if (obj.serviceType === 'buy') {
+  obj.goods = text(input.goods, '购买要求', 500, true);
+  if (!/^[1-9]\d?$/.test(String(input.buyQuantity))) fail('购买数量须为1至99的整数');
+  obj.buyQuantity = Number(input.buyQuantity);
+  if (!/^\d+(?:\.\d{1,2})?$/.test(String(input.goodsBudget)) || Number(input.goodsBudget) < 0.01 || Number(input.goodsBudget) > 10000) fail('商品预算须在0.01至10000元之间，最多保留两位小数');
+  obj.goodsBudget = Number(input.goodsBudget);
+ }
  for (const [key,name,max,required] of [['title','任务名称',50,true],['code','取件码',500,false],['address2','收件地址',200,true],['poster','联系人',30,true],['tel','手机号',11,true],['desc','备注',500,false],['tel2','\u7b2c\u4e8c\u8054\u7cfb\u65b9\u5f0f',100,false],['campus','校区',30,true]]) obj[key] = text(input[key] == null ? '' : input[key],name,max,required);
  if (!/^1[3-9][0-9]{9}$/.test(obj.tel)) fail('手机号格式不正确');
  if (!config.campuses.includes(obj.campus)) fail('该校区不在服务范围');
@@ -24,7 +34,8 @@ function validateForms(forms, config, now) {
  obj.address2 = text(deliveryAddress.resolve({ MAIL_OBJ:obj, MAIL_FORMS:forms }),'收件地址',200,true);
  const resolvedPhase = deliveryAddress.phaseOf(obj.address2, obj.campus);
  if (resolvedPhase) obj.addressPhase = resolvedPhase;
- obj.imgUrls = images(input.img || []); obj.imgUrl = obj.imgUrls[0] || '';
+ obj.imgUrls = obj.serviceType === 'take' ? images(input.img || []) : [];
+ obj.imgUrl = obj.imgUrls[0] || '';
  for (const name of ['small','medium','large']) { const raw = input[name] == null ? 0 : input[name]; if (typeof raw !== 'number' && !(typeof raw === 'string' && /^\d+$/.test(raw))) fail('快递件数必须为整数'); const n = Number(raw); if (!Number.isInteger(n) || n < 0 || n > config.maxPackages) fail('快递件数超出限制'); obj[name] = n; }
  obj.num = obj.small + obj.medium + obj.large; if (obj.num < 1 || obj.num > config.maxPackages) fail('package count invalid');
  let parcelItems = input.packages;
@@ -35,7 +46,7 @@ function validateForms(forms, config, now) {
   const counts = { small:0, medium:0, large:0 };
   // Normalize payloads from older clients into the same per-parcel representation.
   const legacyPickup = parcelItems.some(item => item && Object.prototype.hasOwnProperty.call(item,'pickupPoint')) ? '' : text(input.address1 || '', '取件点', 100, false);
-  parcelItems = parcelItems.map((item, index) => { if (!item || !['small','medium','large'].includes(item.type)) fail('package type invalid'); counts[item.type]++; const price = Number(item.price); if (!Number.isFinite(price) || price < 0.01 || price > 10000) fail('package price invalid'); const pickupPoint = text(item.pickupPoint == null ? legacyPickup : item.pickupPoint, '第' + (index + 1) + '件包裹的取件点', 100, true); const code = text(item.code || '','code',200,false); const note = text(item.note || '','note',300,false); const packageImages = images(item.images || []); if (code && packageImages.length) fail('package proof must choose code or image'); return { type:item.type, price:Number(price.toFixed(2)), pickupPoint, code, note, images:packageImages }; });
+  parcelItems = parcelItems.map((item, index) => { if (!item || !['small','medium','large'].includes(item.type)) fail('package type invalid'); counts[item.type]++; const price = Number(item.price); if (!Number.isFinite(price) || price < 0.01 || price > 10000) fail('package price invalid'); const pickupPoint = text(item.pickupPoint == null ? legacyPickup : item.pickupPoint, '第' + (index + 1) + '件包裹的取件点', 100, true); const code = obj.serviceType === 'take' ? text(item.code || '','code',200,false) : ''; const note = text(item.note || '','note',300,false); const packageImages = obj.serviceType === 'take' ? images(item.images || []) : []; if (code && packageImages.length) fail('package proof must choose code or image'); return { type:item.type, price:Number(price.toFixed(2)), pickupPoint, code, note, images:packageImages }; });
   if (counts.small !== obj.small || counts.medium !== obj.medium || counts.large !== obj.large) fail('package proof count mismatch');
   obj.packages = parcelItems;
   obj.address1 = [...new Set(parcelItems.map(item => item.pickupPoint))].join('；');
@@ -45,7 +56,7 @@ function validateForms(forms, config, now) {
  if (obj.imgUrls.length + packageImages.length > 6) fail('\u56fe\u7247\u5fc5\u987b\u5148\u6210\u529f\u4e0a\u4f20\uff0c\u6700\u591a6\u5f20');
  if (!obj.code && packageCodes.length) obj.code = packageCodes.join('\n');
  if (!obj.imgUrls.length && packageImages.length) { obj.imgUrls = packageImages.slice(0, 6); obj.imgUrl = obj.imgUrls[0] || ''; }
- if (!obj.code && !obj.imgUrls.length) fail('\u8bf7\u586b\u5199\u53d6\u4ef6\u7801\u6216\u4e0a\u4f20\u53d6\u4ef6\u622a\u56fe');
+ if (obj.serviceType === 'take' && !obj.code && !obj.imgUrls.length) fail('\u8bf7\u586b\u5199\u53d6\u4ef6\u7801\u6216\u4e0a\u4f20\u53d6\u4ef6\u622a\u56fe');
  if (input.urgent != null && typeof input.urgent !== 'boolean') fail('加急参数无效'); obj.urgent = !!input.urgent; if (obj.urgent && !config.urgentEnabled) fail('当前未开放加急服务');
  const referenceFee = obj.small * Math.round(config.smallPrice * 100) + obj.medium * Math.round(config.mediumPrice * 100) + obj.large * Math.round(config.largePrice * 100);
  let totalFee = obj.packages.length ? Math.round(obj.packages.reduce((sum, item) => sum + item.price * 100, 0)) : referenceFee;
@@ -71,7 +82,7 @@ function project(mail, userId, admin = false) {
  if (privateAccess) keys.push('MAIL_FORMS','MAIL_EXCEPTION','MAIL_DELIVERY_PROOF','MAIL_PAY_STATUS','MAIL_CAN_REVIEW','MAIL_REVIEWED');
  if (admin || mypost) keys.push('MAIL_HISTORY');
  const out = {}; keys.forEach(k => { if (mail[k] !== undefined) out[k] = mail[k]; });
- const publicFields = ['title','small','medium','large','num','price','referencePrice','urgent','campus','address1','address2','addressPhase']; const obj = mail.MAIL_OBJ || {};
+ const publicFields = ['title','serviceType','goods','buyQuantity','goodsBudget','small','medium','large','num','price','referencePrice','urgent','campus','address1','address2','addressPhase']; const obj = mail.MAIL_OBJ || {};
  out.MAIL_OBJ = privateAccess ? { ...obj } : Object.fromEntries(publicFields.filter(k => obj[k] !== undefined).map(k => [k,obj[k]]));
  out.mypost = mypost; out.myaccept = myaccept;
  out.status = LABELS[mail.MAIL_STATUS] || '状态未知'; if (mail.MAIL_STATUS === 0 && mail.MAIL_END_TIME < Date.now()) out.status = '已过期';
@@ -81,4 +92,4 @@ function project(mail, userId, admin = false) {
  out.progressLabels = ['已接单', '已取件', '配送中', '待收货', '已完成'];
  return out;
 }
-module.exports = { ACTIVE, LABELS, text, images, validateForms, requireOpen, project, fail };
+module.exports = { ACTIVE, LABELS, SERVICES, text, images, validateForms, requireOpen, project, fail };

@@ -15,10 +15,12 @@ const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
 // 展示与提交费用使用服务端配置，不在配置失败时套用本地价格。
 // 与价格档对应的预估重量(kg)，仅用于表单中"预估重量"字段
 const MAIL_WEIGHTS = [1, 3, 5];
+const SERVICE_NAMES = { take: '快递代取', send: '物品代送', buy: '商品代买' };
 
 module.exports = {
 	data: {
 		isLoad: false,
+		serviceType: 'take', serviceName: '快递代取',
 		serviceState: { kind: 'loading', canPublish: false }, campusIndex: 0,
 		packageTypes: [
 			{ mark: 'small', label: '小件', price: '1.50', count: 1 },
@@ -50,7 +52,8 @@ module.exports = {
 
 		// 编辑模式：带上 id 参数时，从云端拉取原订单回填表单
 		const editId = (options && options.id) || '';
-		this.setData({ editId });
+		const serviceType = options && SERVICE_NAMES[options.service] ? options.service : 'take';
+		this.setData({ editId, serviceType, serviceName: SERVICE_NAMES[serviceType] });
 
 		const formData = MailBiz.initFormData();
 		// The client validator expects the category id in string form.
@@ -60,7 +63,7 @@ module.exports = {
 			const copy = Object.assign({}, field, { ext: Object.assign({}, field.ext || {}) });
 			if (copy.mark === 'code') copy.must = false;
             if (copy.mark === 'img') copy.max = 6;
-            if (copy.mark === 'price') copy.title = '代取费用(元)';
+            if (copy.mark === 'price') copy.title = '跑腿费用(元)';
 			return copy;
 		});
 		formData.fields.push(
@@ -70,7 +73,7 @@ module.exports = {
 			{ mark: 'urgent', title: '加急订单', type: 'switch', must: false }
 		);
 		formData.formForms = [
-			{ mark: 'title', title: '快递名称', type: 'text', val: '快递代取' },
+			{ mark: 'title', title: '任务名称', type: 'text', val: SERVICE_NAMES[serviceType] },
 			{ mark: 'num', title: '快递件数', type: 'int', val: '1' },
 			{ mark: 'weight', title: '预估重量(kg)', type: 'int', val: '1' },
 			{ mark: 'price', title: '代取费用(元)', type: 'digit', val: '1.50' },
@@ -93,7 +96,7 @@ module.exports = {
 		}));
 
 		// 动态设置导航栏标题
-		if (!options || !options.embedded) wx.setNavigationBarTitle({ title: editId ? '编辑快递代取' : '发布快递代取' });
+		if (!options || !options.embedded) wx.setNavigationBarTitle({ title: (editId ? '编辑' : '发布') + this.data.serviceName });
 
 		this._formReady = true;
 		this._refreshPendingSubmission();
@@ -209,6 +212,9 @@ module.exports = {
 
 			if (!mail.mypost || mail.MAIL_STATUS !== 0) throw new Error('该订单不可编辑，请返回订单详情');
 			const obj = mail.MAIL_OBJ || {};
+			const serviceType = SERVICE_NAMES[obj.serviceType] ? obj.serviceType : 'take';
+			this.setData({ serviceType, serviceName: SERVICE_NAMES[serviceType] });
+			if (!this.data.embedded) wx.setNavigationBarTitle({ title: '编辑' + SERVICE_NAMES[serviceType] });
 			const address2 = Address.orderAddress(mail);
 			this.setData({campus:obj.campus||this.data.campus,campusIndex:Math.max(0,this.data.campuses.indexOf(obj.campus||this.data.campus))});
 			const storedForms = Array.isArray(mail.MAIL_FORMS) ? mail.MAIL_FORMS : [];
@@ -268,6 +274,7 @@ module.exports = {
 
 			// 回填：联系人信息
 			const mailValues = {
+				goods: obj.goods || '', buyQuantity: obj.buyQuantity || '', goodsBudget: obj.goodsBudget == null ? '' : String(obj.goodsBudget),
 				code: String(obj.code || ''),
 				address2,
 				poster: String(obj.poster || ''),
@@ -516,7 +523,7 @@ module.exports = {
  bindConfirmPackagePickup() {
   if (!this.data.packagePickupVisible || this.data.submitting) return;
   const pickupPoint = String(this.data.packagePickupDraft || '').trim();
-  if (!pickupPoint || pickupPoint.length > 100) { this.setData({ packagePickupError: '请选择或填写取件点，最多100字' }); return; }
+  if (!pickupPoint || pickupPoint.length > 100) { this.setData({ packagePickupError: this.data.serviceType === 'buy' ? '请填写购买地点，最多100字' : '请选择或填写取件点，最多100字' }); return; }
   const index = this.data.packageItems.findIndex(item => item.id === this.data.packagePickupId);
   if (index < 0) { this.bindClosePackagePickup(); return; }
   const items = this.data.packageItems.map((item, at) => at === index ? { ...item, pickupPoint } : item);
@@ -557,6 +564,7 @@ module.exports = {
 		const packageTypes = (this.data.packageTypes || []).map((item, index) => Object.assign({}, item, { count: index === 0 ? 1 : 0 }));
 		this.setData({ editId: '', mailId: '', formEnd: end, formEndFocus: '', mailValues, proofImages: [], proofPreview: {}, packageItems: [], packageTypes, totalCount: 1, totalFee: packageTypes[0] ? packageTypes[0].price : '1.50', urgent: false, campus, campusIndex: Math.max(0, (this.data.campuses || []).indexOf(campus)) });
 		this._syncPackageItems([]);
+		this._setFormVal('title', this.data.serviceName);
 		this.bindClosePackagePickup();
 		this._refreshFee();
 	},
@@ -566,7 +574,7 @@ module.exports = {
 		PublicBiz.removeCacheList('order-mail-posted');
 		PublicBiz.removeCacheList('order-mail-mine');
 		PublicBiz.removeCacheList('order-mail-done');
-		if (this.data.embedded) { this.triggerEvent('published', { id: this.data.mailId }); return; }
+		if (this.data.embedded) { this.triggerEvent('published', { id: this.data.mailId, service: this.data.serviceType }); return; }
 		// 跳到「我的订单详情」页，方便发布者继续查看
 		const mailId = this.data.mailId;
 		if (mailId) {
@@ -600,17 +608,29 @@ module.exports = {
    const packages = Array.isArray(this.data.packageItems) ? this.data.packageItems : [];
    if (!packages.length) throw new Error('请先选择包裹');
    const missingPickup = packages.findIndex(item => !String(item.pickupPoint || '').trim());
-   if (missingPickup >= 0) throw new Error('请选择第' + (missingPickup + 1) + '件包裹的取件点');
+   if (missingPickup >= 0) throw new Error(this.data.serviceType === 'buy' ? '请填写购买地点' : '请填写第' + (missingPickup + 1) + '件包裹的取件点');
+   if (packages.some(item => !/^\d+(?:\.\d{1,2})?$/.test(String(item.price)) || Number(item.price) < 0.01 || Number(item.price) > 10000)) throw new Error('跑腿费须在0.01至10000元之间，最多保留两位小数');
+   if (this.data.serviceType === 'buy') {
+    const values = this.data.mailValues;
+    if (!String(values.goods || '').trim() || String(values.goods).trim().length > 500) throw new Error('请填写商品名称、规格等购买要求，最多500字');
+    if (!/^[1-9]\d?$/.test(String(values.buyQuantity || ''))) throw new Error('购买数量须为1至99的整数');
+    if (!/^\d+(?:\.\d{1,2})?$/.test(String(values.goodsBudget || '')) || Number(values.goodsBudget) < 0.01 || Number(values.goodsBudget) > 10000) throw new Error('商品预算须在0.01至10000元之间，最多保留两位小数');
+   }
    let data=validate.check(this.data,MailBiz.CHECK_FORM,this);if(!data)return;
    const form=this.selectComponent('#cmpt-form');if(!form)return;
    // Sync the complete visible address before validating the hidden form snapshot.
    const address2 = String(this.data.mailValues && this.data.mailValues.address2 || '').trim();
    const addressPhase = Address.phaseOf({ detail: address2 });
-   form.setOneFormVal('address2',address2);
+   if (typeof form.setOneFormVal === 'function') form.setOneFormVal('address2',address2);
    const current=form.getForms(true);if(!current)return;
    wx.showLoading({title:'上传并保存中',mask:true});
-   const hasPackageProof = packages.some(item => item.code || item.images && item.images.length);
-   const forms=JSON.parse(JSON.stringify(current)).filter(x=>!['campus','formEnd','packages','address1','address2','addressPhase'].includes(x.mark) && (!hasPackageProof || !['code','img'].includes(x.mark)));
+   const hasPackageProof = this.data.serviceType === 'take' && packages.some(item => item.code || item.images && item.images.length);
+   const forms=JSON.parse(JSON.stringify(current)).filter(x=>!['campus','formEnd','packages','address1','address2','addressPhase','serviceType','goods','buyQuantity','goodsBudget','title','code','img'].includes(x.mark) && (!hasPackageProof || !['code','img'].includes(x.mark)));
+   forms.push({mark:'serviceType',title:'服务类型',type:'text',val:this.data.serviceType});
+   forms.push({mark:'title',title:'任务名称',type:'text',val:this.data.serviceName});
+   if (this.data.serviceType === 'buy') {
+    for (const mark of ['goods','buyQuantity','goodsBudget']) forms.push({mark,title:mark,type:'text',val:this.data.mailValues[mark]});
+   }
    // Submit the visible destination directly even if the component still returns an older value.
    forms.push({mark:'address2',title:'收件地址',type:'textarea',val:address2});
    if(addressPhase)forms.push({mark:'addressPhase',title:'所属期数',type:'text',val:addressPhase});

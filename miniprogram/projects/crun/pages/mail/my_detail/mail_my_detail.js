@@ -163,7 +163,7 @@ Page({
   this._confirming = true;
   try {
    const prompts = {
-    pickup: { title: '确认已取件', content: '确认已经从快递点取齐本单所有包裹吗？确认后将进入配送中。', confirmText: '确认取件' },
+    pickup: { title: '确认已取件', content: '确认已经取齐或购齐本单所有物品吗？确认后将进入配送中。', confirmText: '确认取件' },
     deliver: { title: '确认已送达', content: '确认已将本单所有包裹送到收件地址吗？接下来请填写送达说明并上传至少1张照片，提交后通知发布者确认收货。', confirmText: '填写凭证' },
     confirm: { title: '确认收货', content: '请先核对包裹、数量和外观是否无误。确认后订单将从双方的日常订单列表中移除。' },
     cancel: { title: '取消待接单订单', content: '确定取消这个尚未接单的订单吗？' }
