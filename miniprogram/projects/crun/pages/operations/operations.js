@@ -118,6 +118,6 @@ Page({
       const result = await Ops.subscribe(this.data.config || {});
       const titles = { subscribed: '订阅成功', declined: '已取消订阅', unavailable: '暂未开通微信提醒', failed: '订阅失败，请重试' };
       if (this._visible) wx.showToast({ title: titles[result] || '请在微信中确认订阅', icon: result === 'subscribed' ? 'success' : 'none' });
-    } finally { if (this._visible) this.setData({ subscribing: false }); }
+    } finally { if (!this._unloaded) this.setData({ subscribing: false }); }
   }
 });

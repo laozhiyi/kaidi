@@ -90,14 +90,14 @@ test('live signals refresh the available-order page automatically while preservi
   const f = client(), page = f.mount('projects/crun/pages/order/index/order_index.js');
   const component = f.mount('cmpts/public/list/comm_list_cmpt.js', { route: 'mail/list', type: 'order-mail-take', _params: { sortType: 'wait', whereEx: { 'MAIL_OBJ.urgent': true } } });
   page.selectComponent = () => component; component.listener = event => page.bindCommListCmpt(event);
-  await page.onLoad({}); page.onShow();
+  await page.onLoad({}); f.respond(0, {locations:{phases:['一期'],pickupStations:[]}}); await page._filterLoad; f.calls.length=0; page.onShow();
   const initial = component._getList(1); f.respond(0, list([])); await initial;
   f.watchers[0].onChange({ docs: [{ _id: 'crun_0', revision: 'published' }] });
   await f.advance(250);
   assert.equal(f.calls.length, 2); assert.equal(f.calls[1].data.params.whereEx['MAIL_OBJ.urgent'], true);
   f.respond(1, list(['new-order'])); await tick();
   assert.equal(page.data.dataList.list[0]._id, 'new-order');
-  assert.equal(f.watchers[0].name, 'bx_order_feed'); assert.equal(f.watchers[0].limit, 64);
+  assert.equal(f.watchers[0].route, 'operations/feed'); assert.equal(f.watchers[0].scope.campusId, 'yucai');
   page.onHide(); assert.equal(f.watchers[0].closed, true); assert.equal(f.network.size, 0);
   const count = f.calls.length; await f.advance(60000); assert.equal(f.calls.length, count);
 });

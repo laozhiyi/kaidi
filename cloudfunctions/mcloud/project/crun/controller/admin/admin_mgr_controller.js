@@ -17,7 +17,7 @@ class AdminMgrController extends BaseProjectAdminController {
 
 		// 数据校验
 		let rules = {
-			name: 'must|string|min:5|max:30|name=管理员名',
+			name: 'must|string|max:30|name=管理员名',
 			pwd: 'must|string|name=密码',
 		};
 

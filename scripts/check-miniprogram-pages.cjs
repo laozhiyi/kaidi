@@ -99,7 +99,11 @@ function smokeRender(code) {
     ['admin/settings/rules/admin_rules_settings', { config, isSuperAdmin: false }, '当前为只读模式'],
     ['admin/analytics/admin_analytics', { overview: { total: 0, rows: [] } }, '订单状态分布'],
     ['admin/monitor/admin_monitor', { isSuperAdmin: false }, '执行维护需要超级管理员权限'],
-    ['about/index/about_index', { loading: false, about: [] }, '联系校区客服']
+    ['about/index/about_index', { loading: false, about: [] }, '联系校区客服'],
+    ['admin/tenants/admin_tenants', { loading: true }, '正在加载'],
+    ['admin/tenants/admin_tenants', { school: {schoolId:'school_a',name:'学校 A',version:1}, campusLoading:true }, '正在加载地点'],
+    ['admin/tenants/admin_tenants', { school: {schoolId:'school_a',name:'学校 A',version:1}, campusError:'地点读取失败' }, '重试地点加载'],
+    ['admin/tenants/admin_tenants', { admins:[{_id:'admin',name:'校区管理员'}],adminError:'授权读取失败' }, '重试授权加载']
   ];
   for (const [pagePath, patch, expected] of scenarios) {
     const base = 'projects/crun/pages/' + pagePath;
@@ -116,6 +120,8 @@ function smokeRender(code) {
   }
   const receiptFixtures = require('./test-support/order-receipt-fixtures.cjs'), receiptCases = receiptFixtures.scenarios();
   const nodeText = node => node == null ? '' : typeof node === 'object' ? (node.children || []).map(nodeText).join('') : String(node);
+  const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...(node.children || []).flatMap(nodes)];
+  const hasClass = (node, name) => String(node.attr && node.attr.class || '').split(/\s+/).includes(name);
   function buttons(node) {
     if (!node || typeof node !== 'object') return [];
     return (node.tag === 'wx-button' ? [node] : []).concat((node.children || []).flatMap(buttons));
@@ -139,8 +145,20 @@ function smokeRender(code) {
     let page;
     runMiniProgram(path.join(mini, base + '.js'), { Page: p => { page = p; }, require: () => ({}) });
     const render = context.$gwx('./' + base + '.wxml');
-    const content = JSON.stringify(render({ ...page.data, ...fixture.data }, {}, {}));
+    const tree = render({ ...page.data, ...fixture.data }, {}, {}), elements = nodes(tree);
+    const content = JSON.stringify(tree);
     assert.ok(content.includes(fixture.expected), fixture.name + ' 缺少预期状态：' + fixture.expected);
+    if (fixture.progressExpected) {
+      const expected = fixture.progressExpected, steps = elements.filter(node => hasClass(node, 'od-step'));
+      assert.deepEqual(steps.map(node => nodeText(nodes(node).find(child => hasClass(child, 'od-step-label')))), expected.labels, fixture.name + ' 进度节点文案错误');
+      assert.deepEqual(steps.map(node => hasClass(node, 'od-step-done')), expected.done, fixture.name + ' 错误点亮未发生的节点');
+      assert.deepEqual(steps.map(node => hasClass(node, 'od-step-current')), expected.done.map((_, index) => index === expected.current), fixture.name + ' 当前节点错误');
+      assert.deepEqual(steps.map(node => hasClass(node, 'od-step-connected')), expected.done.map((done, index) => index > 0 && done && expected.done[index - 1]), fixture.name + ' 不得连接未发生的步骤');
+      for (const index of expected.unrecorded || []) assert.ok(nodeText(steps[index]).includes('未记录'), fixture.name + ' 缺少历史记录说明');
+    }
+    for (const [title, count] of Object.entries(fixture.sectionCounts || {})) {
+      assert.equal(elements.filter(node => hasClass(node, 'od-section-title') && nodeText(node) === title).length, count, fixture.name + ' 内容区数量错误：' + title);
+    }
     for (const value of fixture.present || []) assert.ok(content.includes(value), fixture.name + ' 缺少应展示的内容：' + value);
     for (const value of fixture.absent || []) assert.ok(!content.includes(value), fixture.name + ' 泄露/展示了不应出现的内容：' + value);
   }
@@ -176,7 +194,59 @@ function smokeRender(code) {
     const content = JSON.stringify(render(notificationLayouts.pageState(fixture), {}, {}));
     assert.ok(content.includes(fixture.expected), fixture.title + ' 渲染结果缺少：' + fixture.expected);
   }
-  console.log('WXML 渲染冒烟检查通过：' + (scenarios.length + receiptCases.length + mailCases.length + packageCases.length + reputationCases.length + adminCases.length + notificationCases.length) + ' 个页面状态（含收货入口、公告未读、后台表单、失败重试与隐私检查）。');
+  const loginLayouts = require('./test-support/wechat-login-layout-fixtures.cjs');
+  const loginCases = loginLayouts.scenarios();
+  for (const fixture of loginCases) {
+    const data = loginLayouts.pageState(fixture);
+    const tree = context.$gwx('./' + fixture.base + '.wxml')(data, {}, {});
+    const content = JSON.stringify(tree), controls = buttons(tree), elements = nodes(tree);
+    assert.ok(content.includes(fixture.expected), fixture.title + ' 缺少：' + fixture.expected);
+    for (const value of fixture.absent || []) assert.ok(!content.includes(value), fixture.title + ' 不应展示：' + value);
+    if (fixture.login) {
+      const phone = controls.find(button => button.attr.bindgetphonenumber === 'bindWechatLogin');
+      assert.equal(phone && phone.attr.openType, 'getPhoneNumber', fixture.title + ' 必须使用微信手机号授权');
+      assert.equal(!!phone.attr.disabled, !!data.phoneAuthorizing);
+      assert.ok(!elements.some(node => node.tag === 'wx-input'), '授权前不展示手填注册表');
+      assert.equal(controls.some(button => button.attr.bindtap === 'bindManualRegistration'), !!fixture.manualEntry, '手填入口由服务端内测开关控制');
+    }
+    if (fixture.profile) {
+      const inputs = elements.filter(node => node.tag === 'wx-input');
+      const manual = data.manualRegistration === true;
+      assert.ok(inputs.some(node => node.attr.bindinput === 'bindProfileNameInput' && node.attr.type === (manual || !data.canUseWechatNickname ? 'text' : 'nickname')), '昵称填写方式必须适配手动注册和微信能力');
+      const phoneInput = inputs.find(node => node.attr.bindinput === 'bindProfileMobileInput');
+      assert.equal(!!phoneInput, data.allowManualRegistration === true && !data.phoneVerified, '只有允许手填的未验证号码可编辑');
+      if (phoneInput) assert.equal(phoneInput.attr.type, 'number');
+      const avatar = controls.find(button => button.attr.openType === 'chooseAvatar' || button.attr.bindtap === 'bindChooseAvatar');
+      assert.ok(avatar, '必须能够选择头像');
+      assert.equal(avatar.attr.openType === 'chooseAvatar', !manual && data.canChooseWechatAvatar !== false, '微信头像不可用或手动模式时应支持普通图片选择');
+      const phone = controls.find(button => button.attr.bindgetphonenumber === 'bindWechatPhone');
+      if (data.canGetWechatPhone !== false && !phoneInput) assert.equal(phone && phone.attr.openType, 'getPhoneNumber');
+      const save = controls.find(button => button.attr.bindtap === 'bindSubmitTap');
+      assert.ok(save, '必须存在资料保存入口');
+      assert.equal(!!save.attr.disabled, !!(data.saving || data.phoneAuthorizing));
+    }
+    if (fixture.route) {
+      const card = elements.find(node => node.attr && node.attr.class === 'my-profile');
+      assert.equal(card && card.attr['data-url'], fixture.route, fixture.title + ' 入口去向错误');
+    }
+  }
+  const listCases = [
+    [{ isTotalMenu: false, listHeight: '' }, '100vh', 0],
+    [{ isTotalMenu: false, listHeight: '600rpx' }, '600rpx', 0],
+    [{ isTotalMenu: true, showSearch: true }, 'calc(100vh - 110rpx)', 110],
+    [{ isTotalMenu: true, showSearch: true, sortMenus: [{ label: '全部' }] }, 'calc(100vh - 190rpx)', 190],
+    [{ isTotalMenu: true, showSearch: false }, 'calc(100vh - 50rpx)', 50],
+    [{ isTotalMenu: true, showSearch: false, sortMenus: [{ label: '全部' }] }, 'calc(100vh - 80rpx)', 80]
+  ];
+  for (const [patch, height, top] of listCases) {
+    const tree = context.$gwx('./cmpts/public/list/comm_list_cmpt.wxml')({ sortItems: [], sortMenus: [], ...patch }, {}, {});
+    const elements = nodes(tree);
+    const box = elements.find(node => node.attr && node.attr.class === 'box-list');
+    assert.ok(box && box.attr.style.includes('height:' + height + ';'), '列表应保留正确高度');
+    assert.ok(box.attr.style.includes('margin-top:' + top + 'rpx'), '列表应保留搜索栏占位');
+    assert.equal(elements.filter(node => node.tag === 'wx-slot' && !node.attr.name).length, 1, '列表内容必须只有一个默认插槽');
+  }
+  console.log('WXML 渲染冒烟检查通过：' + (scenarios.length + receiptCases.length + mailCases.length + packageCases.length + reputationCases.length + adminCases.length + notificationCases.length + loginCases.length + listCases.length) + ' 个页面状态（含微信授权、强制补全资料、收货入口、公告未读、后台表单与隐私检查）。');
 }
 function compile(compiler, kind, files) {
   const extensions = kind === 'wxml' ? /\.(wxml|wxs)$/ : /\.wxss$/;
@@ -192,6 +262,7 @@ function compile(compiler, kind, files) {
     }
     smokeRender(result.stdout);
   }
+  if (kind === 'wxss') require('./test-support/component-style-check.cjs').check(compiler, mini);
   return sources.length;
 }
 if (require.main === module) {

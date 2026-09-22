@@ -8,7 +8,7 @@ function runMiniProgram(file, globals = {}) {
  const module = globals.module || { exports: {} };
  const stub = globals.require || (() => ({}));
  vm.runInNewContext(fs.readFileSync(file, 'utf8'), { ...globals, module, require(name) {
-  if (name === './mail_add_logic.js') {
+  if (name === './mail_add_logic.js' || name.endsWith('/order_plugins.js')) {
    const nested = { ...globals }; delete nested.module;
    return runMiniProgram(path.resolve(path.dirname(file), name), nested);
   }

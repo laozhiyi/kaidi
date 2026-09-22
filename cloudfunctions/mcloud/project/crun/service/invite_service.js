@@ -16,7 +16,7 @@ class InviteService extends Base {
   async getOrCreateMyInviteCode(userId) {
     const user = await this._user(userId);
     const pid = this.getProjectId();
-    const id = store.key(pid, 'invite-code', userId);
+    const id = store.scopeKey(pid, 'invite-code', userId);
     const current = await store.get(store.database(), 'invite', id);
     if (current) return { code: current.INV_CODE };
     const legacy = await store.database().collection(store.collection('invite')).where({ _pid: pid, INV_USER_ID: userId }).orderBy('INV_ADD_TIME', 'asc').limit(1).get();
@@ -27,7 +27,7 @@ class InviteService extends Base {
       const result = await store.transaction(async tx => {
         const existing = await store.get(tx, 'invite', id);
         if (existing) return { code: existing.INV_CODE };
-        const uniqueId = store.key(pid, 'invite-code', code);
+        const uniqueId = store.schoolKey(pid, 'invite-code', code);
         const owner = await store.get(tx, 'identity_unique', uniqueId);
         if (owner && owner.userId !== userId) return null;
         const now = Date.now();
@@ -57,7 +57,7 @@ class InviteService extends Base {
     if (!inviter || inviter.USER_STATUS === 9) return { accepted: false, reason: '邀请码已失效' };
     const legacy = await store.database().collection(store.collection('invite')).where({ _pid: pid, INV_ACCEPT_USER_ID: userId }).limit(1).get();
     if (legacy.data.length) return { accepted: true, alreadyAccepted: true, inviter: legacy.data[0].INV_USER_ID };
-    const id = store.key(pid, 'invite-accept', userId);
+    const id = store.scopeKey(pid, 'invite-accept', userId);
     return store.transaction(async tx => {
       const old = await store.get(tx, 'invite', id);
       if (old) return { accepted: true, alreadyAccepted: true, inviter: old.INV_USER_ID };

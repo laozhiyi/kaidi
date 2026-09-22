@@ -7,8 +7,20 @@
 const BaseProjectController = require('./base_project_controller.js');
 const PassportService = require('../service/passport_service.js');
 const contentCheck = require('../../../framework/validate/content_check.js');
+const profileRules = require('../service/profile_rules.js');
 
 class PassportController extends BaseProjectController {
+
+ async _checkProfileContent(input) {
+  const error = profileRules.validationError(input);
+  if (error) this.AppError(error);
+  await contentCheck.checkTextMultiClient(profileRules.textForAudit(input), { scene: 1, byField: true });
+ }
+
+ async wechatLogin() {
+  const input = this.validateData({ code: 'must|string|min:1|max:200|name=微信手机号授权' });
+  return new PassportService().wechatLogin(this._userId, input);
+ }
 
 	/** 取得我的用户信息 */
 	async getMyDetail() {
@@ -37,7 +49,7 @@ class PassportController extends BaseProjectController {
 	async register() {
 		// 数据校验
 		let rules = {
-			name: 'must|string|min:1|max:30|name=姓名',
+			name: 'must|string|min:1|max:30|name=昵称',
 			mobile: 'must|mobile|name=手机',
 			pic: 'must|string|name=头像',
 			forms: 'array|name=表单',
@@ -48,7 +60,7 @@ class PassportController extends BaseProjectController {
 		let input = this.validateData(rules);
 
 		// 内容审核
-		await contentCheck.checkTextMultiClient(input);
+		await this._checkProfileContent(input);
 
 		let service = new PassportService();
 		return await service.register(this._userId, input);
@@ -58,7 +70,7 @@ class PassportController extends BaseProjectController {
 	async editBase() {
 		// 数据校验
 		let rules = {
-			name: 'must|string|min:1|max:30|name=姓名',
+			name: 'must|string|min:1|max:30|name=昵称',
 			mobile: 'must|mobile|name=手机',
 			pic: 'must|string|name=头像',
 			forms: 'array|name=表单',
@@ -68,7 +80,7 @@ class PassportController extends BaseProjectController {
 		let input = this.validateData(rules);
 
 		// 内容审核
-		await contentCheck.checkTextMultiClient(input);
+		await this._checkProfileContent(input);
 
 		let service = new PassportService();
 		return await service.editBase(this._userId, input);

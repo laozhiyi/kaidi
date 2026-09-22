@@ -1,0 +1,24 @@
+✖ app startup calculates navigation geometry using the current window API (1.1638ms)
+✔ app startup retains the older-client navigation fallback (0.7075ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 58.4868
+
+✖ failing tests:
+
+test at scripts\tests\app-startup.test.js:16:1
+✖ app startup calculates navigation geometry using the current window API (1.1638ms)
+  Error: The deprecated API must not be used on current WeChat
+      at Object.getSystemInfo (B:\zhumian\zm\kaidi\scripts\tests\app-startup.test.js:20:29)
+      at Object.onLaunch (evalmachine.<anonymous>:33:6)
+      at launch (B:\zhumian\zm\kaidi\scripts\tests\app-startup.test.js:13:7)
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\app-startup.test.js:18:15)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)

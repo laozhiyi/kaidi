@@ -2,6 +2,7 @@
 const Base = require('./base_project_service.js');
 const store = require('./operation_store.js');
 const Mail = require('./mail_service.js');
+const Catalog = require('./news_catalog_service.js');
 
 const PAGE_SIZE = 20;
 const NEWS_FIELDS = { _id: true, NEWS_TITLE: true, NEWS_DESC: true, NEWS_ADD_TIME: true, NEWS_EDIT_TIME: true, NEWS_ORDER: true };
@@ -21,6 +22,7 @@ class NotificationService extends Base {
       const result = await this._query(name, { ...where, ...(after ? { _id: cmd.gt(after) } : {}) })
         .field(fields).orderBy('_id', 'asc').limit(100).get();
       rows.push(...result.data);
+      if (rows.length > 10000) this.AppError('待处理消息过多，请分批阅读后重试');
       if (result.data.length < 100) return rows;
       after = result.data[result.data.length - 1]._id;
     }
@@ -54,10 +56,8 @@ class NotificationService extends Base {
   }
 
   async _newsFor(userId) {
-    const [rows, readIds] = await Promise.all([
-      this._scan('news', { NEWS_STATUS: 1 }, NEWS_FIELDS), this.readNewsIds(userId)
-    ]);
-    return rows.map(row => this._news(row, readIds.has(row._id)));
+    const {entries,readIds}=await new Catalog().forUser(userId);
+    return entries.map(row=>this._news(row,readIds.has(row._id)));
   }
 
   async summary(userId) {
@@ -126,6 +126,7 @@ class NotificationService extends Base {
       if (kind === 'news') {
         const key = store.key(this.getProjectId(), userId, id);
         if (!await store.get(tx, 'news_read', key)) await store.set(tx, 'news_read', key, { _pid: this.getProjectId(), userId, newsId: id, readAt: Date.now() });
+        await new Catalog().acknowledge(tx,userId,id);
       } else if (row.read !== true) await store.set(tx, 'notification', id, { ...row, read: true, readAt: Date.now() });
       return { ok: true };
     });
@@ -144,8 +145,7 @@ class NotificationService extends Base {
         .update({ data: { read: true, readAt } });
     }
     for (let i = 0; i < unreadNews.length; i += 20) {
-      await Promise.all(unreadNews.slice(i, i + 20).map(row => store.set(store.database(), 'news_read', store.key(pid, userId, row._id),
-        { _pid: pid, userId, newsId: row._id, readAt })));
+      await Promise.all(unreadNews.slice(i, i + 20).map(row => this.markRead(userId,row._id,'news')));
     }
     return { ok: true };
   }

@@ -1,0 +1,430 @@
+TAP version 13
+# Subtest: internal testing defaults to credentials-only login and can explicitly restore restrictions
+ok 1 - internal testing defaults to credentials-only login and can explicitly restore restrictions
+  ---
+  duration_ms: 2.0295
+  type: 'test'
+  ...
+# Subtest: an existing admin without campus grants can log in and retain a session with status 1
+ok 2 - an existing admin without campus grants can log in and retain a session with status 1
+  ---
+  duration_ms: 55.8569
+  type: 'test'
+  ...
+# Subtest: an existing admin without campus grants can log in and retain a session with status 0
+ok 3 - an existing admin without campus grants can log in and retain a session with status 0
+  ---
+  duration_ms: 50.3045
+  type: 'test'
+  ...
+# Subtest: an existing admin without campus grants can log in and retain a session with status undefined
+ok 4 - an existing admin without campus grants can log in and retain a session with status undefined
+  ---
+  duration_ms: 50.2082
+  type: 'test'
+  ...
+# Subtest: incorrect or missing credentials remain rejected, without creating admins or locking out a later correct attempt
+ok 5 - incorrect or missing credentials remain rejected, without creating admins or locking out a later correct attempt
+  ---
+  duration_ms: 309.423
+  type: 'test'
+  ...
+# Subtest: correct credentials still work when an old login rate-limit bucket is exhausted
+ok 6 - correct credentials still work when an old login rate-limit bucket is exhausted
+  ---
+  duration_ms: 50.4656
+  type: 'test'
+  ...
+# Subtest: internal admin sessions still require the latest token, its owner, expiry and the proper role
+ok 7 - internal admin sessions still require the latest token, its owner, expiry and the proper role
+  ---
+  duration_ms: 72.1056
+  type: 'test'
+  ...
+# Subtest: legacy admins can use the dashboard and existing write transactions while rows remain campus isolated
+ok 8 - legacy admins can use the dashboard and existing write transactions while rows remain campus isolated
+  ---
+  duration_ms: 66.3029
+  type: 'test'
+  ...
+# Subtest: the real admin login route accepts a correct existing account shorter than five characters
+ok 9 - the real admin login route accepts a correct existing account shorter than five characters
+  ---
+  duration_ms: 57.3643
+  type: 'test'
+  ...
+# Subtest: restoring strict mode rejects missing grants and disabled accounts and restores rate limits
+ok 10 - restoring strict mode rejects missing grants and disabled accounts and restores rate limits
+  ---
+  duration_ms: 72.3391
+  type: 'test'
+  ...
+# Subtest: admin client validates a real session and uses the server-issued temporary access mode
+ok 11 - admin client validates a real session and uses the server-issued temporary access mode
+  ---
+  duration_ms: 1.0427
+  type: 'test'
+  ...
+# Subtest: empty passwords and incomplete login responses cannot navigate into the admin console
+ok 12 - empty passwords and incomplete login responses cannot navigate into the admin console
+  ---
+  duration_ms: 0.5263
+  type: 'test'
+  ...
+# Subtest: evidence accepts only exact owner upload prefix and rejects nested prefix spoofing
+ok 13 - evidence accepts only exact owner upload prefix and rejects nested prefix spoofing
+  ---
+  duration_ms: 2.131
+  type: 'test'
+  ...
+# Subtest: audited evidence is copied server-side and only authorized archived files can be reused
+ok 14 - audited evidence is copied server-side and only authorized archived files can be reused
+  ---
+  duration_ms: 3.2843
+  type: 'test'
+  ...
+# Subtest: image size, signature and moderation failures do not create evidence
+ok 15 - image size, signature and moderation failures do not create evidence
+  ---
+  duration_ms: 2.2826
+  type: 'test'
+  ...
+# Subtest: development moderation switch does not bypass file validation or evidence archiving
+ok 16 - development moderation switch does not bypass file validation or evidence archiving
+  ---
+  duration_ms: 0.6634
+  type: 'test'
+  ...
+# Subtest: text review uses trusted identity, segments long inputs and fails closed
+ok 17 - text review uses trusted identity, segments long inputs and fails closed
+  ---
+  duration_ms: 0.7757
+  type: 'test'
+  ...
+# Subtest: weak network retries reuse command id without persisting personal payload
+ok 18 - weak network retries reuse command id without persisting personal payload
+  ---
+  duration_ms: 1.5671
+  type: 'test'
+  ...
+# Subtest: command cache isolates users, administrator sessions and changed payloads
+ok 19 - command cache isolates users, administrator sessions and changed payloads
+  ---
+  duration_ms: 1.0504
+  type: 'test'
+  ...
+# Subtest: operation controller authenticates first, normalizes absent status and requires mutation ids
+ok 20 - operation controller authenticates first, normalizes absent status and requires mutation ids
+  ---
+  duration_ms: 2.7465
+  type: 'test'
+  ...
+# Subtest: database wrapper treats only missing documents as absent, never network errors
+ok 21 - database wrapper treats only missing documents as absent, never network errors
+  ---
+  duration_ms: 1.643
+  type: 'test'
+  ...
+# Subtest: publish page sends selected deadline after successful upload and guards repeated taps
+ok 22 - publish page sends selected deadline after successful upload and guards repeated taps
+  ---
+  duration_ms: 7.3512
+  type: 'test'
+  ...
+# Subtest: disabled payment methods return explicit business errors without touching cloud payment
+ok 23 - disabled payment methods return explicit business errors without touching cloud payment
+  ---
+  duration_ms: 1.495
+  type: 'test'
+  ...
+# Subtest: administrator sessions require matching identity, active account, unexpired token and correct role
+ok 24 - administrator sessions require matching identity, active account, unexpired token and correct role
+  ---
+  duration_ms: 1.0491
+  type: 'test'
+  ...
+# Subtest: missing tenant context fails closed for operational collections
+ok 25 - missing tenant context fails closed for operational collections
+  ---
+  duration_ms: 1.5062
+  type: 'test'
+  ...
+# Subtest: concurrent asynchronous requests retain separate campus contexts
+ok 26 - concurrent asynchronous requests retain separate campus contexts
+  ---
+  duration_ms: 1.129
+  type: 'test'
+  ...
+# Subtest: scope survives projections, pagination, OR queries and counts
+ok 27 - scope survives projections, pagination, OR queries and counts
+  ---
+  duration_ms: 0.3551
+  type: 'test'
+  ...
+# Subtest: foreign and legacy document IDs cannot disclose or overwrite rows
+ok 28 - foreign and legacy document IDs cannot disclose or overwrite rows
+  ---
+  duration_ms: 0.997
+  type: 'test'
+  ...
+# Subtest: inserts and transactional writes stamp scope and prevent scope reassignment
+ok 29 - inserts and transactional writes stamp scope and prevent scope reassignment
+  ---
+  duration_ms: 1.1878
+  type: 'test'
+  ...
+# Subtest: batch updates and deletes affect only the active campus
+ok 30 - batch updates and deletes affect only the active campus
+  ---
+  duration_ms: 0.2623
+  type: 'test'
+  ...
+# Subtest: school profiles are shared within a school and hidden from other schools
+ok 31 - school profiles are shared within a school and hidden from other schools
+  ---
+  duration_ms: 0.2394
+  type: 'test'
+  ...
+# Subtest: aggregate joins constrain both sides and raw nested pipelines are rejected
+ok 32 - aggregate joins constrain both sides and raw nested pipelines are rejected
+  ---
+  duration_ms: 0.3705
+  type: 'test'
+  ...
+# Subtest: admin scopes cannot be supplied by the client or inferred from role alone
+ok 33 - admin scopes cannot be supplied by the client or inferred from role alone
+  ---
+  duration_ms: 0.1561
+  type: 'test'
+  ...
+# Subtest: only explicit server system context can inspect the whole project
+ok 34 - only explicit server system context can inspect the whole project
+  ---
+  duration_ms: 0.2174
+  type: 'test'
+  ...
+# Subtest: orders, configurations, quotas and notifications stay in their server-resolved campus
+ok 35 - orders, configurations, quotas and notifications stay in their server-resolved campus
+  ---
+  duration_ms: 22.684
+  type: 'test'
+  ...
+# Subtest: publishing and recovering a request in another campus cannot create a second order
+ok 36 - publishing and recovering a request in another campus cannot create a second order
+  ---
+  duration_ms: 9.7858
+  type: 'test'
+  ...
+# Subtest: simultaneous acceptance has one winner and foreign-campus riders cannot participate
+ok 37 - simultaneous acceptance has one winner and foreign-campus riders cannot participate
+  ---
+  duration_ms: 15.0213
+  type: 'test'
+  ...
+# Subtest: directory edits require live platform authority, preserve versions, and new campuses stay paused
+ok 38 - directory edits require live platform authority, preserve versions, and new campuses stay paused
+  ---
+  duration_ms: 4.7676
+  type: 'test'
+  ...
+# Subtest: directory metadata excludes location bodies and grants, while details enforce platform access
+ok 39 - directory metadata excludes location bodies and grants, while details enforce platform access
+  ---
+  duration_ms: 2.9654
+  type: 'test'
+  ...
+# Subtest: scoped admin grants are rechecked inside the order transaction
+ok 40 - scoped admin grants are rechecked inside the order transaction
+  ---
+  duration_ms: 8.3395
+  type: 'test'
+  ...
+# Subtest: news manifests and read acknowledgements isolate campuses and survive edits
+ok 41 - news manifests and read acknowledgements isolate campuses and survive edits
+  ---
+  duration_ms: 5.4382
+  type: 'test'
+  ...
+# Subtest: scheduled jobs process all campuses with transactions and skip zero due times
+ok 42 - scheduled jobs process all campuses with transactions and skip zero due times
+  ---
+  duration_ms: 11.2138
+  type: 'test'
+  ...
+# Subtest: failed oldest worker rows do not starve later rows across bounded runs
+ok 43 - failed oldest worker rows do not starve later rows across bounded runs
+  ---
+  duration_ms: 8.0572
+  type: 'test'
+  ...
+# Subtest: plugin quotes are versioned and explicitly enabled opening hours are enforced by the server
+ok 44 - plugin quotes are versioned and explicitly enabled opening hours are enforced by the server
+  ---
+  duration_ms: 7.302
+  type: 'test'
+  ...
+# Subtest: business hours controls only affect the authorized campus
+ok 45 - business hours controls only affect the authorized campus
+  ---
+  duration_ms: 2.8891
+  type: 'test'
+  ...
+# Subtest: the feed endpoint returns only current-campus opaque revisions
+ok 46 - the feed endpoint returns only current-campus opaque revisions
+  ---
+  duration_ms: 8.7611
+  type: 'test'
+  ...
+# Subtest: shared school accounts obey one registration policy and campus grants cannot change it
+ok 47 - shared school accounts obey one registration policy and campus grants cannot change it
+  ---
+  duration_ms: 9.2919
+  type: 'test'
+  ...
+# Subtest: administrator login limits cannot be reset by changing campuses
+ok 48 - administrator login limits cannot be reset by changing campuses
+  ---
+  duration_ms: 2.5867
+  type: 'test'
+  ...
+# Subtest: worker budget stops starting new items and preserves the first unprocessed row
+ok 49 - worker budget stops starting new items and preserves the first unprocessed row
+  ---
+  duration_ms: 9.0498
+  type: 'test'
+  ...
+# Subtest: subscription links retain the originating campus when users have switched elsewhere
+ok 50 - subscription links retain the originating campus when users have switched elsewhere
+  ---
+  duration_ms: 9.1544
+  type: 'test'
+  ...
+# Subtest: cached account {"phoneVerified":false} cannot pass the business login gate
+ok 51 - cached account {"phoneVerified":false} cannot pass the business login gate
+  ---
+  duration_ms: 1.9519
+  type: 'test'
+  ...
+# Subtest: cached account {"profileComplete":false} cannot pass the business login gate
+ok 52 - cached account {"profileComplete":false} cannot pass the business login gate
+  ---
+  duration_ms: 0.5873
+  type: 'test'
+  ...
+# Subtest: cached account {"status":0} cannot pass the business login gate
+ok 53 - cached account {"status":0} cannot pass the business login gate
+  ---
+  duration_ms: 0.6179
+  type: 'test'
+  ...
+# Subtest: cached account {"status":8} cannot pass the business login gate
+ok 54 - cached account {"status":8} cannot pass the business login gate
+  ---
+  duration_ms: 0.5434
+  type: 'test'
+  ...
+# Subtest: cached account {"status":9} cannot pass the business login gate
+ok 55 - cached account {"status":9} cannot pass the business login gate
+  ---
+  duration_ms: 0.5223
+  type: 'test'
+  ...
+# Subtest: legacy cached tokens must refresh readiness before being used
+ok 56 - legacy cached tokens must refresh readiness before being used
+  ---
+  duration_ms: 0.6183
+  type: 'test'
+  ...
+# Subtest: phone authorization sends only the one-time code and retains the incomplete authenticated session
+ok 57 - phone authorization sends only the one-time code and retains the incomplete authenticated session
+  ---
+  duration_ms: 1.6295
+  type: 'test'
+  ...
+# Subtest: declined authorization makes no cloud call and preserves an existing session
+ok 58 - declined authorization makes no cloud call and preserves an existing session
+  ---
+  duration_ms: 0.9916
+  type: 'test'
+  ...
+# Subtest: native phone failure cancelled has its own explanation without calling the cloud
+ok 59 - native phone failure cancelled has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.7597
+  type: 'test'
+  ...
+# Subtest: native phone failure privacy has its own explanation without calling the cloud
+ok 60 - native phone failure privacy has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.5892
+  type: 'test'
+  ...
+# Subtest: native phone failure permission_denied has its own explanation without calling the cloud
+ok 61 - native phone failure permission_denied has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.5237
+  type: 'test'
+  ...
+# Subtest: native phone failure permission_denied has its own explanation without calling the cloud
+ok 62 - native phone failure permission_denied has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.5093
+  type: 'test'
+  ...
+# Subtest: native phone failure unsupported has its own explanation without calling the cloud
+ok 63 - native phone failure unsupported has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.5624
+  type: 'test'
+  ...
+# Subtest: native phone failure missing_code has its own explanation without calling the cloud
+ok 64 - native phone failure missing_code has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.5723
+  type: 'test'
+  ...
+# Subtest: cloud phone failure environment_missing survives the generic SDK wrapper message
+ok 65 - cloud phone failure environment_missing survives the generic SDK wrapper message
+  ---
+  duration_ms: 0.5959
+  type: 'test'
+  ...
+# Subtest: cloud phone failure function_missing survives the generic SDK wrapper message
+ok 66 - cloud phone failure function_missing survives the generic SDK wrapper message
+  ---
+  duration_ms: 0.5649
+  type: 'test'
+  ...
+# Subtest: cloud phone failure timeout survives the generic SDK wrapper message
+ok 67 - cloud phone failure timeout survives the generic SDK wrapper message
+  ---
+  duration_ms: 0.5927
+  type: 'test'
+  ...
+# Subtest: phone diagnostics identify the failing boundary without exposing authorization data
+ok 68 - phone diagnostics identify the failing boundary without exposing authorization data
+  ---
+  duration_ms: 1.1125
+  type: 'test'
+  ...
+# Subtest: an earlier silent login reply cannot overwrite a completed phone login
+ok 69 - an earlier silent login reply cannot overwrite a completed phone login
+  ---
+  duration_ms: 0.7043
+  type: 'test'
+  ...
+# Subtest: partial accounts are sent to the completion page while keeping the original destination
+ok 70 - partial accounts are sent to the completion page while keeping the original destination
+  ---
+  duration_ms: 0.6554
+  type: 'test'
+  ...
+1..70
+# tests 70
+# suites 0
+# pass 70
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 854.2713

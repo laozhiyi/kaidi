@@ -1,5 +1,3 @@
-@import "../../../style/base/comm.wxss"; 
-@import "../../../style/public/project.wxss";  
 
 .form-group .upload-img .img-no {
     position: absolute;

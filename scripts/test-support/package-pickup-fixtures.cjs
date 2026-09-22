@@ -2,7 +2,7 @@
 const path = require('node:path');
 const { runMiniProgram } = require('./miniprogram-module.cjs');
 const UI = require('../../miniprogram/projects/crun/biz/mail_ui_biz.js');
-const Address = require('../../miniprogram/projects/crun/biz/address_biz.js');
+const locations = require('../../cloudfunctions/mcloud/project/crun/service/tenant_defaults.js').locations;
 const mini = path.resolve(__dirname, '../../miniprogram');
 const config = { enabled: true, paymentMode: 'offline', openHour: 8, closeHour: 22, campuses: ['育才校区'], smallPrice: 1.5, mediumPrice: 3, largePrice: 5, maxPackages: 20 };
 const parcels = [
@@ -11,7 +11,7 @@ const parcels = [
 ];
 const publish = { isLoad: true, config, campuses: config.campuses, campus: '育才校区', campusIndex: 0, serviceState: UI.service(config),
  formEnd: '2026-09-15 18:00', totalCount: 2, totalFee: '4.00', packageTypes: [{ mark: 'small', label: '小件', price: '1.50', count: 2 }, { mark: 'medium', label: '中件', price: '3.00', count: 0 }, { mark: 'large', label: '大件', price: '5.00', count: 0 }],
- packageItems: parcels, mailValues: { address2: '一期1号宿舍楼201室', poster: '小林', tel: '13800000000', tel2: '' }, pickupStations: Address.PICKUP_STATIONS, fields: [], formForms: [] };
+ packageItems: parcels, mailValues: { address2: '一期1号宿舍楼201室', poster: '小林', tel: '13800000000', tel2: '' }, pickupStations: locations.pickupStations, fields: [], formForms: [] };
 const definitions = new Map();
 function pageState(fixture) {
  if (!definitions.has(fixture.base)) {

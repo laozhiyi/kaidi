@@ -87,6 +87,7 @@ page { background: #f3f5f9; }
 .ac-page .ac-step-dot { position: relative; margin: 0 auto 12rpx; width: 30rpx; height: 30rpx; border: 5rpx solid #fff; border-radius: 50%; background: #dce3ef; }
 .ac-page .ac-progress-step.done { color: #2863db; }
 .ac-page .ac-progress-step.done .ac-step-dot { background: #2863db; }
+.ac-page .ac-step-time { margin-top: 8rpx; color: #7e899c; font-size: 20rpx; line-height: 1.4; }
 .ac-page .ac-address { display: flex; gap: 20rpx; padding: 20rpx 0; }
 .ac-page .ac-address-mark { width: 44rpx; height: 44rpx; border-radius: 12rpx; background: #eaf1ff; color: #2863db; text-align: center; line-height: 44rpx; font-size: 23rpx; flex-shrink: 0; }
 .ac-page .ac-address-mark.green { background: #eaf7f0; color: #277954; }

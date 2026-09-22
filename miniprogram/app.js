@@ -30,19 +30,18 @@ App({
 		this.globalData = {};
 
 		// 用于自定义导航栏
-		wx.getSystemInfo({
-			success: e => {
-					this.globalData.statusBarHeight = e.statusBarHeight;
-				let capsule = wx.getMenuButtonBoundingClientRect();
-				if (capsule) { 
-					this.globalData.customBarHeight = capsule.bottom + capsule.top - e.statusBarHeight;
-					this.globalData.capsule = capsule;
-				} else {
-					this.globalData.customBarHeight = e.statusBarHeight + 50;
-				
-				} 
+		const setNavigationMetrics = info => {
+			this.globalData.statusBarHeight = info.statusBarHeight;
+			const capsule = wx.getMenuButtonBoundingClientRect();
+			if (capsule) {
+				this.globalData.customBarHeight = capsule.bottom + capsule.top - info.statusBarHeight;
+				this.globalData.capsule = capsule;
+			} else {
+				this.globalData.customBarHeight = info.statusBarHeight + 50;
 			}
-		});
+		};
+		if (typeof wx.getWindowInfo === 'function') setNavigationMetrics(wx.getWindowInfo());
+		else wx.getSystemInfo({ success: setNavigationMetrics });
 	}, 
 	 
 })

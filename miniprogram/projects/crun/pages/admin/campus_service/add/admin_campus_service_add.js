@@ -5,7 +5,7 @@ const cloudHelper = require('../../../../../../helper/cloud_helper.js');
 Page({
 
 	data: {
-		campusOptions: ['育才校区', '王城校区', '雁山校区'],
+		campusOptions: [],
 		campusIndex: 0,
 		formCampus: '',
 		formName: '',
@@ -20,7 +20,8 @@ Page({
 	onLoad: async function (options) {
 		if (!AdminBiz.isAdmin(this)) return;
 		wx.setNavigationBarTitle({ title: '添加校区客服' });
-		this.setData({ isLoad: true });
+  try { const response=await cloudHelper.callCloud('operations/config',{}, {hint:false}); const campuses=response.data.campuses; if(!this._destroyed)this.setData({campusOptions:campuses,formCampus:campuses[0] || '',isLoad:true}); }
+  catch(error){ if(!this._destroyed)pageHelper.showModal(error.msg || error.message || '校区配置加载失败，请重新进入'); }
 	},
 
 	onUnload: function () { this._destroyed = true; },
@@ -39,7 +40,7 @@ Page({
 		let { formCampus, formName, formMobile, formWechat, formQQ, formWorkTime, formOrder, isSubmit } = this.data;
 
 		if (!this.data.campusOptions.includes(formCampus)) {
-			return pageHelper.showModal('请选择育才、王城或雁山校区', '温馨提示');
+			return pageHelper.showModal('请先加载当前校区配置', '温馨提示');
 		}
 		if (!formName || !formName.trim()) {
 			return pageHelper.showModal('请填写负责人姓名', '温馨提示');

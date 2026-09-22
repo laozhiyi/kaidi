@@ -30,7 +30,9 @@ Page({
     const seq = this._seq = (this._seq || 0) + 1;
     this.setData({ loading: true, error: false });
     try {
-      let detail = await cloudHelper.callCloudData('feedback/my_detail', { id: this.data.id }, { hint: false });
+      const result = await cloudHelper.callCloudSumbit('feedback/my_detail', { id: this.data.id }, { hint: false });
+      if (!result || result.data === undefined) throw new Error('反馈详情加载失败');
+      let detail = result.data && Object.keys(result.data).length ? result.data : null;
       if (detail) detail = { ...detail, FB_ADD_TIME: displayTime(detail.FB_ADD_TIME), FB_REPLY_TIME: displayTime(detail.FB_REPLY_TIME), _typeDesc: TYPE_DESC[detail.FB_TYPE] || '其他', _statusDesc: STATUS_DESC[detail.FB_STATUS] || STATUS_DESC[0] };
       if (detail) detail._reviewStars = Number.isInteger(detail.FB_REVIEW_SCORE) && detail.FB_REVIEW_SCORE >= 1 && detail.FB_REVIEW_SCORE <= 5 ? '★'.repeat(detail.FB_REVIEW_SCORE) + '☆'.repeat(5 - detail.FB_REVIEW_SCORE) : '';
       if (this._visible && seq === this._seq) this.setData({ detail: detail || null, isLoad: true }, () => {

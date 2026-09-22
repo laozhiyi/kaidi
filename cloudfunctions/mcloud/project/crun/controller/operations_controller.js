@@ -2,6 +2,7 @@
 const Base = require('./base_project_controller.js');
 const Service = require('../service/operations_service.js');
 class OperationsController extends Base {
+ async feed(){return new Service().feed();}
  async getConfig(){return new Service().config(this._userId);}
  async notifications(){const p=this.validateData({page:'int|default=1|min:1|max:500',unreadOnly:'bool|default=false',cursor:'object'});return new Service().notifications(this._userId,p.page,{unreadOnly:p.unreadOnly,cursor:p.cursor});}
  async notificationSummary(){return new Service().notificationSummary(this._userId);}

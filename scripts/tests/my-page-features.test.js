@@ -13,16 +13,16 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
 
 function harness(options = {}) {
   const storage = new Map(), calls = [], navigation = [], messages = [], images = [], modules = new Map(), definitions = new Map();
-  let app, token = options.guest ? null : { id: 'poster', name: '小周', pic: 'cloud://avatar', status: 1 }, stopped = 0;
-  const user = { USER_NAME: '小周', USER_MOBILE: '13800000000', USER_PIC: 'cloud://avatar', USER_STATUS: 1, USER_FORMS: [
+  let app, token = options.guest ? null : { id: 'poster', name: '小周', pic: 'cloud://avatar', status: 1, phoneVerified: true, profileComplete: true }, stopped = 0;
+  const user = { USER_NAME: '小周', USER_MOBILE: '13800000000', USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: true, USER_PIC: 'cloud://avatar', USER_STATUS: 1, USER_FORMS: [
     { mark: 'campus', val: '育才校区' }, { mark: 'sex', val: '男' }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' },
     { mark: 'contacts', val: [{ name: '甲', phone: '13800000001', isDefault: false }, { name: '乙', phone: '13800000002', isDefault: true }] },
     { mark: 'addresses', val: [{ label: '宿舍', detail: '一栋', isDefault: false }, { label: '学院', detail: '二栋', isDefault: true }] }
   ] };
   const responses = {
-    'operations/config': { campuses: ['育才校区', '王城校区', '雁山校区'] },
+    'operations/config': { campuses: ['育才校区', '王城校区', '雁山校区'], allowManualRegistration: options.manualRegistration === true, locations:require('../../cloudfunctions/mcloud/project/crun/service/tenant_defaults.js').locations },
     'passport/my_detail': user, 'passport/edit_base': { ok: true },
-    'passport/register': { token: { id: 'poster', name: '小周', status: 1 } },
+    'passport/register': { token: { id: 'poster', name: '小周', status: 1, phoneVerified: true, profileComplete: true } },
     'invite/accept': { accepted: true }, 'invite/my_code': { code: 'ABCDEF' },
     'invite/my_stat': { total: 0, accepted: 0, pending: 0, reward: 0 },
     'invite/my_list': { list: [], hasMore: false },
@@ -38,6 +38,7 @@ function harness(options = {}) {
   };
   const navigate = type => data => { navigation.push({ type, ...data }); if (data && data.complete) data.complete(); };
   const wx = {
+    canIUse: () => true,
     getStorageSync: key => storage.get(key) || '', setStorageSync: (key, value) => storage.set(key, structuredClone(value)),
     removeStorageSync: key => storage.delete(key), getStorageInfoSync: () => ({ keys: Array.from(storage.keys()) }),
     navigateTo: navigate('navigate'), redirectTo: navigate('redirect'), switchTab: navigate('tab'), navigateBack: navigate('back'),
@@ -47,17 +48,23 @@ function harness(options = {}) {
     chooseImage: data => { images.push(data); data.success({ tempFilePaths: ['temp/new'] }); },
     previewImage: data => images.push(data), setClipboardData: data => { storage.set('clipboard', data.data); if (data.success) data.success(); }
   };
-  const passport = {
+  let passport = {
     getUserId: () => token && token.id || '', getToken: () => token, getUserName: () => token && token.name || '',
-    isLogin: () => !!token, setToken: value => { token = value; }, clearToken: () => { token = null; },
+    isProfileReady: value => !!(value && (value.phoneVerified || value.allowManualRegistration) && value.profileComplete),
+    isLogin: () => !!(token && token.status === 1 && (token.phoneVerified || token.allowManualRegistration) && token.profileComplete), setToken: value => { token = value; }, clearToken: () => { token = null; },
     loginMustBackWin: async () => options.allowed !== false, loginMustCancelWin: async () => options.allowed !== false,
-    loginSilenceMust: async () => !!token
+    loginSilenceMust: async () => !!token,
+    async loginByWechatPhone(e) {
+      if (!e.detail.code) throw Error('请授权微信手机号');
+      const result = await request('passport/wechat_login', { code: e.detail.code }); token = result.token; return result;
+    }
   };
   const ops = { get: request, command: request, pendingCommand: () => null, upload: async paths => paths.map(file => 'cloud://' + file),
     error: error => messages.push(error.message), subscribe: async () => 'subscribed', clearUploadCache() {} };
   const pageHelper = { dataset: (e, key) => e.currentTarget.dataset[key], showNoneToast: value => messages.push(value),
     showSuccToast: (value, delay, callback) => { messages.push(value); if (callback) callback(); },
-    showModal: value => messages.push(value), url: e => wx.navigateTo({ url: e.currentTarget.dataset.url }) };
+    showModal: value => messages.push(value), url: e => wx.navigateTo({ url: e.currentTarget.dataset.url }),
+    fmtURLByPID: url => '/projects/crun' + url, getCurrentPageUrlWithArgs: () => '/projects/crun/pages/mail/add/mail_add' };
   const cloud = { callCloudData: request, callCloudSumbit: async (...args) => ({ data: await request(...args) }),
     transTempPicOne: async value => value, transTempPics: async value => value };
   function load(relative) {
@@ -94,12 +101,23 @@ function harness(options = {}) {
       if (callback) callback();
     } };
   }
-  return { page, load, user, responses, calls, navigation, messages, images, storage, wx,
-    get app() { return app; }, get token() { return token; }, get stopped() { return stopped; } };
+  if (options.realPassport) {
+    passport = load('miniprogram/comm/biz/passport_biz.js');
+    if (token) passport.setToken(token);
+  }
+  return { page, load, user, responses, calls, navigation, messages, images, storage, wx, passport,
+    get app() { return app; }, get token() { return passport.getToken(); }, get stopped() { return stopped; } };
 }
 
-test('custom campus selection previews a choice, cancels cleanly, and commits only a valid option', () => {
+async function readyProfile(h, page) {
+  await h.load('miniprogram/projects/crun/pages/my/profile_methods.js').loadCampuses(page);
+  // These tests exercise edits after successful page initialization.
+  h.calls.length = 0;
+}
+
+test('custom campus selection previews a choice, cancels cleanly, and commits only a valid option', async () => {
   const h = harness(), page = h.page('my/personal/my_personal.js');
+  await readyProfile(h, page);
   page.applyUser(page, h.user);
   page.bindOpenCampusPicker(); page.bindSelectCampus(event({ value: '王城校区' }));
   assert.equal(page.data.campus, '育才校区');
@@ -116,6 +134,7 @@ test('custom campus selection previews a choice, cancels cleanly, and commits on
 
 test('saving personal information persists the selected campus and preserves other saved fields', async () => {
   const h = harness(), page = h.page('my/personal/my_personal.js');
+  await readyProfile(h, page);
   h.user.USER_FORMS.push({ mark: 'payPic', type: 'image', val: ['cloud://existing'] });
   page.applyUser(page, h.user); page.bindOpenCampusPicker(); page.bindSelectCampus(event({ value: '雁山校区' })); page.bindConfirmCampus();
   await page.bindSubmitTap();
@@ -137,7 +156,7 @@ for (const [kind, label, draft] of [
   ['address', 'Address', { label: '三期', detail: '三栋' }]
 ]) {
   test(kind + ' editor retains drafts on save failure and preserves the default flag after retry', async () => {
-    const h = harness(), page = h.page('my/' + kind + '/' + kind + '.js'); page.applyUser(page, h.user);
+    const h = harness(), page = h.page('my/' + kind + '/' + kind + '.js'); await readyProfile(h, page); page.applyUser(page, h.user);
     page['bindEdit' + label](event({ index: 1 })); page.setData({ [kind + 'Draft']: draft });
     h.responses['passport/edit_base'] = () => { throw new Error('网络中断'); };
     assert.equal(await page['bindSave' + label](), false);
@@ -215,6 +234,7 @@ test('clearing caches prevents older requests from restoring stale profile and c
 
 test('registration keeps the returned login token, binds the invitation, and returns to the requesting page', async () => {
   const h = harness({ guest: true }), page = h.page('my/reg/my_reg.js');
+  await readyProfile(h, page);
   page.applyUser(page, h.user); page.setData({ inviteCode: 'abcdef', retUrl: 'back' });
   await page.bindSubmitTap();
   assert.equal(h.token.id, 'poster');
@@ -224,10 +244,310 @@ test('registration keeps the returned login token, binds the invitation, and ret
 });
 
 test('registration requiring review does not grant an active login token', async () => {
-  const h = harness({ guest: true }), page = h.page('my/reg/my_reg.js'); page.applyUser(page, h.user);
-  h.responses['passport/register'] = { token: { id: 'poster', status: 0 } };
-  await page.bindSubmitTap(); assert.equal(h.token, null); assert.ok(h.messages.includes('注册成功，等待审核'));
+  const h = harness({ guest: true }), page = h.page('my/reg/my_reg.js'); await readyProfile(h, page); page.applyUser(page, h.user);
+  h.responses['passport/register'] = { token: { id: 'poster', status: 0, phoneVerified: true, profileComplete: true } };
+  await page.bindSubmitTap(); assert.equal(h.token.status, 0); assert.ok(h.messages.includes('资料已提交，等待审核'));
+  assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/my/index/my_index');
 });
+
+for (const message of ['「学院」未通过微信文字审核，请修改该字段后重试', '微信文字审核服务暂无调用权限，请联系管理员检查服务配置（错误码：48001）']) {
+  test('registration displays the specific audit error and retains the editable draft: ' + message, async () => {
+    const h = harness({ guest: true }), page = h.page('my/reg/my_reg.js');
+    await readyProfile(h, page); page.applyUser(page, h.user);
+    h.responses['passport/register'] = () => { throw { code: 1600, msg: message }; };
+    await page.bindSubmitTap();
+    assert.equal(page.data.saveError, message); assert.ok(h.messages.includes(message));
+    assert.equal(page.data.formName, h.user.USER_NAME); assert.equal(page.data.profileCollege, '计算机学院');
+    assert.equal(page.data.saving, false); assert.equal(h.navigation.length, 0); assert.equal(h.token, null);
+  });
+}
+
+const manualToken = { id: 'poster', name: '手填昵称', status: 1, phoneVerified: false, profileComplete: true, allowManualRegistration: true };
+test('unsupported native capabilities open manual registration and submit without reading WeChat data', async () => {
+  const h = harness({ guest: true, realPassport: true, manualRegistration: true });
+  h.wx.canIUse = () => false;
+  h.wx.chooseMedia = () => assert.fail('an unavailable modern image picker must fall back to chooseImage');
+  h.responses['passport/my_detail'] = null;
+  h.responses['passport/register'] = { token: manualToken };
+  h.responses['passport/login'] = { token: manualToken };
+  const page = h.page('my/reg/my_reg.js'); await page.onLoad({ retUrl: 'back' });
+  assert.equal(page.data.allowManualRegistration, true);
+  assert.equal(page.data.manualRegistration, true);
+  assert.equal(page.data.canUseWechatNickname, false);
+  assert.equal(page.data.canChooseWechatAvatar, false);
+  page.bindProfileNameInput(event({}, '手填昵称'));
+  page.bindProfileMobileInput(event({}, '13912345678'));
+  assert.equal(typeof page.bindChooseAvatar, 'function');
+  page.bindChooseAvatar();
+  page.bindGenderTap(event({ value: '女' }));
+  page.bindProfileFieldInput(event({ field: 'profileCollege' }, '计算机学院'));
+  page.bindProfileFieldInput(event({ field: 'profileSub' }, '软件工程'));
+  page.bindCampusChange(event({}, 0));
+  await page.bindSubmitTap();
+  assert.equal(page.data.saveError, '');
+  assert.equal(h.images.length, 1);
+  assert.equal(h.calls.find(call => call.route === 'passport/register').params.mobile, '13912345678');
+  assert.equal(h.calls.filter(call => /wechat_login|passport\/phone/.test(call.route)).length, 0);
+  assert.equal(h.token.phoneVerified, false);
+  assert.equal(await h.passport.loginMustCancelWin(), true);
+  assert.equal(h.navigation.at(-1).type, 'back');
+});
+
+test('manual avatar selection supports the modern picker and keeps the current image on cancellation', () => {
+  const h = harness({ manualRegistration: true }), page = h.page('my/personal/my_personal.js');
+  let picker;
+  h.wx.chooseMedia = options => { picker = options; options.success({ tempFiles: [{ tempFilePath: 'temp/manual-avatar.jpg' }] }); };
+  assert.equal(typeof page.bindChooseAvatar, 'function'); page.bindChooseAvatar();
+  assert.equal(page.data.formPic, 'temp/manual-avatar.jpg');
+  assert.equal(picker.count, 1);
+  assert.equal(h.images.length, 0);
+  h.wx.chooseMedia = options => options.fail({ errMsg: 'chooseMedia:fail cancel' });
+  page.bindChooseAvatar();
+  assert.equal(page.data.formPic, 'temp/manual-avatar.jpg');
+  assert.equal(h.messages.length, 0);
+});
+
+test('manual entry is available even when the native button never invokes its callback', async () => {
+  const h = harness({ guest: true, manualRegistration: true }); h.responses['passport/my_detail'] = null;
+  const page = h.page('my/reg/my_reg.js'); await page.onLoad({});
+  assert.equal(typeof page.bindManualRegistration, 'function', 'the user must be able to skip a hanging native button');
+  page.bindManualRegistration();
+  assert.equal(page.data.manualRegistration, true);
+  assert.equal(page.data.phoneVerified, false);
+  assert.equal(h.calls.filter(call => call.route === 'passport/wechat_login').length, 0);
+});
+
+for (const detail of [{ errMsg: 'getPhoneNumber:fail', errno: 102 }, { errMsg: 'getPhoneNumber:fail not support' }]) {
+  test('unavailable phone authorization falls back without discarding draft fields: ' + JSON.stringify(detail), async () => {
+    const h = harness({ guest: true, realPassport: true, manualRegistration: true }); h.responses['passport/my_detail'] = null;
+    const page = h.page('my/reg/my_reg.js'); await page.onLoad({});
+    page.bindProfileNameInput(event({}, '保留草稿')); page.bindProfileMobileInput(event({}, '13912345678'));
+    await page.bindWechatLogin({ detail });
+    assert.equal(page.data.manualRegistration, true);
+    assert.equal(page.data.phoneAuthorizing, false);
+    assert.equal(page.data.phoneVerified, false);
+    assert.equal(page.data.formName, '保留草稿');
+    assert.equal(page.data.formMobile, '13912345678');
+    assert.match(page.data.loginError, /手动/);
+    assert.equal(h.calls.filter(call => call.route === 'passport/wechat_login').length, 0);
+  });
+}
+
+test('strict mode and old configurations do not offer manual registration after native failures', async () => {
+  const h = harness({ guest: true, realPassport: true }); h.responses['passport/my_detail'] = null;
+  const page = h.page('my/reg/my_reg.js'); await page.onLoad({});
+  assert.equal(typeof page.bindManualRegistration, 'function');
+  page.bindManualRegistration();
+  await page.bindWechatLogin({ detail: { errMsg: 'getPhoneNumber:fail', errno: 102 } });
+  assert.equal(page.data.manualRegistration, false);
+  assert.equal(page.data.phoneVerified, false);
+  assert.match(page.data.loginError, /权限|管理员/);
+  await page.bindSubmitTap();
+  assert.equal(h.calls.filter(call => call.route === 'passport/register').length, 0);
+});
+
+for (const allowed of [true, false]) {
+  test('a native capability failure waits for delayed server policy: manual allowed=' + allowed, async () => {
+    const h = harness({ guest: true, realPassport: true, manualRegistration: allowed });
+    const pending = deferred(), config = h.responses['operations/config'];
+    h.responses['operations/config'] = () => pending.promise; h.responses['passport/my_detail'] = null;
+    const page = h.page('my/reg/my_reg.js'), loading = page.onLoad({}); await tick();
+    assert.equal(page.data.isLoad, true);
+    assert.equal(page.data.allowManualRegistration, false);
+    await page.bindWechatLogin({ detail: { errMsg: 'getPhoneNumber:fail no permission', errno: 102 } });
+    assert.equal(page.data.manualRegistration, false, 'do not assume permission before the server policy arrives');
+    pending.resolve(config); await loading;
+    assert.equal(page.data.manualRegistration, allowed);
+    assert.equal(page.data.phoneVerified, false);
+    assert.match(page.data.loginError, allowed ? /手动/ : /权限|管理员/);
+    assert.equal(h.calls.filter(call => call.route === 'passport/wechat_login').length, 0);
+  });
+}
+
+test('manual registration policy survives shared cache reads and is revoked by fresh configuration', async () => {
+  const h = harness({ guest: true, manualRegistration: true });
+  const first = h.page('my/reg/my_reg.js'); await readyProfile(h, first);
+  const second = h.page('my/reg/my_reg.js'); await readyProfile(h, second);
+  assert.equal(second.data.allowManualRegistration, true);
+  h.responses['operations/config'].allowManualRegistration = false;
+  await second.loadCampuses(second, true);
+  assert.equal(second.data.allowManualRegistration, false);
+});
+
+test('manual accounts remain on their personal pages instead of looping back to phone authorization', async () => {
+  const h = harness({ realPassport: true, manualRegistration: true });
+  Object.assign(h.user, { USER_MOBILE_VERIFIED: false, allowManualRegistration: true });
+  h.passport.setToken(manualToken); h.responses['passport/login'] = { token: manualToken };
+  const page = h.page('my/personal/my_personal.js'); await page.onLoad();
+  assert.equal(page.data.isLoad, true);
+  assert.equal(page.data.phoneVerified, false);
+  assert.equal(page.data.allowManualRegistration, true);
+  const center = h.page('my/index/my_index.js'); center.onLoad(); await center.onShow();
+  assert.equal(h.navigation.length, 0);
+  assert.equal(center.data.user.allowManualRegistration, true);
+  center.onUnload();
+});
+
+test('manual registration recovers a lost save response before returning to the original feature', async () => {
+  const h = harness({ guest: true, realPassport: true, manualRegistration: true });
+  Object.assign(h.user, { USER_MOBILE_VERIFIED: false, allowManualRegistration: true });
+  const page = h.page('my/reg/my_reg.js'); await readyProfile(h, page);
+  page.applyUser(page, { ...h.user, USER_PROFILE_COMPLETE: false });
+  page.setData({ retUrl: '/projects/crun/pages/mail/add/mail_add' });
+  h.responses['passport/register'] = () => { throw Error('回包丢失'); };
+  await page.bindSubmitTap();
+  assert.match(page.data.saveError, /回包丢失/);
+  assert.equal(h.token, null);
+  h.responses['passport/login'] = { token: manualToken };
+  await page._loadDetail();
+  assert.equal(h.passport.isLogin(), true);
+  assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/mail/add/mail_add');
+});
+
+test('phone authorization after manual entry keeps drafts and applies the verified phone', async () => {
+  const h = harness({ guest: true, realPassport: true, manualRegistration: true }); h.responses['passport/my_detail'] = null;
+  const page = h.page('my/reg/my_reg.js'); await page.onLoad({});
+  assert.equal(typeof page.bindManualRegistration, 'function'); page.bindManualRegistration();
+  page.bindProfileNameInput(event({}, '保留昵称')); page.bindProfileMobileInput(event({}, '13912345678'));
+  await page.bindWechatLogin({ detail: { errMsg: 'getPhoneNumber:fail no permission', errno: 102 } });
+  assert.match(page.data.loginError, /手动/);
+  h.responses['passport/wechat_login'] = { token: { ...manualToken, phoneVerified: true, profileComplete: false },
+    user: { USER_MOBILE: '13987654321', USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: false, USER_FORMS: [], allowManualRegistration: true } };
+  await page.bindWechatLogin({ detail: { errMsg: 'getPhoneNumber:ok', code: 'late-native-code' } });
+  assert.equal(page.data.phoneVerified, true);
+  assert.equal(page.data.manualRegistration, false);
+  assert.equal(page.data.phoneCapabilityError, '');
+  assert.equal(page.data.loginError, '');
+  assert.equal(page.data.formMobile, '13987654321');
+  assert.equal(page.data.formName, '保留昵称');
+});
+
+test('new registration shows WeChat login first and resumes an incomplete authorized profile', async () => {
+  const h = harness({ guest: true }), page = h.page('my/reg/my_reg.js');
+  h.responses['passport/my_detail'] = null;
+  await page.onLoad({ retUrl: 'back' });
+  assert.equal(page.data.phoneVerified, false);
+  assert.equal(page.data.isLoad, true);
+  h.responses['passport/wechat_login'] = { token: { id: 'poster', status: 0, phoneVerified: true, profileComplete: false },
+    user: { USER_MOBILE: '13912345678', USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: false, USER_STATUS: 0, USER_FORMS: [] } };
+  await page.bindWechatLogin({ detail: { errMsg: 'getPhoneNumber:ok', code: 'phone-code' } });
+  assert.equal(page.data.phoneVerified, true); assert.equal(page.data.formMobile, '13912345678');
+  assert.equal(h.navigation.length, 0);
+  await page.bindSubmitTap();
+  assert.equal(h.calls.filter(call => call.route === 'passport/register').length, 0);
+  assert.ok(page.data.saveError);
+  h.responses['passport/my_detail'] = h.responses['passport/wechat_login'].user;
+  const resumed = h.page('my/reg/my_reg.js'); await resumed.onLoad({});
+  assert.equal(resumed.data.phoneVerified, true); assert.equal(h.navigation.length, 0);
+});
+
+test('an empty cloud success envelope is a guest and never forces a spurious completion redirect', async () => {
+  const h = harness({ guest: true }); h.responses['passport/my_detail'] = {};
+  const methods = h.load('miniprogram/projects/crun/pages/my/profile_methods.js');
+  assert.equal(await methods.getProfileUser({}, true), null);
+  const page = h.page('my/index/my_index.js'); page._visible = true; await page._loadUser();
+  assert.equal(page.data.user, null); assert.equal(h.navigation.length, 0);
+});
+
+test('denied authorization and duplicate taps never bypass the WeChat login stage', async () => {
+  const h = harness({ guest: true }), page = h.page('my/reg/my_reg.js');
+  h.responses['passport/my_detail'] = null; await page.onLoad({});
+  await page.bindWechatLogin({ detail: { errMsg: 'getPhoneNumber:fail user deny' } });
+  assert.equal(page.data.phoneVerified, false); assert.equal(page.data.phoneAuthorizing, false);
+  assert.equal(h.calls.filter(call => call.route === 'passport/wechat_login').length, 0);
+  const pending = deferred(); h.responses['passport/wechat_login'] = () => pending.promise;
+  const event = { detail: { errMsg: 'getPhoneNumber:ok', code: 'one-code' } };
+  const first = page.bindWechatLogin(event); await page.bindWechatLogin(event);
+  assert.equal(h.calls.filter(call => call.route === 'passport/wechat_login').length, 1);
+  pending.reject(Error('授权服务暂不可用')); await first;
+  assert.equal(page.data.phoneVerified, false); assert.equal(page.data.phoneAuthorizing, false);
+  assert.match(page.data.loginError, /授权服务/);
+});
+
+test('registration visibly explains native phone capability failures and releases the button', async () => {
+  const h = harness({ guest: true, realPassport: true }), page = h.page('my/reg/my_reg.js');
+  h.responses['passport/my_detail'] = null; await page.onLoad({});
+  await page.bindWechatLogin({ detail: { errMsg: 'getPhoneNumber:fail no permission', errno: 102 } });
+  assert.equal(page.data.phoneAuthorizing, false);
+  assert.equal(page.data.phoneVerified, false);
+  assert.equal(h.calls.filter(call => call.route === 'passport/wechat_login').length, 0);
+  assert.match(page.data.loginError, /暂不可用|管理员/);
+  assert.equal(h.messages.at(-1), page.data.loginError, 'a visible toast accompanies the persistent inline error');
+});
+
+test('registration exposes cloud setup failures and can succeed after a fresh authorization', async () => {
+  const h = harness({ guest: true, realPassport: true }), page = h.page('my/reg/my_reg.js');
+  h.responses['passport/my_detail'] = null; await page.onLoad({});
+  h.responses['passport/wechat_login'] = () => { throw { msg: '网络连接异常，请稍后重试', errMsg: 'cloud.callFunction:fail -501000 Environment not found' }; };
+  await page.bindWechatLogin({ detail: { errMsg: 'getPhoneNumber:ok', code: 'failed-code' } });
+  assert.equal(page.data.phoneAuthorizing, false); assert.equal(page.data.phoneVerified, false);
+  assert.match(page.data.loginError, /服务配置/);
+  assert.equal(h.messages.at(-1), page.data.loginError);
+  h.responses['passport/wechat_login'] = { token: { id: 'poster', status: 0, phoneVerified: true, profileComplete: false },
+    user: { USER_MOBILE: '13912345678', USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: false, USER_STATUS: 0, USER_FORMS: [] } };
+  await page.bindWechatLogin({ detail: { errMsg: 'getPhoneNumber:ok', code: 'fresh-code' } });
+  assert.equal(page.data.phoneVerified, true); assert.equal(page.data.loginError, '');
+  assert.equal(h.calls.filter(call => call.route === 'passport/wechat_login').length, 2);
+  assert.equal(page.data.phoneAuthorizing, false);
+});
+
+test('phone reauthorization preserves an unsaved nickname and requires server-confirmed data', async () => {
+  const h = harness(), page = h.page('my/personal/my_personal.js');
+  page.applyUser(page, h.user); page.bindProfileNameInput(event({}, '修改中的昵称'));
+  h.responses['passport/wechat_login'] = { token: { id: 'poster', status: 1, phoneVerified: true, profileComplete: true },
+    user: { ...h.user, USER_MOBILE: '13912345678' } };
+  await page.bindWechatPhone({ detail: { errMsg: 'getPhoneNumber:ok', code: 'new-phone-code' } });
+  assert.equal(page.data.formName, '修改中的昵称'); assert.equal(page.data.formMobile, '13912345678');
+  assert.equal(page.data.phoneVerified, true);
+});
+
+test('a completed registration with a lost response refreshes the session before returning to the business page', async () => {
+  const h = harness({ guest: true, realPassport: true }), page = h.page('my/reg/my_reg.js');
+  h.passport.setToken({ id: 'poster', status: 0, phoneVerified: true, profileComplete: false });
+  await readyProfile(h, page);
+  page.applyUser(page, { ...h.user, USER_STATUS: 0, USER_PROFILE_COMPLETE: false });
+  const destination = '/projects/crun/pages/mail/add/mail_add';
+  page.setData({ retUrl: destination });
+  h.responses['passport/register'] = () => { throw Error('保存成功，但回包丢失'); };
+  await page.bindSubmitTap();
+  assert.equal(h.token.profileComplete, false); assert.equal(h.navigation.length, 0);
+  h.responses['passport/login'] = { token: { id: 'poster', status: 1, phoneVerified: true, profileComplete: true } };
+  await page._loadDetail();
+  assert.equal(h.token.profileComplete, true);
+  assert.equal(await h.passport.loginMustBackWin(), true);
+  assert.equal(h.navigation.at(-1).url, destination);
+});
+
+test('a failed session refresh after profile completion stays retryable instead of reopening a blocked feature', async () => {
+  const h = harness({ guest: true, realPassport: true }), page = h.page('my/reg/my_reg.js');
+  h.passport.setToken({ id: 'poster', status: 0, phoneVerified: true, profileComplete: false });
+  page.setData({ retUrl: '/projects/crun/pages/mail/add/mail_add' });
+  h.responses['passport/login'] = () => { throw Error('暂时离线'); };
+  await page._loadDetail();
+  assert.equal(h.navigation.length, 0); assert.ok(page.data.loadError);
+  h.responses['passport/login'] = { token: { id: 'poster', status: 0, phoneVerified: true, profileComplete: true } };
+  await page._loadDetail();
+  assert.equal(h.token.profileComplete, true);
+  assert.equal(h.passport.isLogin(), false, 'pending review must remain restricted');
+  assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/my/index/my_index');
+});
+
+for (const failed of [false, true]) {
+  test('an older guest profile ' + (failed ? 'failure' : 'response') + ' cannot overwrite a successful phone login', async () => {
+    const h = harness({ guest: true, realPassport: true }), page = h.page('my/reg/my_reg.js');
+    h.responses['passport/my_detail'] = null; await page.onLoad({});
+    const pending = deferred(); h.responses['passport/my_detail'] = () => pending.promise;
+    const refresh = page.onPullDownRefresh();
+    h.responses['passport/wechat_login'] = { token: { id: 'poster', status: 0, phoneVerified: true, profileComplete: false },
+      user: { USER_MOBILE: '13912345678', USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: false, USER_STATUS: 0, USER_FORMS: [] } };
+    await page.bindWechatLogin({ detail: { errMsg: 'getPhoneNumber:ok', code: 'fresh-phone-code' } });
+    if (failed) pending.reject(Error('旧请求超时')); else pending.resolve(null);
+    await refresh;
+    assert.equal(page.data.phoneVerified, true); assert.equal(page.data.formMobile, '13912345678');
+    assert.equal(page.data.loadError, ''); assert.equal(h.token.phoneVerified, true);
+    assert.equal(h.navigation.length, 0);
+  });
+}
 
 test('favorite mutations ignore repeated taps while login or saving is in flight', async () => {
   const h = harness(), page = h.page('my/fav/my_fav.js'), pending = deferred();
@@ -292,7 +612,7 @@ test('sent and received reviews have independent pages, queries and late-respons
 });
 
 test('address edits require one of the five phases and preserve the existing detail during selection', async () => {
-  const h = harness(), page = h.page('my/address/address.js'); page.applyUser(page, h.user);
+  const h = harness(), page = h.page('my/address/address.js'); await readyProfile(h, page); page.applyUser(page, h.user);
   page.bindEditAddress(event({ index: 1 }));
   assert.equal(page.data.addressDraft.detail, '二栋');
   await page.bindSaveAddress(); assert.equal(h.calls.length, 0);

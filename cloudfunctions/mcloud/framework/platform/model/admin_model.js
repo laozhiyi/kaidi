@@ -26,6 +26,8 @@ AdminModel.DB_STRUCTURE = {
 	ADMIN_LOGIN_CNT: 'int|true|default=0|comment=登录次数',
 	ADMIN_LOGIN_TIME: 'int|true|default=0|comment=最后登录时间',
 	ADMIN_TYPE: 'int|true|default=0|comment=类型 0=普通管理员 1=超级管理员',
+ ADMIN_PLATFORM: 'bool|true|default=false',
+ ADMIN_SCOPES: 'array|true|default=[]',
 
 	ADMIN_TOKEN: 'string|false|comment=当前登录token',
 	ADMIN_TOKEN_USER: 'string|false',

@@ -29,11 +29,12 @@ page { background: #f3f6fb; }
 .delivery-page .od-step:first-child .od-step-track::before { display: none; }
 .delivery-page .od-step-dot { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; width: 24rpx; height: 24rpx; border: 4rpx solid #d3dfed; border-radius: 50%; background: #edf4fd; color: #fff; font-size: 18rpx; }
 .delivery-page .od-step-done .od-step-dot { background: #528bcf; border-color: #528bcf; }
-.delivery-page .od-step-done .od-step-track::before { background: #83aae0; }
+.delivery-page .od-step-connected .od-step-track::before { background: #83aae0; }
 .delivery-page .od-step-current .od-step-dot { box-shadow: 0 0 0 6rpx rgba(82,139,207,.13); }
 .delivery-page .od-step-done { color: #4e79aa; }
 .delivery-page .od-step-current { font-weight: 600; }
 .delivery-page .od-step-label { display: block; margin-top: 10rpx; font-size: 23rpx; }
+.delivery-page .od-step-time { margin-top: 8rpx; color: #738398; font-size: 20rpx; line-height: 1.4; font-weight: 400; }
 .delivery-page .od-content { padding: 24rpx; }
 .delivery-page .od-card { width: 100%; margin-bottom: 22rpx; padding: 30rpx; border: 1rpx solid #edf1f7; border-radius: 28rpx; background: #fff; box-shadow: 0 8rpx 24rpx rgba(41,67,107,.025); }
 .delivery-page .od-section-title { font-size: 30rpx; font-weight: 600; color: #2c3d55; word-break: break-word; }

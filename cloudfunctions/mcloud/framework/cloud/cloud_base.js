@@ -14,10 +14,17 @@ function getCloud() {
 	if (instance) return instance;
 	const cloud = require('wx-server-sdk');
 	cloud.init({
-		env: config.CLOUD_ID || cloud.DYNAMIC_CURRENT_ENV
+		env: process.env.CLOUD_ENV_ID || config.CLOUD_ID || cloud.DYNAMIC_CURRENT_ENV
 	});
-	instance = cloud;
-	return cloud;
+ const wrap = require('../tenancy/tenant_database.js').wrap;
+ instance = new Proxy(cloud, { get(target, property) {
+  if (property === 'database') return options => wrap(target.database(options));
+  // OpenAPI is a callable namespace; its .bind would invoke a remote API.
+  if (property === 'openapi') return target.openapi;
+  const value = target[property];
+  return typeof value === 'function' ? value.bind(target) : value;
+ }});
+	return instance;
 }
 
 module.exports = {

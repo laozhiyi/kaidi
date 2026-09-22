@@ -43,6 +43,8 @@ function fixture(rows = []) {
 	}
 	const module = { exports: {} };
 	const dependencies = {
+    '../../../framework/tenancy/tenant_context.js': require('../../cloudfunctions/mcloud/framework/tenancy/tenant_context.js'),
+    './tenant_defaults.js': require('../../cloudfunctions/mcloud/project/crun/service/tenant_defaults.js'),
 		'./operation_store.js': {
 			key: (...parts) => require('node:crypto').createHash('sha256').update(JSON.stringify(parts)).digest('hex').slice(0, 32),
 			transaction: callback => callback({}), limitInTransaction: async () => {},

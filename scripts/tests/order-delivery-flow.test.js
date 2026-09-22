@@ -7,7 +7,7 @@ const { runMiniProgram } = require('../test-support/miniprogram-module.cjs');
 const UI = require('../../miniprogram/projects/crun/biz/mail_ui_biz.js');
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const event = (id, action) => ({ currentTarget: { dataset: { id, action } } });
-const labels = ['已接单', '已取件', '配送中', '待收货', '已完成'];
+const labels = ['已发布', '已接单', '已取件', '已送达', '已完成'];
 
 async function harness(pickedUp = false) {
  const f = fixture(), forms = f.forms();
@@ -72,7 +72,7 @@ async function harness(pickedUp = false) {
 test('card pickup advances to delivery; delivery navigates to details and changes state only after text and photos are submitted', async () => {
  const h = await harness(), list = h.mount('order/index/order_index', { tab: 1 });
  list.onShow(); await list._syncOrders();
- assert.equal(list.data.dataList.list[0].progressStep, 0);
+ assert.equal(list.data.dataList.list[0].progressStep, 1);
  await list.bindOrderAction(event(h.id, 'deliver'));
  assert.equal(h.modals.length, 0, 'delivery cannot skip pickup');
  const pickup = list.bindOrderAction(event(h.id, 'pickup'));
@@ -188,7 +188,7 @@ test('all card sections and detail roles use the full order address, including a
  assert.equal(UI.deliveryAddress(legacy), expected);
  assert.equal(UI.detail(legacy).deliveryAddress, expected);
  assert.equal(UI.deliveryAddress({ MAIL_OBJ: { campus: '育才校区', address2: expected } }), expected);
- for (const [status, step] of [[1, 0], [4, 2], [2, 3], [9, 4]]) {
+ for (const [status, step] of [[1, 1], [4, 2], [2, 3], [9, 4]]) {
   h.stored().MAIL_STATUS = status;
   const mail = await h.f.service.viewMail('rider', h.id), ui = UI.detail(mail), card = list._decorateOrder(mail);
   assert.deepEqual(Array.from(mail.progressLabels), labels); assert.equal(mail.progressStep, step);

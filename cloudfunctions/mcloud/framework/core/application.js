@@ -89,14 +89,18 @@ async function app(event, context) {
 			return appUtil.handlerSvrErr();
 		}
 
+  await new (require('../../project/crun/service/base_project_service.js'))().initSetup();
+  const tenant = require('../tenancy/tenant_context.js');
+  const TenantService = require('../../project/crun/service/tenant_service.js');
+  const scope = r === 'tenant/catalog' ? null : await new TenantService().resolve(event.scope, {allowDisabled:r.startsWith('admin/')});
 		// 引入逻辑controller 
 		controllerName = controllerName.toLowerCase().trim();
 		const ControllerClass = require('project/'+PID +'/controller/' + controllerName + '.js');
 		const controller = new ControllerClass(r, PID + '^^^' + openId, event);
  
 		// 调用方法    
-		await controller['initSetup']();
-		let result = await controller[actionName]();
+  const execute = async () => { await controller['initSetup'](); return controller[actionName](); };
+		let result = await (scope ? tenant.run(scope, execute) : execute());
 
 		// 返回值处理
 		if (isOther) {

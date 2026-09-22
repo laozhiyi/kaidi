@@ -6,7 +6,7 @@ const copy = value => JSON.parse(JSON.stringify(value));
 function setup() {
   const f = fixture(), service = new (f.load('notification_service.js'))();
   const news = (id, extra = {}) => f.table('news').set(id, { _id: id, _pid: 'crun', NEWS_STATUS: 1,
-    NEWS_TITLE: '公告 ' + id, NEWS_DESC: '请查看服务安排', NEWS_ORDER: 9999, NEWS_ADD_TIME: 1000, NEWS_EDIT_TIME: 1000, ...extra });
+    NEWS_TITLE: '公告 ' + id, NEWS_DESC: '请查看服务安排', NEWS_CONTENT:[{type:'text',val:'服务安排'}], NEWS_ORDER: 9999, NEWS_ADD_TIME: 1000, NEWS_EDIT_TIME: 1000, ...extra });
   const message = (id, extra = {}) => f.table('notification').set(id, { _id: id, _pid: 'crun', userId: 'poster',
     title: '订单更新', content: '配送中', createdAt: 1000, read: false, ...extra });
   return { ...f, service, news, message };
@@ -33,15 +33,16 @@ test('reading an announcement is persistent, idempotent and independent per user
   assert.equal((await f.service.summary('poster')).featuredNews.newsId, 'two');
   await Promise.all([f.service.markRead('poster', 'two', 'news'), f.service.markRead('poster', 'two', 'news')]);
   assert.equal(f.table('news_read').size, 1);
-  f.table('news').get('two').NEWS_TITLE = '修改标题';
+  const catalog = new (f.load('news_catalog_service.js'))();
+  await catalog.change('two', {NEWS_TITLE:'修改标题'});
   const otherInstance = new (f.load('notification_service.js'))();
   assert.equal((await otherInstance.summary('poster')).unreadCount, 1);
   assert.equal((await otherInstance.summary('poster')).featuredNews.newsId, 'one');
   assert.equal((await otherInstance.summary('rider')).unreadCount, 2);
-  f.table('news').get('one').NEWS_STATUS = 0;
+  await catalog.change('one', {NEWS_STATUS:0});
   assert.equal((await f.service.summary('poster')).unreadCount, 0);
   assert.equal((await f.service.list('poster')).list.length, 1);
-  f.table('news').delete('two');
+  await catalog.change('two', {}, {remove:true});
   assert.equal((await f.service.list('poster')).list.length, 0);
 });
 
@@ -104,7 +105,7 @@ test('mark all reads every page, preserves deliveries, and leaves messages arriv
   db.collection = name => {
     const query = original(name), update = query.update;
     query.update = async args => {
-      if (!injected) { injected = true; f.message('just-arrived', { createdAt: 2000 }); f.news('just-published', { NEWS_ADD_TIME: 2000 }); }
+      if (!injected) { injected = true; f.message('just-arrived', { createdAt: 2000 }); await new (f.load('news_catalog_service.js'))().change('just-published', {NEWS_ADD_TIME:2000,NEWS_STATUS:1,NEWS_TITLE:'新公告',NEWS_CONTENT:[{type:'text',val:'新安排'}]}, {insert:true}); }
       return update(args);
     };
     return query;

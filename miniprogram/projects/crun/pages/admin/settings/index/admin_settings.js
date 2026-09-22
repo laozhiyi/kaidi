@@ -3,6 +3,7 @@ const Admin = require('../../../../../../comm/biz/admin_biz.js');
 Page({
   data: { groups: [
     { title: '业务设置', items: [
+      { key: 'tenants', title: '学校与校区', desc: '学校目录、地点配置与管理员授权', icon: 'icon-location', platformOnly: true },
       { key: 'service', title: '服务范围与营业时间', desc: '开放状态、服务校区、营业时间', icon: 'icon-location' },
       { key: 'pricing', title: '价格与结算说明', desc: '大小件参考价、件数上限、结算规则', icon: 'icon-moneybag' },
       { key: 'rules', title: '接单与履约规则', desc: '接单数量、配送时效、加急与注册审核', icon: 'icon-settings' }
@@ -20,7 +21,7 @@ Page({
       { key: 'monitor', title: '系统维护', desc: '过期订单、超时提醒与通知处理', icon: 'icon-repair' }
     ] },
     { title: '账号与权限', items: [
-      { key: 'managers', title: '管理员账号', desc: '创建账号、设置角色与停用账号', icon: 'icon-group', superOnly: true },
+      { key: 'managers', title: '管理员账号', desc: '创建账号、设置角色与停用账号', icon: 'icon-group', platformOnly: true },
       { key: 'logs', title: '操作日志', desc: '查询管理操作记录', icon: 'icon-footprint' },
       { key: 'password', title: '修改我的密码', desc: '更新当前管理员登录密码', icon: 'icon-lock' }
     ] }

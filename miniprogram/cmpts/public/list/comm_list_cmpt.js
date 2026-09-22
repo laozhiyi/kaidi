@@ -306,7 +306,7 @@ Component({
 
 
 			this.setData({ listLoading: true, listError: '' });
-			const result = await cloudHelper.dataList(this, '_dataList', this.data.route, params, { hint: false, isCurrent });
+			const result = await cloudHelper.dataList(this, '_dataList', this.data.route, params, { hint: false, isCurrent, silent:options.silent });
 			if (!isCurrent() || result && result.applied === false) return;
 			this.setData({ listLoading: false, listError: result && result.ok === false ? '暂时无法更新，点击重试' : '' });
 

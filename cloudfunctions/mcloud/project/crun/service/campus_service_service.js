@@ -8,15 +8,18 @@ const BaseProjectService = require('./base_project_service.js');
 const util = require('../../../framework/utils/util.js');
 const CampusServiceModel = require('../model/campus_service_model.js');
 const CampusServiceMessageModel = require('../model/campus_service_message_model.js');
-const CAMPUSES = ['育才校区', '王城校区', '雁山校区'];
+const tenant = require('../../../framework/tenancy/tenant_context.js');
+const CAMPUSES = require('./tenant_defaults.js').campuses.map(x=>x.name);
 const timeUtil = require('../../../framework/utils/time_util.js');
 
 class CampusServiceService extends BaseProjectService {
 
 	_normalizeCampus(campus) {
 		campus = String(campus || '').trim();
-		if (['育才', '王城', '雁山'].includes(campus)) campus += '校区';
-		if (!CAMPUSES.includes(campus)) this.AppError('请选择育才、王城或雁山校区');
+  const scope=tenant.current();
+  const allowed=scope && scope.mode==='campus' ? [scope.campusName] : CAMPUSES;
+  if (!allowed.includes(campus) && allowed.includes(campus+'校区')) campus += '校区';
+  if (!allowed.includes(campus)) this.AppError('请选择当前服务校区');
 		return campus;
 	}
 
@@ -146,7 +149,7 @@ class CampusServiceService extends BaseProjectService {
 		return store.transaction(async tx => {
 			if (message.CSM_SENDER === 'admin') {
 				const admin = await store.get(tx, 'admin', actorId);
-				if (!admin || admin._pid !== this.getProjectId() || admin.ADMIN_STATUS !== 1) this.AppError('管理员权限已失效');
+				if (!require('../../../framework/tenancy/tenant_context.js').isAdminEnabled(admin) || admin._pid !== this.getProjectId()) this.AppError('管理员权限已失效');
 			}
 			const old = await store.get(tx, 'campus_service_message', id);
 			if (old) {

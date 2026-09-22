@@ -22,6 +22,7 @@ UserModel.DB_STRUCTURE = {
 	USER_NAME: 'string|false|comment=姓名',
 	USER_MOBILE: 'string|false|comment=联系电话',
  USER_MOBILE_VERIFIED: 'bool|false|default=false',
+ USER_PROFILE_COMPLETE: 'bool|false|default=false|comment=已完成首次资料补全',
 	USER_PIC: 'string|false|comment=头像',
 	USER_PAY_PIC: 'string|false|comment=收款码',
 

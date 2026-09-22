@@ -87,22 +87,9 @@
 <view wx:if="{{listError}}" class="list-retry" bindtap="reload" role="button">{{listError}}</view>
 <view wx:if="{{updatesPending}}" class="list-retry" bindtap="reload" role="button">订单有更新，点击查看最新列表</view>
 <!-- content begin -->
-<view wx:if="{{!isTotalMenu}}" class="box-list" style="height:{{listHeight?listHeight:'(100vh)'}};margin-top:0rpx;">
-	<scroll-view    refresher-enabled="true" refresher-triggered="{{refresherTriggered}}" scroll-y="true" class="box-list-scroll" bindrefresherrefresh='bindPullDownRefresh' bindscrolltolower='bindReachBottom' scroll-top='{{topNum}}' bindscroll="bindScrollTop">
-		<slot  />  
-	</scroll-view>
-</view>
-
-<!--带搜索框-->
-<view wx:if="{{isTotalMenu&&showSearch}}" class="box-list" style="height:calc(100vh - {{(!sortItems.length && !sortMenus.length)? '110' : '190'}}rpx);margin-top:{{(!sortItems.length && !sortMenus.length)? '110' : '190'}}rpx">
+<view class="box-list" style="height:{{!isTotalMenu ? (listHeight || '100vh') : 'calc(100vh - ' + (showSearch ? ((!sortItems.length && !sortMenus.length) ? 110 : 190) : ((!sortItems.length && !sortMenus.length) ? 50 : 80)) + 'rpx)'}};margin-top:{{!isTotalMenu ? 0 : (showSearch ? ((!sortItems.length && !sortMenus.length) ? 110 : 190) : ((!sortItems.length && !sortMenus.length) ? 50 : 80))}}rpx;">
 	<scroll-view refresher-enabled="true" refresher-triggered="{{refresherTriggered}}" scroll-y="true" class="box-list-scroll" bindrefresherrefresh='bindPullDownRefresh' bindscrolltolower='bindReachBottom' scroll-top='{{topNum}}' bindscroll="bindScrollTop">
 		<slot />
-	</scroll-view>
-</view>
-<!--不带搜索框-->
-<view wx:if="{{isTotalMenu&&!showSearch}}" class="box-list" style="height:calc(100vh - {{(!sortItems.length && !sortMenus.length)? '50' : '80'}}rpx);margin-top:{{(!sortItems.length && !sortMenus.length)? '50' : '80'}}rpx">
-	<scroll-view  refresher-enabled="true" refresher-triggered="{{refresherTriggered}}" scroll-y="true" class="box-list-scroll" bindrefresherrefresh='bindPullDownRefresh' bindscrolltolower='bindReachBottom' scroll-top='{{topNum}}' bindscroll="bindScrollTop">
-		<slot  />    
 	</scroll-view>
 </view>
 <!-- content END -->

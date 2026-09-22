@@ -1,0 +1,322 @@
+TAP version 13
+# Subtest: cached account {"phoneVerified":false} cannot pass the business login gate
+ok 1 - cached account {"phoneVerified":false} cannot pass the business login gate
+  ---
+  duration_ms: 2.0573
+  type: 'test'
+  ...
+# Subtest: cached account {"profileComplete":false} cannot pass the business login gate
+ok 2 - cached account {"profileComplete":false} cannot pass the business login gate
+  ---
+  duration_ms: 0.5872
+  type: 'test'
+  ...
+# Subtest: cached account {"status":0} cannot pass the business login gate
+ok 3 - cached account {"status":0} cannot pass the business login gate
+  ---
+  duration_ms: 0.6404
+  type: 'test'
+  ...
+# Subtest: cached account {"status":8} cannot pass the business login gate
+ok 4 - cached account {"status":8} cannot pass the business login gate
+  ---
+  duration_ms: 0.5479
+  type: 'test'
+  ...
+# Subtest: cached account {"status":9} cannot pass the business login gate
+ok 5 - cached account {"status":9} cannot pass the business login gate
+  ---
+  duration_ms: 0.5274
+  type: 'test'
+  ...
+# Subtest: legacy cached tokens must refresh readiness before being used
+ok 6 - legacy cached tokens must refresh readiness before being used
+  ---
+  duration_ms: 0.624
+  type: 'test'
+  ...
+# Subtest: phone authorization sends only the one-time code and retains the incomplete authenticated session
+ok 7 - phone authorization sends only the one-time code and retains the incomplete authenticated session
+  ---
+  duration_ms: 1.7385
+  type: 'test'
+  ...
+# Subtest: declined authorization makes no cloud call and preserves an existing session
+ok 8 - declined authorization makes no cloud call and preserves an existing session
+  ---
+  duration_ms: 0.9133
+  type: 'test'
+  ...
+# Subtest: native phone failure cancelled has its own explanation without calling the cloud
+ok 9 - native phone failure cancelled has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.7196
+  type: 'test'
+  ...
+# Subtest: native phone failure privacy has its own explanation without calling the cloud
+ok 10 - native phone failure privacy has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.626
+  type: 'test'
+  ...
+# Subtest: native phone failure permission_denied has its own explanation without calling the cloud
+ok 11 - native phone failure permission_denied has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.5635
+  type: 'test'
+  ...
+# Subtest: native phone failure permission_denied has its own explanation without calling the cloud
+ok 12 - native phone failure permission_denied has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.5207
+  type: 'test'
+  ...
+# Subtest: native phone failure unsupported has its own explanation without calling the cloud
+ok 13 - native phone failure unsupported has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.5391
+  type: 'test'
+  ...
+# Subtest: native phone failure missing_code has its own explanation without calling the cloud
+ok 14 - native phone failure missing_code has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.5841
+  type: 'test'
+  ...
+# Subtest: cloud phone failure environment_missing survives the generic SDK wrapper message
+ok 15 - cloud phone failure environment_missing survives the generic SDK wrapper message
+  ---
+  duration_ms: 0.6326
+  type: 'test'
+  ...
+# Subtest: cloud phone failure function_missing survives the generic SDK wrapper message
+ok 16 - cloud phone failure function_missing survives the generic SDK wrapper message
+  ---
+  duration_ms: 0.5928
+  type: 'test'
+  ...
+# Subtest: cloud phone failure timeout survives the generic SDK wrapper message
+ok 17 - cloud phone failure timeout survives the generic SDK wrapper message
+  ---
+  duration_ms: 0.5451
+  type: 'test'
+  ...
+# Subtest: phone diagnostics identify the failing boundary without exposing authorization data
+ok 18 - phone diagnostics identify the failing boundary without exposing authorization data
+  ---
+  duration_ms: 0.7008
+  type: 'test'
+  ...
+# Subtest: an earlier silent login reply cannot overwrite a completed phone login
+ok 19 - an earlier silent login reply cannot overwrite a completed phone login
+  ---
+  duration_ms: 0.6104
+  type: 'test'
+  ...
+# Subtest: partial accounts are sent to the completion page while keeping the original destination
+ok 20 - partial accounts are sent to the completion page while keeping the original destination
+  ---
+  duration_ms: 0.6512
+  type: 'test'
+  ...
+# Subtest: server-enabled manual accounts can use features without claiming a verified phone
+ok 21 - server-enabled manual accounts can use features without claiming a verified phone
+  ---
+  duration_ms: 0.5282
+  type: 'test'
+  ...
+# Subtest: manual account status 0 still blocks business access with the correct explanation
+ok 22 - manual account status 0 still blocks business access with the correct explanation
+  ---
+  duration_ms: 0.5388
+  type: 'test'
+  ...
+# Subtest: manual account status 8 still blocks business access with the correct explanation
+ok 23 - manual account status 8 still blocks business access with the correct explanation
+  ---
+  duration_ms: 0.4863
+  type: 'test'
+  ...
+# Subtest: manual account status 9 still blocks business access with the correct explanation
+ok 24 - manual account status 9 still blocks business access with the correct explanation
+  ---
+  duration_ms: 0.5174
+  type: 'test'
+  ...
+# Subtest: manual sessions revalidate the server policy so strict mode takes effect without clearing storage
+ok 25 - manual sessions revalidate the server policy so strict mode takes effect without clearing storage
+  ---
+  duration_ms: 0.5264
+  type: 'test'
+  ...
+# Subtest: failed phone exchanges retain only the numeric provider error in diagnostics
+ok 26 - failed phone exchanges retain only the numeric provider error in diagnostics
+  ---
+  duration_ms: 16.8929
+  type: 'test'
+  ...
+# Subtest: hand-entered registration cannot claim a verified WeChat phone or active account
+ok 27 - hand-entered registration cannot claim a verified WeChat phone or active account
+  ---
+  duration_ms: 8.5663
+  type: 'test'
+  ...
+# Subtest: editing a verified profile preserves the verified phone and updates login details
+ok 28 - editing a verified profile preserves the verified phone and updates login details
+  ---
+  duration_ms: 9.2278
+  type: 'test'
+  ...
+# Subtest: a direct profile edit cannot replace the phone with an unverified number
+ok 29 - a direct profile edit cannot replace the phone with an unverified number
+  ---
+  duration_ms: 7.85
+  type: 'test'
+  ...
+# Subtest: server requires the registration field sex even when the page is bypassed
+ok 30 - server requires the registration field sex even when the page is bypassed
+  ---
+  duration_ms: 7.2027
+  type: 'test'
+  ...
+# Subtest: server requires the registration field college even when the page is bypassed
+ok 31 - server requires the registration field college even when the page is bypassed
+  ---
+  duration_ms: 7.5005
+  type: 'test'
+  ...
+# Subtest: server requires the registration field sub even when the page is bypassed
+ok 32 - server requires the registration field sub even when the page is bypassed
+  ---
+  duration_ms: 9.4851
+  type: 'test'
+  ...
+# Subtest: server requires the registration field campus even when the page is bypassed
+ok 33 - server requires the registration field campus even when the page is bypassed
+  ---
+  duration_ms: 6.5096
+  type: 'test'
+  ...
+# Subtest: active status alone does not permit business access with an incomplete or unverified profile
+ok 34 - active status alone does not permit business access with an incomplete or unverified profile
+  ---
+  duration_ms: 6.6956
+  type: 'test'
+  ...
+# Subtest: order transactions recheck profile readiness after the initial user check
+ok 35 - order transactions recheck profile readiness after the initial user check
+  ---
+  duration_ms: 6.2392
+  type: 'test'
+  ...
+# Subtest: WeChat phone login creates one incomplete account and only completed registration enables business
+ok 36 - WeChat phone login creates one incomplete account and only completed registration enables business
+  ---
+  duration_ms: 9.9179
+  type: 'test'
+  ...
+# Subtest: first profile completion obeys the current school review rule and ignores client status
+ok 37 - first profile completion obeys the current school review rule and ignores client status
+  ---
+  duration_ms: 9.9592
+  type: 'test'
+  ...
+# Subtest: phone ownership is exclusive across campuses of a school and isolated between schools
+ok 38 - phone ownership is exclusive across campuses of a school and isolated between schools
+  ---
+  duration_ms: 8.1574
+  type: 'test'
+  ...
+# Subtest: failed, expired, mismatched-app and malformed phone authorizations create no account
+ok 39 - failed, expired, mismatched-app and malformed phone authorizations create no account
+  ---
+  duration_ms: 40.8806
+  type: 'test'
+  ...
+# Subtest: authorization cannot revive a disabled account or bypass rejected registration
+ok 40 - authorization cannot revive a disabled account or bypass rejected registration
+  ---
+  duration_ms: 8.4438
+  type: 'test'
+  ...
+# Subtest: successful phone rebinding rejects a stale profile save and releases only its own old phone
+ok 41 - successful phone rebinding rejects a stale profile save and releases only its own old phone
+  ---
+  duration_ms: 7.5542
+  type: 'test'
+  ...
+# Subtest: manual registration uses the cloud identity, leaves the phone unverified, and permits publishing
+ok 42 - manual registration uses the cloud identity, leaves the phone unverified, and permits publishing
+  ---
+  duration_ms: 10.162
+  type: 'test'
+  ...
+# Subtest: public configuration advertises only the server-selected manual registration policy
+ok 43 - public configuration advertises only the server-selected manual registration policy
+  ---
+  duration_ms: 6.7914
+  type: 'test'
+  ...
+# Subtest: existing unverified profiles can be completed and edited without native authorization
+ok 44 - existing unverified profiles can be completed and edited without native authorization
+  ---
+  duration_ms: 9.5468
+  type: 'test'
+  ...
+# Subtest: manual registration still obeys school review and disabled or rejected account states
+ok 45 - manual registration still obeys school review and disabled or rejected account states
+  ---
+  duration_ms: 9.8871
+  type: 'test'
+  ...
+# Subtest: manual registration retains required fields and cannot create accounts without identity
+ok 46 - manual registration retains required fields and cannot create accounts without identity
+  ---
+  duration_ms: 8.1368
+  type: 'test'
+  ...
+# Subtest: concurrent manual registrations enforce school phone ownership and create one account
+ok 47 - concurrent manual registrations enforce school phone ownership and create one account
+  ---
+  duration_ms: 10.3401
+  type: 'test'
+  ...
+# Subtest: manual registration detects legacy phone owners even before the uniqueness index is seeded
+ok 48 - manual registration detects legacy phone owners even before the uniqueness index is seeded
+  ---
+  duration_ms: 6.8108
+  type: 'test'
+  ...
+# Subtest: enabling manual registration never lets an already verified phone be replaced by typing
+ok 49 - enabling manual registration never lets an already verified phone be replaced by typing
+  ---
+  duration_ms: 7.3545
+  type: 'test'
+  ...
+# Subtest: restoring strict mode blocks manual accounts in login eligibility and in-flight business transactions
+ok 50 - restoring strict mode blocks manual accounts in login eligibility and in-flight business transactions
+  ---
+  duration_ms: 9.8325
+  type: 'test'
+  ...
+# Subtest: manual profile saves recheck concurrent account changes {"USER_STATUS":9}
+ok 51 - manual profile saves recheck concurrent account changes {"USER_STATUS":9}
+  ---
+  duration_ms: 7.9772
+  type: 'test'
+  ...
+# Subtest: manual profile saves recheck concurrent account changes {"USER_MOBILE":"13987654321","USER_MOBILE_VERIFIED":true}
+ok 52 - manual profile saves recheck concurrent account changes {"USER_MOBILE":"13987654321","USER_MOBILE_VERIFIED":true}
+  ---
+  duration_ms: 9.2898
+  type: 'test'
+  ...
+1..52
+# tests 52
+# suites 0
+# pass 52
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 344.6762

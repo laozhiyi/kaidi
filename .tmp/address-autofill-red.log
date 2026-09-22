@@ -1,0 +1,171 @@
+✖ form setters match field marks when the parent supplies a different order (7.6121ms)
+✖ form setters tolerate extra values and restore missing field values (2.7848ms)
+✖ standalone order page: saved defaults update the real form without changing image types (5.1987ms)
+✖ standalone order page: a completed order resets both snapshots and accepts the next saved address (3.8569ms)
+✔ standalone order page: refreshing defaults preserves an edited or cleared draft: "本单临时地址" (2.7163ms)
+✔ standalone order page: refreshing defaults preserves an edited or cleared draft: "" (2.8064ms)
+✖ embedded home form: saved defaults update the real form without changing image types (6.2413ms)
+✖ embedded home form: a completed order resets both snapshots and accepts the next saved address (3.9403ms)
+✔ embedded home form: refreshing defaults preserves an edited or cleared draft: "本单临时地址" (3.5219ms)
+✔ embedded home form: refreshing defaults preserves an edited or cleared draft: "" (2.7658ms)
+✖ an older profile response cannot undo a more recently saved default address (3.4057ms)
+✔ refreshing personal defaults does not replace an existing order being edited (3.0144ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 5
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 103.2174
+
+✖ failing tests:
+
+test at scripts\tests\mail-form-autofill.test.js:7:1
+✖ form setters match field marks when the parent supplies a different order (7.6121ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  '' !== '二期2栋201室'
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\mail-form-autofill.test.js:14:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: '二期2栋201室',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\mail-form-autofill.test.js:21:1
+✖ form setters tolerate extra values and restore missing field values (2.7848ms)
+  AssertionError [ERR_ASSERTION]: Got unwanted exception.
+  Actual message: "Cannot set properties of undefined (setting 'val')"
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\mail-form-autofill.test.js:25:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: TypeError: Cannot set properties of undefined (setting 'val')
+        at Object.setOneFormVal (B:\zhumian\zm\kaidi\miniprogram\cmpts\public\form\form_show\form_show_cmpt.js:531:20)
+        at B:\zhumian\zm\kaidi\scripts\tests\mail-form-autofill.test.js:25:34
+        at getActual (node:assert:611:5)
+        at strict.doesNotThrow (node:assert:779:32)
+        at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\mail-form-autofill.test.js:25:10)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1382:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+        at Test.postRun (node:internal/test_runner/test:1522:19)
+        at Test.run (node:internal/test_runner/test:1447:12),
+    expected: undefined,
+    operator: 'doesNotThrow',
+    diff: 'simple'
+  }
+
+test at scripts\tests\mail-form-autofill.test.js:36:3
+✖ standalone order page: saved defaults update the real form without changing image types (5.1987ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  
+  '' !== []
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\mail-form-autofill.test.js:43:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\mail-form-autofill.test.js:47:3
+✖ standalone order page: a completed order resets both snapshots and accepts the next saved address (3.8569ms)
+  AssertionError [ERR_ASSERTION]: Got unwanted exception.
+  Actual message: "Cannot set properties of undefined (setting 'val')"
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\mail-form-autofill.test.js:52:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: TypeError: Cannot set properties of undefined (setting 'val')
+        at Object.setOneFormVal (B:\zhumian\zm\kaidi\miniprogram\cmpts\public\form\form_show\form_show_cmpt.js:531:20)
+        at B:\zhumian\zm\kaidi\miniprogram\projects\crun\pages\mail\add\mail_add_logic.js:568:41
+        at Array.forEach (<anonymous>)
+        at Object.resetAfterPublish (B:\zhumian\zm\kaidi\miniprogram\projects\crun\pages\mail\add\mail_add_logic.js:568:20)
+        at B:\zhumian\zm\kaidi\scripts\tests\mail-form-autofill.test.js:52:38
+        at getActual (node:assert:611:5)
+        at strict.doesNotThrow (node:assert:779:32)
+        at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\mail-form-autofill.test.js:52:12)
+        at async Test.run (node:internal/test_runner/test:1389:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    expected: undefined,
+    operator: 'doesNotThrow',
+    diff: 'simple'
+  }
+
+test at scripts\tests\mail-form-autofill.test.js:36:3
+✖ embedded home form: saved defaults update the real form without changing image types (6.2413ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  
+  '' !== []
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\mail-form-autofill.test.js:43:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\mail-form-autofill.test.js:47:3
+✖ embedded home form: a completed order resets both snapshots and accepts the next saved address (3.9403ms)
+  AssertionError [ERR_ASSERTION]: Got unwanted exception.
+  Actual message: "Cannot set properties of undefined (setting 'val')"
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\mail-form-autofill.test.js:52:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: TypeError: Cannot set properties of undefined (setting 'val')
+        at Object.setOneFormVal (B:\zhumian\zm\kaidi\miniprogram\cmpts\public\form\form_show\form_show_cmpt.js:531:20)
+        at B:\zhumian\zm\kaidi\miniprogram\projects\crun\pages\mail\add\mail_add_logic.js:568:41
+        at Array.forEach (<anonymous>)
+        at Object.resetAfterPublish (B:\zhumian\zm\kaidi\miniprogram\projects\crun\pages\mail\add\mail_add_logic.js:568:20)
+        at B:\zhumian\zm\kaidi\scripts\tests\mail-form-autofill.test.js:52:38
+        at getActual (node:assert:611:5)
+        at strict.doesNotThrow (node:assert:779:32)
+        at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\mail-form-autofill.test.js:52:12)
+        at async Test.run (node:internal/test_runner/test:1389:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    expected: undefined,
+    operator: 'doesNotThrow',
+    diff: 'simple'
+  }
+
+test at scripts\tests\mail-form-autofill.test.js:73:1
+✖ an older profile response cannot undo a more recently saved default address (3.4057ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  '一期 旧地址' !== '一期 新地址'
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\mail-form-autofill.test.js:80:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '一期 旧地址',
+    expected: '一期 新地址',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

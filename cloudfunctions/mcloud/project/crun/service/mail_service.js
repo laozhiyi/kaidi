@@ -5,6 +5,7 @@ const UserModel = require('../model/user_model.js');
 const ConfigService = require('./operation_config_service.js');
 const store = require('./operation_store.js');
 const rules = require('./order_rules.js');
+const profileRules = require('./profile_rules.js');
 const media = require('./private_media_service.js');
 const REQUEST_ROUTES = {publish:'mail/insert',edit:'mail/edit',accept:'mail/accept',pickup:'mail/pickup',cancel:'mail/cancel',deliver:'mail/deliver',update_proof:'mail/update_proof',confirm:'mail/finish',exception:'mail/exception',archive:'mail/del',hold:'admin/operations_hold',resolve:'admin/operations_resolve',admin_delete:'admin/operations_delete_order'};
 class MailService extends Base {
@@ -14,12 +15,14 @@ class MailService extends Base {
   if (!userId) this.AppError('请先登录');
   const user = await UserModel.getOne({ USER_MINI_OPENID:userId });
   if (!user || user.USER_STATUS !== 1) this.AppError('请先完成注册审核，或联系管理员解除停用');
+  if (!profileRules.isReady(user)) this.AppError('请先微信登录并补全个人资料');
   return user;
  }
  async _actor(tx, actor) {
-  if (actor.adminId) { const admin = await store.get(tx,'admin',actor.adminId); if (!admin || admin._pid !== this.getProjectId() || admin.ADMIN_STATUS !== 1) this.AppError('管理员已停用'); return admin; }
+  if (actor.adminId) { const admin = await store.get(tx,'admin',actor.adminId); const tenant = require('../../../framework/tenancy/tenant_context.js'); if (!tenant.isAdminEnabled(admin) || admin._pid !== this.getProjectId()) this.AppError('管理员已停用'); return admin; }
   const user = await store.get(tx,'user',actor.user._id);
   if (!user || user._pid !== this.getProjectId() || user.USER_MINI_OPENID !== actor.userId || user.USER_STATUS !== 1) this.AppError('用户状态已变更');
+  if (!profileRules.isReady(user)) this.AppError('请先微信登录并补全个人资料');
   return user;
  }
  _request(value) { if (typeof value !== 'string' || !/^[a-zA-Z0-9_-]{16,100}$/.test(value)) this.AppError('请求标识无效，请刷新后重试'); return value; }
@@ -36,11 +39,13 @@ class MailService extends Base {
    : {id:seen.orderId,statusDesc:this.getStatusDesc(mail)};
  }
  async _seed(userId, role) {
-  if (await store.get(store.database(), 'order_quota', store.key(this.getProjectId(), userId, role))) return [];
-  return (await MailModel.getAll({ [role === 'rider' ? 'MAIL_ACCEPT_USER_ID' : 'MAIL_USER_ID']:userId, MAIL_ADMIN_DELETED:['<>',true], MAIL_STATUS:['in',role === 'rider' ? rules.ACTIVE : [0,...rules.ACTIVE]] },'_id',{},1000)).map(x => x._id);
+  if (await store.get(store.database(), 'order_quota', store.scopeKey(this.getProjectId(), userId, role))) return [];
+  const rows = await MailModel.getAll({ [role === 'rider' ? 'MAIL_ACCEPT_USER_ID' : 'MAIL_USER_ID']:userId, MAIL_ADMIN_DELETED:['<>',true], MAIL_STATUS:['in',role === 'rider' ? rules.ACTIVE : [0,...rules.ACTIVE]] },'_id',{},1000);
+  if (rows.length >= 1000) this.AppError('历史在途订单数量异常，请先完成配额核验');
+  return rows.map(x => x._id);
  }
  async _quota(tx, userId, role, orderId, add, maximum, seed = []) {
-  const id = store.key(this.getProjectId(),userId,role); const old = await store.get(tx,'order_quota',id);
+  const id = store.scopeKey(this.getProjectId(),userId,role); const old = await store.get(tx,'order_quota',id);
   if (!old && !add) return;
   let active = [...new Set(old && old.active || seed)].filter(x => x !== orderId);
   // A legacy seed was read before the transaction. Recheck it in the transaction
@@ -58,9 +63,11 @@ class MailService extends Base {
   await store.set(tx,'order_quota',id,{ _pid:this.getProjectId(), userId, role, active, updatedAt:Date.now() });
  }
  async _record(tx, mail, actor, action, requestId, note = '', fingerprint = '', sourceFingerprint = '') {
+  await store.assertRequestScope(tx,this.getProjectId(),actor.adminId || actor.userId,REQUEST_ROUTES[action] || action,requestId);
   const now = Date.now(); const version = Number(mail.MAIL_VERSION || 0) + 1;
   const event = { id:store.key(mail._id,version), action, status:mail.MAIL_STATUS, at:now, actor:actor.adminId ? 'admin' : actor.userId === mail.MAIL_USER_ID ? 'poster' : 'rider', note };
   mail.MAIL_VERSION = version; mail.MAIL_EDIT_TIME = now;
+  mail.workerShard=parseInt(store.key(mail._id).slice(0,8),16)%16;
   mail.MAIL_HISTORY = [...(Array.isArray(mail.MAIL_HISTORY) ? mail.MAIL_HISTORY : []),event].slice(-100);
   await store.set(tx,'mail',mail._id,mail);
   await store.set(tx,'order_event',event.id,{ _pid:this.getProjectId(), orderId:mail._id, ...event, proof:mail.MAIL_DELIVERY_PROOF || null, exception:mail.MAIL_EXCEPTION || null, actorId:actor.adminId || actor.userId });
@@ -68,7 +75,8 @@ class MailService extends Base {
   // Only an opaque revision leaves the server. The signal and order commit
   // together; 64 shards avoid a single global counter on every order write.
   const shard = parseInt(store.key(mail._id).slice(0, 8), 16) % 64;
-  await store.set(tx, 'order_feed', this.getProjectId() + '_' + shard, {
+  const scope = store.scope();
+  await store.set(tx, 'order_feed', scope ? store.scopeKey(this.getProjectId(), 'feed', shard) : this.getProjectId() + '_' + shard, {
    _pid: this.getProjectId(), shard, revision: event.id, updatedAt: now
   });
   for (const userId of new Set([mail.MAIL_USER_ID,mail.MAIL_ACCEPT_USER_ID].filter(Boolean))) {
@@ -89,6 +97,7 @@ class MailService extends Base {
    const normalized=rules.validateForms(input.forms,config,Date.now());rules.requireOpen(config,Date.now());
    await this._quota(tx,userId,'poster',id,true,config.maxOpenOrders,seed);
    const mail = { _id:id,_pid:this.getProjectId(),MAIL_ID:'MAIL'+id.slice(0,28),MAIL_PUBLISH_FINGERPRINT:fingerprint,MAIL_STATUS:0,MAIL_USER_ID:userId,MAIL_USER_NAME:user.USER_NAME,MAIL_ACCEPT_USER_ID:'',MAIL_ORDER:9999,MAIL_CATE_ID:rules.SERVICES[normalized.obj.serviceType].id,MAIL_CATE_NAME:rules.SERVICES[normalized.obj.serviceType].name,MAIL_OBJ:normalized.obj,MAIL_FORMS:normalized.forms,MAIL_END_TIME:normalized.endTime,MAIL_TOTAL_FEE:normalized.totalFee,MAIL_PAYMENT_MODE:'offline',MAIL_PAY_STATUS:0,MAIL_ADD_TIME:now,MAIL_ACCEPT_TIME:0,MAIL_OVER_TIME:0,MAIL_DELIVERY_MINUTES:normalized.obj.urgent ? config.urgentMinutes : config.deliveryMinutes };
+   mail.MAIL_SCHEMA_VERSION=normalized.schemaVersion; mail.MAIL_RULE_SNAPSHOT=normalized.ruleSnapshot;
    await this._record(tx,mail,{userId},'publish',input.requestId,'发布订单；线下结算',fingerprint,input._sourceFingerprint || '');
    return {id:mail.MAIL_ID,_id:id,fee:normalized.totalFee/100,paymentMode:'offline'};
   });
@@ -114,7 +123,7 @@ class MailService extends Base {
     if (poster) this.AppError('不能接取自己发布的订单');
     if (mail.MAIL_END_TIME <= now) this.AppError('该订单已超过接单截止时间');
     if (mail.MAIL_PAYMENT_MODE !== 'offline') this.AppError('旧支付订单须先由管理员核对，不能直接接单');
-    if (!config.campuses.includes(mail.MAIL_OBJ.campus)) this.AppError('该订单校区暂不在服务范围');
+    if (!store.scope() && !config.campuses.includes(mail.MAIL_OBJ.campus)) this.AppError('该订单校区暂不在服务范围');
     await this._quota(tx,userId,'rider',id,true,config.maxActiveOrders,seed);
     mail.MAIL_STATUS = 1; mail.MAIL_ACCEPT_USER_ID = userId; mail.MAIL_ACCEPT_USER_NAME = currentUser.USER_NAME; mail.MAIL_ACCEPT_TIME = now;
     mail.MAIL_DUE_TIME = now + (mail.MAIL_DELIVERY_MINUTES || config.deliveryMinutes) * 60000;
@@ -152,6 +161,7 @@ class MailService extends Base {
     if (normalized.obj.serviceType !== (mail.MAIL_OBJ.serviceType || 'take')) this.AppError('不能修改订单服务类型');
     if (mail.MAIL_PAYMENT_MODE !== 'offline') this.AppError('旧支付订单不可编辑，请联系管理员核对');
     Object.assign(mail,{MAIL_CATE_ID:rules.SERVICES[normalized.obj.serviceType].id,MAIL_CATE_NAME:rules.SERVICES[normalized.obj.serviceType].name,MAIL_OBJ:normalized.obj,MAIL_FORMS:normalized.forms,MAIL_END_TIME:normalized.endTime,MAIL_TOTAL_FEE:normalized.totalFee,MAIL_DELIVERY_MINUTES:normalized.obj.urgent ? config.urgentMinutes : config.deliveryMinutes});
+    mail.MAIL_SCHEMA_VERSION=normalized.schemaVersion; mail.MAIL_RULE_SNAPSHOT=normalized.ruleSnapshot;
    } else if (action === 'archive') {
     if (!poster || ![9,99].includes(state)) this.AppError('仅可隐藏已结束的本人订单'); mail.MAIL_POSTER_ARCHIVED = true;
    } else this.AppError('不支持的订单操作');
@@ -251,15 +261,16 @@ class MailService extends Base {
     if (name === 'MAIL_OBJ.urgent' && typeof value === 'boolean') where.and[name] = value;
     else if (name === 'MAIL_OBJ.campus' && typeof value === 'string') where.and[name] = rules.text(value,'校区',30,true);
     // 兼容旧版地点参数，地点筛选统一匹配送达地址。
-    else if (['MAIL_OBJ.address2', 'MAIL_OBJ.address1'].includes(name) && Array.isArray(value) && value.length === 2 && value[0] === 'like' && ['一期','二期','三期','四期','五期'].includes(value[1])) where.and['MAIL_OBJ.address2'] = value;
+    else if (['MAIL_OBJ.address2', 'MAIL_OBJ.address1'].includes(name) && Array.isArray(value) && value.length === 2 && value[0] === 'like' && (store.scope() ? store.scope().campus.locations.phases : require('./delivery_address.js').PHASES).includes(value[1])) where.and['MAIL_OBJ.address2'] = ['like', String(value[1]).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')];
     else this.AppError('不允许的筛选条件');
    }
   }
   let order = {MAIL_ADD_TIME:'desc'};
   if (input.orderBy && Object.keys(input.orderBy).length) { if (Object.keys(input.orderBy).length !== 1 || !['MAIL_ADD_TIME','MAIL_OBJ.price'].includes(Object.keys(input.orderBy)[0]) || !['asc','desc'].includes(Object.values(input.orderBy)[0])) this.AppError('排序参数无效'); order = input.orderBy; }
   order = { ...order, _id: 'desc' };
-  // Read the submitted address with the order; private forms are removed from the response below.
-  const fields = '_id,_pid,MAIL_ID,MAIL_USER_ID,MAIL_ACCEPT_USER_ID,MAIL_STATUS,MAIL_END_TIME,MAIL_ADD_TIME,MAIL_ACCEPT_TIME,MAIL_PICKUP_TIME,MAIL_OVER_TIME,MAIL_TOTAL_FEE,MAIL_PAYMENT_MODE,MAIL_CATE_ID,MAIL_CATE_NAME,MAIL_DUE_TIME,MAIL_DELIVERED_TIME,MAIL_OBJ,MAIL_FORMS,MAIL_VERSION';
+  // Resolve submitted addresses and legacy milestone times before removing
+  // private forms and event history from the response below.
+  const fields = '_id,_pid,MAIL_ID,MAIL_USER_ID,MAIL_ACCEPT_USER_ID,MAIL_STATUS,MAIL_END_TIME,MAIL_ADD_TIME,MAIL_ACCEPT_TIME,MAIL_PICKUP_TIME,MAIL_OVER_TIME,MAIL_TOTAL_FEE,MAIL_PAYMENT_MODE,MAIL_CATE_ID,MAIL_CATE_NAME,MAIL_DUE_TIME,MAIL_DELIVERED_TIME,MAIL_OBJ,MAIL_FORMS,MAIL_HISTORY,MAIL_VERSION';
   const field = Object.keys(order)[0], direction = order[field];
   const cursor = input.cursor;
   if (cursor && (typeof cursor !== 'object' || cursor.field !== field || cursor.direction !== direction
@@ -268,14 +279,15 @@ class MailService extends Base {
    { [field]: [direction === 'asc' ? '>' : '<', cursor.value] },
    { [field]: cursor.value, _id: ['<', cursor.id] }
   ] }] } : where;
+  const countRequired=input.isTotal!==false || !cursor && page>1;
   const [rows, total] = await Promise.all([
    cursor || page === 1 ? MailModel.getAll(JSON.parse(JSON.stringify(query)), fields, order, size + 1)
     : MailModel.getList(JSON.parse(JSON.stringify(query)), fields, order, page, size, false, 0).then(result => result.list),
-   MailModel.count(JSON.parse(JSON.stringify(where)))
+   countRequired ? MailModel.count(JSON.parse(JSON.stringify(where))) : Promise.resolve(Number(input.oldTotal)||0)
   ]);
   const list = rows.slice(0, size), last = list[list.length - 1];
   const value = last && (field === 'MAIL_ADD_TIME' ? last.MAIL_ADD_TIME : (last.MAIL_OBJ || {}).price);
-  const result = { list, page, size, total, count: Math.ceil(total / size),
+  const result = { list, page, size, total, totalExact:countRequired, count: Math.ceil(total / size),
    hasMore: cursor || page === 1 ? rows.length > size : page * size < total,
    nextCursor: last && Number.isFinite(value) ? { field, direction, value, id: last._id } : null };
   await new (require('./review_service.js'))().decorateOrders(userId, result.list);

@@ -4,6 +4,7 @@ const ProjectBiz = require('../../../biz/project_biz.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
 const Notifications = require('../../../biz/notification_biz.js');
 const OrderSync = require('../../../biz/order_sync_biz.js');
+const Tenant = require('../../../biz/tenant_biz.js');
 function invalidateOrderLists() {
  if (!wx.removeStorageSync) return;
  for (const key of ['order-mail-take', 'order-mail-mine', 'order-mail-posted', 'order-mail-done']) wx.removeStorageSync(key.toUpperCase() + '_LIST');
@@ -22,13 +23,17 @@ Page({
   this._openPanelAfterLoad = ['deliver', 'update_proof'].includes(options.panel) ? options.panel : '';
   this._confirmAfterLoad = options.action === 'confirm';
   this._notificationId = options.notificationId || '';
+  this._linkScope = options.schoolId || options.campusId ? {schoolId:options.schoolId,campusId:options.campusId} : null;
   this.setData({ id: typeof options.id === 'string' ? options.id.trim() : '' });
  },
  onShow() {
   this._visible = true;
+  if (!this._linkScope) this._startOrderSync();
+  return this.load();
+ },
+ _startOrderSync() {
   if (this._stopOrderSync) this._stopOrderSync();
   this._stopOrderSync = OrderSync.subscribe(() => this.load({ silent: true }));
-  return this.load();
  },
  onHide() {
   this._visible = false; this._seq = (this._seq || 0) + 1; this._clearConfirmTimer();
@@ -56,9 +61,18 @@ Page({
   }
   const seq = this._seq = (this._seq || 0) + 1;
   this.setData({ loading: !this.data.mail, error: false, errorMessage: '', notFound: false });
-  // Subscription/config is optional: a failed or slow request must not block the order.
-  if (!options.silent || !this.data.config) this._loadConfig(seq);
   try {
+   if (this._linkScope) {
+    // A subscription may be opened while another campus is saved locally.
+    // Validate the link against the directory before any order/config reads.
+    await Tenant.directory(() => Ops.get('tenant/catalog'), true);
+    if (!this._visible || seq !== this._seq) return;
+    Tenant.select(this._linkScope, {reload:false});
+    this._linkScope = null;
+    this._startOrderSync();
+   }
+   // Subscription/config is optional: a failed or slow request must not block the order.
+   if (!options.silent || !this.data.config) this._loadConfig(seq);
    const mail = await Ops.get('mail/view', { id: this.data.id });
    if (!this._visible || seq !== this._seq) return;
    if (!mail || !mail._id) {

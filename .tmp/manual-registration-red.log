@@ -1,0 +1,664 @@
+[wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+[wechat-phone-login] { stage: 'native_callback', reason: 'unsupported', errCode: null }
+[wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+[wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+[wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+[wechat-phone-login] {
+  stage: 'cloud_failure',
+  reason: 'environment_missing',
+  errCode: null
+}
+[wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+[wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+[wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+[wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+[wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+[wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+[wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+[wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+[wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+✔ custom campus selection previews a choice, cancels cleanly, and commits only a valid option (6.6891ms)
+✔ saving personal information persists the selected campus and preserves other saved fields (3.8365ms)
+✔ editing cached personal information is not overwritten by a background response (2.8341ms)
+✔ contact editor retains drafts on save failure and preserves the default flag after retry (3.3895ms)
+✔ address editor retains drafts on save failure and preserves the default flag after retry (3.1619ms)
+✔ collection saves coalesce repeated taps and do not discard an editor before the request completes (3.2814ms)
+✔ deleting a preceding contact keeps the current edit attached to the same person (2.9645ms)
+✔ every personal-center entry reaches its intended destination and private entries respect login cancellation (7.3539ms)
+✔ settings clears cached profile data while keeping login, drafts and pending requests (6.7762ms)
+✔ clearing caches prevents older requests from restoring stale profile and campus entries (2.6761ms)
+✔ registration keeps the returned login token, binds the invitation, and returns to the requesting page (3.6238ms)
+✔ registration requiring review does not grant an active login token (3.6818ms)
+✖ unsupported native capabilities open manual registration and submit without reading WeChat data (5.3871ms)
+✖ manual entry is available even when the native button never invokes its callback (2.8708ms)
+✖ unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail","errno":102} (4.9389ms)
+✖ unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail not support"} (4.5176ms)
+✖ strict mode and old configurations do not offer manual registration after native failures (5.203ms)
+✖ manual registration policy survives shared cache reads and is revoked by fresh configuration (2.6853ms)
+✖ manual accounts remain on their personal pages instead of looping back to phone authorization (5.2142ms)
+✖ manual registration recovers a lost save response before returning to the original feature (5.1253ms)
+✖ phone authorization after manual entry keeps drafts and applies the verified phone (4.6418ms)
+✔ new registration shows WeChat login first and resumes an incomplete authorized profile (2.9766ms)
+✔ an empty cloud success envelope is a guest and never forces a spurious completion redirect (3.2202ms)
+✔ denied authorization and duplicate taps never bypass the WeChat login stage (2.9367ms)
+✔ registration visibly explains native phone capability failures and releases the button (5.7898ms)
+✔ registration exposes cloud setup failures and can succeed after a fresh authorization (6.1107ms)
+✔ phone reauthorization preserves an unsaved nickname and requires server-confirmed data (2.5143ms)
+✔ a completed registration with a lost response refreshes the session before returning to the business page (4.352ms)
+✔ a failed session refresh after profile completion stays retryable instead of reopening a blocked feature (4.0056ms)
+✔ an older guest profile response cannot overwrite a successful phone login (4.1815ms)
+✔ an older guest profile failure cannot overwrite a successful phone login (4.0406ms)
+✔ favorite mutations ignore repeated taps while login or saving is in flight (7.7946ms)
+✔ feedback detail can retry a failed request and formats returned timestamps (1.4538ms)
+✔ invitation links survive a warm app launch and network failure, then clear after a successful bind (2.7881ms)
+✔ invite records paginate without recreating codes and sharing carries the current code (0.8675ms)
+✔ favorites can search, open and remove records, and retain data on a failed removal (0.8281ms)
+✔ sent and received reviews have independent pages, queries and late-response lifecycles (2.0603ms)
+✔ address edits require one of the five phases and preserve the existing detail during selection (2.6187ms)
+Error: 网络中断
+    at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\my-page-features.test.js:583:18)
+    at async Test.run (node:internal/test_runner/test:1389:7)
+    at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+✔ feedback prevents duplicate clicks, preserves a failed draft and retries its original content (1.2311ms)
+✔ both review lists retain display fields only and offer no completed-order navigation (1.8627ms)
+✔ review lists preserve legacy names and recover missing avatars without clearing a refreshed image (1.696ms)
+✔ feedback image controls enforce the supported six-image limit and submit functional feedback as a suggestion (0.6399ms)
+✔ messages remain available when optional subscription configuration hangs and malformed dates are tolerated (2.816ms)
+✔ shared profile templates and all personal-center pages bind existing event handlers (6.5191ms)
+✔ cached account {"phoneVerified":false} cannot pass the business login gate (1.9738ms)
+✔ cached account {"profileComplete":false} cannot pass the business login gate (0.5617ms)
+✔ cached account {"status":0} cannot pass the business login gate (0.6264ms)
+✔ cached account {"status":8} cannot pass the business login gate (0.5611ms)
+✔ cached account {"status":9} cannot pass the business login gate (0.522ms)
+✔ legacy cached tokens must refresh readiness before being used (0.6099ms)
+✔ phone authorization sends only the one-time code and retains the incomplete authenticated session (1.7506ms)
+✔ declined authorization makes no cloud call and preserves an existing session (0.9136ms)
+✖ native phone failure cancelled has its own explanation without calling the cloud (1.0191ms)
+✖ native phone failure privacy has its own explanation without calling the cloud (0.6646ms)
+✖ native phone failure permission_denied has its own explanation without calling the cloud (0.5684ms)
+✖ native phone failure permission_denied has its own explanation without calling the cloud (0.5384ms)
+✖ native phone failure unsupported has its own explanation without calling the cloud (0.5841ms)
+✖ native phone failure missing_code has its own explanation without calling the cloud (0.6114ms)
+✔ cloud phone failure environment_missing survives the generic SDK wrapper message (0.6476ms)
+✔ cloud phone failure function_missing survives the generic SDK wrapper message (0.5897ms)
+✔ cloud phone failure timeout survives the generic SDK wrapper message (0.5694ms)
+✔ phone diagnostics identify the failing boundary without exposing authorization data (0.6939ms)
+✔ an earlier silent login reply cannot overwrite a completed phone login (0.605ms)
+✔ partial accounts are sent to the completion page while keeping the original destination (0.6454ms)
+✖ server-enabled manual accounts can use features without claiming a verified phone (0.7902ms)
+✖ manual account status 0 still blocks business access with the correct explanation (0.6343ms)
+✖ manual account status 8 still blocks business access with the correct explanation (0.5488ms)
+✔ manual account status 9 still blocks business access with the correct explanation (0.4825ms)
+✖ manual sessions revalidate the server policy so strict mode takes effect without clearing storage (0.6154ms)
+✔ failed phone exchanges retain only the numeric provider error in diagnostics (16.2263ms)
+✔ hand-entered registration cannot claim a verified WeChat phone or active account (8.7249ms)
+✔ editing a verified profile preserves the verified phone and updates login details (9.0175ms)
+✔ a direct profile edit cannot replace the phone with an unverified number (7.9163ms)
+✔ server requires the registration field sex even when the page is bypassed (6.9987ms)
+✔ server requires the registration field college even when the page is bypassed (7.3015ms)
+✔ server requires the registration field sub even when the page is bypassed (9.216ms)
+✔ server requires the registration field campus even when the page is bypassed (6.8415ms)
+✔ active status alone does not permit business access with an incomplete or unverified profile (6.701ms)
+✔ order transactions recheck profile readiness after the initial user check (6.3525ms)
+✔ WeChat phone login creates one incomplete account and only completed registration enables business (10.1515ms)
+✔ first profile completion obeys the current school review rule and ignores client status (10.73ms)
+✔ phone ownership is exclusive across campuses of a school and isolated between schools (8.125ms)
+✔ failed, expired, mismatched-app and malformed phone authorizations create no account (36.3029ms)
+✔ authorization cannot revive a disabled account or bypass rejected registration (10.2946ms)
+✔ successful phone rebinding rejects a stale profile save and releases only its own old phone (7.6516ms)
+✖ manual registration uses the cloud identity, leaves the phone unverified, and permits publishing (6.5598ms)
+✖ public configuration advertises only the server-selected manual registration policy (7.127ms)
+✖ existing unverified profiles can be completed and edited without native authorization (6.448ms)
+✖ manual registration still obeys school review and disabled or rejected account states (6.7275ms)
+✔ manual registration retains required fields and cannot create accounts without identity (8.3674ms)
+✖ concurrent manual registrations enforce school phone ownership and create one account (7.1447ms)
+✖ manual registration detects legacy phone owners even before the uniqueness index is seeded (6.9323ms)
+✔ enabling manual registration never lets an already verified phone be replaced by typing (7.5005ms)
+✖ restoring strict mode blocks manual accounts in login eligibility and in-flight business transactions (6.9283ms)
+✖ manual profile saves recheck concurrent account changes {"USER_STATUS":9} (7.5964ms)
+✖ manual profile saves recheck concurrent account changes {"USER_MOBILE":"13987654321","USER_MOBILE_VERIFIED":true} (9.025ms)
+ℹ tests 96
+ℹ suites 0
+ℹ pass 68
+ℹ fail 28
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 320.4627
+
+✖ failing tests:
+
+test at scripts\tests\my-page-features.test.js:254:1
+✖ unsupported native capabilities open manual registration and submit without reading WeChat data (5.3871ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - true
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\my-page-features.test.js:261:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\my-page-features.test.js:283:1
+✖ manual entry is available even when the native button never invokes its callback (2.8708ms)
+  AssertionError [ERR_ASSERTION]: the user must be able to skip a hanging native button
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\my-page-features.test.js:286:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\my-page-features.test.js:294:3
+✖ unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail","errno":102} (4.9389ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - true
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\my-page-features.test.js:299:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\my-page-features.test.js:294:3
+✖ unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail not support"} (4.5176ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - true
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\my-page-features.test.js:299:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\my-page-features.test.js:309:1
+✖ strict mode and old configurations do not offer manual registration after native failures (5.203ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\my-page-features.test.js:312:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\my-page-features.test.js:322:1
+✖ manual registration policy survives shared cache reads and is revoked by fresh configuration (2.6853ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - true
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\my-page-features.test.js:326:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\my-page-features.test.js:332:1
+✖ manual accounts remain on their personal pages instead of looping back to phone authorization (5.2142ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\my-page-features.test.js:337:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\my-page-features.test.js:346:1
+✖ manual registration recovers a lost save response before returning to the original feature (5.1253ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /回包丢失/. Input:
+  
+  '请先授权微信手机号'
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\my-page-features.test.js:354:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '请先授权微信手机号',
+    expected: /回包丢失/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts\tests\my-page-features.test.js:362:1
+✖ phone authorization after manual entry keeps drafts and applies the verified phone (4.6418ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\my-page-features.test.js:365:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-client.test.js:75:3
+✖ native phone failure cancelled has its own explanation without calling the cloud (1.0191ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  Error: 已取消手机号授权，可再次点击登录
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: 已取消手机号授权，可再次点击登录
+        at PassportBiz.loginByWechatPhone (evalmachine.<anonymous>:187:10)
+        at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:37)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1382:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+        at Test.postRun (node:internal/test_runner/test:1522:19)
+        at Test.run (node:internal/test_runner/test:1447:12)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-client.test.js:75:3
+✖ native phone failure privacy has its own explanation without calling the cloud (0.6646ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  Error: 手机号授权被微信隐私设置拦截，请联系管理员
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: 手机号授权被微信隐私设置拦截，请联系管理员
+        at PassportBiz.loginByWechatPhone (evalmachine.<anonymous>:187:10)
+        at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:37)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1382:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+        at Test.postRun (node:internal/test_runner/test:1522:19)
+        at Test.run (node:internal/test_runner/test:1447:12)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-client.test.js:75:3
+✖ native phone failure permission_denied has its own explanation without calling the cloud (0.5684ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  Error: 当前小程序暂无手机号获取权限，请联系管理员检查服务开通状态
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: 当前小程序暂无手机号获取权限，请联系管理员检查服务开通状态
+        at PassportBiz.loginByWechatPhone (evalmachine.<anonymous>:187:10)
+        at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:37)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1382:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+        at Test.postRun (node:internal/test_runner/test:1522:19)
+        at Test.run (node:internal/test_runner/test:1447:12)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-client.test.js:75:3
+✖ native phone failure permission_denied has its own explanation without calling the cloud (0.5384ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  Error: 当前小程序暂无手机号获取权限，请联系管理员检查服务开通状态
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: 当前小程序暂无手机号获取权限，请联系管理员检查服务开通状态
+        at PassportBiz.loginByWechatPhone (evalmachine.<anonymous>:187:10)
+        at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:37)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1382:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+        at Test.postRun (node:internal/test_runner/test:1522:19)
+        at Test.run (node:internal/test_runner/test:1447:12)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-client.test.js:75:3
+✖ native phone failure unsupported has its own explanation without calling the cloud (0.5841ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  Error: 当前微信不支持手机号授权，请更新微信后重试
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: 当前微信不支持手机号授权，请更新微信后重试
+        at PassportBiz.loginByWechatPhone (evalmachine.<anonymous>:187:10)
+        at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:37)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1382:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+        at Test.postRun (node:internal/test_runner/test:1522:19)
+        at Test.run (node:internal/test_runner/test:1447:12)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-client.test.js:75:3
+✖ native phone failure missing_code has its own explanation without calling the cloud (0.6114ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  Error: 微信未返回手机号授权结果，请重新授权
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: 微信未返回手机号授权结果，请重新授权
+        at PassportBiz.loginByWechatPhone (evalmachine.<anonymous>:187:10)
+        at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:37)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1382:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+        at Test.postRun (node:internal/test_runner/test:1522:19)
+        at Test.run (node:internal/test_runner/test:1447:12)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-client.test.js:131:1
+✖ server-enabled manual accounts can use features without claiming a verified phone (0.7902ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:134:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-client.test.js:141:3
+✖ manual account status 0 still blocks business access with the correct explanation (0.6343ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /审核|禁用/. Input:
+  
+  '请先授权微信手机号并完善个人资料，再使用此功能。'
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:145:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '请先授权微信手机号并完善个人资料，再使用此功能。',
+    expected: /审核|禁用/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-client.test.js:141:3
+✖ manual account status 8 still blocks business access with the correct explanation (0.5488ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /审核|禁用/. Input:
+  
+  '请先授权微信手机号并完善个人资料，再使用此功能。'
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:145:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '请先授权微信手机号并完善个人资料，再使用此功能。',
+    expected: /审核|禁用/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-client.test.js:150:1
+✖ manual sessions revalidate the server policy so strict mode takes effect without clearing storage (0.6154ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:154:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-service.test.js:177:1
+✖ manual registration uses the cloud identity, leaves the phone unverified, and permits publishing (6.5598ms)
+  Error [AppError]: 请先使用微信手机号授权登录
+      at PassportService.AppError (B:\zhumian\zm\kaidi\scripts\test-support\tenant-services.cjs:20:116)
+      at PassportService._saveProfile (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\passport_service.js:22:65)
+      at async PassportService.register (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\passport_service.js:52:31)
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-service.test.js:179:18)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    code: 1600
+  }
+
+test at scripts\tests\wechat-login-service.test.js:196:1
+✖ public configuration advertises only the server-selected manual registration policy (7.127ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - true
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-service.test.js:199:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-service.test.js:204:1
+✖ existing unverified profiles can be completed and edited without native authorization (6.448ms)
+  Error [AppError]: 请先使用微信手机号授权登录
+      at PassportService.AppError (B:\zhumian\zm\kaidi\scripts\test-support\tenant-services.cjs:20:116)
+      at PassportService._saveProfile (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\passport_service.js:22:65)
+      at async PassportService.register (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\passport_service.js:52:31)
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-service.test.js:207:18)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    code: 1600
+  }
+
+test at scripts\tests\wechat-login-service.test.js:217:1
+✖ manual registration still obeys school review and disabled or rejected account states (6.7275ms)
+  Error [AppError]: 请先使用微信手机号授权登录
+      at PassportService.AppError (B:\zhumian\zm\kaidi\scripts\test-support\tenant-services.cjs:20:116)
+      at PassportService._saveProfile (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\passport_service.js:22:65)
+      at async PassportService.register (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\passport_service.js:52:31)
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-service.test.js:220:22)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    code: 1600
+  }
+
+test at scripts\tests\wechat-login-service.test.js:243:1
+✖ concurrent manual registrations enforce school phone ownership and create one account (7.1447ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-service.test.js:249:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-service.test.js:261:1
+✖ manual registration detects legacy phone owners even before the uniqueness index is seeded (6.9323ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /登记/. Input:
+  
+  'AppError: 请先使用微信手机号授权登录'
+  
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-service.test.js:264:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: AppError: 请先使用微信手机号授权登录
+        at PassportService.AppError (B:\zhumian\zm\kaidi\scripts\test-support\tenant-services.cjs:20:116)
+        at PassportService._saveProfile (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\passport_service.js:22:65)
+        at async PassportService.register (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\passport_service.js:52:31)
+        at async waitForActual (node:assert:646:5)
+        at async strict.rejects (node:assert:769:25)
+        at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-service.test.js:264:3)
+        at async Test.run (node:internal/test_runner/test:1389:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    expected: /登记/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-service.test.js:275:1
+✖ restoring strict mode blocks manual accounts in login eligibility and in-flight business transactions (6.9283ms)
+  Error [AppError]: 请先使用微信手机号授权登录
+      at PassportService.AppError (B:\zhumian\zm\kaidi\scripts\test-support\tenant-services.cjs:20:116)
+      at PassportService._saveProfile (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\passport_service.js:22:65)
+      at async PassportService.register (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\passport_service.js:52:31)
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-service.test.js:277:3)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    code: 1600
+  }
+
+test at scripts\tests\wechat-login-service.test.js:293:3
+✖ manual profile saves recheck concurrent account changes {"USER_STATUS":9} (7.5964ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 9
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-service.test.js:303:66)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 9,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-service.test.js:293:3
+✖ manual profile saves recheck concurrent account changes {"USER_MOBILE":"13987654321","USER_MOBILE_VERIFIED":true} (9.025ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + '13912345678'
+  - '13987654321'
+        ^
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-service.test.js:303:66)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '13912345678',
+    expected: '13987654321',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

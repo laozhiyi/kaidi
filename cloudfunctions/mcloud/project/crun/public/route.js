@@ -6,11 +6,19 @@
  */
 
 module.exports = {
+ 'tenant/catalog': 'tenant_controller@catalog',
+ 'admin/tenant_directory': 'admin/admin_tenant_controller@directory',
+ 'admin/tenant_campus_detail': 'admin/admin_tenant_controller@campusDetail',
+ 'admin/tenant_account_detail': 'admin/admin_tenant_controller@accountDetail',
+ 'admin/tenant_school_save': 'admin/admin_tenant_controller@saveSchool',
+ 'admin/tenant_campus_save': 'admin/admin_tenant_controller@saveCampus',
+ 'admin/tenant_grant': 'admin/admin_tenant_controller@grantAdmin',
 'admin/operations_hold':'admin/admin_operations_controller@hold',
 "mail/deliver":"mail_controller@deliverMail",
 "mail/update_proof":"mail_controller@updateDeliveryProof",
 "mail/exception":"mail_controller@exceptionMail",
 "operations/config":"operations_controller@getConfig",
+"operations/feed":"operations_controller@feed",
 "operations/notifications":"operations_controller@notifications",
 "operations/summary":"operations_controller@notificationSummary",
 "operations/read":"operations_controller@markRead",
@@ -30,6 +38,7 @@ module.exports = {
 	'home/setup_get': 'home_controller@getSetup',
 
 	'passport/login': 'passport_controller@login',
+ 'passport/wechat_login': 'passport_controller@wechatLogin',
 	'passport/phone': 'passport_controller@getPhone',
 	'passport/my_detail': 'passport_controller@getMyDetail',
 	'passport/register': 'passport_controller@register',

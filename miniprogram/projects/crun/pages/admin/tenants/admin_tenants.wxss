@@ -1,0 +1,5 @@
+@import "../../../style/admin_console.wxss";
+.tenant-input{padding:20rpx 0;border-bottom:1rpx solid #e2e8f0;width:100%;box-sizing:border-box}
+.tenant-text{width:100%;min-height:160rpx;margin:16rpx 0;box-sizing:border-box}
+.tenant-picker{padding:20rpx 0;color:#2863db}
+.tenant-actions{display:flex;gap:16rpx;margin-top:20rpx}.tenant-actions button{flex:1;font-size:26rpx}

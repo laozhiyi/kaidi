@@ -1,7 +1,7 @@
 const UI = require('../../../../biz/admin_console_biz.js');
 const Ops = require('../../../../biz/operations_biz.js');
 Page({
-  data: { title: 'GXNU 随手取', path: '/projects/crun/pages/default/index/default_index', sc: 'qr', qrUrl: '', loading: false, error: '', imageError: false },
+  data: { title: '随手取', path: '/projects/crun/pages/default/index/default_index', sc: 'qr', qrUrl: '', loading: false, error: '', imageError: false },
   onLoad(options = {}) {
     if (!UI.start(this)) return;
     try {

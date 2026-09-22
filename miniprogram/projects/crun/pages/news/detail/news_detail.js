@@ -14,13 +14,15 @@ Page({
     const seq = this._seq = (this._seq || 0) + 1;
     this.setData({ error: false });
     try {
-      const news = await cloudHelper.callCloudData('news/view', { id: this.data.id }, { hint: false });
+      const result = await cloudHelper.callCloudSumbit('news/view', { id: this.data.id }, { hint: false });
+      if (!result || result.data === undefined) throw new Error('公告加载失败');
+      const news = result.data && Object.keys(result.data).length ? result.data : null;
       if (!this._visible || seq !== this._seq) return;
       this.setData({ isLoad: news ? true : null, news: news || null }, () => {
         if (news && this._visible && seq === this._seq) Notifications.markRead(news._id || this.data.id, 'news').catch(() => {});
       });
     } catch (error) {
-      if (this._visible && seq === this._seq) this.setData({ error: true, isLoad: false });
+      if (this._visible && seq === this._seq) this.setData({ error: true, isLoad: !!this.data.news });
     }
   },
   async onPullDownRefresh() { try { await this._loadDetail(); } finally { wx.stopPullDownRefresh(); } },

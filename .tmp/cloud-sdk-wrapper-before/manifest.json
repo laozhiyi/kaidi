@@ -1,0 +1,44 @@
+{
+  "files": [
+    {
+      "file": "cloudfunctions/mcloud/framework/cloud/cloud_base.js",
+      "sha256": "b25e2a2fbc143670d283d534751bc825632e424f52947b865102f23f422bf66f"
+    },
+    {
+      "file": "scripts/check-content-audit-sdk.cjs",
+      "sha256": "06dc3c727411e058dec4dbddfd82570cd2a2d515669eb33f06bde5a602346b12"
+    },
+    {
+      "file": "scripts/check-wechat-login-sdk.cjs",
+      "sha256": "882a0286df63b62a25211cfa8912dd821eb354181fca934b5f987071a907df95"
+    },
+    {
+      "file": "scripts/check-operations-sdk.cjs",
+      "sha256": "06aff06114ac28482e284471f53342603f8f5b48920d9f697d98737c0f76b5f6"
+    },
+    {
+      "file": "deployment/CONTENT_AUDIT.md",
+      "sha256": "9e4366dec664bbcdb5ce867bf993d288238bddf3db45fb90fb7ec38de68972b4"
+    },
+    {
+      "file": "deployment/WECHAT_LOGIN.md",
+      "sha256": "1809816fcbb78dd6e630468108a277c0ad2c6b1268b5d814936b45f28e033251"
+    },
+    {
+      "file": "deployment/MULTI_TENANT_ROLLOUT.md",
+      "sha256": "b73817bc4336fb7d439e2d485ac32f0b04b3eb9da3e86406db43da12c64446bb"
+    },
+    {
+      "file": "README.md",
+      "sha256": "52abe80b84e7612ce15597edd9cd368315c047d4c2c2d931a467840dc8862c80"
+    },
+    {
+      "file": "ARCHITECTURE_PROGRESS.md",
+      "sha256": "748f8afe6100bdb98d8f8773463390e1db34d1740e4ccd87b83d6f0f8f6ff1cc"
+    },
+    {
+      "file": "ADMIN_CONSOLE.md",
+      "sha256": "f74b93e1ab920585c857138f7067ec1767cd5e66d45012a6fea2527e7f71c2c1"
+    }
+  ]
+}

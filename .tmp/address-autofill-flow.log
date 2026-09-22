@@ -1,0 +1,22 @@
+✔ form setters match field marks when the parent supplies a different order (7.4365ms)
+✔ form setters tolerate extra values and restore missing field values (3.0382ms)
+✔ standalone order page: saved defaults update the real form without changing image types (5.3279ms)
+✔ standalone order page: a completed order resets both snapshots and accepts the next saved address (4.2358ms)
+✔ standalone order page: refreshing defaults preserves an edited or cleared draft: "本单临时地址" (2.5604ms)
+✔ standalone order page: refreshing defaults preserves an edited or cleared draft: "" (2.872ms)
+✔ embedded home form: saved defaults update the real form without changing image types (5.3901ms)
+✔ embedded home form: a completed order resets both snapshots and accepts the next saved address (3.8685ms)
+✔ embedded home form: refreshing defaults preserves an edited or cleared draft: "本单临时地址" (2.7411ms)
+✔ embedded home form: refreshing defaults preserves an edited or cleared draft: "" (3.1588ms)
+✔ an older profile response cannot undo a more recently saved default address (2.6092ms)
+✔ refreshing personal defaults does not replace an existing order being edited (3.5298ms)
+✔ saving the first common address fills the home form through the actual profile save methods (4.1669ms)
+✔ two consecutive home submissions use fresh parcel data and the refreshed default address (5.5551ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 112.33

@@ -1,0 +1,8 @@
+<view class="campus-selector">
+  <view wx:if="{{loading}}" class="campus-loading">正在读取学校目录…</view>
+  <view wx:if="{{!loading && error}}" bindtap="load" class="campus-error">{{error}} · 点击重试</view>
+  <block wx:if="{{!loading && schools.length}}">
+    <picker class="campus-picker" range="{{schools}}" range-key="name" value="{{schoolIndex}}" bindchange="schoolChange" disabled="{{disabled}}"><view class="campus-choice"><text class="campus-label campus-text">学校</text><text class="campus-text">{{schools[schoolIndex].name}}</text><text class="campus-text">⌄</text></view></picker>
+    <picker class="campus-picker" range="{{campuses}}" range-key="name" value="{{campusIndex < 0 ? 0 : campusIndex}}" bindchange="campusChange" disabled="{{disabled}}"><view class="campus-choice"><text class="campus-label campus-text">校区</text><text class="campus-text">{{campusIndex < 0 ? '请选择校区' : campuses[campusIndex].name}}</text><text class="campus-text">⌄</text></view></picker>
+  </block>
+</view>

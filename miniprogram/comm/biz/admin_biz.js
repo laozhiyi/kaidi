@@ -33,12 +33,17 @@ class AdminBiz extends BaseBiz {
 	}
 
 	static async adminLogin(that, name, pwd) {
+		name = typeof name === 'string' ? name.trim() : '';
 		if (!name || name.length > 30) {
 			wx.showToast({
-				title: '账号输入错误(5-30位)',
+				title: '请输入正确的管理员账号',
 				icon: 'none'
 			});
-			return;
+			return false;
+		}
+		if (typeof pwd !== 'string' || !pwd) {
+			wx.showToast({ title: '请输入登录密码', icon: 'none' });
+			return false;
 		}
 
 		let params = {
@@ -50,16 +55,16 @@ class AdminBiz extends BaseBiz {
 		};
 
 		try {
-			await cloudHelper.callCloudSumbit('admin/login', params, opt).then(res => {
-				if (res && res.data && res.data.name)
-					cacheHelper.set(constants.CACHE_ADMIN, res.data, constants.ADMIN_TOKEN_EXPIRE);
-
-				wx.reLaunch({
-					url: pageHelper.fmtURLByPID('/pages/admin/index/home/admin_home'),
-				});
-			});
+			const res = await cloudHelper.callCloudSumbit('admin/login', params, opt);
+			if (!res || !res.data || !res.data.name || typeof res.data.token !== 'string' || !res.data.token) {
+				wx.showToast({ title: '登录未完成，请重新登录', icon: 'none' });
+				return false;
+			}
+			cacheHelper.set(constants.CACHE_ADMIN, res.data, constants.ADMIN_TOKEN_EXPIRE);
+			wx.reLaunch({ url: pageHelper.fmtURLByPID('/pages/admin/index/home/admin_home') });
+			return true;
 		} catch (e) {
-			console.log(e);
+			return false;
 		}
 
 	}
@@ -141,10 +146,15 @@ class AdminBiz extends BaseBiz {
 		that.setData({
 			isAdmin: true,
 			isSuperAdmin: this.isSuperAdmin(),
+			isSchoolAdmin: this.isSchoolAdmin(),
 			admin
 		});
 		return true;
 	}
+	static isSchoolAdmin() {
+  const admin = this.getAdminToken();
+		return !!(admin && admin.token);
+ }
 
 }
 

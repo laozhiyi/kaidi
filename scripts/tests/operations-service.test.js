@@ -159,9 +159,12 @@ test('admin login verifies password before issuing a token and password changes 
 });
 
 test('registration is unique under racing calls and cannot self-authorize or edit a disabled profile',async()=>{
- const f=fixture(),svc=new (f.load('passport_service.js'))();f.config.registrationReview=true;const input={name:'同学',mobile:'13912345678',pic:'/avatar.png',forms:[],status:1};
- await Promise.all([svc.register('newuser',input),svc.register('newuser',input)]);const users=[...f.table('user').values()].filter(x=>x.USER_MINI_OPENID==='newuser');assert.equal(users.length,1);assert.equal(users[0].USER_STATUS,0);assert.equal(users[0].USER_MOBILE_VERIFIED,false);
- await assert.rejects(svc.register('newuser2',input),/登记/);f.user('blocked',{USER_STATUS:9});await assert.rejects(svc.editBase('blocked',{...input,mobile:'13987654321'}),/停用/);
+ const f=fixture(),svc=new (f.load('passport_service.js'))();f.config.registrationReview=true;const input={name:'同学',mobile:'13912345678',pic:'/avatar.png',forms:[{mark:'sex',val:'男'},{mark:'college',val:'计算机学院'},{mark:'sub',val:'软件工程'},{mark:'campus',val:'育才校区'}],status:1};
+ f.cloud.getWXContext=()=>({APPID:'wx3d8dc6fb0e764ec7'});
+ f.cloud.openapi.phonenumber={getPhoneNumber:async()=>({errCode:0,phoneInfo:{phoneNumber:input.mobile,purePhoneNumber:input.mobile,countryCode:'86',watermark:{appid:'wx3d8dc6fb0e764ec7'}}})};
+ await svc.wechatLogin('newuser',{code:'registration-phone-code'});
+ await Promise.all([svc.register('newuser',input),svc.register('newuser',input)]);const users=[...f.table('user').values()].filter(x=>x.USER_MINI_OPENID==='newuser');assert.equal(users.length,1);assert.equal(users[0].USER_STATUS,0);assert.equal(users[0].USER_MOBILE_VERIFIED,true);
+ await assert.rejects(svc.wechatLogin('newuser2',{code:'duplicate-phone-code'}),/登记/);f.user('blocked',{USER_STATUS:9});await assert.rejects(svc.editBase('blocked',{...input,mobile:'13987654321'}),/停用/);
 });
 
 

@@ -3,10 +3,11 @@
 
 .publish-page.publish-embedded {
 	min-height: 0;
+	background: transparent;
 	padding-bottom: 0;
 }
 
-/* The home page supplies the outer gutter and tab-bar clearance. */
+/* The home .publish-page supplies the outer gutter and tab-bar clearance. */
 .publish-page.publish-embedded .pub-content {
 	padding: 0;
 }
@@ -44,7 +45,7 @@
 	white-space: nowrap;
 }
 
-.publish-page.publish-embedded .pub-total-price text {
+.publish-page.publish-embedded .pub-total-price .pub-text {
 	margin-right: 3rpx;
 	font-size: 23rpx;
 	font-weight: 500;
@@ -64,7 +65,7 @@
 	box-shadow: none;
 }
 
-.publish-page.publish-embedded .pub-submit text {
+.publish-page.publish-embedded .pub-submit .pub-text {
 	margin-left: 6rpx;
 	font-size: 20rpx;
 }

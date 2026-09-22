@@ -10,7 +10,7 @@ Component({
     embedded: { type: Boolean, value: true },
     service: { type: String, value: 'take' }
   },
-  data: Object.assign(componentData, { embedded: true }),
+  data: componentData,
   lifetimes: {
     attached() { if (typeof logic.onLoad === 'function') logic.onLoad.call(this, { embedded: true, service: this.data.service }); },
     detached() { if (typeof logic.onUnload === 'function') logic.onUnload.call(this); }

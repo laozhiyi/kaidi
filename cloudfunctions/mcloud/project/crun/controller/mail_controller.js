@@ -55,11 +55,15 @@ class MailController extends Base {
  async getMailDetail() {const p=this.validateData({id:'must|id'});return new MailService().getMailDetail(this._userId,p.id);}
  _format(mail) {
   if(!mail)return mail;
-  mail.end=time.timestamp2Time(mail.MAIL_END_TIME,'Y/M/D h:m:s'); mail.end2=time.timestamp2Time(mail.MAIL_END_TIME,'Y-M-D h:m');
-  for(const key of ['MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_OVER_TIME']) mail[key]=mail[key]?time.timestamp2Time(mail[key],'Y-M-D h:m'):'';
+  const format = (value, pattern) => {
+   const at = typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
+   return Number.isFinite(at) && at > 0 && Number.isFinite(new Date(at).getTime()) ? time.timestamp2Time(at, pattern) : '';
+  };
+  mail.end=format(mail.MAIL_END_TIME,'Y/M/D h:m:s'); mail.end2=format(mail.MAIL_END_TIME,'Y-M-D h:m');
+  for(const key of ['MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_OVER_TIME']) mail[key]=format(mail[key],'Y-M-D h:m');
   return mail;
  }
  async viewMail() {const p=this.validateData({id:'must|id'});return this._format(await new MailService().viewMail(this._userId,p.id));}
- async getMailList() {const p=this.validateData({search:'string|max:30',sortType:'string|max:30',sortVal:'string|max:30',orderBy:'object',whereEx:'object',cursor:'object',page:'int|default=1|min:1|max:500',size:'int|default=20|min:1|max:50'});const result=await new MailService().getMailList(this._userId,p);result.list=result.list.map(m=>{const left=m.MAIL_END_TIME-Date.now(),minutes=left<=0?0:Math.ceil(left/60000),hours=Math.floor(minutes/60),rest=minutes%60;m.MAIL_OBJ=m.MAIL_OBJ||{};m.MAIL_OBJ.leftTimeLabel=left<=0?'已截止':hours>0?hours+'小时'+(rest?rest+'分钟':''):minutes+'分钟';return this._format(m);});return result;}
+ async getMailList() {const p=this.validateData({search:'string|max:30',sortType:'string|max:30',sortVal:'string|max:30',orderBy:'object',whereEx:'object',cursor:'object',isTotal:'bool',oldTotal:'int|min:0',page:'int|default=1|min:1|max:500',size:'int|default=20|min:1|max:50'});const result=await new MailService().getMailList(this._userId,p);result.list=result.list.map(m=>{const left=m.MAIL_END_TIME-Date.now(),minutes=left<=0?0:Math.ceil(left/60000),hours=Math.floor(minutes/60),rest=minutes%60;m.MAIL_OBJ=m.MAIL_OBJ||{};m.MAIL_OBJ.leftTimeLabel=left<=0?'已截止':hours>0?hours+'小时'+(rest?rest+'分钟':''):minutes+'分钟';return this._format(m);});return result;}
 }
 module.exports=MailController;

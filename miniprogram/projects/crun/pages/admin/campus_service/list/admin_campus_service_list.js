@@ -2,7 +2,7 @@ const createCatalog = require('../../../../biz/admin_catalog_biz.js');
 Page(createCatalog({
   route: 'admin/campus_service_list',
   menus: [{ label: '全部客服' }, { label: '已启用', type: 'status', value: 1 }, { label: '已停用', type: 'status', value: 0 }],
-  data: { campusOptions: ['全部校区', '育才校区', '王城校区', '雁山校区'], searchPlaceholder: '搜索校区或负责人', countUnit: '位客服', emptyTitle: '暂无符合条件的客服', emptyHint: '可添加校区客服，配置联系方式与服务时间' },
+  data: { campusOptions: ['当前校区'], searchPlaceholder: '搜索校区或负责人', countUnit: '位客服', emptyTitle: '暂无符合条件的客服', emptyHint: '可添加校区客服，配置联系方式与服务时间' },
   format: row => ({ ...row, CS_STATUS: Number(row.CS_STATUS) })
 }, {
   bindStatusMoreTap(e) {

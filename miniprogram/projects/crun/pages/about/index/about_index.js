@@ -15,7 +15,9 @@ Page({
     if (this.data.loading) return;
     this.setData({ loading: true, error: false });
     try {
-      const about = await cloudHelper.callCloudData('home/setup_get', { key: this.data.key }, { title: 'bar' });
+      const result = await cloudHelper.callCloudSumbit('home/setup_get', { key: this.data.key }, { hint: false });
+      if (!result || result.data === undefined) throw new Error('内容加载失败');
+      const about = result.data;
       if (!this._unloaded) this.setData({ about: Array.isArray(about) ? about : [] });
     } catch (error) { if (!this._unloaded) this.setData({ error: true }); }
     finally { if (!this._unloaded) this.setData({ loading: false }); }

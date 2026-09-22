@@ -13,6 +13,8 @@ Page({
 	 */
 	data: {
 		isLoad: false,
+		loading: false,
+		loadError: '',
 	},
 
 	/**
@@ -26,7 +28,7 @@ Page({
 			title: projectSetting.NEWS_NAME + '-修改',
 		});
 
-		this._loadDetail();
+		return this._loadDetail();
 	},
 
 	/**
@@ -54,7 +56,7 @@ Page({
 	 * 生命周期函数--监听页面卸载
 	 */
 	onUnload: function () {
-
+		this._unloaded = true;
 	},
 
 	/**
@@ -70,47 +72,35 @@ Page({
 	},
 
 	_loadDetail: async function () {
-		if (!AdminBiz.isAdmin(this)) return;
+		if (this._unloaded || this.data.loading || this.data.isSubmit || !AdminBiz.isAdmin(this)) return;
 
 		let id = this.data.id;
 		if (!id) return;
 
 		if (!this.data.isLoad) this.setData(AdminNewsBiz.initFormData(id)); // 初始化表单数据
 
-		let params = {
-			id
-		};
-		let opt = {
-			title: 'bar'
-		};
-		let news = await cloudHelper.callCloudData('admin/news_detail', params, opt);
-		if (!news) {
+		this.setData({ loading: true, loadError: '' });
+		try {
+			const result = await cloudHelper.callCloudSumbit('admin/news_detail', { id }, { hint: false });
+			if (this._unloaded) return;
+			if (!result || result.data === undefined) throw new Error('公告加载失败');
+			const news = result.data && Object.keys(result.data).length ? result.data : null;
+			if (!news) { this.setData({ isLoad: null }); return; }
 			this.setData({
-				isLoad: null
-			})
-			return;
-		};
-
-		this.setData({
-			isLoad: true,
-
-			imgList: news.NEWS_PIC,
-
-			// 表单数据  
-			formCateId: news.NEWS_CATE_ID,
-			formOrder: news.NEWS_ORDER,
-
-			formTitle: news.NEWS_TITLE,
-			formContent: news.NEWS_CONTENT,
-
-			formDesc: news.NEWS_DESC,
-
-			formForms: news.NEWS_FORMS,
-
-		}, () => {
-			this._setContentDesc();
-
-		});
+				isLoad: true,
+				imgList: news.NEWS_PIC,
+				formCateId: news.NEWS_CATE_ID,
+				formOrder: news.NEWS_ORDER,
+				formTitle: news.NEWS_TITLE,
+				formContent: news.NEWS_CONTENT,
+				formDesc: news.NEWS_DESC,
+				formForms: news.NEWS_FORMS,
+			}, () => { if (!this._unloaded) this._setContentDesc(); });
+		} catch (error) {
+			if (!this._unloaded) this.setData({ loadError: error && (error.msg || error.message) || '公告加载失败，请重试' });
+		} finally {
+			if (!this._unloaded) this.setData({ loading: false });
+		}
 	},
 
 	_setContentDesc: function () {

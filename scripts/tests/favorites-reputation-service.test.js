@@ -88,7 +88,7 @@ test('every order participant can rate the other user after completion and only 
 
 test('sent and received review lists expose public profiles and ratings without order or account metadata', async () => {
   const f = fixture();
-  f.user('poster', { USER_NAME: '林同学', USER_PIC: 'cloud://lin-avatar', USER_MOBILE: 'private-phone', USER_FORMS: [{ mark: 'address', val: 'private-address' }] });
+  f.user('poster', { USER_NAME: '林同学', USER_PIC: 'cloud://lin-avatar', USER_MOBILE: '13911112222', USER_FORMS: [...f.table('user').get('poster').USER_FORMS, { mark: 'address', val: 'private-address' }] });
   f.user('rider', { USER_NAME: '陈同学', USER_PIC: 'cloud://chen-avatar' });
   const id = await complete(f), service = new (f.load('review_service.js'))();
   await service.insert('poster', review(f, id, 5));

@@ -1,0 +1,34 @@
+TAP version 13
+# Subtest: unsupported native capabilities open manual registration and submit without reading WeChat data
+not ok 1 - unsupported native capabilities open manual registration and submit without reading WeChat data
+  ---
+  duration_ms: 9.9928
+  type: 'test'
+  location: 'B:\\zhumian\\zm\\kaidi\\scripts\\tests\\my-page-features.test.js:254:1'
+  failureType: 'testCodeFailure'
+  error: 'an unavailable modern image picker must fall back to chooseImage'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'fail'
+  stack: |-
+    h.wx.chooseMedia (B:\zhumian\zm\kaidi\scripts\tests\my-page-features.test.js:257:35)
+    Object.bindChooseAvatar (B:\zhumian\zm\kaidi\miniprogram\projects\crun\pages\my\profile_methods.js:133:48)
+    TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\my-page-features.test.js:269:8)
+    async Test.run (node:internal/test_runner/test:1389:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+  ...
+# Subtest: manual avatar selection supports the modern picker and keeps the current image on cancellation
+ok 2 - manual avatar selection supports the modern picker and keeps the current image on cancellation
+  ---
+  duration_ms: 2.7058
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 1
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 63.6081

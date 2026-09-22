@@ -10,6 +10,8 @@ const util = require('../../../../framework/utils/util.js');
 const cloudUtil = require('../../../../framework/cloud/cloud_util.js');
 
 const NewsModel = require('../../model/news_model.js');
+const Catalog=require('../news_catalog_service.js');
+const store=require('../operation_store.js');
 
 class AdminNewsService extends BaseProjectAdminService {
 
@@ -48,14 +50,15 @@ class AdminNewsService extends BaseProjectAdminService {
 			NEWS_EDIT_TIME: this._timestamp,
 		};
 
-		const id = await NewsModel.insert(data);
+		const id = store.key(this.getProjectId(),'news',Date.now(),Math.random());
+		await new Catalog().change(id,data,{insert:true});
 		return { id };
 	}
 
 	/**删除资讯数据 */
 	async delNews(id) {
 		if (!id) this.AppError('id不能为空');
-		await NewsModel.del(id);
+		await new Catalog().change(id,{}, {remove:true});
 		return { id };
 	}
 
@@ -94,7 +97,7 @@ class AdminNewsService extends BaseProjectAdminService {
 		content // 富文本数组
 	}) {
 		if (!id) this.AppError('id不能为空');
-		await NewsModel.edit(id, { NEWS_CONTENT: content || [] });
+		await new Catalog().change(id, { NEWS_CONTENT: content || [] });
 		return { id };
 	}
 
@@ -107,7 +110,7 @@ class AdminNewsService extends BaseProjectAdminService {
 		imgList
 	}) {
 		if (!id) this.AppError('id不能为空');
-		await NewsModel.edit(id, { NEWS_PIC: imgList || [] });
+		await new Catalog().change(id, { NEWS_PIC: imgList || [] });
 		return { id };
 	}
 
@@ -139,7 +142,7 @@ class AdminNewsService extends BaseProjectAdminService {
 			data.NEWS_OBJ = dataUtil.dbForms2Obj(forms);
 		}
 
-		await NewsModel.edit(id, data);
+		await new Catalog().change(id, data);
 		return { id };
 	}
 
@@ -207,14 +210,14 @@ class AdminNewsService extends BaseProjectAdminService {
 		const news = await NewsModel.getOne({ _id: id });
 		if (!news) this.AppError('公告不存在');
 		if (Number(status) === 1 && (!Array.isArray(news.NEWS_CONTENT) || !news.NEWS_CONTENT.length)) this.AppError('请先补全公告正文再发布');
-		await NewsModel.edit(id, { NEWS_STATUS: Number(status), NEWS_EDIT_TIME: this._timestamp });
+		await new Catalog().change(id, { NEWS_STATUS: Number(status), NEWS_EDIT_TIME: this._timestamp });
 		return { id };
 	}
 
 	/**置顶与排序设定 */
 	async sortNews(id, sort) {
 		if (!id) this.AppError('id不能为空');
-		await NewsModel.edit(id, { NEWS_ORDER: Number(sort), NEWS_EDIT_TIME: this._timestamp });
+		await new Catalog().change(id, { NEWS_ORDER: Number(sort), NEWS_EDIT_TIME: this._timestamp });
 		return { id };
 	}
 }

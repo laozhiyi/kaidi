@@ -46,6 +46,37 @@ test('section saves merge inside the transaction so concurrent pages cannot over
   assert.equal((await svc.getConfig()).enabled, false);
 });
 
+test('saved business hours switch controls late publishing and accepting without stopping fulfillment', async t => {
+  t.mock.method(Date, 'now', () => Date.parse('2026-09-21T23:00:00+08:00'));
+  const f = fixture(), svc = new (f.load('operation_config_service.js'))();
+  Object.assign(f.config, { openHour: 8, closeHour: 22 });
+  delete f.config.enforceBusinessHours;
+  const active = await f.publish(), waiting = await f.publish({ requestId: f.req('waiting') });
+  await f.service.acceptMail('rider', active, { requestId: f.req('active-accept') });
+  await svc.saveConfig({ enforceBusinessHours: true }, 'admin', 'service');
+  await assert.rejects(f.publish({ requestId: f.req('outside') }), /营业时间/);
+  await assert.rejects(f.service.acceptMail('rider2', waiting, { requestId: f.req('closed-accept') }), /营业时间/);
+  await f.service.pickupMail('rider', active, { requestId: f.req('pickup') });
+  await f.service.deliverMail('rider', active, { requestId: f.req('deliver'), note: '已送达', images: ['cloud://proof'] });
+  assert.equal(f.table('mail').get(active).MAIL_STATUS, 2);
+  await svc.saveConfig({ enforceBusinessHours: false }, 'admin', 'service');
+  await f.service.acceptMail('rider2', waiting, { requestId: f.req('open-accept') });
+  assert.equal(f.table('mail').get(waiting).MAIL_STATUS, 1);
+  assert.ok(await f.publish({ requestId: f.req('reopened') }));
+});
+
+test('business hours enforcement rejects invalid settings and cannot bypass service permissions', async () => {
+  const f = fixture(), svc = new (f.load('operation_config_service.js'))();
+  for (const value of ['false', 0, null]) await assert.rejects(svc.saveConfig({ enforceBusinessHours: value }, 'admin', 'service'), /开关/);
+  await assert.rejects(svc.saveConfig({ enforceBusinessHours: true }, 'admin', 'pricing'), /其他分组/);
+  await svc.saveConfig({ enforceBusinessHours: true }, 'admin', 'service');
+  await svc.saveConfig({ smallPrice: 2 }, 'admin', 'pricing');
+  assert.equal((await svc.getConfig()).enforceBusinessHours, true);
+  f.table('admin').get('admin').ADMIN_TYPE = 2;
+  await assert.rejects(svc.saveConfig({ enforceBusinessHours: false }, 'admin', 'service'), /权限/);
+  assert.equal((await svc.getConfig()).enforceBusinessHours, true);
+});
+
 test('admin details include both contacts and picked-up orders can enter and resume exception processing', async () => {
   const f = fixture(), id = await f.publish(), svc = new (f.load('operations_service.js'))();
   await f.service.acceptMail('rider', id, { requestId: f.req('accept') });

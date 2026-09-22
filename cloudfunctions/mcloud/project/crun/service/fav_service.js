@@ -25,7 +25,7 @@ class FavService extends Base {
     return { isFav: rows.some(row => typeKey(row.FAV_TYPE) === key) ? 1 : 0 };
   }
   _available(order, userId) {
-    return !!order && order._pid === this.getProjectId() && order.MAIL_STATUS === 0
+    return !!order && order._pid === this.getProjectId() && order.MAIL_ADMIN_DELETED !== true && order.MAIL_STATUS === 0
       && order.MAIL_PAYMENT_MODE === 'offline' && !order.MAIL_ACCEPT_USER_ID
       && order.MAIL_USER_ID !== userId && Number(order.MAIL_END_TIME) > Date.now();
   }
@@ -38,9 +38,9 @@ class FavService extends Base {
     const db = store.database(), types = db.command.in(['mail', TYPES.mail.title]);
     const targets = orders || (await db.collection(store.collection('mail')).where({
       _pid: this.getProjectId(), _id: db.command.in(ids)
-    }).field({ _id: true, _pid: true, MAIL_STATUS: true, MAIL_PAYMENT_MODE: true,
+    }).field({ _id: true, _pid: true, MAIL_ADMIN_DELETED: true, MAIL_STATUS: true, MAIL_PAYMENT_MODE: true,
       MAIL_USER_ID: true, MAIL_ACCEPT_USER_ID: true, MAIL_END_TIME: true }).limit(50).get()).data;
-    const valid = new Map(targets.filter(row => row && row._pid === this.getProjectId()).map(row => [row._id, row]));
+    const valid = new Map(targets.filter(row => row && row._pid === this.getProjectId() && row.MAIL_ADMIN_DELETED !== true).map(row => [row._id, row]));
     const [mine, counts] = await Promise.all([
       userId ? db.collection(store.collection('fav')).where({
         _pid: this.getProjectId(), FAV_USER_ID: userId, FAV_OID: db.command.in(ids), FAV_TYPE: types
@@ -119,7 +119,7 @@ class FavService extends Base {
     const result = await new Operations().list('fav', where, page, 'FAV_ADD_TIME', size);
     const orderIds = [...new Set(result.list.filter(row => typeKey(row.FAV_TYPE) === 'mail').map(row => row.FAV_OID))];
     const orders = await Promise.all(orderIds.map(id => store.get(store.database(), 'mail', id)));
-    const orderMap = new Map(orders.filter(row => row && row._pid === this.getProjectId()).map(row => [row._id, row]));
+    const orderMap = new Map(orders.filter(row => row && row._pid === this.getProjectId() && row.MAIL_ADMIN_DELETED !== true).map(row => [row._id, row]));
     const stats = new Map((await this.orderStats(userId, orderIds, orders)).list.map(row => [row.id, row]));
     result.list = result.list.map(row => {
       const key = typeKey(row.FAV_TYPE);

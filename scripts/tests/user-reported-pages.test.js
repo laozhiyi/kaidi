@@ -218,6 +218,8 @@ test('public detail retries a failed load and refreshes when returning to a visi
 function moduleHarness(file, mocks) {
  const module = { exports: {} };
  vm.runInNewContext(read(file), { module, console: quiet, process: { env: {} }, require(request) {
+  if (request.endsWith('/tenant_context.js')) return require('../../cloudfunctions/mcloud/framework/tenancy/tenant_context.js');
+  if (request === './tenant_service.js') return class { async seed() {} };
   if (!(request in mocks)) throw Error('Unexpected dependency: ' + request);
   return mocks[request];
  } });
@@ -229,8 +231,8 @@ test('failed collection creation cannot be cached as successful setup; recovery 
  class Base { AppError(msg) { throw Error(msg); } }
  const Service = moduleHarness('cloudfunctions/mcloud/project/crun/service/base_project_service.js', {
   '../../../framework/database/db_util.js': {
-   isExistCollection: async name => name === 'bx_setup_crun_20260914' ? schemaReady : name !== 'bx_operation_config' || available,
-   createCollection: async name => { if (name === 'bx_setup_crun_20260914') { schemaReady = true; return true; } creates++; return false; }
+   isExistCollection: async name => name === 'bx_setup_crun_20260921_tenants' ? schemaReady : name !== 'bx_operation_config' || available,
+   createCollection: async name => { if (name === 'bx_setup_crun_20260921_tenants') { schemaReady = true; return true; } creates++; return false; }
   }, '../../../framework/utils/util.js': {}, '../../../framework/platform/model/admin_model.js': {}, '../model/news_model.js': {},
   '../../../framework/platform/service/base_service.js': Base
  });
@@ -258,7 +260,7 @@ test('an initialized cold instance performs one schema lookup and shares that re
   '../../../framework/platform/service/base_service.js':class {}
  });
  await Promise.all([new Service().initSetup(),new Service().initSetup()]);
- assert.deepEqual(lookups,['bx_setup_crun_20260914']);
+ assert.deepEqual(lookups,['bx_setup_crun_20260921_tenants']);
 });
 
 for(const file of ['mail/add/mail_add.js','mail/add/mail_add_logic.js']) {
@@ -307,11 +309,19 @@ test('personal layout uses a native safe navigation bar, scoped full-width cards
  assert.ok(!/margin[^:]*:\s*-\d/.test(css)); assert.match(css, /safe-area-inset-bottom/);
 });
 
-test('profile entry opens personal information directly and legacy profile routes are removed', () => {
+test('profile entry routes unfinished accounts to login and complete accounts to personal information without legacy routes', () => {
  const app = JSON.parse(read('miniprogram/app.json'));
  const index = read(pages + 'my/index/my_index.wxml');
  const publish = read(pages + 'mail/add/mail_add_logic.js');
- assert.match(index, /user\?'\.\.\/personal\/my_personal':'\.\.\/reg\/my_reg'/);
+ const route = /class="my-profile"[^>]*data-url="\{\{([\s\S]*?)\}\}"/.exec(index);
+ assert.ok(route, 'profile card must expose a navigation target');
+ for (const [user, expected] of [
+  [null, '../reg/my_reg'],
+  [{ USER_NAME: '旧账号' }, '../reg/my_reg'],
+  [{ USER_MOBILE_VERIFIED: false, USER_PROFILE_COMPLETE: true }, '../reg/my_reg'],
+  [{ USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: false }, '../reg/my_reg'],
+  [{ USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: true }, '../personal/my_personal']
+ ]) assert.equal(vm.runInNewContext(route[1], { user }), expected);
  assert.match(publish, /pages\/my\/contact\/contact/);
  assert.match(publish, /pages\/my\/address\/address/);
  assert.ok(!app.pages.some(route => /my\/edit\/my_edit|my\/(?:contact|address)\/my_(?:contact|address)/.test(route)));

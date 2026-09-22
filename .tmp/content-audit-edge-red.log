@@ -1,0 +1,586 @@
+TAP version 13
+# Subtest: text audit preserves field boundaries, labels, trusted identity and the profile scene
+ok 1 - text audit preserves field boundaries, labels, trusted identity and the profile scene
+  ---
+  duration_ms: 2.3731
+  type: 'test'
+  ...
+# Subtest: text audit accepts a documented pass with error-code representation {"errCode":0,"result":{"suggest":"pass"}}
+ok 2 - text audit accepts a documented pass with error-code representation {"errCode":0,"result":{"suggest":"pass"}}
+  ---
+  duration_ms: 0.6001
+  type: 'test'
+  ...
+# Subtest: text audit accepts a documented pass with error-code representation {"errcode":0,"result":{"suggest":"pass"}}
+ok 3 - text audit accepts a documented pass with error-code representation {"errcode":0,"result":{"suggest":"pass"}}
+  ---
+  duration_ms: 1.0529
+  type: 'test'
+  ...
+# Subtest: text audit accepts a documented pass with error-code representation {"errCode":"0","result":{"suggest":"pass"}}
+ok 4 - text audit accepts a documented pass with error-code representation {"errCode":"0","result":{"suggest":"pass"}}
+  ---
+  duration_ms: 0.6131
+  type: 'test'
+  ...
+# Subtest: provider failure 48001 (exception) is not a content violation
+ok 5 - provider failure 48001 (exception) is not a content violation
+  ---
+  duration_ms: 0.9661
+  type: 'test'
+  ...
+# Subtest: provider failure 48001 (response) is not a content violation
+ok 6 - provider failure 48001 (response) is not a content violation
+  ---
+  duration_ms: 0.6076
+  type: 'test'
+  ...
+# Subtest: provider failure 40003 (exception) is not a content violation
+ok 7 - provider failure 40003 (exception) is not a content violation
+  ---
+  duration_ms: 0.5991
+  type: 'test'
+  ...
+# Subtest: provider failure 40003 (response) is not a content violation
+ok 8 - provider failure 40003 (response) is not a content violation
+  ---
+  duration_ms: 0.5448
+  type: 'test'
+  ...
+# Subtest: provider failure 45009 (exception) is not a content violation
+ok 9 - provider failure 45009 (exception) is not a content violation
+  ---
+  duration_ms: 0.6383
+  type: 'test'
+  ...
+# Subtest: provider failure 45009 (response) is not a content violation
+ok 10 - provider failure 45009 (response) is not a content violation
+  ---
+  duration_ms: 0.6186
+  type: 'test'
+  ...
+# Subtest: timeouts and missing identity have accurate errors and never report inappropriate text
+ok 11 - timeouts and missing identity have accurate errors and never report inappropriate text
+  ---
+  duration_ms: 0.645
+  type: 'test'
+  ...
+# Subtest: malformed audit response is a service failure: undefined
+ok 12 - malformed audit response is a service failure: undefined
+  ---
+  duration_ms: 0.582
+  type: 'test'
+  ...
+# Subtest: malformed audit response is a service failure: null
+ok 13 - malformed audit response is a service failure: null
+  ---
+  duration_ms: 0.6854
+  type: 'test'
+  ...
+# Subtest: malformed audit response is a service failure: {}
+ok 14 - malformed audit response is a service failure: {}
+  ---
+  duration_ms: 0.5409
+  type: 'test'
+  ...
+# Subtest: malformed audit response is a service failure: {"errCode":0}
+ok 15 - malformed audit response is a service failure: {"errCode":0}
+  ---
+  duration_ms: 0.5006
+  type: 'test'
+  ...
+# Subtest: malformed audit response is a service failure: {"errCode":0,"result":{"suggest":"unknown"}}
+ok 16 - malformed audit response is a service failure: {"errCode":0,"result":{"suggest":"unknown"}}
+  ---
+  duration_ms: 0.5042
+  type: 'test'
+  ...
+# Subtest: legacy rejection and review responses identify the field without inventing offending words
+ok 17 - legacy rejection and review responses identify the field without inventing offending words
+  ---
+  duration_ms: 0.6988
+  type: 'test'
+  ...
+# Subtest: empty and numeric inputs need no audit; all selected text is size checked before requesting
+ok 18 - empty and numeric inputs need no audit; all selected text is size checked before requesting
+  ---
+  duration_ms: 0.7556
+  type: 'test'
+  ...
+# Subtest: the existing explicit development switch still controls text checks
+ok 19 - the existing explicit development switch still controls text checks
+  ---
+  duration_ms: 0.6515
+  type: 'test'
+  ...
+# Subtest: long Unicode fields remain valid text when split for auditing
+not ok 20 - long Unicode fields remain valid text when split for auditing
+  ---
+  duration_ms: 3.2504
+  type: 'test'
+  location: 'B:\\zhumian\\zm\\kaidi\\scripts\\tests\\content-audit.test.js:109:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+    
+      assert.ok(f.state.calls.every(item => item.content.length <= 1800 && item.content.isWellFormed()))
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\content-audit.test.js:113:10)
+    async Test.run (node:internal/test_runner/test:1389:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+  ...
+# Subtest: real registration audits only human profile text and stores a usable unverified manual account
+ok 21 - real registration audits only human profile text and stores a usable unverified manual account
+  ---
+  duration_ms: 24.2921
+  type: 'test'
+  ...
+# Subtest: profile audit selects contact names and address text without their phones or form metadata
+ok 22 - profile audit selects contact names and address text without their phones or form metadata
+  ---
+  duration_ms: 14.3863
+  type: 'test'
+  ...
+# Subtest: additional legacy contact text cannot disappear behind a boolean or another field
+not ok 23 - additional legacy contact text cannot disappear behind a boolean or another field
+  ---
+  duration_ms: 13.5631
+  type: 'test'
+  location: 'B:\\zhumian\\zm\\kaidi\\scripts\\tests\\content-audit.test.js:164:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    200 !== 1600
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1600
+  actual: 200
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\content-audit.test.js:169:10)
+    async Test.run (node:internal/test_runner/test:1389:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+  ...
+# Subtest: unknown legacy form marks get safe field labels and still audit their actual values
+not ok 24 - unknown legacy form marks get safe field labels and still audit their actual values
+  ---
+  duration_ms: 12.4353
+  type: 'test'
+  location: 'B:\\zhumian\\zm\\kaidi\\scripts\\tests\\content-audit.test.js:172:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /补充资料.*未通过/. Input:
+    
+    '「function Object() { [native code] }」未通过微信文字审核，请修改该字段后重试'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: '「function Object() { [native code] }」未通过微信文字审核，请修改该字段后重试'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\content-audit.test.js:177:43)
+    async Test.run (node:internal/test_runner/test:1389:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+  ...
+# Subtest: a nickname rejection is returned by the real route without creating registration records
+ok 25 - a nickname rejection is returned by the real route without creating registration records
+  ---
+  duration_ms: 10.8253
+  type: 'test'
+  ...
+# Subtest: editing a profile identifies the rejected field and preserves the prior profile
+ok 26 - editing a profile identifies the rejected field and preserves the prior profile
+  ---
+  duration_ms: 15.8657
+  type: 'test'
+  ...
+# Subtest: profile format errors are shown before calling an unavailable audit service
+ok 27 - profile format errors are shown before calling an unavailable audit service
+  ---
+  duration_ms: 13.7301
+  type: 'test'
+  ...
+# Subtest: a profile audit outage leaves no account and reports the service problem
+ok 28 - a profile audit outage leaves no account and reports the service problem
+  ---
+  duration_ms: 12.6374
+  type: 'test'
+  ...
+# Subtest: real service settings save without depending on a text service for numbers and switches
+ok 29 - real service settings save without depending on a text service for numbers and switches
+  ---
+  duration_ms: 16.4456
+  type: 'test'
+  ...
+# Subtest: real rules settings save without depending on a text service for numbers and switches
+ok 30 - real rules settings save without depending on a text service for numbers and switches
+  ---
+  duration_ms: 13.9843
+  type: 'test'
+  ...
+# Subtest: real pricing settings save without depending on a text service for numbers and switches
+ok 31 - real pricing settings save without depending on a text service for numbers and switches
+  ---
+  duration_ms: 15.0932
+  type: 'test'
+  ...
+# Subtest: the real pricing page can change a number while submitting its unchanged settlement notice
+ok 32 - the real pricing page can change a number while submitting its unchanged settlement notice
+  ---
+  duration_ms: 20.5147
+  type: 'test'
+  ...
+# Subtest: a changed settlement notice is audited alone; failed saves retain the page draft and database
+ok 33 - a changed settlement notice is audited alone; failed saves retain the page draft and database
+  ---
+  duration_ms: 14.558
+  type: 'test'
+  ...
+# Subtest: configuration format and authorization checks still precede external auditing and prevent writes
+ok 34 - configuration format and authorization checks still precede external auditing and prevent writes
+  ---
+  duration_ms: 12.9857
+  type: 'test'
+  ...
+# [wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'unsupported', errCode: null }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+# Subtest: custom campus selection previews a choice, cancels cleanly, and commits only a valid option
+ok 35 - custom campus selection previews a choice, cancels cleanly, and commits only a valid option
+  ---
+  duration_ms: 7.2427
+  type: 'test'
+  ...
+# Subtest: saving personal information persists the selected campus and preserves other saved fields
+ok 36 - saving personal information persists the selected campus and preserves other saved fields
+  ---
+  duration_ms: 4.2144
+  type: 'test'
+  ...
+# Subtest: editing cached personal information is not overwritten by a background response
+ok 37 - editing cached personal information is not overwritten by a background response
+  ---
+  duration_ms: 2.8793
+  type: 'test'
+  ...
+# Subtest: contact editor retains drafts on save failure and preserves the default flag after retry
+ok 38 - contact editor retains drafts on save failure and preserves the default flag after retry
+  ---
+  duration_ms: 3.4622
+  type: 'test'
+  ...
+# Subtest: address editor retains drafts on save failure and preserves the default flag after retry
+ok 39 - address editor retains drafts on save failure and preserves the default flag after retry
+  ---
+  duration_ms: 3.5829
+  type: 'test'
+  ...
+# Subtest: collection saves coalesce repeated taps and do not discard an editor before the request completes
+ok 40 - collection saves coalesce repeated taps and do not discard an editor before the request completes
+  ---
+  duration_ms: 3.1709
+  type: 'test'
+  ...
+# Subtest: deleting a preceding contact keeps the current edit attached to the same person
+ok 41 - deleting a preceding contact keeps the current edit attached to the same person
+  ---
+  duration_ms: 3.207
+  type: 'test'
+  ...
+# Subtest: every personal-center entry reaches its intended destination and private entries respect login cancellation
+ok 42 - every personal-center entry reaches its intended destination and private entries respect login cancellation
+  ---
+  duration_ms: 7.5786
+  type: 'test'
+  ...
+# Subtest: settings clears cached profile data while keeping login, drafts and pending requests
+ok 43 - settings clears cached profile data while keeping login, drafts and pending requests
+  ---
+  duration_ms: 7.624
+  type: 'test'
+  ...
+# Subtest: clearing caches prevents older requests from restoring stale profile and campus entries
+ok 44 - clearing caches prevents older requests from restoring stale profile and campus entries
+  ---
+  duration_ms: 3.0965
+  type: 'test'
+  ...
+# Subtest: registration keeps the returned login token, binds the invitation, and returns to the requesting page
+ok 45 - registration keeps the returned login token, binds the invitation, and returns to the requesting page
+  ---
+  duration_ms: 3.4669
+  type: 'test'
+  ...
+# Subtest: registration requiring review does not grant an active login token
+ok 46 - registration requiring review does not grant an active login token
+  ---
+  duration_ms: 3.1133
+  type: 'test'
+  ...
+# Subtest: registration displays the specific audit error and retains the editable draft: 「学院」未通过微信文字审核，请修改该字段后重试
+ok 47 - registration displays the specific audit error and retains the editable draft: 「学院」未通过微信文字审核，请修改该字段后重试
+  ---
+  duration_ms: 2.9354
+  type: 'test'
+  ...
+# Subtest: registration displays the specific audit error and retains the editable draft: 微信文字审核服务暂无调用权限，请联系管理员检查服务配置（错误码：48001）
+ok 48 - registration displays the specific audit error and retains the editable draft: 微信文字审核服务暂无调用权限，请联系管理员检查服务配置（错误码：48001）
+  ---
+  duration_ms: 2.9475
+  type: 'test'
+  ...
+# Subtest: unsupported native capabilities open manual registration and submit without reading WeChat data
+ok 49 - unsupported native capabilities open manual registration and submit without reading WeChat data
+  ---
+  duration_ms: 6.6832
+  type: 'test'
+  ...
+# Subtest: manual avatar selection supports the modern picker and keeps the current image on cancellation
+ok 50 - manual avatar selection supports the modern picker and keeps the current image on cancellation
+  ---
+  duration_ms: 3.4228
+  type: 'test'
+  ...
+# Subtest: manual entry is available even when the native button never invokes its callback
+ok 51 - manual entry is available even when the native button never invokes its callback
+  ---
+  duration_ms: 2.8691
+  type: 'test'
+  ...
+# Subtest: unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail","errno":102}
+ok 52 - unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail","errno":102}
+  ---
+  duration_ms: 5.8667
+  type: 'test'
+  ...
+# Subtest: unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail not support"}
+ok 53 - unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail not support"}
+  ---
+  duration_ms: 5.1095
+  type: 'test'
+  ...
+# Subtest: strict mode and old configurations do not offer manual registration after native failures
+ok 54 - strict mode and old configurations do not offer manual registration after native failures
+  ---
+  duration_ms: 4.9928
+  type: 'test'
+  ...
+# [wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+# Subtest: a native capability failure waits for delayed server policy: manual allowed=true
+ok 55 - a native capability failure waits for delayed server policy: manual allowed=true
+  ---
+  duration_ms: 11.4835
+  type: 'test'
+  ...
+# [wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+# [wechat-phone-login] {
+#   stage: 'cloud_failure',
+#   reason: 'environment_missing',
+#   errCode: null
+# }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+# Subtest: a native capability failure waits for delayed server policy: manual allowed=false
+ok 56 - a native capability failure waits for delayed server policy: manual allowed=false
+  ---
+  duration_ms: 9.3132
+  type: 'test'
+  ...
+# Subtest: manual registration policy survives shared cache reads and is revoked by fresh configuration
+ok 57 - manual registration policy survives shared cache reads and is revoked by fresh configuration
+  ---
+  duration_ms: 3.1891
+  type: 'test'
+  ...
+# Subtest: manual accounts remain on their personal pages instead of looping back to phone authorization
+ok 58 - manual accounts remain on their personal pages instead of looping back to phone authorization
+  ---
+  duration_ms: 6.4637
+  type: 'test'
+  ...
+# Subtest: manual registration recovers a lost save response before returning to the original feature
+ok 59 - manual registration recovers a lost save response before returning to the original feature
+  ---
+  duration_ms: 5.367
+  type: 'test'
+  ...
+# Subtest: phone authorization after manual entry keeps drafts and applies the verified phone
+ok 60 - phone authorization after manual entry keeps drafts and applies the verified phone
+  ---
+  duration_ms: 5.0252
+  type: 'test'
+  ...
+# Subtest: new registration shows WeChat login first and resumes an incomplete authorized profile
+ok 61 - new registration shows WeChat login first and resumes an incomplete authorized profile
+  ---
+  duration_ms: 3.0589
+  type: 'test'
+  ...
+# Subtest: an empty cloud success envelope is a guest and never forces a spurious completion redirect
+ok 62 - an empty cloud success envelope is a guest and never forces a spurious completion redirect
+  ---
+  duration_ms: 3.3621
+  type: 'test'
+  ...
+# Subtest: denied authorization and duplicate taps never bypass the WeChat login stage
+ok 63 - denied authorization and duplicate taps never bypass the WeChat login stage
+  ---
+  duration_ms: 2.9153
+  type: 'test'
+  ...
+# Subtest: registration visibly explains native phone capability failures and releases the button
+ok 64 - registration visibly explains native phone capability failures and releases the button
+  ---
+  duration_ms: 4.7443
+  type: 'test'
+  ...
+# Subtest: registration exposes cloud setup failures and can succeed after a fresh authorization
+ok 65 - registration exposes cloud setup failures and can succeed after a fresh authorization
+  ---
+  duration_ms: 5.3273
+  type: 'test'
+  ...
+# Subtest: phone reauthorization preserves an unsaved nickname and requires server-confirmed data
+ok 66 - phone reauthorization preserves an unsaved nickname and requires server-confirmed data
+  ---
+  duration_ms: 2.8929
+  type: 'test'
+  ...
+# Subtest: a completed registration with a lost response refreshes the session before returning to the business page
+ok 67 - a completed registration with a lost response refreshes the session before returning to the business page
+  ---
+  duration_ms: 5.0799
+  type: 'test'
+  ...
+# Subtest: a failed session refresh after profile completion stays retryable instead of reopening a blocked feature
+ok 68 - a failed session refresh after profile completion stays retryable instead of reopening a blocked feature
+  ---
+  duration_ms: 5.0925
+  type: 'test'
+  ...
+# Subtest: an older guest profile response cannot overwrite a successful phone login
+ok 69 - an older guest profile response cannot overwrite a successful phone login
+  ---
+  duration_ms: 5.7384
+  type: 'test'
+  ...
+# Subtest: an older guest profile failure cannot overwrite a successful phone login
+ok 70 - an older guest profile failure cannot overwrite a successful phone login
+  ---
+  duration_ms: 5.727
+  type: 'test'
+  ...
+# Subtest: favorite mutations ignore repeated taps while login or saving is in flight
+ok 71 - favorite mutations ignore repeated taps while login or saving is in flight
+  ---
+  duration_ms: 4.0452
+  type: 'test'
+  ...
+# Subtest: feedback detail can retry a failed request and formats returned timestamps
+ok 72 - feedback detail can retry a failed request and formats returned timestamps
+  ---
+  duration_ms: 1.5607
+  type: 'test'
+  ...
+# Subtest: invitation links survive a warm app launch and network failure, then clear after a successful bind
+ok 73 - invitation links survive a warm app launch and network failure, then clear after a successful bind
+  ---
+  duration_ms: 3.0905
+  type: 'test'
+  ...
+# Subtest: invite records paginate without recreating codes and sharing carries the current code
+ok 74 - invite records paginate without recreating codes and sharing carries the current code
+  ---
+  duration_ms: 0.9656
+  type: 'test'
+  ...
+# Subtest: favorites can search, open and remove records, and retain data on a failed removal
+ok 75 - favorites can search, open and remove records, and retain data on a failed removal
+  ---
+  duration_ms: 0.9093
+  type: 'test'
+  ...
+# Subtest: sent and received reviews have independent pages, queries and late-response lifecycles
+ok 76 - sent and received reviews have independent pages, queries and late-response lifecycles
+  ---
+  duration_ms: 2.2562
+  type: 'test'
+  ...
+# Subtest: address edits require one of the five phases and preserve the existing detail during selection
+ok 77 - address edits require one of the five phases and preserve the existing detail during selection
+  ---
+  duration_ms: 3.24
+  type: 'test'
+  ...
+# Error: 网络中断
+#     at TestContext.<anonymous> (B:\\zhumian\\zm\\kaidi\\scripts\\tests\\my-page-features.test.js:633:18)
+#     at async Test.run (node:internal/test_runner/test:1389:7)
+#     at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+# Subtest: feedback prevents duplicate clicks, preserves a failed draft and retries its original content
+ok 78 - feedback prevents duplicate clicks, preserves a failed draft and retries its original content
+  ---
+  duration_ms: 1.5059
+  type: 'test'
+  ...
+# Subtest: both review lists retain display fields only and offer no completed-order navigation
+ok 79 - both review lists retain display fields only and offer no completed-order navigation
+  ---
+  duration_ms: 2.0194
+  type: 'test'
+  ...
+# Subtest: review lists preserve legacy names and recover missing avatars without clearing a refreshed image
+ok 80 - review lists preserve legacy names and recover missing avatars without clearing a refreshed image
+  ---
+  duration_ms: 2.0791
+  type: 'test'
+  ...
+# Subtest: feedback image controls enforce the supported six-image limit and submit functional feedback as a suggestion
+ok 81 - feedback image controls enforce the supported six-image limit and submit functional feedback as a suggestion
+  ---
+  duration_ms: 0.7363
+  type: 'test'
+  ...
+# Subtest: messages remain available when optional subscription configuration hangs and malformed dates are tolerated
+ok 82 - messages remain available when optional subscription configuration hangs and malformed dates are tolerated
+  ---
+  duration_ms: 2.0925
+  type: 'test'
+  ...
+# Subtest: shared profile templates and all personal-center pages bind existing event handlers
+ok 83 - shared profile templates and all personal-center pages bind existing event handlers
+  ---
+  duration_ms: 7.4148
+  type: 'test'
+  ...
+1..83
+# tests 83
+# suites 0
+# pass 80
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 305.7018

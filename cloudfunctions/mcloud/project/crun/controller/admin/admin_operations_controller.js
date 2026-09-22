@@ -6,7 +6,12 @@ const Mail = require('../../service/mail_service.js');
 const check = require('../../../../framework/validate/content_check.js');
 class AdminOperationsController extends Base {
  async getConfig(){await this.isAdmin();return new Config().getConfig();}
- async saveConfig(){await this.isSuperAdmin();const p=this.validateData({value:'must|object',section:'string|max:20'});await check.checkTextMultiAdmin(p);return new Config().saveConfig(p.value,this._adminId,p.section);}
+ async saveConfig(){
+  await this.isSuperAdmin();
+  const p=this.validateData({value:'must|object',section:'string|max:20'}), service=new Config();
+  await check.checkTextMultiAdmin(await service.textForAudit(p.value,p.section), {byField:true});
+  return service.saveConfig(p.value,this._adminId,p.section);
+ }
  async orders(){
   await this.isAdmin();
   // “全部”使用 -1；int 只接受非负整数，先校验状态枚举再转为数值。

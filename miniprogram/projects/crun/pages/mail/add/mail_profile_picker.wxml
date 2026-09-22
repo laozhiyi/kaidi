@@ -1,22 +1,22 @@
-<view wx:if="{{addressPickerVisible || contactPickerVisible}}" class="pub-profile-picker-mask" catchtouchmove="bindStopProp" bindtap="bindCloseProfilePicker">
-  <view class="pub-profile-picker" catchtap="bindStopProp">
-    <view class="pub-profile-picker-head"><view><view class="pub-profile-picker-heading">{{addressPickerVisible ? '选择常用地址' : '选择常用联系人'}}</view><view class="pub-profile-picker-caption">选中一项，确认后填入本单</view></view><button class="pub-profile-picker-close" bindtap="bindCloseProfilePicker" aria-label="关闭常用资料选择">×</button></view>
+<view wx:if="{{addressPickerVisible || contactPickerVisible}}" class="pub-profile-picker-mask pub-view" catchtouchmove="bindStopProp" bindtap="bindCloseProfilePicker">
+  <view class="pub-profile-picker pub-view" catchtap="bindStopProp">
+    <view class="pub-profile-picker-head pub-view"><view class="pub-view"><view class="pub-profile-picker-heading pub-view">{{addressPickerVisible ? '选择常用地址' : '选择常用联系人'}}</view><view class="pub-profile-picker-caption pub-view">选中一项，确认后填入本单</view></view><button class="pub-profile-picker-close pub-button-base" bindtap="bindCloseProfilePicker" aria-label="关闭常用资料选择">×</button></view>
     <scroll-view scroll-y enhanced class="pub-profile-picker-body">
       <block wx:if="{{addressPickerVisible}}">
-        <view wx:for="{{profileAddresses}}" wx:key="index" class="pub-profile-picker-item {{profileAddressIndex === index ? 'pub-profile-selected' : ''}}" data-index="{{index}}" bindtap="bindSelectProfileAddress">
-          <view class="pub-profile-picker-copy"><view class="pub-profile-picker-title">{{item.label || '常用地址'}}<text wx:if="{{item.isDefault}}" class="pub-default-badge">默认</text></view><view class="pub-profile-picker-text">{{item.detail}}</view></view>
-          <view class="pub-profile-radio">{{profileAddressIndex === index ? '✓' : ''}}</view>
+        <view wx:for="{{profileAddresses}}" wx:key="index" class="pub-profile-picker-item {{profileAddressIndex === index ? 'pub-profile-selected' : ''}} pub-view" data-index="{{index}}" bindtap="bindSelectProfileAddress">
+          <view class="pub-profile-picker-copy pub-view"><view class="pub-profile-picker-title pub-view">{{item.label || '常用地址'}}<text wx:if="{{item.isDefault}}" class="pub-default-badge pub-text">默认</text></view><view class="pub-profile-picker-text pub-view">{{item.detail}}</view></view>
+          <view class="pub-profile-radio pub-view">{{profileAddressIndex === index ? '✓' : ''}}</view>
         </view>
-        <view wx:if="{{!profileAddresses.length}}" class="pub-profile-empty"><view>还没有常用地址</view><view class="pub-profile-picker-caption">点击下方“管理地址”添加</view></view>
+        <view wx:if="{{!profileAddresses.length}}" class="pub-profile-empty pub-view"><view class="pub-view">还没有常用地址</view><view class="pub-profile-picker-caption pub-view">点击下方“管理地址”添加</view></view>
       </block>
       <block wx:else>
-        <view wx:for="{{profileContacts}}" wx:key="index" class="pub-profile-picker-item {{profileContactIndex === index ? 'pub-profile-selected' : ''}}" data-index="{{index}}" bindtap="bindSelectProfileContact">
-          <view class="pub-profile-picker-copy"><view class="pub-profile-picker-title">{{item.name}}<text wx:if="{{item.isDefault}}" class="pub-default-badge">默认</text></view><view class="pub-profile-picker-text pub-profile-phone">{{item.phone}}</view></view>
-          <view class="pub-profile-radio">{{profileContactIndex === index ? '✓' : ''}}</view>
+        <view wx:for="{{profileContacts}}" wx:key="index" class="pub-profile-picker-item {{profileContactIndex === index ? 'pub-profile-selected' : ''}} pub-view" data-index="{{index}}" bindtap="bindSelectProfileContact">
+          <view class="pub-profile-picker-copy pub-view"><view class="pub-profile-picker-title pub-view">{{item.name}}<text wx:if="{{item.isDefault}}" class="pub-default-badge pub-text">默认</text></view><view class="pub-profile-picker-text pub-profile-phone pub-view">{{item.phone}}</view></view>
+          <view class="pub-profile-radio pub-view">{{profileContactIndex === index ? '✓' : ''}}</view>
         </view>
-        <view wx:if="{{!profileContacts.length}}" class="pub-profile-empty"><view>还没有常用联系人</view><view class="pub-profile-picker-caption">点击下方“管理联系人”添加</view></view>
+        <view wx:if="{{!profileContacts.length}}" class="pub-profile-empty pub-view"><view class="pub-view">还没有常用联系人</view><view class="pub-profile-picker-caption pub-view">点击下方“管理联系人”添加</view></view>
       </block>
     </scroll-view>
-    <view class="pub-profile-picker-actions"><button class="pub-profile-manage" bindtap="bindManageProfilePicker">{{addressPickerVisible ? '管理地址' : '管理联系人'}}</button><button class="pub-profile-confirm" bindtap="bindConfirmProfilePicker" disabled="{{addressPickerVisible ? profileAddressIndex < 0 : profileContactIndex < 0}}">{{addressPickerVisible ? '使用此地址' : '使用此联系人'}}</button></view>
+    <view class="pub-profile-picker-actions pub-view"><button class="pub-profile-manage pub-button-base" bindtap="bindManageProfilePicker">{{addressPickerVisible ? '管理地址' : '管理联系人'}}</button><button class="pub-profile-confirm pub-button-base {{(addressPickerVisible ? profileAddressIndex < 0 : profileContactIndex < 0) ? 'pub-disabled' : ''}}" bindtap="bindConfirmProfilePicker" disabled="{{addressPickerVisible ? profileAddressIndex < 0 : profileContactIndex < 0}}">{{addressPickerVisible ? '使用此地址' : '使用此联系人'}}</button></view>
   </view>
 </view>

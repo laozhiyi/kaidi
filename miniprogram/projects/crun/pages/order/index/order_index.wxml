@@ -150,7 +150,7 @@
 							<view class="card-side"><text class="status-tag status-taking">{{order.status || '已接单'}}</text></view>
 						</view>
 						<view class="card-divider"></view>
-						<view wx:if="{{order.showProgress}}" class="card-progress"><view wx:for="{{order.progressLabels}}" wx:key="*this" wx:for-item="step" wx:for-index="stepIndex" class="progress-step {{stepIndex <= order.progressStep ? 'progress-step-active' : ''}}"><view class="progress-dot"></view><text>{{step}}</text></view></view>
+						<view wx:if="{{order.showProgress}}" class="card-progress"><view wx:for="{{order.progressSteps}}" wx:key="index" wx:for-item="step" class="progress-step {{step.done ? 'progress-step-active' : ''}}"><view class="progress-dot"></view><text>{{step.displayLabel}}</text></view></view>
 						<view class="card-mid">
                             <view class="info-row"><text class="lbl">服务</text><text class="val">{{order.MAIL_CATE_NAME || '快递代取'}}</text></view>
                             <view wx:if="{{order.MAIL_OBJ.serviceType === 'buy'}}" class="info-row"><text class="lbl">商品</text><text class="val">{{order.MAIL_OBJ.goods}} × {{order.MAIL_OBJ.buyQuantity}} · 预算 ¥{{order.MAIL_OBJ.goodsBudget}}</text></view>

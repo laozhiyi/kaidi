@@ -26,6 +26,7 @@ class RequestRecoveryService extends Base {
   const identity = adminId || userId, requestKey = store.key(pid, identity, requestId);
   return store.transaction(async tx => {
    await mailService._actor(tx, actor);
+   await store.assertRequestScope(tx,pid,identity,route,requestId);
    let result = null;
    if (action) {
     const seen = await store.get(tx, 'order_request', requestKey);
@@ -59,6 +60,8 @@ class RequestRecoveryService extends Base {
     }
    }
    if (result) return {state:'committed',result};
+   const scope=store.scope();
+   if(scope)await store.set(tx,'request_scope',store.key(pid,'cancelled',identity,route,requestId),{_pid:pid,schoolId:scope.schoolId,campusId:scope.campusId});
    await store.set(tx, 'order_request', store.key(pid, 'cancelled', identity, route, requestId), {
     _pid:pid, state:'cancelled', route, createdAt:Date.now()
    });

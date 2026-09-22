@@ -48,14 +48,34 @@ test('saved pause continues to block both server publishing and accepting withou
  const g = fixture(), active = await g.publish(); await g.service.acceptMail('rider', active, { requestId: g.req('take') }); await g.service.pickupMail('rider', active, { requestId: g.req('pickup') }); g.config.enabled = false;
  await g.service.deliverMail('rider', active, { requestId: g.req('deliver'), note: '已送达', images: ['cloud://proof'] }); assert.equal(g.table('mail').get(active).MAIL_STATUS, 2);
 });
-test('service badge distinguishes loading and administrator pause without business-hour blocking', () => {
- const config = { enabled: true, openHour: 8, closeHour: 22 };
+test('missing or disabled business hours enforcement allows publishing all day on the client and server', () => {
+ const { requireOpen } = require('../../cloudfunctions/mcloud/project/crun/service/order_rules.js');
+ for (const policy of [{}, { enforceBusinessHours: false }]) {
+  const config = { enabled: true, openHour: 8, closeHour: 22, ...policy };
+  for (const time of ['00:00:00', '07:59:59', '08:00:00', '22:00:00', '23:59:59']) {
+   const at = Date.parse('2026-09-07T' + time + '+08:00');
+   assert.equal(UI.service(config, at).canPublish, true, time);
+   assert.doesNotThrow(() => requireOpen(config, at), time);
+  }
+  assert.equal(UI.service({ ...config, enabled: false }, now).canPublish, false);
+  assert.throws(() => requireOpen({ ...config, enabled: false }, now), /暂停/);
+ }
+});
+
+test('service badge and server agree on explicitly enabled opening boundaries in UTC+8', () => {
+ const config = { enabled: true, enforceBusinessHours: true, openHour: 8, closeHour: 22 };
+ const {requireOpen}=require('../../cloudfunctions/mcloud/project/crun/service/order_rules.js');
  assert.equal(UI.service(null, now).kind, 'loading');
- for (const time of ['07:59:59', '08:00:00', '21:59:59', '22:00:00']) {
-    const state = UI.service(config, Date.parse('2026-09-07T' + time + '+08:00')); assert.equal(state.kind, 'open'); assert.equal(state.canPublish, true); assert.equal(state.hours, '08:00–22:00');
+ for (const [time,open] of [['07:59:59',false],['08:00:00',true],['21:59:59',true],['22:00:00',false]]) {
+    const at=Date.parse('2026-09-07T' + time + '+08:00'),state=UI.service(config,at);
+    assert.equal(state.kind,open?'open':'closed');assert.equal(state.canPublish,open);assert.equal(state.hours,'08:00–22:00');
+    if(open)assert.doesNotThrow(()=>requireOpen(config,at));else assert.throws(()=>requireOpen(config,at),/营业时间/);
  }
  assert.equal(UI.service({ ...config, enabled: false }, now).kind, 'paused');
- assert.equal(UI.service({ enabled: true, openHour: 0, closeHour: 24 }, now).canPublish, true);
+ assert.equal(UI.service({ ...config, openHour: 0, closeHour: 24 }, now).canPublish, true);
+ for(const hours of [{openHour:-1,closeHour:25},{openHour:22,closeHour:8},{openHour:8}]){
+  const invalid={enabled:true,enforceBusinessHours:true,...hours};assert.equal(UI.service(invalid,now).canPublish,false);assert.throws(()=>requireOpen(invalid,now),/营业时间/);
+ }
 });
 test('detail presentation calculates fees, package tags and safe Beijing times', () => {
  const ui = UI.detail(base, now); assert.equal(ui.fee, '6.00'); assert.equal(ui.count, 3); assert.equal(ui.packages.length, 2); assert.equal(ui.createdAt, '2026-09-07 10:00');

@@ -4,7 +4,9 @@ const store = require('./operation_store.js');
 const Mail = require('./mail_service.js');
 const Config = require('./operation_config_service.js');
 const rules = require('./order_rules.js');
+const profileRules = require('./profile_rules.js');
 class OperationsService extends Base {
+ async feed(){const rows=await store.database().collection(store.collection('order_feed')).where({_pid:this.getProjectId()}).field({_id:true,revision:true}).limit(64).get();return {docs:rows.data};}
  async list(name, where = {}, page = 1, orderField = 'createdAt', size = 20, options = {}) {
   page = Number(page);
   size = Number(size);
@@ -28,12 +30,12 @@ class OperationsService extends Base {
   const total = count.total;
   return { list: result.data, page, size, total, count: Math.ceil(total / size), hasMore: page * size < total };
  }
- async config(userId) { return {...await new Config().getConfig(),templateId:process.env.ORDER_SUBSCRIBE_TEMPLATE_ID || '',uploadPrefix:'private/'+userId.split('^^^').pop()+'/'}; }
+ async config(userId) { return {...await new Config().getConfig(),allowManualRegistration:profileRules.allowsManualRegistration(),templateId:process.env.ORDER_SUBSCRIBE_TEMPLATE_ID || '',uploadPrefix:'private/'+userId.split('^^^').pop()+'/'}; }
  async notifications(userId,page,options={}) {return new (require('./notification_service.js'))().list(userId,{...options,page});}
  async notificationSummary(userId) {return new (require('./notification_service.js'))().summary(userId);}
  async markRead(userId,id,kind) {return new (require('./notification_service.js'))().markRead(userId,id,kind);}
  async markAllRead(userId) {return new (require('./notification_service.js'))().markAllRead(userId);}
- async subscribe(userId,enabled) {await new Mail()._user(userId);if(typeof enabled!=='boolean')this.AppError('订阅设置无效');await store.set(store.database(),'subscription',store.key(this.getProjectId(),userId),{_pid:this.getProjectId(),userId,enabled,updatedAt:Date.now()});return {ok:true};}
+ async subscribe(userId,enabled) {await new Mail()._user(userId);if(typeof enabled!=='boolean')this.AppError('订阅设置无效');await store.set(store.database(),'subscription',store.scopeKey(this.getProjectId(),userId),{_pid:this.getProjectId(),userId,enabled,updatedAt:Date.now()});return {ok:true};}
  async orders(page, status, options = {}) {
   const db = store.database(), where = { MAIL_ADMIN_DELETED: db.command.neq(true) };
   if (status !== undefined && status !== -1) {

@@ -1,5 +1,4 @@
 const pageHelper = require('../../../../../helper/page_helper.js');
-const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 const AdminBiz = require('../../../../../comm/biz/admin_biz.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
@@ -13,7 +12,7 @@ Page({
     ProjectBiz.initPage(this);
     if (PassportBiz.isLogin()) {
       const token = PassportBiz.getToken();
-      this.setData({ user: { USER_NAME: token.name, USER_PIC: token.pic || '', USER_STATUS: token.status } });
+      this.setData({ user: { USER_NAME: token.name, USER_PIC: token.pic || '', USER_STATUS: token.status, USER_MOBILE_VERIFIED: token.phoneVerified, USER_PROFILE_COMPLETE: token.profileComplete, allowManualRegistration: token.allowManualRegistration } });
     }
   },
   async onShow() {
@@ -23,7 +22,7 @@ Page({
     const tabBar = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
     if (tabBar) tabBar.setData({ selected: 2 });
     await PassportBiz.loginSilenceMust(this);
-    if (this._visible) Notifications.refresh(true);
+    if (this._visible && PassportBiz.isLogin()) Notifications.refresh(true);
     if (!this._unloaded) await this._loadUser();
   },
   onHide() { this._visible = false; if (this._stopMessages) this._stopMessages(); this._stopMessages = null; this.setData({ settingsVisible: false }); },
@@ -33,10 +32,15 @@ Page({
     this.setData({ loading: true, userError: '' });
     this._userRequest = (async () => {
       try {
-        const user = await cloudHelper.callCloudData('passport/my_detail', {}, { hint: false });
+        const user = await profileMethods.getProfileUser({ hint: false }, true);
         if (this._unloaded) return;
         this.setData({ user: user || null });
-        if (user && user.USER_STATUS !== 9) InviteBiz.acceptPending().catch(() => {});
+        if (user && user.USER_STATUS !== 9 && !profileMethods.isProfileReady(user)) {
+          if (this._visible && !this._openingCompletion) {
+            this._openingCompletion = true;
+            wx.navigateTo({ url: '/projects/crun/pages/my/reg/my_reg', complete: () => { this._openingCompletion = false; } });
+          }
+        } else if (user && user.USER_STATUS === 1) InviteBiz.acceptPending().catch(() => {});
       } catch (error) {
         if (!this._unloaded) this.setData({ userError: '资料加载失败，点击重试' });
       } finally {

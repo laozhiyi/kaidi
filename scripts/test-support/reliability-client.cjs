@@ -6,17 +6,23 @@ const crypto = require('node:crypto');
 const root = path.resolve(__dirname, '../../miniprogram');
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const clone = value => value === undefined ? undefined : structuredClone(value);
-function client() {
+function client({ unselected = false, admin = false } = {}) {
   let userId = 'rider', now = 1000000, timerId = 0;
   const modules = new Map(), definitions = new Map(), calls = [], watchers = [], timers = new Map(), storage = new Map(), events = [], ui = [], network = new Set(), cached = new Set();
+  // Persisted selection is kept separately so existing assertions about pending
+  // command storage continue to assert exactly that lifecycle.
+  let selection = unselected ? null : { schoolId: 'gxnu', campusId: 'yucai', schoolName: '广西师范大学', campusName: '育才校区' };
   class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } static now() { return now; } }
   const wx = {
-    getStorageSync: key => clone(storage.get(key)), setStorageSync: (key, value) => storage.set(key, clone(value)), removeStorageSync: key => storage.delete(key),
+    getStorageSync: key => clone(key === 'crun-campus-context' ? selection : storage.get(key)),
+    setStorageSync: (key, value) => key === 'crun-campus-context' ? (selection = clone(value)) : storage.set(key, clone(value)),
+    removeStorageSync: key => key === 'crun-campus-context' ? (selection = null) : storage.delete(key),
+    getStorageInfoSync: () => ({ keys: [...storage.keys(), ...(selection ? ['crun-campus-context'] : [])] }),
     showLoading: args => ui.push(['show', args]), hideLoading: () => ui.push(['hide']),
     showNavigationBarLoading: () => ui.push(['bar']), hideNavigationBarLoading: () => ui.push(['unbar']),
     showModal: args => ui.push(['modal', args]), showToast: args => ui.push(['toast', args]),
     reLaunch: args => ui.push(['relaunch', args]), navigateTo: args => ui.push(['navigate', args]),
-    stopPullDownRefresh() {},
+    stopPullDownRefresh() {}, setNavigationBarTitle() {},
     onNetworkStatusChange: listener => network.add(listener), offNetworkStatusChange: listener => network.delete(listener),
     cloud: {
       callFunction(args) { calls.push(args); },
@@ -39,15 +45,21 @@ function client() {
       clearTimeout: id => timers.delete(id),
       Page: value => definitions.set(filename, value), Component: value => definitions.set(filename, value),
       require(name) {
-        if (name.endsWith('/passport_biz.js')) return { getUserId: () => userId, loginMustCancelWin: async () => true };
-        if (name.endsWith('/admin_biz.js')) return { getAdminToken: () => null };
+        if (name.endsWith('/passport_biz.js')) return { getUserId: () => userId, loginMustCancelWin: async () => true, loginMustBackWin: async () => true };
+        if (name.endsWith('/admin_biz.js')) return { getAdminToken: () => admin ? { name: 'review-admin', token: 'test-session' } : null,
+          isAdmin(page) { if (admin) page.setData({ isAdmin: true, isSuperAdmin: true }); return admin; },
+          setContentDesc: page => load('comm/biz/admin_biz.js').setContentDesc(page) };
         if (name.endsWith('/project_biz.js')) return { initPage() {} };
         if (name.endsWith('/order_fav_biz.js')) return { watch: () => ({ stop() {}, invalidate() {}, refresh: async () => {} }) };
+        // Coordinator tests drive signals deterministically; transport polling
+        // and cloud scoping have their own tests using the real feed module.
+        if (name.endsWith('/order_feed_biz.js')) return {watch(callbacks){const watcher={...callbacks,route:'operations/feed',closed:false,close(){this.closed=true;}};watchers.push(watcher);return watcher;}};
         if (name.endsWith('/public_biz.js')) return { isCacheList: key => cached.has(key), setCacheList: key => cached.add(key), removeCacheList: key => cached.delete(key) };
         if (name.endsWith('/cache_helper.js')) return { get: key => key === 'user' ? { id: userId } : null };
         if (name.endsWith('/constants.js')) return { CACHE_TOKEN: 'user', CACHE_ADMIN: 'admin', CACHE_WORK: 'work' };
-        if (name.endsWith('/page_helper.js')) return { getPID: () => 'crun', fmtURLByPID: url => '/projects/crun' + url, showConfirm: async () => true, showSuccToast() {}, commListListener(page, event) { page.setData(event.detail); } };
-        if (name.endsWith('/helper.js')) return { isDefined: value => value !== undefined && value !== null };
+        if (name.endsWith('/page_helper.js')) return { getPID: () => 'crun', fmtURLByPID: url => '/projects/crun' + url, showConfirm: async () => true, showSuccToast() {},
+          getOptions(page, options = {}, key = 'id') { const value = options[key] || options.scene; if (!value) return false; page.setData({ [key]: value }); return true; },
+          commListListener(page, event) { page.setData(event.detail); } };
         if (name.endsWith('/md5_lib.js')) return { md5: text => crypto.createHash('md5').update(text).digest('hex') };
         if (name.endsWith('/time_helper.js')) return { time: () => '20260914' };
         if (/data_helper|content_check_helper/.test(name)) return {};

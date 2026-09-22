@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "legacySchoolId": "gxnu",
+  "aliases": {
+    "育才校区": {
+      "schoolId": "gxnu",
+      "campusId": "yucai"
+    },
+    "王城校区": {
+      "schoolId": "gxnu",
+      "campusId": "wangcheng"
+    },
+    "雁山校区": {
+      "schoolId": "gxnu",
+      "campusId": "yanshan"
+    }
+  },
+  "configTargets": [
+    {
+      "schoolId": "gxnu",
+      "campusId": "yucai"
+    },
+    {
+      "schoolId": "gxnu",
+      "campusId": "wangcheng"
+    },
+    {
+      "schoolId": "gxnu",
+      "campusId": "yanshan"
+    }
+  ],
+  "defaults": {},
+  "overrides": {},
+  "admins": {}
+}

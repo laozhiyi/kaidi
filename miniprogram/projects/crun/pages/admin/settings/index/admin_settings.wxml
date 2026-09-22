@@ -6,7 +6,7 @@
     <view class="ac-section-label">{{group.title}}</view>
     <view class="ac-card ac-menu-card">
       <block wx:for="{{group.items}}" wx:key="key">
-        <view wx:if="{{!item.superOnly || isSuperAdmin}}" class="ac-row" data-key="{{item.key}}" bindtap="bindNavigate"><view class="ac-menu-icon"><text class="{{item.icon}}"></text></view><view class="ac-menu-copy"><view class="ac-row-title">{{item.title}}</view><view class="ac-row-desc">{{item.desc}}</view></view><text class="ac-chevron">›</text></view>
+        <view wx:if="{{(!item.superOnly || isSuperAdmin) && (!item.platformOnly || admin.platform)}}" class="ac-row" data-key="{{item.key}}" bindtap="bindNavigate"><view class="ac-menu-icon"><text class="{{item.icon}}"></text></view><view class="ac-menu-copy"><view class="ac-row-title">{{item.title}}</view><view class="ac-row-desc">{{item.desc}}</view></view><text class="ac-chevron">›</text></view>
       </block>
     </view>
   </block>

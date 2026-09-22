@@ -13,35 +13,28 @@ const LogModel = require('../../../../framework/platform/model/log_model.js');
 const passwordUtil = require('../../../../framework/utils/password_util.js');
 const crypto = require('crypto');
 const store = require('../operation_store.js');
+const config = require('../../../../config/config.js');
 
 class AdminMgrService extends BaseProjectAdminService {
 
 	//**管理员登录  */
 	async adminLogin(name, password, userId) {
-		await store.limit(this.getProjectId(),userId,'admin_login',10,900000);
-		await store.limit(this.getProjectId(),name,'admin_account_login',30,900000);
+		const credentialsOnly = config.ADMIN_LOGIN_CREDENTIALS_ONLY === true;
+		if (!credentialsOnly) {
+			await store.limitAdmin(this.getProjectId(),userId,'admin_login',10,900000);
+			await store.limitAdmin(this.getProjectId(),name,'admin_account_login',30,900000);
+		}
 
 		// 判断是否存在
 		let where = {
-			ADMIN_STATUS: 1,
+			...(credentialsOnly ? {} : { ADMIN_STATUS: 1 }),
 			ADMIN_NAME: name
 		}
 		let fields = '*';
 		let admin = await AdminModel.getOne(where, fields);
-		// 首次使用时按默认凭证初始化管理员
-		if (!admin && name === 'admin' && password === '123456') {
-			const now = timeUtil.time();
-			await AdminModel.insert({
-				_pid: this.getProjectId(), ADMIN_ID: 'admin', ADMIN_NAME: 'admin', ADMIN_DESC: '系统管理员',
-				ADMIN_PHONE: '', ADMIN_PASSWORD: passwordUtil.hash('123456'), ADMIN_STATUS: 1, ADMIN_TYPE: 1,
-				ADMIN_LOGIN_CNT: 0, ADMIN_LOGIN_TIME: 0, ADMIN_TOKEN: '', ADMIN_TOKEN_USER: '', ADMIN_TOKEN_TIME: 0,
-				ADMIN_ADD_TIME: now, ADMIN_EDIT_TIME: now, ADMIN_ADD_IP: this._ip || '', ADMIN_EDIT_IP: this._ip || ''
-			});
-			admin = await AdminModel.getOne(where, fields);
-		}
 		if (!admin || !passwordUtil.verify(password, admin.ADMIN_PASSWORD))
 			this.AppError('账号或密码错误');
-		let cnt = admin.ADMIN_LOGIN_CNT;
+		let cnt = Number.isFinite(admin.ADMIN_LOGIN_CNT) ? admin.ADMIN_LOGIN_CNT : 0;
 
 		// 生成token
 		let token = crypto.randomBytes(32).toString('hex');
@@ -63,6 +56,9 @@ class AdminMgrService extends BaseProjectAdminService {
 
 		return {
 			token,
+   credentialsOnly,
+   platform: admin.ADMIN_PLATFORM === true,
+   scopes: admin.ADMIN_SCOPES || [],
 			name: admin.ADMIN_NAME,
 			type,
 			last,
@@ -138,7 +134,7 @@ class AdminMgrService extends BaseProjectAdminService {
 		orderBy = {
 			ADMIN_ADD_TIME: 'desc'
 		}
-		let fields = 'ADMIN_NAME,ADMIN_STATUS,ADMIN_PHONE,ADMIN_TYPE,ADMIN_LOGIN_CNT,ADMIN_LOGIN_TIME,ADMIN_DESC,ADMIN_EDIT_TIME,ADMIN_EDIT_IP';
+		let fields = 'ADMIN_NAME,ADMIN_STATUS,ADMIN_PHONE,ADMIN_TYPE,ADMIN_PLATFORM,ADMIN_SCOPES,ADMIN_LOGIN_CNT,ADMIN_LOGIN_TIME,ADMIN_DESC,ADMIN_EDIT_TIME,ADMIN_EDIT_IP';
 
 		let where = {};
 		where.and = {
@@ -216,6 +212,8 @@ class AdminMgrService extends BaseProjectAdminService {
 			ADMIN_PASSWORD: passwordUtil.hash(password),
 			ADMIN_STATUS: 1,
 			ADMIN_TYPE: 0, // 默认普通管理员
+   ADMIN_PLATFORM: false,
+   ADMIN_SCOPES: store.scope() ? [{schoolId:store.scope().schoolId,campusId:store.scope().campusId}] : [],
 			ADMIN_LOGIN_CNT: 0,
 			ADMIN_LOGIN_TIME: 0,
 			ADMIN_TOKEN: '',

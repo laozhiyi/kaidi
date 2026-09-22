@@ -1,0 +1,76 @@
+{
+  "before": [
+    {
+      "component": "projects/crun/cmpts/deadline_picker/deadline_picker",
+      "sourceFiles": 1,
+      "invalid": "Some selectors are not allowed in component wxss, including tag name selectors, ID selectors, and attribute selectors.(./projects/crun/cmpts/deadline_picker/deadline_picker.wxss:25:17)"
+    },
+    {
+      "component": "cmpts/public/img/img_upload_cmpt",
+      "sourceFiles": 21,
+      "invalid": "Some selectors are not allowed in component wxss, including tag name selectors, ID selectors, and attribute selectors.(./cmpts/public/img/img_upload_cmpt.wxss:13:3)"
+    },
+    {
+      "component": "cmpts/public/rows/rows_cmpt",
+      "sourceFiles": 1,
+      "invalid": "Some selectors are not allowed in component wxss, including tag name selectors, ID selectors, and attribute selectors.(./cmpts/public/rows/rows_cmpt.wxss:80:24)"
+    },
+    {
+      "component": "projects/crun/cmpts/campus_selector/campus_selector",
+      "sourceFiles": 1,
+      "invalid": "Some selectors are not allowed in component wxss, including tag name selectors, ID selectors, and attribute selectors.(./projects/crun/cmpts/campus_selector/campus_selector.wxss:1:326)"
+    },
+    {
+      "component": "cmpts/public/car_number/car_number_cmpt",
+      "sourceFiles": 1,
+      "invalid": "Some selectors are not allowed in component wxss, including tag name selectors, ID selectors, and attribute selectors.(./cmpts/public/car_number/car_number_cmpt.wxss:92:27)"
+    },
+    {
+      "component": "projects/crun/pages/mail/add/mail_add_embedded",
+      "sourceFiles": 3,
+      "invalid": "Some selectors are not allowed in component wxss, including tag name selectors, ID selectors, and attribute selectors.(./projects/crun/pages/mail/add/mail_add_embedded.wxss:187:36)"
+    },
+    {
+      "component": "custom-tab-bar/index",
+      "sourceFiles": 2,
+      "invalid": "Some selectors are not allowed in component wxss, including tag name selectors, ID selectors, and attribute selectors.(./custom-tab-bar/index.wxss:25:1)"
+    }
+  ],
+  "after": [
+    {
+      "component": "projects/crun/cmpts/deadline_picker/deadline_picker",
+      "sourceFiles": 1,
+      "invalid": null
+    },
+    {
+      "component": "cmpts/public/img/img_upload_cmpt",
+      "sourceFiles": 1,
+      "invalid": null
+    },
+    {
+      "component": "cmpts/public/rows/rows_cmpt",
+      "sourceFiles": 1,
+      "invalid": null
+    },
+    {
+      "component": "projects/crun/cmpts/campus_selector/campus_selector",
+      "sourceFiles": 1,
+      "invalid": null
+    },
+    {
+      "component": "cmpts/public/car_number/car_number_cmpt",
+      "sourceFiles": 1,
+      "invalid": null
+    },
+    {
+      "component": "projects/crun/pages/mail/add/mail_add_embedded",
+      "sourceFiles": 3,
+      "invalid": null
+    },
+    {
+      "component": "custom-tab-bar/index",
+      "sourceFiles": 2,
+      "invalid": null
+    }
+  ]
+}

@@ -1,0 +1,141 @@
+✔ internal testing defaults to credentials-only login and can explicitly restore account checks (1.8976ms)
+✔ an existing admin without campus grants can log in and retain a session with status 1 (54.7995ms)
+✔ an existing admin without campus grants can log in and retain a session with status 0 (51.511ms)
+✔ an existing admin without campus grants can log in and retain a session with status undefined (49.9931ms)
+✔ incorrect or missing credentials remain rejected, without creating admins or locking out a later correct attempt (310.9596ms)
+✔ correct credentials still work when an old login rate-limit bucket is exhausted (51.978ms)
+✔ internal admin sessions still require the latest token, its owner, expiry and the proper role (71.8229ms)
+✔ legacy admins can use the dashboard and existing write transactions while rows remain campus isolated (65.018ms)
+✔ the real admin login route accepts a correct existing account shorter than five characters (57.8597ms)
+✖ restoring account checks does not restore school grants but still rejects disabled accounts and rate limits (49.5171ms)
+✔ real login, dashboard and user routes ignore missing and foreign grants: credentialsOnly=true (62.6588ms)
+✖ real login, dashboard and user routes ignore missing and foreign grants: credentialsOnly=false (56.2924ms)
+✖ admin client exposes user management without school grants: credentialsOnly=undefined (1.0395ms)
+✖ admin client exposes user management without school grants: credentialsOnly=false (0.6122ms)
+✔ admin client exposes user management without school grants: credentialsOnly=true (0.5032ms)
+✔ empty passwords and incomplete login responses cannot navigate into the admin console (0.5637ms)
+✔ missing tenant context fails closed for operational collections (1.4141ms)
+✔ concurrent asynchronous requests retain separate campus contexts (1.0494ms)
+✔ scope survives projections, pagination, OR queries and counts (0.3466ms)
+✔ foreign and legacy document IDs cannot disclose or overwrite rows (0.9613ms)
+✔ inserts and transactional writes stamp scope and prevent scope reassignment (1.166ms)
+✔ batch updates and deletes affect only the active campus (0.2432ms)
+✔ school profiles are shared within a school and hidden from other schools (0.2409ms)
+✔ aggregate joins constrain both sides and raw nested pipelines are rejected (0.3766ms)
+✔ only explicit server system context can inspect the whole project (0.1949ms)
+✔ orders, configurations, quotas and notifications stay in their server-resolved campus (21.638ms)
+✔ publishing and recovering a request in another campus cannot create a second order (9.5199ms)
+✔ simultaneous acceptance has one winner and foreign-campus riders cannot participate (14.9375ms)
+✔ directory edits require live platform authority, preserve versions, and new campuses stay paused (4.8173ms)
+✔ directory metadata excludes location bodies and grants, while details enforce platform access (2.9796ms)
+✖ order transactions ignore school grants and still recheck live admin status (7.6583ms)
+✔ news manifests and read acknowledgements isolate campuses and survive edits (5.6398ms)
+✔ scheduled jobs process all campuses with transactions and skip zero due times (12.8598ms)
+✔ failed oldest worker rows do not starve later rows across bounded runs (8.983ms)
+✔ plugin quotes are versioned and explicitly enabled opening hours are enforced by the server (8.1824ms)
+✖ business hours controls only affect the active campus without requiring campus grants (3.2397ms)
+✔ the feed endpoint returns only current-campus opaque revisions (8.9693ms)
+✖ super admins can update the shared school registration policy without school grants (9.7588ms)
+✔ administrator login limits cannot be reset by changing campuses (2.5612ms)
+✔ worker budget stops starting new items and preserves the first unprocessed row (9.3235ms)
+✔ subscription links retain the originating campus when users have switched elsewhere (9.395ms)
+ℹ tests 41
+ℹ suites 0
+ℹ pass 34
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 959.1947
+
+✖ failing tests:
+
+test at scripts\tests\admin-login.test.js:113:1
+✖ restoring account checks does not restore school grants but still rejects disabled accounts and rate limits (49.5171ms)
+  Error [AppError]: 没有当前学校或校区的管理权限
+      at Object.assertAdmin (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\tenancy\tenant_context.js:41:59)
+      at AdminMgrService.adminLogin (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\admin\admin_mgr_service.js:37:81)
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\admin-login.test.js:115:19)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    code: 1600
+  }
+
+test at scripts\tests\admin-login.test.js:128:3
+✖ real login, dashboard and user routes ignore missing and foreign grants: credentialsOnly=false (56.2924ms)
+  AssertionError [ERR_ASSERTION]: 没有当前学校或校区的管理权限
+  
+  1600 !== 200
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\admin-login.test.js:133:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1600,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\admin-login.test.js:168:1
+✖ admin client exposes user management without school grants: credentialsOnly=undefined (1.0395ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\admin-login.test.js:175:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\admin-login.test.js:168:1
+✖ admin client exposes user management without school grants: credentialsOnly=false (0.6122ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\admin-login.test.js:175:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\tenant-services.test.js:68:1
+✖ order transactions ignore school grants and still recheck live admin status (7.6583ms)
+  Error [AppError]: 没有当前学校或校区的管理权限
+      at Object.assertAdmin (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\tenancy\tenant_context.js:41:59)
+      at MailService._actor (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\mail_service.js:22:277)
+      at async B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\mail_service.js:110:24
+      at async B:\zhumian\zm\kaidi\scripts\test-support\tenant-memory.cjs:32:124 {
+    code: 1600
+  }
+
+test at scripts\tests\tenant-services.test.js:115:1
+✖ business hours controls only affect the active campus without requiring campus grants (3.2397ms)
+  Error [AppError]: 没有当前学校或校区的管理权限
+      at Object.assertAdmin (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\tenancy\tenant_context.js:41:59)
+      at B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\operation_config_service.js:44:79
+      at async B:\zhumian\zm\kaidi\scripts\test-support\tenant-memory.cjs:32:124 {
+    code: 1600
+  }
+
+test at scripts\tests\tenant-services.test.js:132:1
+✖ super admins can update the shared school registration policy without school grants (9.7588ms)
+  Error [AppError]: 学校账号与注册审核需要学校管理员授权
+      at Object.assertSchoolAdmin (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\tenancy\tenant_context.js:45:71)
+      at B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\operation_config_service.js:53:62
+      at async B:\zhumian\zm\kaidi\scripts\test-support\tenant-memory.cjs:32:124 {
+    code: 1600
+  }

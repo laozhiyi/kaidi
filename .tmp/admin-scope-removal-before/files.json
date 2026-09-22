@@ -1,0 +1,20 @@
+[
+  "cloudfunctions/mcloud/config/config.js",
+  "cloudfunctions/mcloud/framework/tenancy/tenant_context.js",
+  "cloudfunctions/mcloud/framework/platform/service/base_admin_service.js",
+  "cloudfunctions/mcloud/project/crun/service/admin/admin_mgr_service.js",
+  "cloudfunctions/mcloud/project/crun/controller/admin/base_project_admin_controller.js",
+  "cloudfunctions/mcloud/project/crun/service/operation_config_service.js",
+  "cloudfunctions/mcloud/project/crun/service/mail_service.js",
+  "miniprogram/comm/biz/admin_biz.js",
+  "miniprogram/projects/crun/pages/admin/settings/rules/admin_rules_settings.wxml",
+  "scripts/tests/admin-login.test.js",
+  "scripts/tests/tenant-services.test.js",
+  "scripts/tests/tenant-database.test.js",
+  "scripts/test-support/tenant-services.cjs",
+  "README.md",
+  "ADMIN_CONSOLE.md",
+  "deployment/MULTI_TENANT_ROLLOUT.md",
+  "deployment/WECHAT_LOGIN.md",
+  "ARCHITECTURE_PROGRESS.md"
+]

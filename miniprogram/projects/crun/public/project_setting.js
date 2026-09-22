@@ -18,7 +18,7 @@ module.exports = { //crun
 		{ mark: 'payPic', title: '支付凭证', type: 'image', must: false, max: 1, ext: { hint: '请上传图片，支持jpg/png格式' } },
 	],
 	USER_CHECK_FORM: {
-		name: 'formName|must|string|min:1|max:30|name=姓名',
+		name: 'formName|must|string|min:1|max:30|name=昵称',
 		mobile: 'formMobile|must|mobile|name=手机',
 		pic: 'formPic|must|string|name=头像',
 		forms: 'formForms|array'

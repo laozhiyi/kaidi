@@ -6,7 +6,7 @@ function withoutCampus(value, campus) {
  const address = clean(value), prefix = clean(campus);
  return prefix && address.startsWith(prefix) ? address.slice(prefix.length).replace(/^[\s·：:-]+/, '') : address;
 }
-const phaseOf = (value, campus) => PHASES.find(phase => withoutCampus(value, campus).startsWith(phase)) || '';
+const phaseOf = (value, campus, phases = PHASES) => phases.slice().sort((a,b)=>b.length-a.length).find(phase => withoutCampus(value, campus).startsWith(phase)) || '';
 function formValue(forms, mark) {
  const field = (Array.isArray(forms) ? forms : []).find(item => item && item.mark === mark);
  return field ? field.val : undefined;
@@ -17,7 +17,7 @@ function campusOf(mail) {
  return match ? match[1] : value;
 }
 
-function resolve(mail) {
+function resolve(mail, phases = PHASES) {
  const obj = mail.MAIL_OBJ || {};
  const campus = campusOf(mail);
  const rawCampus = clean(formValue(mail.MAIL_FORMS, 'campus')) || clean(obj.campus);
@@ -26,21 +26,21 @@ function resolve(mail) {
  const snapshot = withoutCampus(obj.address2, campus);
  let detail = saved || snapshot;
  let phase = [formValue(mail.MAIL_FORMS, 'addressPhase'), !saved || saved === snapshot ? obj.addressPhase : '']
-  .map(clean).find(value => PHASES.includes(value)) || '';
+  .map(clean).find(value => value && value.length <= 30) || '';
  const trailingPhase = detail.match(/^(.+?)\s*[·•]\s*(一期|二期|三期|四期|五期)$/);
  if (trailingPhase) { detail = trailingPhase[1].trim(); phase = phase || trailingPhase[2]; }
- if (campusDetail && (!saved || PHASES.includes(saved))) {
-  phase = phase || (PHASES.includes(saved) ? saved : '');
+ if (campusDetail && (!saved || phases.includes(saved))) {
+  phase = phase || (phases.includes(saved) ? saved : '');
   detail = campusDetail[1].trim();
  }
  // Read this order's submitted address, including its phase, before the derived object.
- if (!detail || phaseOf(detail)) return detail;
+ if (!detail || phaseOf(detail, '', phases) || phase && detail.startsWith(phase)) return detail;
  return phase ? phase + ' ' + detail : detail;
 }
 
 function complete(mail) {
  const address2 = resolve(mail), campus = campusOf(mail);
- const addressPhase = phaseOf(address2), obj = mail.MAIL_OBJ || {};
+ const obj = mail.MAIL_OBJ || {}, addressPhase = clean(formValue(mail.MAIL_FORMS, 'addressPhase')) || clean(obj.addressPhase) || phaseOf(address2);
  if (!address2 || address2 === obj.address2 && campus === clean(obj.campus) && addressPhase === clean(obj.addressPhase)) return mail;
  const result = { ...obj, address2, ...(campus ? { campus } : {}) };
  if (addressPhase) result.addressPhase = addressPhase;

@@ -2,12 +2,7 @@ const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const pageHelper = require('../../../../../helper/page_helper.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 
-const CAMPUS_OPTIONS = [
-	{ label: '全部校区', value: '' },
-	{ label: '育才校区', value: '育才校区' },
-	{ label: '王城校区', value: '王城校区' },
-	{ label: '雁山校区', value: '雁山校区' }
-];
+const CAMPUS_OPTIONS = [{ label: '当前校区', value: '' }];
 
 function normalizeCampus(campus) {
 	return String(campus || '').replace(/校区$/, '');
@@ -56,7 +51,7 @@ Page({
 				if (!next || !next.data || !Array.isArray(next.data.list)) throw new Error('客服信息加载失败');
 				records = records.concat(next.data.list);
 			}
-			let list = records.filter(item => CAMPUS_OPTIONS.slice(1).some(option => normalizeCampus(option.value) === normalizeCampus(item.CS_CAMPUS)));
+			let list = records;
 			list.sort((a, b) => this._campusRank(a.CS_CAMPUS) - this._campusRank(b.CS_CAMPUS));
 			if (this._destroyed) return;
 			this.setData({ list, isLoad: true, loadError: '' }, () => this._refreshDisplayList());

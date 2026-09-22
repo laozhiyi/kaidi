@@ -8,7 +8,7 @@
     <view class="ac-card ac-detail-hero">
       <view class="ac-order-head"><text class="ac-order-id">{{detail.orderNo}}</text><text class="ac-link" bindtap="bindCopy">复制编号</text></view>
       <view class="ac-order-main"><view><view class="ac-badge {{detail.tone}}">{{detail.statusLabel}}</view><view class="ac-detail-status">{{detail.MAIL_OBJ.title || '快递代取'}}</view><view class="ac-order-meta">{{detail.MAIL_OBJ.campus || '未标注校区'}} · {{detail.MAIL_OBJ.num || 0}} 件{{detail.MAIL_OBJ.urgent?' · 加急':''}}</view></view><view><view class="ac-price">¥{{detail.priceText}}</view><view class="ac-muted">订单费用</view></view></view>
-      <view wx:if="{{detail.MAIL_STATUS!==3 && detail.MAIL_STATUS!==99}}" class="ac-progress"><view wx:for="{{detail.steps}}" wx:key="label" class="ac-progress-step {{item.done?'done':''}}"><view class="ac-step-dot"></view><text>{{item.label}}</text></view></view>
+      <view wx:if="{{detail.showProgress}}" class="ac-progress"><view wx:for="{{detail.steps}}" wx:key="index" class="ac-progress-step {{item.done?'done':''}}"><view class="ac-step-dot"></view><text>{{item.displayLabel}}</text><view wx:if="{{item.timeText}}" class="ac-step-time"><view>{{item.dateText}}</view><view>{{item.clockText}}</view></view><view wx:elif="{{item.recordText}}" class="ac-step-time">{{item.recordText}}</view></view></view>
       <view wx:if="{{detail.overdue}}" class="ac-order-warning">已超过履约时限 · 预计 {{detail.dueText}}</view>
     </view>
     <view class="ac-card">

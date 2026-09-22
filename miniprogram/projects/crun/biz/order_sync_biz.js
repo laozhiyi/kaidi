@@ -1,5 +1,6 @@
 const Ops = require('./operations_biz.js');
 const cloud = require('../../../helper/cloud_helper.js');
+const Feed = require('./order_feed_biz.js');
 
 const listeners = new Set();
 const MIN_GAP = 1500;
@@ -66,10 +67,9 @@ function connect() {
     }, jitter(Math.min(60000, 1000 * Math.pow(2, Math.min(reconnects++, 6)))));
   }
   try {
-    // These 64 documents contain only opaque revisions. Private orders and
-    // favorite identities remain readable only through authenticated functions.
-    if (!wx.cloud || typeof wx.cloud.database !== 'function') { schedulePoll(); return; }
-    const handle = wx.cloud.database().collection('bx_order_feed').where({ _pid: 'crun' }).limit(64).watch({
+    const scope = cloud.scopeSnapshot && cloud.scopeSnapshot();
+    if (cloud.scopeSnapshot && !scope) { schedulePoll(); return; }
+    const handle = Feed.watch({ scope,
       onChange(snapshot) {
         if (token !== generation || watchToken !== watchGeneration || !enabled()) return;
         connected = true; reconnects = 0;
@@ -83,6 +83,7 @@ function connect() {
   } catch (_) { onError(); }
 }
 function start() { if (enabled()) { connect(); schedulePoll(); } }
+if (cloud.onScopeChange) cloud.onScopeChange(() => { stop(); signature = ''; lastRefresh = 0; start(); });
 function subscribe(listener) {
   listeners.add(listener);
   if (listeners.size === 1) {

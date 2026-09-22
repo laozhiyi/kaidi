@@ -1,5 +1,5 @@
 const Ops = require('./operations_biz.js');
-const REFRESH_MS = 5000;
+const REFRESH_MS = 30000;
 
 async function stats(ids, active = () => true) {
   const unique = [...new Set(ids.filter(Boolean))], rows = [];

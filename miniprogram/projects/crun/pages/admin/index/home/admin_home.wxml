@@ -1,5 +1,5 @@
 <view wx:if="{{isAdmin}}" class="ac-page">
-  <view class="ac-eyebrow">GXNU 随手取 · 管理后台</view>
+  <view class="ac-eyebrow">随手取 · 管理后台</view>
   <view class="ac-heading">
     <view><view class="ac-title">运营工作台</view><view class="ac-subtitle">{{dateText}} · {{admin.name}}，欢迎回来</view></view>
     <view class="ac-service-status" bindtap="bindNavigate" data-key="service"><view class="ac-service-dot {{configError?'unknown':config && config.enabled?'':'paused'}}"></view><text>{{configError?'状态未获取':config?config.enabled?'服务开放中':'服务已暂停':'读取状态中'}}</text></view>

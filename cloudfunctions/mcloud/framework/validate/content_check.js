@@ -59,76 +59,113 @@ async function checkImg(imgData, mine) {
  * 后台把输入数据里的文本数据提交内容审核
  * @param {*} input 
  */
-async function checkTextMultiAdmin(input) {
+async function checkTextMultiAdmin(input, options = {}) {
 	if (!config.ADMIN_CHECK_CONTENT) return;
-	return checkTextMulti(input);
+	return checkTextMulti(input, options);
 }
 
 /**
  * 前台把输入数据里的文本数据提交内容审核
  * @param {*} input 
  */
-async function checkTextMultiClient(input) {
+async function checkTextMultiClient(input, options = {}) {
 	if (!config.CLIENT_CHECK_CONTENT) return;
-	return checkTextMulti(input);
+	return checkTextMulti(input, options);
 }
 
 /**
  * 把输入数据里的文本数据提交内容审核
  * @param {*} input 
  */
-async function checkTextMulti(input) {
-
-	let txt = '';
-	for (let key in input) {
-		if (typeof (input[key]) === 'string')
-			txt += input[key];
-		else if (typeof (input[key]) === 'object') //包括数组和对象
-			txt += JSON.stringify(input[key]);
+async function checkTextMulti(input, options = {}) {
+	// Use byField with { '昵称': name, '学院': college } for editable fields.
+	// Existing callers retain batched auditing and object support.
+	const fields = Object.entries(input || {}).map(([field, value]) => [field,
+		typeof value === 'string' ? value : value && typeof value === 'object' ? JSON.stringify(value) : ''
+	]).filter(([, text]) => text && text.trim());
+	if (fields.reduce((size, [, text]) => size + text.length, 0) > 24000) throw new AppError('提交内容过长');
+	const batches = options.byField || fields.length < 2 ? fields : [['', fields.map(([, text]) => text).join('\n')]];
+	for (const [field, text] of batches) {
+		for (let offset = 0; offset < text.length;) {
+			let end = Math.min(offset + 1800, text.length);
+			if (/[\uD800-\uDBFF]/.test(text[end - 1]) && /[\uDC00-\uDFFF]/.test(text[end] || '')) end--;
+			await checkText(text.slice(offset, end), { ...options, field });
+			offset = end;
+		}
 	}
-
-	if (txt.length > 24000) throw new AppError('提交内容过长');
- for (let offset=0; offset<txt.length; offset+=1800) await checkText(txt.slice(offset,offset+1800));
 }
 /**
  * 后台校验文字信息
  * @param {*}  
  */
-async function checkTextAdmin(txt) {
+async function checkTextAdmin(txt, options = {}) {
 	if (!config.ADMIN_CHECK_CONTENT) return;
-	return checkText(txt);
+	return checkText(txt, options);
 }
 
 /**
  * 前台校验文字信息
  * @param {*}  
  */
-async function checkTextClient(txt) {
+async function checkTextClient(txt, options = {}) {
 	if (!config.CLIENT_CHECK_CONTENT) return;
-	return checkText(txt);
+	return checkText(txt, options);
 }
 
 /**
  * 校验文字信息
  * @param {*}  
  */
-async function checkText(txt) { 
-	if (!txt) return; 
-	let cloud = cloudBase.getCloud();
-	try { 
-		const result = await cloud.openapi.security.msgSecCheck({
-			content: txt, version: 2, scene: 2, openid: cloud.getWXContext().OPENID
-
-		})
-		if (!result || result.errCode !== 0 || !result.result || result.result.suggest !== 'pass') {
-			throw new AppError('文字内容不合适，请修改或者重试');
-		}
-
-	} catch (err) {
-		console.warn('text audit failed', err.errCode || 'AUDIT_FAILED');
-		throw new AppError('文字内容不合适，请修改或者重试');
+async function checkText(txt, options = {}) {
+	if (!txt || !txt.trim()) return;
+	const cloud = cloudBase.getCloud(), openid = cloud.getWXContext().OPENID;
+	if (!openid) throw textServiceError(null, 'identity');
+	let response;
+	try {
+		response = await cloud.openapi.security.msgSecCheck({
+			content: txt, version: 2, scene: options.scene || 2, openid
+		});
+	} catch (error) {
+		const code = textErrorCode(error);
+		if (code === 87014) throw textRejection(options.field);
+		const timeout = error && (/TIMEOUT|TIMEDOUT/i.test(String(error.code || ''))
+			|| /\btimeout\b|timed out/i.test(String(error.errMsg || error.message || '')));
+		throw textServiceError(code, timeout ? 'timeout' : 'provider');
 	}
+	const code = textErrorCode(response);
+	if (code === 87014) throw textRejection(options.field);
+	if (code !== 0) throw textServiceError(code, code === null ? 'invalid_response' : 'provider');
+	const suggest = response.result && response.result.suggest;
+	if (suggest === 'pass') return;
+	if (suggest === 'risky' || suggest === 'review') throw textRejection(options.field, suggest);
+	throw textServiceError(null, 'invalid_response');
+}
 
+function textErrorCode(value) {
+	const code = value && (value.errCode !== undefined ? value.errCode : value.errcode);
+	return /^-?\d{1,8}$/.test(String(code)) ? Number(code) : null;
+}
+
+function textRejection(field, suggest = 'risky') {
+	const label = field ? '「' + field + '」' : '提交的文字';
+	return new AppError(suggest === 'review'
+		? label + '被微信标记为需复核，请调整该字段后重试'
+		: label + '未通过微信文字审核，请修改该字段后重试');
+}
+
+function textServiceError(code, reason) {
+	let message = '微信文字审核服务暂不可用，请稍后重试；持续失败请联系管理员';
+	if ([48001, 48002].includes(code)) {
+		reason = 'permission'; message = '微信文字审核服务暂无调用权限，请联系管理员检查服务配置';
+	} else if (code === 40003 || reason === 'identity') {
+		reason = 'identity'; message = '微信文字审核身份校验失败，请重新进入小程序后重试';
+	} else if ([45009, 45011].includes(code)) {
+		reason = 'rate_limit'; message = '微信文字审核服务繁忙，请稍后重试';
+	} else if (reason === 'timeout') message = '微信文字审核超时，请稍后重试';
+	else if (reason === 'invalid_response') message = '微信文字审核服务返回异常，请稍后重试；持续失败请联系管理员';
+	// Provider messages may contain submitted text or personal information.
+	console.warn('[text-audit]', { reason, errCode: code });
+	return new AppError(message + (code === null ? '' : '（错误码：' + code + '）'));
 }
 
 async function checkCloudImage(fileID, allowed = []) {

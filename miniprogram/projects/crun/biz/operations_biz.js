@@ -5,11 +5,15 @@ const md5 = require('../../../lib/tools/md5_lib.js').md5;
 const uploadCache = new Map();
 const commands = new Map(), changeListeners = new Set();
 const requestId = () => 'req_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-async function get(route, params = {}) { const result = await cloud.callCloudSumbit(route, params, {hint:false}); if (!result || result.data === undefined) throw new Error('未收到有效响应，请重试'); return result.data; }
+async function get(route, params = {}, scope) { const result = await cloud.callCloudSumbit(route, params, {hint:false, ...(scope ? { scope } : {})}); if (!result || result.data === undefined) throw new Error('未收到有效响应，请重试'); return result.data; }
 function pendingKey(route, params = {}) {
  const admin = route.startsWith('admin/') && Admin.getAdminToken();
  const identity = admin ? 'admin:'+admin.name+':'+md5(admin.token) : Passport.getUserId();
- return identity ? 'crun-pending:' + identity + ':' + route + ':' + (params.id || 'new') : '';
+ if (!identity) return '';
+ const legacy = 'crun-pending:' + identity + ':' + route + ':' + (params.id || 'new');
+ // Existing uncertain requests must be reconciled before creating a new one.
+ if (wx.getStorageSync(legacy)) return legacy;
+ return legacy + (cloud.scopeKey && cloud.scopeKey() ? ':' + cloud.scopeKey() : '');
 }
 function pendingCommand(route, params = {}) {
  const key = pendingKey(route, params);
@@ -21,18 +25,21 @@ function recoverCommand(route, params = {}) {
  if (commands.has(key)) return Promise.reject(new Error('上一项操作仍在处理中，请稍后核对'));
  const pending = pendingCommand(route, params);
  if (!pending) return Promise.reject(new Error('没有需要核对的提交'));
+ const scope = pending.scope || cloud.scopeSnapshot && cloud.scopeSnapshot();
+ if (pending.scope && cloud.scopeKey && cloud.scopeKey(pending.scope) !== cloud.scopeKey()) return Promise.reject(new Error('请切回上次提交的校区再核对'));
+ const unlock = cloud.scopeLock ? cloud.scopeLock() : () => {};
  const task = { signature: 'recover' };
  task.promise = Promise.resolve().then(async () => {
   if (pendingKey(route, params) !== key) throw new Error('登录账号已变化，请返回重试');
   const result = await get(route.startsWith('admin/') ? 'admin/operations_recover' : 'operations/recover', {
    route, requestId: pending.requestId, id: pending.resourceId || params.id || params.orderId || ''
-  });
+  }, scope);
   if (!result || !['committed', 'cancelled'].includes(result.state)) throw new Error('上次提交结果尚未确认，请稍后重试');
   const current = wx.getStorageSync(key);
   if (current && current.requestId === pending.requestId) wx.removeStorageSync(key);
   if (result.state === 'committed') orderChanged(route, result.result || {});
   return result;
- }).finally(() => { if (commands.get(key) === task) commands.delete(key); });
+ }).finally(() => { if (commands.get(key) === task) commands.delete(key); unlock(); });
  commands.set(key, task);
  return task.promise;
 }
@@ -40,6 +47,7 @@ function command(route, params = {}, options = {}) {
  // Freeze the payload before signing or yielding. A form can keep changing
  // while the request is in flight, and retries must send the identical body.
  params = JSON.parse(JSON.stringify(params));
+ if (cloud.scopeSnapshot && !cloud.scopeSnapshot() && cloud.ensureScope) return cloud.ensureScope({ allowDisabled: route.startsWith('admin/') }).then(() => command(route, params, options));
  const key = pendingKey(route, params); if (!key) return Promise.reject(new Error('请先登录'));
  const signature = md5(JSON.stringify(params));
  const active = commands.get(key);
@@ -48,9 +56,12 @@ function command(route, params = {}, options = {}) {
   return Promise.reject(new Error('上一项操作仍在处理中，请稍后再提交修改'));
  }
  const task = { signature };
+ options = { ...options, scope: cloud.scopeSnapshot && cloud.scopeSnapshot() };
+ const unlock = cloud.scopeLock ? cloud.scopeLock() : () => {};
  // Install the lock before any asynchronous login, upload or cloud response.
  task.promise = Promise.resolve().then(() => sendCommand(route, params, options, key, signature)).finally(() => {
   if (commands.get(key) === task) commands.delete(key);
+  unlock();
  });
  commands.set(key, task);
  return task.promise;
@@ -71,13 +82,14 @@ async function sendCommand(route, params, options, key, signature) {
  }
  // Persist identifiers only. Contact details, evidence and form contents stay
  // out of local storage; the server can reconcile an unknown outcome safely.
- if (!pending) { pending = {signature,requestId:requestId(),resourceId:params.id || params.orderId || '',createdAt:Date.now()}; wx.setStorageSync(key,pending); }
+ if (!pending) { pending = {signature,requestId:requestId(),resourceId:params.id || params.orderId || '',createdAt:Date.now(), ...(options.scope ? {scope:options.scope} : {})}; wx.setStorageSync(key,pending); }
+ if (pending.scope && cloud.scopeKey && cloud.scopeKey(pending.scope) !== cloud.scopeKey()) throw new Error('请切回上次提交的校区再重试');
  const retries = options.retries === undefined ? 2 : Math.min(2, Math.max(0, Number(options.retries) || 0));
  let result;
  for (let attempt = 0; ; attempt++) {
   if (pendingKey(route, params) !== key) throw new Error('登录账号已变化，请返回重试');
   try {
-   result = await get(route,{...params,requestId:pending.requestId}); break;
+   result = await get(route,{...params,requestId:pending.requestId},options.scope); break;
   }
   catch (error) {
    const businessError = error && error.code && error.code !== 500;
@@ -140,4 +152,4 @@ function error(e){
   catch (next) { wx.hideLoading(); error(next); }
  }});
 }
-module.exports={get,command,pendingCommand,recoverCommand,upload,subscribe,requestId,error,clearUploadCache:()=>uploadCache.clear(),onOrderChanged(listener){changeListeners.add(listener);return()=>changeListeners.delete(listener);}};
+module.exports={get,command,pendingCommand,recoverCommand,upload,subscribe,requestId,error,scopeKey:()=>cloud.scopeKey ? cloud.scopeKey() : '',clearUploadCache:()=>uploadCache.clear(),onOrderChanged(listener){changeListeners.add(listener);return()=>changeListeners.delete(listener);}};

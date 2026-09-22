@@ -6,7 +6,6 @@
 const dbUtil = require('../../../framework/database/db_util.js');
 const util = require('../../../framework/utils/util.js');
 const AdminModel = require('../../../framework/platform/model/admin_model.js');
-const NewsModel = require('../model/news_model.js');
 let setupPromise;
 const BaseService = require('../../../framework/platform/service/base_service.js');
 
@@ -22,7 +21,7 @@ class BaseProjectService extends BaseService {
 	}
 
 	async initSetup() {
- if (!setupPromise) setupPromise=this._initSetup().catch(e=>{setupPromise=null;throw e;});
+ if (!setupPromise) setupPromise=require('../../../framework/tenancy/tenant_context.js').system(() => this._initSetup()).catch(e=>{setupPromise=null;throw e;});
  return setupPromise;
  }
  async _ensureCollection(name) {
@@ -40,22 +39,23 @@ class BaseProjectService extends BaseService {
  async _initSetup() {
 		let F = (c) => 'bx_' + c;
 		const INSTALL_CL = 'setup_crun';
-		const SCHEMA_CL = 'setup_crun_20260914';
+		const SCHEMA_CL = 'setup_crun_20260921_tenants';
 		// A versioned marker is created only after every required collection is
 		// available. Warm-up of a new instance then needs one lookup, not 28.
 		if (await dbUtil.isExistCollection(F(SCHEMA_CL))) return;
-		const COLLECTIONS = ['identity_unique', 'operation_config', 'operation_audit', 'operation_limit', 'order_quota', 'order_event', 'order_request', 'order_feed', 'notification', 'news_read', 'subscription', 'feedback_request','setup', 'admin', 'log', 'news', 'mail', 'fav', 'user', 'campus_service', 'campus_service_message', 'feedback', 'invite', 'order_review', 'review_request'];
-		const CONST_PIC = '/images/cover.gif';
+		const COLLECTIONS = ['school', 'campus', 'tenant_migration', 'request_scope', 'admin_limit', 'news_manifest', 'news_unread', 'worker_state', 'identity_unique', 'operation_config', 'operation_audit', 'operation_limit', 'order_quota', 'order_event', 'order_request', 'order_feed', 'notification', 'news_read', 'subscription', 'feedback_request','setup', 'admin', 'log', 'news', 'mail', 'fav', 'user', 'campus_service', 'campus_service_message', 'feedback', 'invite', 'order_review', 'review_request'];
 
 
 
-		const NEWS_CATE = '1=通知公告';
+
+
 
 
 
 		if (await dbUtil.isExistCollection(F(INSTALL_CL))) {
 			// 已初始化过，仅补齐可能新增的集合（用于版本升级场景）
 			for (const name of COLLECTIONS) await this._ensureCollection(F(name));
+			await new (require('./tenant_service.js'))().seed();
 			await this._ensureCollection(F(SCHEMA_CL));
 			return;
 		}
@@ -63,41 +63,25 @@ class BaseProjectService extends BaseService {
 		console.log('### initSetup...');
 
 		for (const name of COLLECTIONS) await this._ensureCollection(F(name));
+  await new (require('./tenant_service.js'))().seed();
 
 		if (await dbUtil.isExistCollection(F('admin'))) {
 			let adminCnt = await AdminModel.count({});
 			if (adminCnt == 0) {
 				let data = {};
-				const initPassword = process.env.INIT_ADMIN_PASSWORD || '123456';
+				const initPassword = process.env.INIT_ADMIN_PASSWORD;
+    if (!initPassword || initPassword.length < 12) this.AppError('首次安装请配置至少12位的 INIT_ADMIN_PASSWORD');
 				data.ADMIN_NAME = process.env.INIT_ADMIN_NAME || 'admin';
 				data.ADMIN_PASSWORD = require('../../../framework/utils/password_util.js').hash(initPassword);
 				data.ADMIN_DESC = '超管';
 				data.ADMIN_TYPE = 1;
+    data.ADMIN_PLATFORM = true;
+    data.ADMIN_SCOPES = [];
 				await AdminModel.insert(data);
 			}
 		}
 
 
-		if (await dbUtil.isExistCollection(F('news'))) {
-			let newsCnt = await NewsModel.count({});
-			if (newsCnt == 0) {
-				let newsArr = NEWS_CATE.split(',');
-				for (let j in newsArr) {
-					let title = newsArr[j].split('=')[1];
-					let cateId = newsArr[j].split('=')[0];
-
-					let data = {};
-					data.NEWS_TITLE = title + '标题1';
-					data.NEWS_DESC = title + '简介1';
-					data.NEWS_CATE_ID = cateId;
-					data.NEWS_CATE_NAME = title;
-					data.NEWS_CONTENT = [{ type: 'text', val: title + '内容1' }];
-					data.NEWS_PIC = [CONST_PIC];
-
-					await NewsModel.insert(data);
-				}
-			}
-		}
 
 		await this._ensureCollection(F(INSTALL_CL));
 		await this._ensureCollection(F(SCHEMA_CL));

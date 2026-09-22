@@ -1,0 +1,77 @@
+/**
+ * Notes: 后台管理模块业务基类
+ * Date: 2021-03-15 07:48:00 
+ * Ver : CCMiniCloud Framework 2.0.8 ALL RIGHTS RESERVED BY cclinux0730 (wechat)
+ */
+
+const BaseService = require('./base_service.js');
+
+const timeUtil = require('../../../framework/utils/time_util.js');
+const appCode = require('../../../framework/core/app_code.js');
+
+const config = require('../../../config/config.js');
+
+const AdminModel = require('../model/admin_model.js');
+const LogModel = require('../model/log_model.js'); 
+
+class BaseAdminService extends BaseService {
+
+
+	/** 是否管理员 */
+	async isAdmin(token, userId) {
+
+
+		if (!token || !userId) this.AppError('请重新登录管理员', appCode.ADMIN_ERROR);
+		let where = {
+			ADMIN_TOKEN: token,
+			ADMIN_TOKEN_USER: userId,
+			ADMIN_TOKEN_TIME: ['>', timeUtil.time() - config.ADMIN_LOGIN_EXPIRE * 1000], // token有效时间
+			...(config.ADMIN_LOGIN_CREDENTIALS_ONLY === true ? {} : { ADMIN_STATUS: 1 }),
+		}
+		let admin = await AdminModel.getOne(where, '*');
+		if (!admin)
+			this.AppError('管理员不存在', appCode.ADMIN_ERROR);
+
+  require('../../tenancy/tenant_context.js').assertAdmin(admin);
+
+		return admin;
+	}
+
+	/** 是否超级管理员 */
+	async isSuperAdmin(token, userId) {
+
+
+		if (!token || !userId) this.AppError('请重新登录管理员', appCode.ADMIN_ERROR);
+		let where = {
+			ADMIN_TOKEN: token,
+			ADMIN_TOKEN_USER: userId,
+			ADMIN_TOKEN_TIME: ['>', timeUtil.time() - config.ADMIN_LOGIN_EXPIRE * 1000], // token有效时间
+			...(config.ADMIN_LOGIN_CREDENTIALS_ONLY === true ? {} : { ADMIN_STATUS: 1 }),
+			ADMIN_TYPE: 1
+		}
+		let admin = await AdminModel.getOne(where, '*');
+		if (!admin)
+			this.AppError('超级管理员不存在', appCode.ADMIN_ERROR);
+
+  require('../../tenancy/tenant_context.js').assertAdmin(admin);
+
+		return admin;
+	}
+
+	/** 写入日志 */
+	async insertLog(content, admin, type) {
+		if (!admin) return;
+
+		let data = {
+			LOG_CONTENT: content,
+			LOG_ADMIN_ID: admin._id,
+			LOG_ADMIN_NAME: admin.ADMIN_NAME,
+			LOG_ADMIN_DESC: admin.ADMIN_DESC,
+			LOG_TYPE: type
+		}
+		await LogModel.insert(data);
+	} 
+
+}
+
+module.exports = BaseAdminService;

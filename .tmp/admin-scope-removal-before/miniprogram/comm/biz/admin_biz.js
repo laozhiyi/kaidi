@@ -1,0 +1,184 @@
+/**
+ * Notes: 后台管理模块业务逻辑
+ * Ver : CCMiniCloud Framework 2.0.1 ALL RIGHTS RESERVED BY cclinux0730 (wechat)
+ * Date: 2020-11-14 07:48:00 
+ */
+
+const BaseBiz = require('./base_biz.js');
+const cacheHelper = require('../../helper/cache_helper.js');
+const cloudHelper = require('../../helper/cloud_helper.js');
+const pageHelper = require('../../helper/page_helper.js');
+const constants = require('../constants.js');
+const setting = require('../../setting/setting.js');
+
+class AdminBiz extends BaseBiz {
+
+	// 文章内容
+	static setContentDesc(that) {
+		let contentDesc = '未填写';
+		let content = that.data.formContent;
+		let imgCnt = 0;
+		let textCnt = 0;
+		for (let k = 0; k < content.length; k++) {
+			if (content[k].type == 'img') imgCnt++;
+			if (content[k].type == 'text') textCnt++;
+		}
+
+		if (imgCnt || textCnt) {
+			contentDesc = textCnt + '段文字，' + imgCnt + '张图片';
+		}
+		that.setData({
+			contentDesc
+		});
+	}
+
+	static async adminLogin(that, name, pwd) {
+		name = typeof name === 'string' ? name.trim() : '';
+		if (!name || name.length > 30) {
+			wx.showToast({
+				title: '请输入正确的管理员账号',
+				icon: 'none'
+			});
+			return false;
+		}
+		if (typeof pwd !== 'string' || !pwd) {
+			wx.showToast({ title: '请输入登录密码', icon: 'none' });
+			return false;
+		}
+
+		let params = {
+			name,
+			pwd
+		};
+		let opt = {
+			title: '登录中'
+		};
+
+		try {
+			const res = await cloudHelper.callCloudSumbit('admin/login', params, opt);
+			if (!res || !res.data || !res.data.name || typeof res.data.token !== 'string' || !res.data.token) {
+				wx.showToast({ title: '登录未完成，请重新登录', icon: 'none' });
+				return false;
+			}
+			cacheHelper.set(constants.CACHE_ADMIN, res.data, constants.ADMIN_TOKEN_EXPIRE);
+			wx.reLaunch({ url: pageHelper.fmtURLByPID('/pages/admin/index/home/admin_home') });
+			return true;
+		} catch (e) {
+			return false;
+		}
+
+	}
+
+
+	/**
+	 * 清空管理员登录
+	 */
+	static clearAdminToken() {
+		cacheHelper.remove(constants.CACHE_ADMIN);
+	}
+
+	/**
+	 * 获取管理员信息
+	 */
+	static getAdminToken() {
+		return cacheHelper.get(constants.CACHE_ADMIN);
+	}
+
+	/**
+	 * 获取管理员电话
+	 */
+	static getAdminName() {
+		let admin = cacheHelper.get(constants.CACHE_ADMIN);
+		if (!admin) return '';
+		return admin.name;
+	}
+
+	/**
+	 * 是否超级管理员
+	 */
+	static isSuperAdmin() {
+		let admin = cacheHelper.get(constants.CACHE_ADMIN);
+		if (!admin) return false;
+		return (admin.type == 1);
+	}
+
+	//  登录状态判定
+	static isAdmin(that, isSuper = false) {
+		wx.setNavigationBarColor({ //顶部
+			backgroundColor: '#f3f5f9',
+			frontColor: '#000000',
+		});
+
+		if (setting.IS_SUB) wx.hideHomeButton();
+
+		let admin = cacheHelper.get(constants.CACHE_ADMIN);
+		if (!admin) {
+			return wx.showModal({
+				title: '',
+				content: '登录已过期，请重新登录',
+				showCancel: false,
+				confirmText: '确定',
+				success: res => {
+					wx.reLaunch({
+						url: pageHelper.fmtURLByPID('/pages/admin/index/login/admin_login'),
+					});
+					return false;
+				}
+			});
+
+		}
+
+		if (isSuper && admin.type != 1) {
+			return wx.showModal({
+				title: '',
+				content: '此功能需要超级管理员操作',
+				showCancel: false,
+				confirmText: '确定',
+				success: res => {
+					wx.reLaunch({
+						url: pageHelper.fmtURLByPID('/pages/admin/index/home/admin_home'),
+					});
+					return false;
+				}
+			});
+		}
+
+		that.setData({
+			isAdmin: true,
+			isSuperAdmin: this.isSuperAdmin(),
+			isSchoolAdmin: this.isSchoolAdmin(),
+			admin
+		});
+		return true;
+	}
+	static isSchoolAdmin() {
+  const admin=this.getAdminToken(),scope=cloudHelper.scopeSnapshot && cloudHelper.scopeSnapshot();
+		return !!admin && (admin.credentialsOnly===true || admin.platform===true && admin.type===1 || !!scope && Array.isArray(admin.scopes) && admin.scopes.some(grant=>grant.schoolId===scope.schoolId&&grant.campusId==='*'));
+ }
+
+}
+
+AdminBiz.CHECK_FORM_MGR_ADD = {
+	type: 'formType|must|int|default=0|name=类型',
+	name: 'formName|must|string|min:5|max:30|name=账号',
+	desc: 'formDesc|must|string|max:30|name=姓名',
+	phone: 'formPhone|string|len:11|name=手机',
+	password: 'formPassword|must|string|name=密码',
+};
+
+AdminBiz.CHECK_FORM_MGR_EDIT = {
+	type: 'formType|must|int|default=0|name=类型',
+	name: 'formName|must|string|min:5|max:30|name=账号',
+	desc: 'formDesc|must|string|max:30|name=姓名',
+	phone: 'formPhone|string|len:11|name=手机',
+	password: 'formPassword|string|name=新密码',
+};
+
+AdminBiz.CHECK_FORM_MGR_PWD = {
+	oldPassword: 'formOldPassword|must|string|name=旧密码',
+	password: 'formPassword|must|string|name=新密码',
+	password2: 'formPassword2|must|string|name=新密码再次填写',
+};
+
+
+module.exports = AdminBiz;

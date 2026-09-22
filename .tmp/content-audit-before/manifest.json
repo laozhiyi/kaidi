@@ -1,0 +1,13 @@
+[
+  "cloudfunctions/mcloud/framework/validate/content_check.js",
+  "cloudfunctions/mcloud/project/crun/controller/passport_controller.js",
+  "cloudfunctions/mcloud/project/crun/service/profile_rules.js",
+  "cloudfunctions/mcloud/project/crun/controller/admin/admin_operations_controller.js",
+  "cloudfunctions/mcloud/project/crun/service/operation_config_service.js",
+  "scripts/tests/my-page-features.test.js",
+  "README.md",
+  "ADMIN_CONSOLE.md",
+  "deployment/WECHAT_LOGIN.md",
+  "deployment/MULTI_TENANT_ROLLOUT.md",
+  "ARCHITECTURE_PROGRESS.md"
+]

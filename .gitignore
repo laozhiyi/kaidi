@@ -16,3 +16,25 @@ node_modules/
 # Local development assistants and planning notes
 .claude/
 docs/
+
+# Local artifacts generated during the multi-campus architecture validation
+.tmp/architecture-*
+.tmp/deploy/architecture-*/
+.tmp/extract-order-plugins.cjs
+.tmp/wire-news-catalog.cjs
+.tmp/finish-tenant-wiring.cjs
+
+# Local WeChat login validation artifacts
+.tmp/wechat-login-*
+
+# Local evidence and backups from the feature audit
+.tmp/function-audit-*
+.tmp/review-order-progress-*
+.tmp/review-client-feature-probes.cjs
+.tmp/review-server-softdelete.log
+.tmp/server-feature-audit*
+.tmp/server-deleted-notification-probe.cjs
+.tmp/server-feature-fixes-verified.log
+.tmp/client-detail-recovery-*
+.tmp/favorites-deleted-orders-*
+.tmp/maintenance-deleted-orders-*

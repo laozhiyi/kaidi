@@ -8,8 +8,37 @@ const BaseBiz = require('./base_biz.js');
 const cacheHelper = require('../../helper/cache_helper.js');
 const cloudHelper = require('../../helper/cloud_helper.js');
 const pageHelper = require('../../helper/page_helper.js');
-const helper = require('../../helper/helper.js');
 const constants = require('../constants.js');
+let sessionVersion = 0;
+
+function phoneErrorCode(error) {
+ for (const value of [error && error.errCode, error && error.errcode, error && error.errno]) {
+  if (/^-?\d{1,8}$/.test(String(value))) return Number(value);
+ }
+ return null;
+}
+
+function tracePhoneLogin(stage, reason = '', error = null) {
+ // Never log the event, one-time code, SDK message, phone number or token.
+ console.info('[wechat-phone-login]', { stage, reason, errCode: phoneErrorCode(error) });
+}
+
+function phoneFailure(error, native) {
+ const text = String(error && (error.errMsg || error.message || error.msg) || '');
+ if (native) {
+  if (/privacy|隐私/i.test(text)) return { reason: 'privacy', message: '手机号授权被微信隐私设置拦截，请联系管理员' };
+  if (/user\s*(deny|denied|cancel)|cancel/i.test(text)) return { reason: 'cancelled', message: '已取消手机号授权，可再次点击登录' };
+  if (phoneErrorCode(error) === 102 || /no permission|permission denied|not authorized|access denied/i.test(text)) return { reason: 'permission_denied', message: '当前小程序暂无手机号获取权限，请联系管理员检查服务开通状态' };
+  if (/not support/i.test(text)) return { reason: 'unsupported', message: '当前微信不支持手机号授权，请更新微信后重试' };
+  if (/not available/i.test(text)) return { reason: 'unavailable', message: '微信手机号服务暂不可用，请联系管理员检查服务状态' };
+  if (!text || text === 'getPhoneNumber:ok') return { reason: 'missing_code', message: '微信未返回手机号授权结果，请重新授权' };
+  return { reason: 'native_error', message: '微信手机号授权未完成，请稍后重试' };
+ }
+ if (/environment.*not found/i.test(text)) return { reason: 'environment_missing', message: '登录服务配置异常，请联系管理员' };
+ if (/FunctionName|FUNCTION_NOT_FOUND/i.test(text)) return { reason: 'function_missing', message: '登录服务暂不可用，请联系管理员' };
+ if (/timeout|timed out|time.limit|超时/i.test(text)) return { reason: 'timeout', message: '微信登录响应超时，请检查网络后重新授权' };
+ return { reason: 'cloud_error', message: error && (error.msg || error.message) || '微信登录失败，请稍后重新授权' };
+}
 
 class PassportBiz extends BaseBiz {
 
@@ -42,6 +71,7 @@ class PassportBiz extends BaseBiz {
 	// 设置token
 	static setToken(token) {
 		if (!token) return;
+		sessionVersion++;
 		cacheHelper.set(constants.CACHE_TOKEN, token, constants.CACHE_TOKEN_EXPIRE);
 	}
 
@@ -67,9 +97,13 @@ class PassportBiz extends BaseBiz {
 
 	// 是否登录 
 	static isLogin() {
-		let id = PassportBiz.getUserId();
-		return (id.length > 0) ? true : false;
+		const token = PassportBiz.getToken();
+  return !!(token && token.id && token.status === 1 && PassportBiz.isProfileReady(token));
 	}
+
+ static isProfileReady(token) {
+  return !!(token && token.profileComplete === true && (token.phoneVerified === true || token.allowManualRegistration === true));
+ }
 
 	static loginStatusHandler(method, status) {
 		let content = '';
@@ -100,147 +134,97 @@ class PassportBiz extends BaseBiz {
 
 	// 登录判断及处理
 	static async loginCheck(mustLogin = false, method = 'back', title = '', that = null) {
-		let token = cacheHelper.get(constants.CACHE_TOKEN);
-		if (token && method != 'must') {
-			if (that)
-				that.setData({
-					isLogin: true
-				});
-			return true;
-		} else {
-			if (that) that.setData({
-				isLogin: false
-			});
-		}
-
-		let opt = {
-			title: title || '登录中',
-		};
-
-		let res = await cloudHelper.callCloudSumbit('passport/login', {}, opt).then(result => {
-			PassportBiz.clearToken();
-			if (result && helper.isDefined(result.data.token) && result.data.token && result.data.token.status == 1) {
-				PassportBiz.setToken(result.data.token);
-
-				if (that) that.setData({
-					isLogin: true
-				});
-
-				return true;
-			}
-			else if (mustLogin && result && helper.isDefined(result.data.token) && result.data.token && (result.data.token.status == 0 || result.data.token.status == 8 || result.data.token.status == 9)) {
-				let status = result.data.token.status;
-				return PassportBiz.loginStatusHandler(method, status);
-			}
-			else if (mustLogin && method == 'cancel') {
-				wx.showModal({
-					title: '温馨提示',
-					content: '此功能仅限注册用户',
-					confirmText: '马上注册',
-					cancelText: '取消',
-					success(result) {
-						if (result.confirm) {
-							let url = pageHelper.fmtURLByPID('/pages/my/reg/my_reg') + '?retUrl=back';
-							wx.navigateTo({ url });
-
-						} else if (result.cancel) {
-
-						}
-					}
-				});
-
-				return false;
-			}
-			else if (mustLogin && method == 'back') {
-				wx.showModal({
-					title: '温馨提示',
-					content: '此功能仅限注册用户',
-					confirmText: '马上注册',
-					cancelText: '返回',
-					success(result) {
-						if (result.confirm) {
-							let retUrl = encodeURIComponent(pageHelper.getCurrentPageUrlWithArgs());
-							let url = pageHelper.fmtURLByPID('/pages/my/reg/my_reg') + '?retUrl=' + retUrl;
-							wx.redirectTo({ url });
-						} else if (result.cancel) {
-							let len = getCurrentPages().length;
-							if (len == 1) {
-								let url = pageHelper.fmtURLByPID('/pages/default/index/default_index');
-								wx.reLaunch({ url });
-							}
-							else
-								wx.navigateBack();
-
-						}
-					}
-				});
-
-				return false;
-			}
-			else if (mustLogin && method == 'back') {
-				wx.showModal({
-					title: '温馨提示',
-					content: '此功能仅限注册用户',
-					confirmText: '马上注册',
-					cancelText: '返回',
-					success(result) {
-						if (result.confirm) {
-							let url = pageHelper.fmtURLByPID('/pages/my/reg/my_reg');
-							wx.reLaunch({ url });
-						} else if (result.cancel) {
-							wx.navigateBack();
-						}
-					}
-				});
-
-				return false;
-			}
-
-		}).catch(err => {
-			console.log(err);
-			// A temporary network/server failure does not revoke a confirmed login.
-			if (err && err.code && err.code !== 500) PassportBiz.clearToken();
-			return false;
-		});
-
-		return res;
+  const token = PassportBiz.getToken();
+  // Manual sessions recheck the temporary server policy on guarded entry.
+  if (token && method !== 'must' && !(token.allowManualRegistration === true && token.phoneVerified !== true)
+    && typeof token.phoneVerified === 'boolean' && typeof token.profileComplete === 'boolean') {
+   return PassportBiz._loginDecision(token, mustLogin, method, that);
+  }
+  const version = sessionVersion;
+  try {
+   const result = await cloudHelper.callCloudSumbit('passport/login', {}, { title: title || '登录中' });
+   // A stale background refresh must not undo a newer authorization or save.
+   if (version !== sessionVersion) return PassportBiz._loginDecision(PassportBiz.getToken(), mustLogin, method, that);
+   const current = result && result.data && result.data.token || null;
+   if (current) PassportBiz.setToken(current); else PassportBiz.clearToken();
+   return PassportBiz._loginDecision(current, mustLogin, method, that);
+  } catch (err) {
+   if (version === sessionVersion && err && err.code && err.code !== 500 && !err.staleScope) PassportBiz.clearToken();
+   if (that && !that._unloaded) that.setData({ isLogin: PassportBiz.isLogin() });
+   return false;
+  }
 	}
+
+ static _loginDecision(token, mustLogin, method, that) {
+  const allowed = !!(token && token.id && token.status === 1 && PassportBiz.isProfileReady(token));
+  if (that && !that._unloaded) that.setData({ isLogin: allowed });
+  if (allowed || !mustLogin) return allowed;
+  if (token && (token.status === 9 || PassportBiz.isProfileReady(token) && [0, 8].includes(token.status))) {
+   return PassportBiz.loginStatusHandler(method, token.status);
+  }
+  const completing = !!(token && (token.phoneVerified || token.allowManualRegistration));
+  wx.showModal({
+   title: completing ? '完善个人资料' : '登录 / 注册',
+   content: completing ? '请先补全个人资料，再使用此功能。' : '请先登录或注册并完善个人资料，再使用此功能。',
+   confirmText: completing ? '完善资料' : '去登录', cancelText: method === 'back' ? '返回' : '取消',
+   success(result) {
+    if (result.confirm) {
+     const retUrl = method === 'back' ? encodeURIComponent(pageHelper.getCurrentPageUrlWithArgs()) : 'back';
+     const url = pageHelper.fmtURLByPID('/pages/my/reg/my_reg') + '?retUrl=' + retUrl;
+     if (method === 'back') wx.redirectTo({ url }); else wx.navigateTo({ url });
+    } else if (result.cancel && method === 'back') {
+     if (getCurrentPages().length > 1) wx.navigateBack();
+     else wx.reLaunch({ url: pageHelper.fmtURLByPID('/pages/default/index/default_index') });
+    }
+   }
+  });
+  return false;
+ }
+
+ static traceWechatPhoneTap() {
+  tracePhoneLogin('native_tap');
+ }
+
+ static async loginByWechatPhone(event) {
+  const detail = event && event.detail || {};
+  if (typeof detail.code !== 'string' || !detail.code.trim() || detail.errMsg && detail.errMsg !== 'getPhoneNumber:ok') {
+   const failure = phoneFailure(detail, true);
+   tracePhoneLogin('native_callback', failure.reason, detail);
+   throw Object.assign(new Error(failure.message), { reason: failure.reason });
+  }
+  tracePhoneLogin('native_callback', 'ok');
+  // Cloud development already supplies trusted OPENID. This is a phone code,
+  // not wx.login's session code; do not persist it or retry it automatically.
+  let response;
+  tracePhoneLogin('cloud_request');
+  try {
+   response = await cloudHelper.callCloudSumbit('passport/wechat_login', { code: detail.code }, { title: '微信登录中', hint: false });
+  } catch (error) {
+   const failure = phoneFailure(error, false);
+   tracePhoneLogin('cloud_failure', failure.reason, error);
+   throw Object.assign(new Error(failure.message), { reason: failure.reason });
+  }
+  const data = response && response.data;
+  if (!data || !data.token || !data.token.id || data.token.phoneVerified !== true) {
+   tracePhoneLogin('invalid_response');
+   throw new Error('微信登录未完成，请重新授权');
+  }
+  PassportBiz.setToken(data.token);
+  tracePhoneLogin('cloud_success');
+  return data;
+ }
 
 	// 清除登录缓存
 	static clearToken() {
+  sessionVersion++;
 		cacheHelper.remove(constants.CACHE_TOKEN);
 	}
 
 	// 手机号码
 	static async getPhone(e, that) {
-		if (e.detail.errMsg == "getPhoneNumber:ok") {
-
-			let cloudID = e.detail.cloudID;
-			let params = {
-				cloudID
-			};
-			let opt = {
-				title: '手机验证中'
-			};
-			await cloudHelper.callCloudSumbit('passport/phone', params, opt).then(res => {
-				let phone = res.data;
-				if (!phone || phone.length < 11)
-					wx.showToast({
-						title: '手机号码获取失败，请重新填写手机号码',
-						icon: 'none',
-						duration: 2000
-					});
-				else {
-					that.setData({
-						formMobile: phone
-					});
-				}
-			});
-		} else
-			wx.showToast({
-				title: '手机号码获取失败，请重新填写手机号码',
-				icon: 'none'
-			});
+  const result = await PassportBiz.loginByWechatPhone(e);
+  if (that && !that._unloaded) that.setData({ formMobile: result.user.USER_MOBILE, phoneVerified: true });
+  return result;
 	}
 }
 

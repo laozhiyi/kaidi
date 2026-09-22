@@ -1,7 +1,7 @@
 const UI = require('./admin_console_biz.js');
 const Ops = require('./operations_biz.js');
 const KEYS = {
-  service: ['enabled', 'openHour', 'closeHour', 'campuses'],
+  service: ['enabled', 'enforceBusinessHours', 'openHour', 'closeHour'],
   pricing: ['smallPrice', 'mediumPrice', 'largePrice', 'maxPackages', 'offlineNotice'],
   rules: ['maxActiveOrders', 'maxOpenOrders', 'deliveryMinutes', 'urgentMinutes', 'urgentEnabled', 'registrationReview']
 };
@@ -12,7 +12,7 @@ function dirty(page, value) {
 }
 function apply(page, config) {
   page._saved = JSON.parse(JSON.stringify(config));
-  page.setData({ config: JSON.parse(JSON.stringify(config)), campusText: (config.campuses || []).join('\n') });
+  page.setData({ config: JSON.parse(JSON.stringify(config)) });
   dirty(page, false);
 }
 function start(page) { if (UI.start(page)) return load(page); }
@@ -37,7 +37,7 @@ function edit(page, event) {
   if (!page.data.isSuperAdmin || page.data.busy || !page.data.config) return;
   const key = event.currentTarget.dataset.key;
   if (!KEYS[page.data.section].includes(key)) return;
-  page.setData({ [key === 'campuses' ? 'campusText' : 'config.' + key]: event.detail.value });
+  page.setData({ ['config.' + key]: event.detail.value });
   dirty(page, true);
 }
 async function discard(page) {
@@ -57,8 +57,6 @@ async function save(page) {
     value[field.key] = n;
   }
   if (page.data.section === 'service') {
-    value.campuses = [...new Set(page.data.campusText.split('\n').map(item => item.trim()).filter(Boolean))];
-    if (!value.campuses.length || value.campuses.length > 20 || value.campuses.some(item => item.length > 30)) { Ops.error(new Error('请设置 1 至 20 个校区，每个名称不超过 30 字')); return; }
     if (value.openHour >= value.closeHour) { Ops.error(new Error('营业结束时间必须晚于开始时间')); return; }
   }
   if (page.data.section === 'rules' && value.urgentMinutes > value.deliveryMinutes) { Ops.error(new Error('加急时效不能长于普通单时效')); return; }

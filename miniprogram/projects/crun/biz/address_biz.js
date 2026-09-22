@@ -1,21 +1,26 @@
-const PHASES = ['一期', '二期', '三期', '四期', '五期'];
+// Historical labels are recognized only when rendering saved addresses.
+// Picker choices are always loaded from the selected campus configuration.
+const LEGACY_PHASES = ['一期', '二期', '三期', '四期', '五期'];
+const PHASES = [];
 const clean = value => typeof value === 'string' ? value.trim() : '';
-const PICKUP_STATIONS = [
-  { name: '二期', list: ['中通', '圆通', '申通', '韵达', '顺丰'] },
-  { name: '五期', list: ['邮政', '极兔'] },
-  { name: '奥林苑', list: ['京东'] }
-];
+const PICKUP_STATIONS = [];
+function configure(locations = {}) {
+  PHASES.splice(0, PHASES.length, ...(locations.phases || []));
+  PICKUP_STATIONS.splice(0, PICKUP_STATIONS.length, ...(locations.pickupStations || []).map(x=>({name:x.name,list:x.list.slice()})));
+}
+const knownPhases = () => [...new Set([...PHASES, ...LEGACY_PHASES])].sort((a,b)=>b.length-a.length);
+const validLabel = value => knownPhases().includes(clean(value));
 
 function phaseOf(address) {
   if (!address) return '';
-  if (PHASES.includes(clean(address.label))) return clean(address.label);
-  return PHASES.find(phase => clean(address.detail).startsWith(phase)) || '';
+  if (validLabel(address.label)) return clean(address.label);
+  return knownPhases().find(phase => clean(address.detail).startsWith(phase)) || '';
 }
 
 function formatAddress(address) {
   if (!address) return '';
   const detail = clean(address.detail);
-  const phase = PHASES.includes(clean(address.label)) ? clean(address.label) : '';
+  const phase = validLabel(address.label) ? clean(address.label) : '';
   return phase && detail && !detail.startsWith(phase) ? phase + ' ' + detail : detail;
 }
 
@@ -45,14 +50,14 @@ function orderAddress(mail) {
   // The publisher's saved order form is the source; MAIL_OBJ is a derived snapshot.
   let saved = savedValue;
   let phase = [formValue(mail, 'addressPhase'), !saved || saved === snapshot ? obj.addressPhase : '']
-    .map(clean).find(value => PHASES.includes(value)) || '';
+    .map(clean).find(validLabel) || '';
   const trailingPhase = saved.match(/^(.+?)\s*[·•]\s*(一期|二期|三期|四期|五期)$/);
   if (trailingPhase) {
     saved = trailingPhase[1].trim();
     phase = phase || trailingPhase[2];
   }
-  if (campusDetail && (!saved || PHASES.includes(saved))) {
-    phase = phase || (PHASES.includes(saved) ? saved : '');
+  if (campusDetail && (!saved || knownPhases().includes(saved))) {
+    phase = phase || (knownPhases().includes(saved) ? saved : '');
     saved = campusDetail[1].trim();
   }
   let address = saved || snapshot;
@@ -68,4 +73,4 @@ function formatOrderAddress(mail) {
   return address && campus ? campus + ' · ' + address : address;
 }
 
-module.exports = { PHASES, PICKUP_STATIONS, phaseOf, formatAddress, orderAddress, formatOrderAddress };
+module.exports = { PHASES, PICKUP_STATIONS, configure, phaseOf, formatAddress, orderAddress, formatOrderAddress };

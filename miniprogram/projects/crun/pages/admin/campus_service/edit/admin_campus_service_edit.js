@@ -7,7 +7,7 @@ Page({
 	data: {
 		id: '',
 		detail: null,
-		campusOptions: ['育才校区', '王城校区', '雁山校区'],
+		campusOptions: [],
 		campusIndex: 0,
 		formCampus: '',
 		formName: '',
@@ -36,6 +36,9 @@ Page({
 		this._loading = true;
 		this.setData({ loadError: '' });
 		try {
+   const config=await cloudHelper.callCloud('operations/config',{}, {hint:false});
+   if(this._destroyed)return;
+   this.setData({campusOptions:config.data.campuses});
 			const response = await cloudHelper.callCloud('admin/campus_service_detail', { id: this.data.id }, { hint: false });
 			const detail = response && response.data;
 			if (!detail || !detail._id) throw new Error('记录不存在或已删除');
@@ -74,7 +77,7 @@ Page({
 		let { id, formCampus, formName, formMobile, formWechat, formQQ, formWorkTime, formOrder, isSubmit } = this.data;
 
 		if (!this.data.campusOptions.includes(formCampus)) {
-			return pageHelper.showModal('请选择育才、王城或雁山校区', '温馨提示');
+			return pageHelper.showModal('请选择当前服务校区', '温馨提示');
 		}
 		if (!formName || !formName.trim()) {
 			return pageHelper.showModal('请填写负责人姓名', '温馨提示');

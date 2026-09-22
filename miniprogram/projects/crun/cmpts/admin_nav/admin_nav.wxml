@@ -1,6 +1,6 @@
 <view class="admin-nav-spacer"></view>
 <view class="admin-nav">
-  <button wx:for="{{items}}" wx:key="key" class="admin-nav-item {{active===item.key?'is-active':''}}" data-key="{{item.key}}" bindtap="bindNavigate" aria-label="{{item.label}}">
+  <button wx:for="{{items}}" wx:key="key" wx:if="{{!item.schoolOnly || canManageUsers}}" class="admin-nav-item {{active===item.key?'is-active':''}}" data-key="{{item.key}}" bindtap="bindNavigate" aria-label="{{item.label}}">
     <text class="admin-nav-icon {{item.icon}}"></text>
     <text>{{item.label}}</text>
     <view wx:if="{{active===item.key}}" class="admin-nav-dot"></view>

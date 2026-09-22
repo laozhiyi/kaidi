@@ -37,6 +37,7 @@
     "projects/crun/pages/admin/feedback/detail/admin_feedback_detail",
     "projects/crun/pages/admin/analytics/admin_analytics",
     "projects/crun/pages/admin/settings/index/admin_settings",
+    "projects/crun/pages/admin/tenants/admin_tenants",
     "projects/crun/pages/admin/settings/service/admin_service_settings",
     "projects/crun/pages/admin/settings/pricing/admin_pricing_settings",
     "projects/crun/pages/admin/settings/rules/admin_rules_settings",
@@ -98,6 +99,7 @@
     ]
   },
   "usingComponents": {
+    "campus-selector": "/projects/crun/cmpts/campus_selector/campus_selector",
     "cmpt-comm-list": "/cmpts/public/list/comm_list_cmpt",
     "cmpt-picker": "/cmpts/public/picker/picker_cmpt",
     "cmpt-modal": "/cmpts/public/modal/modal_cmpt"

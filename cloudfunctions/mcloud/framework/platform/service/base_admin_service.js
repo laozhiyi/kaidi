@@ -26,7 +26,7 @@ class BaseAdminService extends BaseService {
 			ADMIN_TOKEN: token,
 			ADMIN_TOKEN_USER: userId,
 			ADMIN_TOKEN_TIME: ['>', timeUtil.time() - config.ADMIN_LOGIN_EXPIRE * 1000], // token有效时间
-			ADMIN_STATUS: 1,
+			...(config.ADMIN_LOGIN_CREDENTIALS_ONLY === true ? {} : { ADMIN_STATUS: 1 }),
 		}
 		let admin = await AdminModel.getOne(where, '*');
 		if (!admin)
@@ -44,7 +44,7 @@ class BaseAdminService extends BaseService {
 			ADMIN_TOKEN: token,
 			ADMIN_TOKEN_USER: userId,
 			ADMIN_TOKEN_TIME: ['>', timeUtil.time() - config.ADMIN_LOGIN_EXPIRE * 1000], // token有效时间
-			ADMIN_STATUS: 1,
+			...(config.ADMIN_LOGIN_CREDENTIALS_ONLY === true ? {} : { ADMIN_STATUS: 1 }),
 			ADMIN_TYPE: 1
 		}
 		let admin = await AdminModel.getOne(where, '*');

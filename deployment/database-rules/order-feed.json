@@ -1,4 +1,4 @@
 {
-  "read": "auth != null && doc._pid == 'crun'",
+  "read": false,
   "write": false
 }

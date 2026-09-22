@@ -1,7 +1,7 @@
 module.exports = {
 
 	//### 环境相关 
-	CLOUD_ID: process.env.CLOUD_ENV_ID || process.env.TCB_ENV || '', //你的云环境id
+	CLOUD_ID: process.env.CLOUD_ENV_ID || process.env.TCB_ENV || 'cloud1-d7g4yk2vu877ecc87', //你的云环境id
 
 	// ##################################################################   
 	COLLECTION_PRFIX: 'bx_',
@@ -17,7 +17,11 @@ module.exports = {
 	CLIENT_CHECK_CONTENT: process.env.CONTENT_CHECK_DISABLED !== 'true', //前台图片文字是否校验
 	ADMIN_CHECK_CONTENT: process.env.CONTENT_CHECK_DISABLED !== 'true', //后台图片文字是否校验
 
+	// ### 内测注册
+	ALLOW_MANUAL_REGISTRATION: process.env.ALLOW_MANUAL_REGISTRATION !== 'false', // 允许手填注册；false 恢复微信验证手机号要求
+
 	// ### 后台业务相关
+	ADMIN_LOGIN_CREDENTIALS_ONLY: process.env.ADMIN_LOGIN_CREDENTIALS_ONLY !== 'false', // 内测仅校验账号密码；false 恢复登录限流与账号状态检查
 	ADMIN_LOGIN_EXPIRE: 86400, //管理员token过期时间 (秒) 
 
 	// ### 服务者相关

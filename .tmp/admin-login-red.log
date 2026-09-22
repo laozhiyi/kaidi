@@ -1,0 +1,294 @@
+✖ internal testing defaults to credentials-only login and can explicitly restore restrictions (2.1188ms)
+✖ an existing admin without campus grants can log in and retain a session with status 1 (56.2366ms)
+✖ an existing admin without campus grants can log in and retain a session with status 0 (29.4989ms)
+✖ an existing admin without campus grants can log in and retain a session with status undefined (28.8265ms)
+✖ incorrect or missing credentials remain rejected, without creating admins or locking out a later correct attempt (254.7136ms)
+✖ correct credentials still work when an old login rate-limit bucket is exhausted (29.4196ms)
+✖ internal admin sessions still require the latest token, its owner, expiry and the proper role (50.8695ms)
+✖ legacy admins can use the dashboard and existing write transactions while rows remain campus isolated (29.3721ms)
+✖ the real admin login route accepts a correct existing account shorter than five characters (36.7539ms)
+✖ restoring strict mode rejects missing grants and disabled accounts and restores rate limits (73.3602ms)
+✖ admin client validates a real session and uses the server-issued temporary access mode (1.0718ms)
+✖ empty passwords and incomplete login responses cannot navigate into the admin console (0.6117ms)
+✔ cached account {"phoneVerified":false} cannot pass the business login gate (2.0093ms)
+✔ cached account {"profileComplete":false} cannot pass the business login gate (0.5903ms)
+✔ cached account {"status":0} cannot pass the business login gate (0.632ms)
+✔ cached account {"status":8} cannot pass the business login gate (0.549ms)
+✔ cached account {"status":9} cannot pass the business login gate (0.5477ms)
+✔ legacy cached tokens must refresh readiness before being used (0.6166ms)
+✔ phone authorization sends only the one-time code and retains the incomplete authenticated session (1.6703ms)
+✔ declined authorization makes no cloud call and preserves an existing session (0.9687ms)
+✔ native phone failure cancelled has its own explanation without calling the cloud (0.7609ms)
+✔ native phone failure privacy has its own explanation without calling the cloud (0.5841ms)
+✖ native phone failure permission_denied has its own explanation without calling the cloud (1.0019ms)
+✖ native phone failure permission_denied has its own explanation without calling the cloud (0.646ms)
+✖ native phone failure unsupported has its own explanation without calling the cloud (0.5431ms)
+✔ native phone failure missing_code has its own explanation without calling the cloud (0.5387ms)
+✔ cloud phone failure environment_missing survives the generic SDK wrapper message (0.5828ms)
+✔ cloud phone failure function_missing survives the generic SDK wrapper message (0.5478ms)
+✔ cloud phone failure timeout survives the generic SDK wrapper message (0.5494ms)
+✔ phone diagnostics identify the failing boundary without exposing authorization data (0.6874ms)
+✔ an earlier silent login reply cannot overwrite a completed phone login (0.5974ms)
+✔ partial accounts are sent to the completion page while keeping the original destination (0.633ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 17
+ℹ fail 15
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 655.2638
+
+✖ failing tests:
+
+test at scripts\tests\admin-login.test.js:25:1
+✖ internal testing defaults to credentials-only login and can explicitly restore restrictions (2.1188ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - true
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\admin-login.test.js:30:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\admin-login.test.js:35:3
+✖ an existing admin without campus grants can log in and retain a session with status 1 (56.2366ms)
+  Error [AppError]: 没有当前学校或校区的管理权限
+      at Object.assertAdmin (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\tenancy\tenant_context.js:34:59)
+      at AdminMgrService.adminLogin (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\admin\admin_mgr_service.js:33:81)
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\admin-login.test.js:37:21)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    code: 1600
+  }
+
+test at scripts\tests\admin-login.test.js:35:3
+✖ an existing admin without campus grants can log in and retain a session with status 0 (29.4989ms)
+  Error [AppError]: 账号或密码错误
+      at AdminMgrService.AppError (B:\zhumian\zm\kaidi\scripts\test-support\tenant-services.cjs:19:116)
+      at AdminMgrService.adminLogin (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\admin\admin_mgr_service.js:32:9)
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\admin-login.test.js:37:21)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    code: 1600
+  }
+
+test at scripts\tests\admin-login.test.js:35:3
+✖ an existing admin without campus grants can log in and retain a session with status undefined (28.8265ms)
+  Error [AppError]: 账号或密码错误
+      at AdminMgrService.AppError (B:\zhumian\zm\kaidi\scripts\test-support\tenant-services.cjs:19:116)
+      at AdminMgrService.adminLogin (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\admin\admin_mgr_service.js:32:9)
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\admin-login.test.js:37:21)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    code: 1600
+  }
+
+test at scripts\tests\admin-login.test.js:52:1
+✖ incorrect or missing credentials remain rejected, without creating admins or locking out a later correct attempt (254.7136ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /账号或密码错误/. Input:
+  
+  'AppError: 登录尝试过于频繁，请稍后重试'
+  
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\admin-login.test.js:54:32)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: AppError: 登录尝试过于频繁，请稍后重试
+        at B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\operation_store.js:42:34
+        at async B:\zhumian\zm\kaidi\scripts\test-support\tenant-memory.cjs:32:124,
+    expected: /账号或密码错误/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts\tests\admin-login.test.js:62:1
+✖ correct credentials still work when an old login rate-limit bucket is exhausted (29.4196ms)
+  Error [AppError]: 登录尝试过于频繁，请稍后重试
+      at B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\operation_store.js:42:34
+      at async B:\zhumian\zm\kaidi\scripts\test-support\tenant-memory.cjs:32:124 {
+    code: 1600
+  }
+
+test at scripts\tests\admin-login.test.js:68:1
+✖ internal admin sessions still require the latest token, its owner, expiry and the proper role (50.8695ms)
+  Error [AppError]: 没有当前学校或校区的管理权限
+      at Object.assertAdmin (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\tenancy\tenant_context.js:34:59)
+      at AdminMgrService.adminLogin (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\admin\admin_mgr_service.js:33:81)
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\admin-login.test.js:70:17)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    code: 1600
+  }
+
+test at scripts\tests\admin-login.test.js:83:1
+✖ legacy admins can use the dashboard and existing write transactions while rows remain campus isolated (29.3721ms)
+  Error [AppError]: 账号或密码错误
+      at AdminMgrService.AppError (B:\zhumian\zm\kaidi\scripts\test-support\tenant-services.cjs:19:116)
+      at AdminMgrService.adminLogin (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\project\crun\service\admin\admin_mgr_service.js:32:9)
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\admin-login.test.js:85:19)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    code: 1600
+  }
+
+test at scripts\tests\admin-login.test.js:105:1
+✖ the real admin login route accepts a correct existing account shorter than five characters (36.7539ms)
+  AssertionError [ERR_ASSERTION]: 「管理员名」不能少于5位
+  
+  1301 !== 200
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\admin-login.test.js:109:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1301,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\admin-login.test.js:114:1
+✖ restoring strict mode rejects missing grants and disabled accounts and restores rate limits (73.3602ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - false
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\admin-login.test.js:119:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\admin-login.test.js:146:1
+✖ admin client validates a real session and uses the server-issued temporary access mode (1.0718ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - true
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\admin-login.test.js:149:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\admin-login.test.js:157:1
+✖ empty passwords and incomplete login responses cannot navigate into the admin console (0.6117ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - false
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\admin-login.test.js:159:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-client.test.js:75:3
+✖ native phone failure permission_denied has its own explanation without calling the cloud (1.0019ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /手机号获取权限/. Input:
+  
+  'Error: 微信手机号授权暂不可用，请联系管理员'
+  
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: 微信手机号授权暂不可用，请联系管理员
+        at PassportBiz.loginByWechatPhone (evalmachine.<anonymous>:185:10)
+        at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:37)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1382:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+        at Test.postRun (node:internal/test_runner/test:1522:19)
+        at Test.run (node:internal/test_runner/test:1447:12)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    expected: /手机号获取权限/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-client.test.js:75:3
+✖ native phone failure permission_denied has its own explanation without calling the cloud (0.646ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /手机号获取权限/. Input:
+  
+  'Error: 微信手机号授权未完成，请稍后重试'
+  
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: 微信手机号授权未完成，请稍后重试
+        at PassportBiz.loginByWechatPhone (evalmachine.<anonymous>:185:10)
+        at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:37)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1382:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+        at Test.postRun (node:internal/test_runner/test:1522:19)
+        at Test.run (node:internal/test_runner/test:1447:12)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    expected: /手机号获取权限/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts\tests\wechat-login-client.test.js:75:3
+✖ native phone failure unsupported has its own explanation without calling the cloud (0.5431ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /更新微信/. Input:
+  
+  'Error: 微信手机号授权暂不可用，请联系管理员'
+  
+      at async TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: 微信手机号授权暂不可用，请联系管理员
+        at PassportBiz.loginByWechatPhone (evalmachine.<anonymous>:185:10)
+        at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\wechat-login-client.test.js:77:37)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1382:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+        at Test.postRun (node:internal/test_runner/test:1522:19)
+        at Test.run (node:internal/test_runner/test:1447:12)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    expected: /更新微信/,
+    operator: 'rejects',
+    diff: 'simple'
+  }

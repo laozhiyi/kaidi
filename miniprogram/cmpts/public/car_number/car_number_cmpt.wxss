@@ -1,4 +1,4 @@
-root-portal {
+.car-portal {
 	display: flex;
 	width: 100%;
 	height: 100%;
@@ -56,7 +56,7 @@ root-portal {
 	border: 2rpx dashed #8dc63f;
 }
 
-.car-number .item.new-energy>text {
+.car-number .item.new-energy>.car-label {
 	color: #8dc63f;
 	font-weight: bold;
 }
@@ -73,7 +73,7 @@ root-portal {
 	justify-content: center;
 }
 
-.confirm-car-number>text {
+.confirm-car-number>.car-label {
 	background-color: #4b71fc;
 	color: #fff;
 	width: 80%;
@@ -84,12 +84,12 @@ root-portal {
 	margin-top: 50rpx;
 }
 
-.confirm-car-number>text.distabled {
+.confirm-car-number>.car-label.distabled {
 	background-color: #f2f2f2;
 	color: #999;
 }
 
-.confirm-car-number.clear>text {
+.confirm-car-number.clear>.car-label {
 	background-color: #cce6ff;
 	color: #347DFF;
 }

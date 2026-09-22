@@ -8,6 +8,14 @@ const BaseAdminController = require('../../../../framework/platform/controller/b
 const BaseProjectService = require('../../service/base_project_service.js');
 
 class BaseProjectAdminController extends BaseAdminController {
+ async isAdmin() {
+  await super.isAdmin();
+  if (/^admin\/mgr_(?!pwd)/.test(this._route) && this._admin.ADMIN_PLATFORM !== true) this.AppError('仅平台管理员可管理管理员账号');
+ }
+ async isSuperAdmin() {
+  await super.isSuperAdmin();
+  if (/^admin\/mgr_(?!pwd)/.test(this._route) && this._admin.ADMIN_PLATFORM !== true) this.AppError('仅平台管理员可管理管理员账号');
+ }
 	// TODO
 	async initSetup() {
 		let service = new BaseProjectService();

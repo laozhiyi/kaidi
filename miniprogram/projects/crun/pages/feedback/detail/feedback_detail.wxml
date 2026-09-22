@@ -1,6 +1,6 @@
 <view wx:if="{{error}}" class="empty"><view class="empty-text">反馈详情加载失败，请重试</view><button class="feedback-retry" bindtap="_loadDetail">重新加载</button></view>
 <view wx:if="{{loading && !isLoad}}" class="empty"><view class="empty-text">正在加载反馈详情…</view></view>
-<view class="page" wx:if="{{isLoad && detail && !error}}">
+<view class="page" wx:if="{{isLoad && detail}}">
 	<!-- 头部状态 -->
 	<view class="status-bar">
 		<view class="status-pill" style="color:{{detail._statusDesc.color}};background-color:{{detail._statusDesc.bgColor}};">

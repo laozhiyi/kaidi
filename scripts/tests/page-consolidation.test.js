@@ -32,7 +32,7 @@ function harness(file, get, options = {}) {
       if (options.denied) return false;
       page.setData({ isAdmin: true, isSuperAdmin: options.superAdmin !== false }); return true;
     } };
-    if (module.includes('cloud_helper')) return { callCloudData: ops.get };
+    if (module.includes('cloud_helper')) return { callCloudData: ops.get, callCloudSumbit: async (...args) => ({ data: await ops.get(...args) }) };
     if (module.includes('project_setting')) return { SETUP_CONTENT_ITEMS: [
       { key: 'SETUP_CONTENT_ABOUT', title: '关于我们' }, { key: 'SETUP_CONTENT_CONTACT', title: '联系我们' }
     ] };

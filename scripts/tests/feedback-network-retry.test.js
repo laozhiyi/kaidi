@@ -10,7 +10,7 @@ function client() {
   const storage = new Map(), calls = [], waits = [];
   let failures = [{ errMsg: 'cloud.callFunction:fail request timeout', errCode: -1 }, { errMsg: 'cloud.callFunction:fail network disconnected', errCode: -1 }];
   const wx = {
-    getStorageSync: key => storage.get(key), setStorageSync: (key, value) => storage.set(key, value), removeStorageSync: key => storage.delete(key),
+    getStorageSync: key => key==='crun-campus-context' ? {schoolId:'gxnu',campusId:'yucai'} : storage.get(key), setStorageSync: (key, value) => storage.set(key, value), removeStorageSync: key => storage.delete(key),
     cloud: { callFunction(options) {
       calls.push(options.data.params);
       const failure = failures.shift();
@@ -21,8 +21,11 @@ function client() {
     } }
   };
   const cloudModule = { exports: {} };
+  const tenantModule = { exports: {} };
+  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../miniprogram/projects/crun/biz/tenant_biz.js'), 'utf8'), {module:tenantModule,wx});
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../miniprogram/helper/cloud_helper.js'), 'utf8'), {
-    module: cloudModule, wx, console: { log() {} }, require(name) {
+    module: cloudModule, wx, setTimeout, clearTimeout, console: { log() {} }, require(name) {
+      if (name.endsWith('/tenant_biz.js')) return tenantModule.exports;
       if (name === './helper.js') return { isDefined: value => value !== undefined && value !== null };
       if (name === './cache_helper.js') return { get: () => ({ id: 'poster' }) };
       if (name.endsWith('/page_helper.js')) return { getPID: () => 'crun' };

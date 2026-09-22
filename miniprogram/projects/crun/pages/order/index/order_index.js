@@ -32,15 +32,7 @@ Page({
 		// 筛选条 - 附加排序（合并到 takeParams.orderBy，不影响 sortType）
 		sortVal: '',
 
-		// 地点筛选（一期/二期/三期/四期/五期/全部）
-		phaseOptions: [
-			{ label: '全部', value: '' },
-			{ label: '一期', value: '一期' },
-			{ label: '二期', value: '二期' },
-			{ label: '三期', value: '三期' },
-			{ label: '四期', value: '四期' },
-			{ label: '五期', value: '五期' },
-		],
+		phaseOptions: [{ label: '全部', value: '' }],
 		phaseVal: '',
 		phasePickerVisible: false,
 
@@ -60,6 +52,9 @@ Page({
 		if (tab === 1 || tab === 2 || tab === 3) wx.removeStorageSync('crun-order-tab');
 
 		this.setData({ isLoad: true });
+  this._filterLoad = Ops.get('operations/config').then(config => {
+   if (!this._unloaded && config.locations) this.setData({phaseOptions:[{label:'全部',value:''},...config.locations.phases.map(value=>({label:value,value}))]});
+  }).catch(() => { /* The order list remains usable without optional area filters. */ });
 
 	},
 
@@ -181,7 +176,7 @@ Page({
             packages = String(obj.code).split(/\r?\n/).filter(Boolean).map(code => ({ code }));
         }
 		return Object.assign({}, order, {
-			showProgress: progress.visible, progressStep: progress.step, progressLabels: progress.steps.map(step => step.label),
+			showProgress: progress.visible, progressStep: progress.step, progressSteps: progress.steps, progressLabels: progress.steps.map(step => step.label),
 			deliveryAddress: MailUI.deliveryAddress(order), receipt: MailUI.receipt(order),
 			MAIL_FAV_CNT: Number(order.MAIL_FAV_CNT) || 0, MAIL_IS_FAV: !!order.MAIL_IS_FAV,
 			packageProofs: packages.filter(item => item && typeof item === 'object').map(item => ({ pickupPoint: item.pickupPoint || obj.address1 || '', code: obj.serviceType === 'send' ? item.note || '请联系发布者交接' : item.code || '查看取件截图', noteLabel: item.note ? '有备注' : '无备注' }))
@@ -189,7 +184,7 @@ Page({
     },
 	_snapshotKey: function (tab) {
 		const user = PassportBiz.getUserId ? PassportBiz.getUserId() : '';
-		return user + ':' + tab + ':' + JSON.stringify(this.data.listParams[['take', 'mine', 'posted', 'done'][tab]]);
+		return (Ops.scopeKey ? Ops.scopeKey() : '') + ':' + user + ':' + tab + ':' + JSON.stringify(this.data.listParams[['take', 'mine', 'posted', 'done'][tab]]);
 	},
 
 	/**

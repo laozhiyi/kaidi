@@ -3,24 +3,56 @@
 const Address = require('./address_biz.js');
 const STATUS = {
  0: { title: '等待骑手接单', note: '订单已发布，接单后将为你取送', icon: 'time', tone: 'blue' },
- 1: { title: '等待骑手取件', note: '骑手已接单，正在前往快递点取件', icon: 'time', tone: 'blue' },
- 4: { title: '正在为你配送', note: '骑手已取件，正在送往收件地址，请保持电话畅通', icon: 'deliver', tone: 'blue' },
+ 1: { title: '等待骑手取件', note: '骑手已接单，等待确认取件', icon: 'time', tone: 'blue' },
+ 4: { title: '正在为你配送', note: '骑手已确认取件，等待送达，请保持电话畅通', icon: 'deliver', tone: 'blue' },
  2: { title: '等待确认收货', note: '送达凭证已提交，请核对物品后确认', icon: 'roundcheck', tone: 'green' },
  3: { title: '异常处理中', note: '订单已进入异常处理，请关注处理进展', icon: 'info', tone: 'amber' },
- 9: { title: '订单已完成', note: '这一趟已顺利结束，感谢你的信任', icon: 'roundcheck', tone: 'green' },
+ 9: { title: '订单已完成', note: '订单已结束，可查看实际履约记录', icon: 'roundcheck', tone: 'green' },
  99: { title: '订单已取消', note: '本次代取已结束，可重新发布订单', icon: 'close', tone: 'muted' }
 };
 function progress(mail, now = Date.now()) {
  const status = mail.MAIL_STATUS == null ? -1 : Number(mail.MAIL_STATUS);
  const expired = status === 0 && Number(mail.MAIL_END_TIME) > 0 && Number(mail.MAIL_END_TIME) <= now;
- const index = { 1: 0, 4: 2, 2: 3, 9: 4 }[status];
+ const index = { 0: 0, 1: 1, 4: 2, 2: 3, 9: 4 }[status];
  const step = expired || index === undefined ? -1 : index;
- return { step, visible: !expired && (status === 0 || step >= 0),
-  steps: ['已接单', (mail.MAIL_OBJ || {}).serviceType === 'buy' ? '已购齐' : '已取件', '配送中', '待收货', '已完成'].map((label, index) => ({ label, index, done: step >= index, current: step === index })) };
+ const history = (Array.isArray(mail.MAIL_HISTORY) ? mail.MAIL_HISTORY : []).filter(item => item && typeof item === 'object');
+ const adminCompleted = status === 9 && ((mail.MAIL_EXCEPTION || {}).resolution === 'complete'
+  || history.some(item => item.actor === 'admin' && (item.action === 'resolve' && Number(item.status) === 9 || ['admin_finish', 'resolve_complete'].includes(item.action))));
+ const buy = (mail.MAIL_OBJ || {}).serviceType === 'buy';
+ const milestones = [
+  ['已发布', '待发布', 'MAIL_ADD_TIME', ['publish']],
+  ['已接单', '待接单', 'MAIL_ACCEPT_TIME', ['accept']],
+  [buy ? '已购齐' : '已取件', buy ? '待购买' : '待取件', 'MAIL_PICKUP_TIME', ['pickup']],
+  ['已送达', '待送达', 'MAIL_DELIVERED_TIME', ['deliver']],
+  [adminCompleted ? '已完结' : '已完成', '待完成', 'MAIL_OVER_TIME', ['confirm', 'finish', 'complete', 'admin_finish', 'resolve_complete']]
+ ];
+ // A terminal status does not prove intermediate actions happened: an admin
+ // can close an order before pickup. Only records or the current stage count.
+ const steps = milestones.map(([label, pendingLabel, field, actions], index) => {
+  const events = history.filter(item => actions.includes(item.action) || index === 4 && item.action === 'resolve' && Number(item.status) === 9);
+  const timeText = time(mail[field]) || events.map(item => time(item.at)).find(Boolean) || '';
+  const current = step === index;
+  const done = !!timeText || events.length > 0 || (mail.MAIL_MILESTONES || {})[field] === true || current;
+  const unrecorded = !done && index < step;
+  const displayLabel = done ? label : unrecorded ? ['发布', '接单', buy ? '购齐' : '取件', '送达', '完成'][index] : pendingLabel;
+  return { label, displayLabel, pendingLabel, index, done, current, timeText, dateText: timeText.slice(5, 10), clockText: timeText.slice(11),
+   recordText: done ? (timeText ? '' : '时间未记录') : unrecorded ? '未记录' : '' };
+ });
+ steps.forEach((item, index) => { item.connected = index > 0 && item.done && steps[index - 1].done; });
+ return { step, visible: step >= 0, adminCompleted, steps };
 }
 function time(value) {
- if (typeof value === 'string' && /^\d{4}[-/]\d{2}[-/]\d{2} \d{2}:\d{2}/.test(value)) return value.slice(0, 16).replace(/\//g, '-');
- const at = typeof value === 'number' || typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : typeof value === 'string' ? Date.parse(value) : NaN;
+ let at = typeof value === 'number' || typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : NaN;
+ if (typeof value === 'string') {
+  const local = value.match(/^(\d{4}[-/]\d{2}[-/]\d{2}) (\d{2}:\d{2})(?::(\d{2}))?$/);
+  const iso = value.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/);
+  if (local || iso) {
+   const wall = local ? local[1].replace(/\//g, '-') + 'T' + local[2] + ':' + (local[3] || '00') : iso[1] + ':' + (iso[2] || '00');
+   const calendar = new Date(wall + 'Z');
+   if (!Number.isFinite(calendar.getTime()) || calendar.toISOString().slice(0, 19) !== wall) return '';
+   at = Date.parse(local ? wall + '+08:00' : value);
+  }
+ }
  if (!Number.isFinite(at) || at <= 0) return '';
  const date = new Date(at + 8 * 3600000);
  return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 16).replace('T', ' ') : '';
@@ -32,6 +64,13 @@ function service(config, now = Date.now()) {
  const hours = validHours ? pad(config.openHour) + ':00–' + pad(config.closeHour) + ':00' : '';
  if (config.enabled !== true) return { kind: 'paused', title: '校区暂时停止接单', hours,
   description: '管理员已暂停新订单。你可以先填写信息，或联系校区客服了解恢复时间。', canPublish: false };
+ if (config.enforceBusinessHours !== true) return { kind: 'open', title: '正常接单', hours: '全天可发布',
+  description: '填写取送信息，发布后等待骑手接单', canPublish: true };
+ const hour = new Date(now + 8 * 3600000).getUTCHours();
+ if (!validHours || !Number.isFinite(hour)) return { kind: 'paused', title: '营业时间待确认', hours,
+  description: '校区营业配置暂不可用，请刷新或联系管理员。', canPublish: false };
+ if (hour < config.openHour || hour >= config.closeHour) return { kind: 'closed', title: '休息中，营业后可发布', hours,
+  description: '当前不在本校区营业时间，可以先填写信息，营业后再发布。', canPublish: false };
  return { kind: 'open', title: '正常接单', description: '填写取送信息，发布后等待骑手接单', hours, canPublish: true };
 }
 function receipt(mail, now = Date.now()) {
@@ -82,6 +121,7 @@ function detail(mail, now = Date.now()) {
  })).reverse() : [];
  let title = mail.myaccept && status === 1 ? '请前往快递点取件' : mail.myaccept && status === 4 ? '配送进行中' : mail.myaccept && status === 2 ? '等待发布者确认' : state.title;
  let note = !participant && status === 0 && !expired ? '接单后可查看联系人信息、取件码和截图' : mail.myaccept && status === 1 ? '取齐本单包裹后，点击“已取件”开始配送' : mail.myaccept && status === 4 ? '送到收件地址后，点击“已送达”填写说明并上传照片' : mail.myaccept && status === 2 ? '已通知发布者核对，请等待对方确认收货' : state.note;
+ if (orderProgress.adminCompleted) { title = '管理员已完结订单'; note = '本单由管理员处理完结，具体情况请查看处理记录'; }
  if (serviceType !== 'take') {
   if (status === 1) { title = serviceType === 'buy' ? (mail.myaccept ? '请前往购买商品' : '等待骑手购买') : (mail.myaccept ? '请前往取件地址' : '等待骑手取件'); note = serviceType === 'buy' ? '请按要求购买，超出预算先联系发布者；购齐后开始配送' : '请按填写的取件位置交接物品，取齐后开始配送'; }
   if (!participant && status === 0 && !expired) note = '接单后可查看联系人信息并开始服务';

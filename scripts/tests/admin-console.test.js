@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { harness, mini } = require('../test-support/admin-console-harness.cjs');
+const { fixture } = require('../test-support/operations-fixture.cjs');
 const event = dataset => ({ currentTarget: { dataset } });
 const input = (key, value) => ({ currentTarget: { dataset: { key } }, detail: { value } });
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -119,6 +120,31 @@ test('configuration keeps decimal input drafts, blocks blank fields and saves on
   h.page.bindEdit(input('smallPrice', '2.35')); await h.page.bindSave();
   assert.equal(h.calls.at(-1).params.section, 'pricing'); assert.equal(h.calls.at(-1).params.value.smallPrice, 2.35); assert.equal(h.calls.at(-1).params.value.enabled, undefined);
   assert.equal(h.page.data.dirty, false); assert.equal(h.page.data.config.smallPrice, 2.35);
+});
+
+test('service settings persist the hours switch through the real config service and ordinary admins cannot change it', async () => {
+  const f = fixture(), svc = new (f.load('operation_config_service.js'))();
+  Object.assign(f.config, { openHour: 8, closeHour: 22 });
+  const respond = (route, params) => route.endsWith('_save') ? svc.saveConfig(params.value, 'admin', params.section) : svc.getConfig();
+  const h = harness('settings/service/admin_service_settings.js', respond);
+  await h.page.onLoad();
+  for (const enabled of [true, false]) {
+    h.page.bindEdit(input('enforceBusinessHours', enabled));
+    await h.page.bindSave();
+    const saved = await svc.getConfig();
+    assert.equal(saved.enforceBusinessHours, enabled);
+    assert.equal(saved.enabled, true);
+    assert.equal(h.page.data.dirty, false);
+    assert.equal(h.page.data.config.enforceBusinessHours, enabled);
+    const verify = () => f.load('order_rules.js').requireOpen(saved, Date.parse('2026-09-21T23:00:00+08:00'));
+    if (enabled) assert.throws(verify, /营业时间/); else assert.doesNotThrow(verify);
+  }
+  const ordinary = harness('settings/service/admin_service_settings.js', respond, { superAdmin: false });
+  await ordinary.page.onLoad();
+  ordinary.page.bindEdit(input('enforceBusinessHours', true));
+  await ordinary.page.bindSave();
+  assert.equal((await svc.getConfig()).enforceBusinessHours, false);
+  assert.equal(ordinary.page.data.config.enforceBusinessHours, false);
 });
 
 test('refresh cannot discard unsaved configuration and discard restores a separate saved snapshot', async () => {

@@ -12,6 +12,7 @@ const contentCheckHelper = require('../helper/content_check_helper.js');
 const pageHelper = require('../helper/page_helper.js');
 const timeHelper = require('../helper/time_helper.js');
 const setting = require('../setting/setting.js');
+const Tenant = require('../projects/crun/biz/tenant_biz.js');
 
 const CODE = {
 	SUCC: 200,
@@ -29,7 +30,7 @@ let readEpoch = 0;
 let loadingCount = 0, barLoadingCount = 0;
 function isReadRoute(route) {
 	return /(?:\/|_)(list|detail|view|summary|stats|stat|records|context|featured|get|is_fav|my_code|chat)$/.test(route)
-		|| ['passport/login', 'operations/config', 'operations/notifications', 'admin/home', 'admin/operations_config', 'admin/operations_order', 'admin/operations_orders', 'admin/operations_overview'].includes(route);
+		|| ['tenant/catalog', 'admin/tenant_directory', 'passport/login', 'operations/feed', 'operations/config', 'operations/notifications', 'admin/home', 'admin/operations_config', 'admin/operations_order', 'admin/operations_orders', 'admin/operations_overview'].includes(route);
 }
 function stableKey(value) {
 	if (Array.isArray(value)) return '[' + value.map(stableKey).join(',') + ']';
@@ -37,6 +38,13 @@ function stableKey(value) {
 	return JSON.stringify(value);
 }
 function invalidateReadRequests() { readEpoch++; readRequests.clear(); }
+Tenant.subscribe(invalidateReadRequests);
+function ensureScope({ allowDisabled = false } = {}) {
+ return Tenant.ensure(async () => {
+  const response = await callCloudOnce({ route: 'tenant/catalog', token: '', PID: pageHelper.getPID(), params: {} }, { hint: false });
+  return response.data;
+ }, { allowDisabled });
+}
 
 function callCloudSumbitAsync(route, params = {}, options) {
 	if (!helper.isDefined(options)) options = {
@@ -76,17 +84,22 @@ async function callCloudData(route, params = {}, options) {
 	return result;
 }
 
-function callCloud(route, params = {}, options = {}) {
+async function callCloud(route, params = {}, options = {}) {
 	options = options || {};
 	if (typeof route !== 'string' || !route) return Promise.reject(new Error('请求地址无效'));
-	let token = '';
-	const cache = cacheHelper.get(route.startsWith('admin/') ? constants.CACHE_ADMIN : route.startsWith('work/') ? constants.CACHE_WORK : constants.CACHE_TOKEN);
-	if (cache) token = route.startsWith('admin/') || route.startsWith('work/') ? cache.token || '' : cache.id || '';
-	const data = { route, token, PID: pageHelper.getPID(), params };
+ params = JSON.parse(JSON.stringify(params));
+ const scope = route === 'tenant/catalog' ? null : options.scope || Tenant.snapshot() || await ensureScope({ allowDisabled: route.startsWith('admin/') });
+ let token = '';
+ const cache = cacheHelper.get(route.startsWith('admin/') ? constants.CACHE_ADMIN : route.startsWith('work/') ? constants.CACHE_WORK : constants.CACHE_TOKEN);
+ if (cache) token = route.startsWith('admin/') || route.startsWith('work/') ? cache.token || '' : cache.id || '';
+ if (scope && Tenant.key(scope) !== Tenant.key()) throw Object.assign(new Error('校区已切换，请重新操作'), { code: 1600, staleScope: true });
+ const scopeGeneration = Tenant.generation();
+	const data = { route, token, PID: pageHelper.getPID(), params, ...(scope ? { scope: { schoolId: scope.schoolId, campusId: scope.campusId } } : {}) };
 	const key = isReadRoute(route) && options.dedupe !== false ? readEpoch + ':' + stableKey(data) : '';
 	let request = key && readRequests.get(key);
 	if (!request) {
-		request = callCloudOnce(data, options);
+  const unlock = isReadRoute(route) || route === 'tenant/catalog' ? () => {} : Tenant.lock();
+		request = callCloudOnce(data, options).finally(unlock);
 		if (key) {
 			readRequests.set(key, request);
 			const clear = () => { if (readRequests.get(key) === request) readRequests.delete(key); };
@@ -95,7 +108,10 @@ function callCloud(route, params = {}, options = {}) {
 	}
 	// Callers decorate their DTOs. Sharing a mutable result would corrupt a
 	// concurrent page's data even when sharing the network request is safe.
-	return request.then(result => JSON.parse(JSON.stringify(result)));
+	return request.then(result => {
+  if (scope && (scopeGeneration !== Tenant.generation() || Tenant.key(scope) !== Tenant.key())) throw Object.assign(new Error('校区已切换，已忽略旧响应'), { code: 1600, staleScope: true });
+  return JSON.parse(JSON.stringify(result));
+ });
 }
 
 function callCloudOnce(data, options) {
@@ -238,7 +254,7 @@ async function dataList(that, listName, route, params, options, isReverse = fals
 	const state = states[listName] || (states[listName] = { version: 0 });
 	const version = ++state.version;
 	const current = () => version === state.version && !that._detached && that._pageVisible !== false && (!options.isCurrent || options.isCurrent());
-	if (!helper.isDefined(params.isTotal)) params.isTotal = true;
+	if (!helper.isDefined(params.isTotal)) params.isTotal = route === 'mail/list' ? page === 1 && !options.silent : true;
 	params.oldTotal = old && old.total || 0;
 	if (page > 1 && old.nextCursor) params.cursor = old.nextCursor;
 	try {
@@ -457,6 +473,11 @@ async function transTempPicOne(img, dir, id, isCheck = true) {
 }
 
 module.exports = {
+ ensureScope,
+ scopeSnapshot: Tenant.snapshot,
+ scopeKey: Tenant.key,
+ scopeLock: Tenant.lock,
+ onScopeChange: Tenant.subscribe,
 	CODE,
 	invalidateReadRequests,
 	dataList,

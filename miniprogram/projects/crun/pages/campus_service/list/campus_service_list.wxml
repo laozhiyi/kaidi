@@ -2,7 +2,7 @@
 
 	<!-- 顶部说明 -->
 	<view class="header">
-		<view class="header-title">广西师范大学校区客服</view>
+		<view class="header-title">校区客服</view>
 		<view class="header-desc">选择所在校区，联系对应客服，及时解决校园生活中的问题</view>
 	</view>
 

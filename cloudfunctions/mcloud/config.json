@@ -5,14 +5,9 @@
       "security.imgSecCheck",
       "security.msgSecCheck",
       "serviceMarket.invokeService",
-      "subscribeMessage.send"
+      "subscribeMessage.send",
+      "phonenumber.getPhoneNumber"
     ]
   },
-  "triggers": [
-    {
-      "name": "operations-minute",
-      "type": "timer",
-      "config": "0 * * * * * *"
-    }
-  ]
+  "triggers": []
 }

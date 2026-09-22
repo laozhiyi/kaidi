@@ -1,0 +1,242 @@
+TAP version 13
+# Subtest: text audit preserves field boundaries, labels, trusted identity and the profile scene
+ok 1 - text audit preserves field boundaries, labels, trusted identity and the profile scene
+  ---
+  duration_ms: 2.554
+  type: 'test'
+  ...
+# Subtest: text audit accepts a documented pass with error-code representation {"errCode":0,"result":{"suggest":"pass"}}
+ok 2 - text audit accepts a documented pass with error-code representation {"errCode":0,"result":{"suggest":"pass"}}
+  ---
+  duration_ms: 0.6165
+  type: 'test'
+  ...
+# Subtest: text audit accepts a documented pass with error-code representation {"errcode":0,"result":{"suggest":"pass"}}
+ok 3 - text audit accepts a documented pass with error-code representation {"errcode":0,"result":{"suggest":"pass"}}
+  ---
+  duration_ms: 0.5776
+  type: 'test'
+  ...
+# Subtest: text audit accepts a documented pass with error-code representation {"errCode":"0","result":{"suggest":"pass"}}
+ok 4 - text audit accepts a documented pass with error-code representation {"errCode":"0","result":{"suggest":"pass"}}
+  ---
+  duration_ms: 0.5989
+  type: 'test'
+  ...
+# Subtest: provider failure 48001 (exception) is not a content violation
+ok 5 - provider failure 48001 (exception) is not a content violation
+  ---
+  duration_ms: 1.0097
+  type: 'test'
+  ...
+# Subtest: provider failure 48001 (response) is not a content violation
+ok 6 - provider failure 48001 (response) is not a content violation
+  ---
+  duration_ms: 0.6427
+  type: 'test'
+  ...
+# Subtest: provider failure 40003 (exception) is not a content violation
+ok 7 - provider failure 40003 (exception) is not a content violation
+  ---
+  duration_ms: 0.6096
+  type: 'test'
+  ...
+# Subtest: provider failure 40003 (response) is not a content violation
+ok 8 - provider failure 40003 (response) is not a content violation
+  ---
+  duration_ms: 0.5592
+  type: 'test'
+  ...
+# Subtest: provider failure 45009 (exception) is not a content violation
+ok 9 - provider failure 45009 (exception) is not a content violation
+  ---
+  duration_ms: 0.6042
+  type: 'test'
+  ...
+# Subtest: provider failure 45009 (response) is not a content violation
+ok 10 - provider failure 45009 (response) is not a content violation
+  ---
+  duration_ms: 0.5954
+  type: 'test'
+  ...
+# Subtest: timeouts and missing identity have accurate errors and never report inappropriate text
+ok 11 - timeouts and missing identity have accurate errors and never report inappropriate text
+  ---
+  duration_ms: 0.6539
+  type: 'test'
+  ...
+# Subtest: malformed audit response is a service failure: undefined
+ok 12 - malformed audit response is a service failure: undefined
+  ---
+  duration_ms: 0.6158
+  type: 'test'
+  ...
+# Subtest: malformed audit response is a service failure: null
+ok 13 - malformed audit response is a service failure: null
+  ---
+  duration_ms: 0.5368
+  type: 'test'
+  ...
+# Subtest: malformed audit response is a service failure: {}
+ok 14 - malformed audit response is a service failure: {}
+  ---
+  duration_ms: 0.5283
+  type: 'test'
+  ...
+# Subtest: malformed audit response is a service failure: {"errCode":0}
+ok 15 - malformed audit response is a service failure: {"errCode":0}
+  ---
+  duration_ms: 0.4948
+  type: 'test'
+  ...
+# Subtest: malformed audit response is a service failure: {"errCode":0,"result":{"suggest":"unknown"}}
+ok 16 - malformed audit response is a service failure: {"errCode":0,"result":{"suggest":"unknown"}}
+  ---
+  duration_ms: 0.4983
+  type: 'test'
+  ...
+# Subtest: legacy rejection and review responses identify the field without inventing offending words
+ok 17 - legacy rejection and review responses identify the field without inventing offending words
+  ---
+  duration_ms: 0.6648
+  type: 'test'
+  ...
+# Subtest: empty and numeric inputs need no audit; all selected text is size checked before requesting
+ok 18 - empty and numeric inputs need no audit; all selected text is size checked before requesting
+  ---
+  duration_ms: 0.6731
+  type: 'test'
+  ...
+# Subtest: the existing explicit development switch still controls text checks
+ok 19 - the existing explicit development switch still controls text checks
+  ---
+  duration_ms: 0.5287
+  type: 'test'
+  ...
+# Subtest: existing unlabelled callers retain a single batched request for short multi-field input
+ok 20 - existing unlabelled callers retain a single batched request for short multi-field input
+  ---
+  duration_ms: 0.7458
+  type: 'test'
+  ...
+# Subtest: long Unicode fields remain valid text when split for auditing
+ok 21 - long Unicode fields remain valid text when split for auditing
+  ---
+  duration_ms: 0.7178
+  type: 'test'
+  ...
+# Subtest: real registration audits only human profile text and stores a usable unverified manual account
+ok 22 - real registration audits only human profile text and stores a usable unverified manual account
+  ---
+  duration_ms: 27.0901
+  type: 'test'
+  ...
+# Subtest: profile audit selects contact names and address text without their phones or form metadata
+ok 23 - profile audit selects contact names and address text without their phones or form metadata
+  ---
+  duration_ms: 13.773
+  type: 'test'
+  ...
+# Subtest: additional legacy contact text cannot disappear behind a boolean or another field
+ok 24 - additional legacy contact text cannot disappear behind a boolean or another field
+  ---
+  duration_ms: 12.4425
+  type: 'test'
+  ...
+# Subtest: unknown legacy form marks get safe field labels and still audit their actual values
+ok 25 - unknown legacy form marks get safe field labels and still audit their actual values
+  ---
+  duration_ms: 14.2536
+  type: 'test'
+  ...
+# Subtest: legacy fields sharing a display label cannot overwrite each other during text selection
+not ok 26 - legacy fields sharing a display label cannot overwrite each other during text selection
+  ---
+  duration_ms: 13.2194
+  type: 'test'
+  location: 'B:\\zhumian\\zm\\kaidi\\scripts\\tests\\content-audit.test.js:187:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    200 !== 1600
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1600
+  actual: 200
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\content-audit.test.js:192:10)
+    async Test.run (node:internal/test_runner/test:1389:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+  ...
+# Subtest: a nickname rejection is returned by the real route without creating registration records
+ok 27 - a nickname rejection is returned by the real route without creating registration records
+  ---
+  duration_ms: 11.9821
+  type: 'test'
+  ...
+# Subtest: editing a profile identifies the rejected field and preserves the prior profile
+ok 28 - editing a profile identifies the rejected field and preserves the prior profile
+  ---
+  duration_ms: 12.8626
+  type: 'test'
+  ...
+# Subtest: profile format errors are shown before calling an unavailable audit service
+ok 29 - profile format errors are shown before calling an unavailable audit service
+  ---
+  duration_ms: 13.4109
+  type: 'test'
+  ...
+# Subtest: a profile audit outage leaves no account and reports the service problem
+ok 30 - a profile audit outage leaves no account and reports the service problem
+  ---
+  duration_ms: 12.1805
+  type: 'test'
+  ...
+# Subtest: real service settings save without depending on a text service for numbers and switches
+ok 31 - real service settings save without depending on a text service for numbers and switches
+  ---
+  duration_ms: 16.9264
+  type: 'test'
+  ...
+# Subtest: real rules settings save without depending on a text service for numbers and switches
+ok 32 - real rules settings save without depending on a text service for numbers and switches
+  ---
+  duration_ms: 13.2351
+  type: 'test'
+  ...
+# Subtest: real pricing settings save without depending on a text service for numbers and switches
+ok 33 - real pricing settings save without depending on a text service for numbers and switches
+  ---
+  duration_ms: 13.5626
+  type: 'test'
+  ...
+# Subtest: the real pricing page can change a number while submitting its unchanged settlement notice
+ok 34 - the real pricing page can change a number while submitting its unchanged settlement notice
+  ---
+  duration_ms: 19.7399
+  type: 'test'
+  ...
+# Subtest: a changed settlement notice is audited alone; failed saves retain the page draft and database
+ok 35 - a changed settlement notice is audited alone; failed saves retain the page draft and database
+  ---
+  duration_ms: 17.3419
+  type: 'test'
+  ...
+# Subtest: configuration format and authorization checks still precede external auditing and prevent writes
+ok 36 - configuration format and authorization checks still precede external auditing and prevent writes
+  ---
+  duration_ms: 15.763
+  type: 'test'
+  ...
+1..36
+# tests 36
+# suites 0
+# pass 35
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 323.3825

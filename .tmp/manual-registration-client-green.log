@@ -1,0 +1,301 @@
+TAP version 13
+# [wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'unsupported', errCode: null }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+# [wechat-phone-login] {
+#   stage: 'cloud_failure',
+#   reason: 'environment_missing',
+#   errCode: null
+# }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+# Subtest: custom campus selection previews a choice, cancels cleanly, and commits only a valid option
+ok 1 - custom campus selection previews a choice, cancels cleanly, and commits only a valid option
+  ---
+  duration_ms: 6.7249
+  type: 'test'
+  ...
+# Subtest: saving personal information persists the selected campus and preserves other saved fields
+ok 2 - saving personal information persists the selected campus and preserves other saved fields
+  ---
+  duration_ms: 3.8304
+  type: 'test'
+  ...
+# Subtest: editing cached personal information is not overwritten by a background response
+ok 3 - editing cached personal information is not overwritten by a background response
+  ---
+  duration_ms: 2.6858
+  type: 'test'
+  ...
+# Subtest: contact editor retains drafts on save failure and preserves the default flag after retry
+ok 4 - contact editor retains drafts on save failure and preserves the default flag after retry
+  ---
+  duration_ms: 3.5011
+  type: 'test'
+  ...
+# Subtest: address editor retains drafts on save failure and preserves the default flag after retry
+ok 5 - address editor retains drafts on save failure and preserves the default flag after retry
+  ---
+  duration_ms: 3.6649
+  type: 'test'
+  ...
+# Subtest: collection saves coalesce repeated taps and do not discard an editor before the request completes
+ok 6 - collection saves coalesce repeated taps and do not discard an editor before the request completes
+  ---
+  duration_ms: 2.808
+  type: 'test'
+  ...
+# Subtest: deleting a preceding contact keeps the current edit attached to the same person
+ok 7 - deleting a preceding contact keeps the current edit attached to the same person
+  ---
+  duration_ms: 2.904
+  type: 'test'
+  ...
+# Subtest: every personal-center entry reaches its intended destination and private entries respect login cancellation
+ok 8 - every personal-center entry reaches its intended destination and private entries respect login cancellation
+  ---
+  duration_ms: 7.3192
+  type: 'test'
+  ...
+# Subtest: settings clears cached profile data while keeping login, drafts and pending requests
+ok 9 - settings clears cached profile data while keeping login, drafts and pending requests
+  ---
+  duration_ms: 6.2298
+  type: 'test'
+  ...
+# Subtest: clearing caches prevents older requests from restoring stale profile and campus entries
+ok 10 - clearing caches prevents older requests from restoring stale profile and campus entries
+  ---
+  duration_ms: 2.6221
+  type: 'test'
+  ...
+# Subtest: registration keeps the returned login token, binds the invitation, and returns to the requesting page
+ok 11 - registration keeps the returned login token, binds the invitation, and returns to the requesting page
+  ---
+  duration_ms: 3.3239
+  type: 'test'
+  ...
+# Subtest: registration requiring review does not grant an active login token
+ok 12 - registration requiring review does not grant an active login token
+  ---
+  duration_ms: 4.0218
+  type: 'test'
+  ...
+# Subtest: unsupported native capabilities open manual registration and submit without reading WeChat data
+ok 13 - unsupported native capabilities open manual registration and submit without reading WeChat data
+  ---
+  duration_ms: 6.1568
+  type: 'test'
+  ...
+# Subtest: manual entry is available even when the native button never invokes its callback
+ok 14 - manual entry is available even when the native button never invokes its callback
+  ---
+  duration_ms: 2.795
+  type: 'test'
+  ...
+# Subtest: unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail","errno":102}
+ok 15 - unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail","errno":102}
+  ---
+  duration_ms: 5.8972
+  type: 'test'
+  ...
+# Subtest: unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail not support"}
+ok 16 - unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail not support"}
+  ---
+  duration_ms: 5.0357
+  type: 'test'
+  ...
+# Subtest: strict mode and old configurations do not offer manual registration after native failures
+ok 17 - strict mode and old configurations do not offer manual registration after native failures
+  ---
+  duration_ms: 5.0415
+  type: 'test'
+  ...
+# Subtest: manual registration policy survives shared cache reads and is revoked by fresh configuration
+ok 18 - manual registration policy survives shared cache reads and is revoked by fresh configuration
+  ---
+  duration_ms: 2.5883
+  type: 'test'
+  ...
+# Subtest: manual accounts remain on their personal pages instead of looping back to phone authorization
+ok 19 - manual accounts remain on their personal pages instead of looping back to phone authorization
+  ---
+  duration_ms: 6.9121
+  type: 'test'
+  ...
+# Subtest: manual registration recovers a lost save response before returning to the original feature
+ok 20 - manual registration recovers a lost save response before returning to the original feature
+  ---
+  duration_ms: 4.9115
+  type: 'test'
+  ...
+# Subtest: phone authorization after manual entry keeps drafts and applies the verified phone
+ok 21 - phone authorization after manual entry keeps drafts and applies the verified phone
+  ---
+  duration_ms: 4.7235
+  type: 'test'
+  ...
+# Subtest: new registration shows WeChat login first and resumes an incomplete authorized profile
+ok 22 - new registration shows WeChat login first and resumes an incomplete authorized profile
+  ---
+  duration_ms: 3.6381
+  type: 'test'
+  ...
+# Subtest: an empty cloud success envelope is a guest and never forces a spurious completion redirect
+ok 23 - an empty cloud success envelope is a guest and never forces a spurious completion redirect
+  ---
+  duration_ms: 3.1164
+  type: 'test'
+  ...
+# Subtest: denied authorization and duplicate taps never bypass the WeChat login stage
+ok 24 - denied authorization and duplicate taps never bypass the WeChat login stage
+  ---
+  duration_ms: 4.4417
+  type: 'test'
+  ...
+# Subtest: registration visibly explains native phone capability failures and releases the button
+ok 25 - registration visibly explains native phone capability failures and releases the button
+  ---
+  duration_ms: 6.2228
+  type: 'test'
+  ...
+# Subtest: registration exposes cloud setup failures and can succeed after a fresh authorization
+ok 26 - registration exposes cloud setup failures and can succeed after a fresh authorization
+  ---
+  duration_ms: 4.4189
+  type: 'test'
+  ...
+# Subtest: phone reauthorization preserves an unsaved nickname and requires server-confirmed data
+ok 27 - phone reauthorization preserves an unsaved nickname and requires server-confirmed data
+  ---
+  duration_ms: 2.4375
+  type: 'test'
+  ...
+# Subtest: a completed registration with a lost response refreshes the session before returning to the business page
+ok 28 - a completed registration with a lost response refreshes the session before returning to the business page
+  ---
+  duration_ms: 4.1528
+  type: 'test'
+  ...
+# Subtest: a failed session refresh after profile completion stays retryable instead of reopening a blocked feature
+ok 29 - a failed session refresh after profile completion stays retryable instead of reopening a blocked feature
+  ---
+  duration_ms: 4.3295
+  type: 'test'
+  ...
+# Subtest: an older guest profile response cannot overwrite a successful phone login
+ok 30 - an older guest profile response cannot overwrite a successful phone login
+  ---
+  duration_ms: 4.3163
+  type: 'test'
+  ...
+# Subtest: an older guest profile failure cannot overwrite a successful phone login
+ok 31 - an older guest profile failure cannot overwrite a successful phone login
+  ---
+  duration_ms: 4.1767
+  type: 'test'
+  ...
+# Subtest: favorite mutations ignore repeated taps while login or saving is in flight
+ok 32 - favorite mutations ignore repeated taps while login or saving is in flight
+  ---
+  duration_ms: 5.9183
+  type: 'test'
+  ...
+# Subtest: feedback detail can retry a failed request and formats returned timestamps
+ok 33 - feedback detail can retry a failed request and formats returned timestamps
+  ---
+  duration_ms: 6.9468
+  type: 'test'
+  ...
+# Subtest: invitation links survive a warm app launch and network failure, then clear after a successful bind
+ok 34 - invitation links survive a warm app launch and network failure, then clear after a successful bind
+  ---
+  duration_ms: 2.742
+  type: 'test'
+  ...
+# Subtest: invite records paginate without recreating codes and sharing carries the current code
+ok 35 - invite records paginate without recreating codes and sharing carries the current code
+  ---
+  duration_ms: 0.9013
+  type: 'test'
+  ...
+# Subtest: favorites can search, open and remove records, and retain data on a failed removal
+ok 36 - favorites can search, open and remove records, and retain data on a failed removal
+  ---
+  duration_ms: 0.8396
+  type: 'test'
+  ...
+# Subtest: sent and received reviews have independent pages, queries and late-response lifecycles
+ok 37 - sent and received reviews have independent pages, queries and late-response lifecycles
+  ---
+  duration_ms: 2.0672
+  type: 'test'
+  ...
+# Subtest: address edits require one of the five phases and preserve the existing detail during selection
+ok 38 - address edits require one of the five phases and preserve the existing detail during selection
+  ---
+  duration_ms: 2.8211
+  type: 'test'
+  ...
+# Error: 网络中断
+#     at TestContext.<anonymous> (B:\\zhumian\\zm\\kaidi\\scripts\\tests\\my-page-features.test.js:583:18)
+#     at async Test.run (node:internal/test_runner/test:1389:7)
+#     at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+# Subtest: feedback prevents duplicate clicks, preserves a failed draft and retries its original content
+ok 39 - feedback prevents duplicate clicks, preserves a failed draft and retries its original content
+  ---
+  duration_ms: 1.5091
+  type: 'test'
+  ...
+# Subtest: both review lists retain display fields only and offer no completed-order navigation
+ok 40 - both review lists retain display fields only and offer no completed-order navigation
+  ---
+  duration_ms: 1.87
+  type: 'test'
+  ...
+# Subtest: review lists preserve legacy names and recover missing avatars without clearing a refreshed image
+ok 41 - review lists preserve legacy names and recover missing avatars without clearing a refreshed image
+  ---
+  duration_ms: 1.7356
+  type: 'test'
+  ...
+# Subtest: feedback image controls enforce the supported six-image limit and submit functional feedback as a suggestion
+ok 42 - feedback image controls enforce the supported six-image limit and submit functional feedback as a suggestion
+  ---
+  duration_ms: 0.6662
+  type: 'test'
+  ...
+# Subtest: messages remain available when optional subscription configuration hangs and malformed dates are tolerated
+ok 43 - messages remain available when optional subscription configuration hangs and malformed dates are tolerated
+  ---
+  duration_ms: 3.1274
+  type: 'test'
+  ...
+# Subtest: shared profile templates and all personal-center pages bind existing event handlers
+ok 44 - shared profile templates and all personal-center pages bind existing event handlers
+  ---
+  duration_ms: 6.7793
+  type: 'test'
+  ...
+1..44
+# tests 44
+# suites 0
+# pass 44
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 232.1721

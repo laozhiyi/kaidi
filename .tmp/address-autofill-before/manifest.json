@@ -1,0 +1,110 @@
+[
+  {
+    "path": "miniprogram/cmpts/public/form/form_show/form_show_cmpt.js",
+    "sha256": "AD4FCCB73840B00303B893C63407B21306ED4F1E91B0E62971A4662190D8CC9B"
+  },
+  {
+    "path": "miniprogram/projects/crun/pages/mail/add/mail_add_logic.js",
+    "sha256": "E268DB63FA2766B8A2917C8DFF25AD64DB8D1C9763AC23C8C1B2A38A7C5DA1E0"
+  },
+  {
+    "path": "miniprogram/projects/crun/pages/mail/add/mail_add_embedded.js",
+    "sha256": "1C28003F46ABCF8F7437BD0CA48BCA269AD1F7A04957348AE2880E3CB9055CED"
+  },
+  {
+    "path": "miniprogram/projects/crun/pages/mail/add/mail_add.wxml",
+    "sha256": "726CC4FE3C01C94EAD6D452D147B3F2C6295C63CCE233369D4B8F4E33A837FE3"
+  },
+  {
+    "path": "miniprogram/projects/crun/pages/mail/add/mail_add.wxss",
+    "sha256": "1FD1B7421C11B5D1256427234A41266ADA43F750AC3DDC8B6E8C7C51DA061420"
+  },
+  {
+    "path": "miniprogram/projects/crun/pages/mail/add/mail_add_embedded.wxss",
+    "sha256": "773C338BD4A726EF2C94F0CD05A0C01251782E4D5C340337B48AE549CB8427AA"
+  },
+  {
+    "path": "miniprogram/projects/crun/biz/profile_biz.js",
+    "sha256": "FADD15DBCC4ACC4667D62B1E368B5CF10A378DB87201E71FBE21B1241B57A9D5"
+  },
+  {
+    "path": "miniprogram/cmpts/public/list/comm_list_cmpt.wxml",
+    "sha256": "D7C39E4611B4CF9480AD1202F7676352D2759C9BB5C6C033C9EBDF0A81639467"
+  },
+  {
+    "path": "miniprogram/cmpts/public/img/img_upload_cmpt.wxss",
+    "sha256": "E1478059A5E0AA435D7B636CA382564ACA6F91228A08079F774F74B1013B919F"
+  },
+  {
+    "path": "miniprogram/cmpts/public/rows/rows_cmpt.wxss",
+    "sha256": "DA4ACB2738379DD40E3E3E140463E60577FA83269FA5C9E9DA45FD8B359CD72D"
+  },
+  {
+    "path": "miniprogram/cmpts/public/rows/rows_cmpt.wxml",
+    "sha256": "4F9629EE8952EC342D539D213CAC2776B74EF502E553A2497A1799FB1298D048"
+  },
+  {
+    "path": "miniprogram/cmpts/public/car_number/car_number_cmpt.wxss",
+    "sha256": "FFAD5DE4EA5D6548D42A042D8468522B9CDBDFA3F30848075E48301C48E7F209"
+  },
+  {
+    "path": "miniprogram/cmpts/public/car_number/car_number_cmpt.wxml",
+    "sha256": "09EF5B6B71D9EDFFCD7F1DAE3B830BC25F7CEA339B9B285EE02AF14B69E4EF34"
+  },
+  {
+    "path": "miniprogram/projects/crun/cmpts/deadline_picker/deadline_picker.wxss",
+    "sha256": "ADEA3E60348F8C9DA4FD5C5D055618FE125C080F4E71FE381F65B5D34C7B6FBC"
+  },
+  {
+    "path": "miniprogram/projects/crun/cmpts/deadline_picker/deadline_picker.wxml",
+    "sha256": "452A79EB1C09BC901094D5C5628CB97C34BA720FAE90BA315A8E7AF6528F7AA6"
+  },
+  {
+    "path": "miniprogram/projects/crun/cmpts/campus_selector/campus_selector.wxss",
+    "sha256": "BDEB9AEF76D8E682549FDFBEB5F97713E79E9CD3F0A0A8AE0AC625620C514697"
+  },
+  {
+    "path": "miniprogram/projects/crun/cmpts/campus_selector/campus_selector.wxml",
+    "sha256": "5BB4699AFBB6A085EE2BA992F11B788D75F983125CD66EA4961966BB54CA442C"
+  },
+  {
+    "path": "miniprogram/custom-tab-bar/index.wxss",
+    "sha256": "8C868F402724E4ED36A65E7B61545A236D5B1D00B524B027948217ADF417F496"
+  },
+  {
+    "path": "miniprogram/style/base/icon.wxss",
+    "sha256": "797C14CF4F06FC71F217D339411CB64369D46EE2F7D71BF74682CDF663052086"
+  },
+  {
+    "path": "miniprogram/app.js",
+    "sha256": "55EFB978F4E026ECA6F4955ECDF281C939E48AFB457D90FAEF9BE2AE7031D865"
+  },
+  {
+    "path": "scripts/tests/package-pickup.test.js",
+    "sha256": "794A0340AC1F752343AD5BEDDAC609EDDA3E5BA5A11A90F3EDB078F6A60317A3"
+  },
+  {
+    "path": "scripts/check-miniprogram-pages.cjs",
+    "sha256": "6240F9B006F2D2CF947F2F2005AAE3D94C2B6BE4CA5394B5D9498EB3418D556A"
+  },
+  {
+    "path": "scripts/check-miniprogram-compile.cjs",
+    "sha256": "C982A9F8780C009DEF7A819D96F3EC133A840B42E82A4F4B10ABB7B079145525"
+  },
+  {
+    "path": "deployment/WECHAT_LOGIN.md",
+    "sha256": "5B3D0C73E07E84E473599469F6CAD0325EBE0D611EB0052B6ECD4531BC8F7A88"
+  },
+  {
+    "path": "miniprogram/projects/crun/pages/mail/add/business_order_fields.wxml",
+    "sha256": "2A9082BCED1EE8284F8127F29DCDA0FD1FB9F408B9CFEAB8FF2C240A49F956B1"
+  },
+  {
+    "path": "miniprogram/projects/crun/pages/mail/add/mail_profile_picker.wxml",
+    "sha256": "E24E16B7AFD6F3F4CD4AE696C73DE4842C37E460EBEE132E7588604E6DFDB9A5"
+  },
+  {
+    "path": "miniprogram/projects/crun/pages/mail/add/mail_package_pickup.wxml",
+    "sha256": "DE1A836DC2BA5D084034F31CACE68FEC825ED9F72EE8E212CC8A5F8234C38EE4"
+  }
+]

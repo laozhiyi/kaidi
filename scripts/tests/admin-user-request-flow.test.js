@@ -41,7 +41,13 @@ function requestFixture() {
   };
   const overrides = {
     'framework/database/db_util.js': db,
-    'framework/cloud/cloud_base.js': { getCloud: () => ({ getWXContext: () => ({ OPENID: 'admin-openid', CLIENTIP: '127.0.0.1' }) }) },
+    'framework/cloud/cloud_base.js': { getCloud: () => ({
+      getWXContext: () => ({ OPENID: 'admin-openid', APPID: 'wx3d8dc6fb0e764ec7', CLIENTIP: '127.0.0.1' }),
+      openapi: { phonenumber: { async getPhoneNumber({ code }) {
+        assert.equal(code, 'sample-phone-code');
+        return { errCode: 0, phoneInfo: { purePhoneNumber: '13900000001', countryCode: '86', watermark: { appid: 'wx3d8dc6fb0e764ec7' } } };
+      } } }
+    }) },
     'config/config.js': { COLLECTION_PRFIX: 'bx_', ADMIN_LOGIN_EXPIRE: 86400 },
     'framework/utils/export_util.js': {},
     'project/crun/service/admin/admin_home_service.js': class {},
@@ -58,6 +64,7 @@ function requestFixture() {
       module, Buffer, Date, global: { PID: 'crun' }, console: { log() {}, warn() {}, error() {} },
       require(name) {
         if (name === 'crypto') return require('node:crypto');
+        if (name === 'async_hooks') return require('node:async_hooks');
         if (name.startsWith('.')) return backend(path.relative(backendRoot, path.resolve(path.dirname(absolute), name)));
         throw Error('Unexpected backend dependency: ' + name);
       }
@@ -69,13 +76,14 @@ function requestFixture() {
     if (!event.route.startsWith('admin/user_')) throw Error('Unexpected route: ' + event.route);
     const [file, method] = routes[event.route].split('#')[0].split('@');
     const Controller = backend('project/crun/controller/' + file + '.js');
-    try { return { code: 200, data: copy(await new Controller(event.route, 'admin-openid', event)[method]()) }; }
+    try { return { code: 200, data: copy(await backend('framework/tenancy/tenant_context.js').run(event.scope,()=>new Controller(event.route, 'admin-openid', event)[method]())) }; }
     catch (error) { return { code: error.code || 500, msg: error.message }; }
   }
-  const admin = { _id: 'admin', _pid: 'crun', ADMIN_NAME: 'sample-admin', ADMIN_DESC: '测试管理员', ADMIN_STATUS: 1, ADMIN_TYPE: 1,
+  const admin = { _id: 'admin', _pid: 'crun', ADMIN_NAME: 'sample-admin', ADMIN_DESC: '测试管理员', ADMIN_STATUS: 1, ADMIN_TYPE: 1, ADMIN_PLATFORM:true, ADMIN_SCOPES:[],
     ADMIN_TOKEN: 'local-admin-token', ADMIN_TOKEN_USER: 'admin-openid', ADMIN_TOKEN_TIME: Date.now() };
   f.table('admin').set(admin._id, admin);
   const wx = {
+    getStorageSync: key => key==='crun-campus-context' ? {schoolId:'gxnu',campusId:'yucai'} : null,
     reLaunch: options => redirects.push(options.url),
     cloud: { callFunction(options) {
       const event = copy(options.data);
@@ -85,10 +93,11 @@ function requestFixture() {
   };
   function client(relative, dependencies) {
     const absolute = path.join(root, 'miniprogram', relative), module = { exports: {} };
-    vm.runInNewContext(fs.readFileSync(absolute, 'utf8'), { module, wx, console: { log() {} }, require: dependencies }, { filename: absolute });
+    vm.runInNewContext(fs.readFileSync(absolute, 'utf8'), { module, wx, setTimeout, clearTimeout, console: { log() {} }, require: dependencies }, { filename: absolute });
     return module.exports;
   }
   const cloud = client('helper/cloud_helper.js', name => {
+    if (name.endsWith('/tenant_biz.js')) return client('projects/crun/biz/tenant_biz.js',()=>{throw Error('Unexpected tenant dependency');});
     if (name === './helper.js') return { isDefined: value => value !== undefined };
     if (name === './cache_helper.js') return { get: key => key === 'ADMIN_TOKEN' ? { token: admin.ADMIN_TOKEN } : null };
     if (name === '../comm/constants.js') return require('../../miniprogram/comm/constants.js');
@@ -106,8 +115,12 @@ function requestFixture() {
 }
 
 async function registered(f) {
+  const login = await f.passport.wechatLogin('sample-user-openid', { code: 'sample-phone-code' });
+  assert.equal(login.token.phoneVerified, true);
+  assert.equal(login.token.profileComplete, false);
   const result = await f.passport.register('sample-user-openid', { name: '同学[1]', mobile: '13900000001', pic: 'sample-avatar',
-    forms: [{ mark: 'campus', title: '校区', val: '育才校区' }] });
+    forms: [{ mark: 'sex', val: '男' }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' },
+      { mark: 'campus', title: '校区', val: '育才校区' }] });
   const id = f.store.key('crun', 'user', result.token.id);
   return { token: result.token, id, row: f.table('user').get(id) };
 }
@@ -116,7 +129,7 @@ test('registered login reaches user details through the real request and model l
   const f = requestFixture(), { token, id, row } = await registered(f);
   assert.notEqual(id, token.id);
   assert.notEqual(id, token.key);
-  assert.equal(row.USER_LOGIN_CNT, 1);
+  assert.equal(row.USER_LOGIN_CNT, 2);
   f.table('user').set('foreign-user', { ...copy(row), _id: 'foreign-user', _pid: 'another-project' });
   const list = f.page('user/list/admin_user_list.js');
   await list.page.onLoad({ status: '1' });

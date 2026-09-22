@@ -5,12 +5,12 @@ const { harness, tick, deferred } = require('../test-support/notification-client
 const event = id => ({ currentTarget: { dataset: { id } } });
 const callsFor = (h, route) => h.calls.filter(call => call.route === route);
 
-test('all entry badges share one request and one 25 second timer, and backgrounding stops polling', async () => {
+test('all entry badges share one request and one 60 second timer, and backgrounding stops polling', async () => {
   const h = harness(), api = h.notifications(), a = [], b = [];
   const stopA = api.subscribe(value => a.push(value)), stopB = api.subscribe(value => b.push(value));
   await tick(); assert.equal(callsFor(h, 'operations/summary').length, 1);
   assert.equal(a.at(-1).badge, '3'); assert.equal(b.at(-1).badge, '3');
-  assert.equal(h.timers.size, 1); assert.equal([...h.timers.values()][0].delay, 25000);
+  assert.equal(h.timers.size, 1); assert.equal([...h.timers.values()][0].delay, 60000);
   h.responses['operations/summary'] = { ...h.summary, unreadCount: 108 };
   await h.fireTimer(); assert.equal(a.at(-1).badge, '99+');
   api.pause(); assert.equal(h.timers.size, 0);

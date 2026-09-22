@@ -59,7 +59,7 @@ test('publishing rejects invalid or conflicting delivery phases', async () => {
     const forms = f.forms();
     forms.find(item => item.mark === 'address2').val = '五期 宿舍101';
     forms.push({ mark: 'addressPhase', val: phase });
-    await assert.rejects(f.publish({ forms, requestId: f.req('bad-phase-' + index) }), /期数/);
+    await assert.rejects(f.publish({ forms, requestId: f.req('bad-phase-' + index) }), /区域/);
   }
 });
 
@@ -86,8 +86,9 @@ test('available-order location filters the delivery phase even when pickup is in
 });
 
 function saveAddresses(f, addresses, extra = {}) {
-  f.user('poster', { USER_EDIT_TIME: Date.now() - 60000, USER_FORMS: [
-    { mark: 'campus', val: f.config.campuses[0] }, { mark: 'addresses', val: addresses }
+  const user = f.table('user').get('poster');
+  f.user('poster', { ...user, USER_EDIT_TIME: Date.now() - 60000, USER_FORMS: [
+    ...user.USER_FORMS.filter(form => form.mark !== 'addresses'), { mark: 'addresses', val: addresses }
   ], ...extra });
 }
 

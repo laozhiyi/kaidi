@@ -1,0 +1,633 @@
+TAP version 13
+# [wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'unsupported', errCode: null }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+# Subtest: custom campus selection previews a choice, cancels cleanly, and commits only a valid option
+ok 1 - custom campus selection previews a choice, cancels cleanly, and commits only a valid option
+  ---
+  duration_ms: 7.6585
+  type: 'test'
+  ...
+# Subtest: saving personal information persists the selected campus and preserves other saved fields
+ok 2 - saving personal information persists the selected campus and preserves other saved fields
+  ---
+  duration_ms: 4.0642
+  type: 'test'
+  ...
+# Subtest: editing cached personal information is not overwritten by a background response
+ok 3 - editing cached personal information is not overwritten by a background response
+  ---
+  duration_ms: 2.7006
+  type: 'test'
+  ...
+# Subtest: contact editor retains drafts on save failure and preserves the default flag after retry
+ok 4 - contact editor retains drafts on save failure and preserves the default flag after retry
+  ---
+  duration_ms: 3.4937
+  type: 'test'
+  ...
+# Subtest: address editor retains drafts on save failure and preserves the default flag after retry
+ok 5 - address editor retains drafts on save failure and preserves the default flag after retry
+  ---
+  duration_ms: 4.0218
+  type: 'test'
+  ...
+# Subtest: collection saves coalesce repeated taps and do not discard an editor before the request completes
+ok 6 - collection saves coalesce repeated taps and do not discard an editor before the request completes
+  ---
+  duration_ms: 2.9245
+  type: 'test'
+  ...
+# Subtest: deleting a preceding contact keeps the current edit attached to the same person
+ok 7 - deleting a preceding contact keeps the current edit attached to the same person
+  ---
+  duration_ms: 3.0395
+  type: 'test'
+  ...
+# Subtest: every personal-center entry reaches its intended destination and private entries respect login cancellation
+ok 8 - every personal-center entry reaches its intended destination and private entries respect login cancellation
+  ---
+  duration_ms: 7.2424
+  type: 'test'
+  ...
+# Subtest: settings clears cached profile data while keeping login, drafts and pending requests
+ok 9 - settings clears cached profile data while keeping login, drafts and pending requests
+  ---
+  duration_ms: 6.2774
+  type: 'test'
+  ...
+# Subtest: clearing caches prevents older requests from restoring stale profile and campus entries
+ok 10 - clearing caches prevents older requests from restoring stale profile and campus entries
+  ---
+  duration_ms: 2.743
+  type: 'test'
+  ...
+# Subtest: registration keeps the returned login token, binds the invitation, and returns to the requesting page
+ok 11 - registration keeps the returned login token, binds the invitation, and returns to the requesting page
+  ---
+  duration_ms: 4.3206
+  type: 'test'
+  ...
+# Subtest: registration requiring review does not grant an active login token
+ok 12 - registration requiring review does not grant an active login token
+  ---
+  duration_ms: 3.0164
+  type: 'test'
+  ...
+# Subtest: unsupported native capabilities open manual registration and submit without reading WeChat data
+ok 13 - unsupported native capabilities open manual registration and submit without reading WeChat data
+  ---
+  duration_ms: 6.3891
+  type: 'test'
+  ...
+# Subtest: manual avatar selection supports the modern picker and keeps the current image on cancellation
+ok 14 - manual avatar selection supports the modern picker and keeps the current image on cancellation
+  ---
+  duration_ms: 2.69
+  type: 'test'
+  ...
+# Subtest: manual entry is available even when the native button never invokes its callback
+ok 15 - manual entry is available even when the native button never invokes its callback
+  ---
+  duration_ms: 2.7857
+  type: 'test'
+  ...
+# Subtest: unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail","errno":102}
+ok 16 - unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail","errno":102}
+  ---
+  duration_ms: 5.4555
+  type: 'test'
+  ...
+# Subtest: unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail not support"}
+ok 17 - unavailable phone authorization falls back without discarding draft fields: {"errMsg":"getPhoneNumber:fail not support"}
+  ---
+  duration_ms: 4.8559
+  type: 'test'
+  ...
+# Subtest: strict mode and old configurations do not offer manual registration after native failures
+ok 18 - strict mode and old configurations do not offer manual registration after native failures
+  ---
+  duration_ms: 5.3801
+  type: 'test'
+  ...
+# [wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+# Subtest: a native capability failure waits for delayed server policy: manual allowed=true
+ok 19 - a native capability failure waits for delayed server policy: manual allowed=true
+  ---
+  duration_ms: 10.0091
+  type: 'test'
+  ...
+# [wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+# [wechat-phone-login] {
+#   stage: 'cloud_failure',
+#   reason: 'environment_missing',
+#   errCode: null
+# }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+# [wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+# Subtest: a native capability failure waits for delayed server policy: manual allowed=false
+ok 20 - a native capability failure waits for delayed server policy: manual allowed=false
+  ---
+  duration_ms: 5.3324
+  type: 'test'
+  ...
+# Subtest: manual registration policy survives shared cache reads and is revoked by fresh configuration
+ok 21 - manual registration policy survives shared cache reads and is revoked by fresh configuration
+  ---
+  duration_ms: 2.8974
+  type: 'test'
+  ...
+# Subtest: manual accounts remain on their personal pages instead of looping back to phone authorization
+ok 22 - manual accounts remain on their personal pages instead of looping back to phone authorization
+  ---
+  duration_ms: 7.285
+  type: 'test'
+  ...
+# Subtest: manual registration recovers a lost save response before returning to the original feature
+ok 23 - manual registration recovers a lost save response before returning to the original feature
+  ---
+  duration_ms: 6.993
+  type: 'test'
+  ...
+# Subtest: phone authorization after manual entry keeps drafts and applies the verified phone
+ok 24 - phone authorization after manual entry keeps drafts and applies the verified phone
+  ---
+  duration_ms: 4.4172
+  type: 'test'
+  ...
+# Subtest: new registration shows WeChat login first and resumes an incomplete authorized profile
+ok 25 - new registration shows WeChat login first and resumes an incomplete authorized profile
+  ---
+  duration_ms: 2.8314
+  type: 'test'
+  ...
+# Subtest: an empty cloud success envelope is a guest and never forces a spurious completion redirect
+ok 26 - an empty cloud success envelope is a guest and never forces a spurious completion redirect
+  ---
+  duration_ms: 2.7799
+  type: 'test'
+  ...
+# Subtest: denied authorization and duplicate taps never bypass the WeChat login stage
+ok 27 - denied authorization and duplicate taps never bypass the WeChat login stage
+  ---
+  duration_ms: 2.7579
+  type: 'test'
+  ...
+# Subtest: registration visibly explains native phone capability failures and releases the button
+ok 28 - registration visibly explains native phone capability failures and releases the button
+  ---
+  duration_ms: 4.3494
+  type: 'test'
+  ...
+# Subtest: registration exposes cloud setup failures and can succeed after a fresh authorization
+ok 29 - registration exposes cloud setup failures and can succeed after a fresh authorization
+  ---
+  duration_ms: 4.6403
+  type: 'test'
+  ...
+# Subtest: phone reauthorization preserves an unsaved nickname and requires server-confirmed data
+ok 30 - phone reauthorization preserves an unsaved nickname and requires server-confirmed data
+  ---
+  duration_ms: 2.5179
+  type: 'test'
+  ...
+# Subtest: a completed registration with a lost response refreshes the session before returning to the business page
+ok 31 - a completed registration with a lost response refreshes the session before returning to the business page
+  ---
+  duration_ms: 4.59
+  type: 'test'
+  ...
+# Subtest: a failed session refresh after profile completion stays retryable instead of reopening a blocked feature
+ok 32 - a failed session refresh after profile completion stays retryable instead of reopening a blocked feature
+  ---
+  duration_ms: 4.2927
+  type: 'test'
+  ...
+# Subtest: an older guest profile response cannot overwrite a successful phone login
+ok 33 - an older guest profile response cannot overwrite a successful phone login
+  ---
+  duration_ms: 4.5246
+  type: 'test'
+  ...
+# Subtest: an older guest profile failure cannot overwrite a successful phone login
+ok 34 - an older guest profile failure cannot overwrite a successful phone login
+  ---
+  duration_ms: 4.7232
+  type: 'test'
+  ...
+# Subtest: favorite mutations ignore repeated taps while login or saving is in flight
+ok 35 - favorite mutations ignore repeated taps while login or saving is in flight
+  ---
+  duration_ms: 2.8659
+  type: 'test'
+  ...
+# Subtest: feedback detail can retry a failed request and formats returned timestamps
+ok 36 - feedback detail can retry a failed request and formats returned timestamps
+  ---
+  duration_ms: 1.3487
+  type: 'test'
+  ...
+# Subtest: invitation links survive a warm app launch and network failure, then clear after a successful bind
+ok 37 - invitation links survive a warm app launch and network failure, then clear after a successful bind
+  ---
+  duration_ms: 2.7582
+  type: 'test'
+  ...
+# Subtest: invite records paginate without recreating codes and sharing carries the current code
+ok 38 - invite records paginate without recreating codes and sharing carries the current code
+  ---
+  duration_ms: 0.9518
+  type: 'test'
+  ...
+# Subtest: favorites can search, open and remove records, and retain data on a failed removal
+ok 39 - favorites can search, open and remove records, and retain data on a failed removal
+  ---
+  duration_ms: 0.848
+  type: 'test'
+  ...
+# Subtest: sent and received reviews have independent pages, queries and late-response lifecycles
+ok 40 - sent and received reviews have independent pages, queries and late-response lifecycles
+  ---
+  duration_ms: 3.2184
+  type: 'test'
+  ...
+# Subtest: address edits require one of the five phases and preserve the existing detail during selection
+ok 41 - address edits require one of the five phases and preserve the existing detail during selection
+  ---
+  duration_ms: 2.9883
+  type: 'test'
+  ...
+# Error: 网络中断
+#     at TestContext.<anonymous> (B:\\zhumian\\zm\\kaidi\\scripts\\tests\\my-page-features.test.js:616:18)
+#     at async Test.run (node:internal/test_runner/test:1389:7)
+#     at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+# Subtest: feedback prevents duplicate clicks, preserves a failed draft and retries its original content
+ok 42 - feedback prevents duplicate clicks, preserves a failed draft and retries its original content
+  ---
+  duration_ms: 1.6219
+  type: 'test'
+  ...
+# Subtest: both review lists retain display fields only and offer no completed-order navigation
+ok 43 - both review lists retain display fields only and offer no completed-order navigation
+  ---
+  duration_ms: 1.8851
+  type: 'test'
+  ...
+# Subtest: review lists preserve legacy names and recover missing avatars without clearing a refreshed image
+ok 44 - review lists preserve legacy names and recover missing avatars without clearing a refreshed image
+  ---
+  duration_ms: 1.7162
+  type: 'test'
+  ...
+# Subtest: feedback image controls enforce the supported six-image limit and submit functional feedback as a suggestion
+ok 45 - feedback image controls enforce the supported six-image limit and submit functional feedback as a suggestion
+  ---
+  duration_ms: 0.6863
+  type: 'test'
+  ...
+# Subtest: messages remain available when optional subscription configuration hangs and malformed dates are tolerated
+ok 46 - messages remain available when optional subscription configuration hangs and malformed dates are tolerated
+  ---
+  duration_ms: 1.9479
+  type: 'test'
+  ...
+# Subtest: shared profile templates and all personal-center pages bind existing event handlers
+ok 47 - shared profile templates and all personal-center pages bind existing event handlers
+  ---
+  duration_ms: 6.7184
+  type: 'test'
+  ...
+# Subtest: cached account {"phoneVerified":false} cannot pass the business login gate
+ok 48 - cached account {"phoneVerified":false} cannot pass the business login gate
+  ---
+  duration_ms: 2.3373
+  type: 'test'
+  ...
+# Subtest: cached account {"profileComplete":false} cannot pass the business login gate
+ok 49 - cached account {"profileComplete":false} cannot pass the business login gate
+  ---
+  duration_ms: 0.6352
+  type: 'test'
+  ...
+# Subtest: cached account {"status":0} cannot pass the business login gate
+ok 50 - cached account {"status":0} cannot pass the business login gate
+  ---
+  duration_ms: 0.6804
+  type: 'test'
+  ...
+# Subtest: cached account {"status":8} cannot pass the business login gate
+ok 51 - cached account {"status":8} cannot pass the business login gate
+  ---
+  duration_ms: 0.567
+  type: 'test'
+  ...
+# Subtest: cached account {"status":9} cannot pass the business login gate
+ok 52 - cached account {"status":9} cannot pass the business login gate
+  ---
+  duration_ms: 0.5385
+  type: 'test'
+  ...
+# Subtest: legacy cached tokens must refresh readiness before being used
+ok 53 - legacy cached tokens must refresh readiness before being used
+  ---
+  duration_ms: 0.6529
+  type: 'test'
+  ...
+# Subtest: phone authorization sends only the one-time code and retains the incomplete authenticated session
+ok 54 - phone authorization sends only the one-time code and retains the incomplete authenticated session
+  ---
+  duration_ms: 2.1382
+  type: 'test'
+  ...
+# Subtest: declined authorization makes no cloud call and preserves an existing session
+ok 55 - declined authorization makes no cloud call and preserves an existing session
+  ---
+  duration_ms: 1.0493
+  type: 'test'
+  ...
+# Subtest: native phone failure cancelled has its own explanation without calling the cloud
+ok 56 - native phone failure cancelled has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.772
+  type: 'test'
+  ...
+# Subtest: native phone failure privacy has its own explanation without calling the cloud
+ok 57 - native phone failure privacy has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.6528
+  type: 'test'
+  ...
+# Subtest: native phone failure permission_denied has its own explanation without calling the cloud
+ok 58 - native phone failure permission_denied has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.5668
+  type: 'test'
+  ...
+# Subtest: native phone failure permission_denied has its own explanation without calling the cloud
+ok 59 - native phone failure permission_denied has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.5182
+  type: 'test'
+  ...
+# Subtest: native phone failure unsupported has its own explanation without calling the cloud
+ok 60 - native phone failure unsupported has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.5445
+  type: 'test'
+  ...
+# Subtest: native phone failure missing_code has its own explanation without calling the cloud
+ok 61 - native phone failure missing_code has its own explanation without calling the cloud
+  ---
+  duration_ms: 0.6044
+  type: 'test'
+  ...
+# Subtest: cloud phone failure environment_missing survives the generic SDK wrapper message
+ok 62 - cloud phone failure environment_missing survives the generic SDK wrapper message
+  ---
+  duration_ms: 0.6013
+  type: 'test'
+  ...
+# Subtest: cloud phone failure function_missing survives the generic SDK wrapper message
+ok 63 - cloud phone failure function_missing survives the generic SDK wrapper message
+  ---
+  duration_ms: 0.6063
+  type: 'test'
+  ...
+# Subtest: cloud phone failure timeout survives the generic SDK wrapper message
+ok 64 - cloud phone failure timeout survives the generic SDK wrapper message
+  ---
+  duration_ms: 0.592
+  type: 'test'
+  ...
+# Subtest: phone diagnostics identify the failing boundary without exposing authorization data
+ok 65 - phone diagnostics identify the failing boundary without exposing authorization data
+  ---
+  duration_ms: 0.7521
+  type: 'test'
+  ...
+# Subtest: an earlier silent login reply cannot overwrite a completed phone login
+ok 66 - an earlier silent login reply cannot overwrite a completed phone login
+  ---
+  duration_ms: 0.6303
+  type: 'test'
+  ...
+# Subtest: partial accounts are sent to the completion page while keeping the original destination
+ok 67 - partial accounts are sent to the completion page while keeping the original destination
+  ---
+  duration_ms: 0.6647
+  type: 'test'
+  ...
+# Subtest: server-enabled manual accounts can use features without claiming a verified phone
+ok 68 - server-enabled manual accounts can use features without claiming a verified phone
+  ---
+  duration_ms: 0.529
+  type: 'test'
+  ...
+# Subtest: manual account status 0 still blocks business access with the correct explanation
+ok 69 - manual account status 0 still blocks business access with the correct explanation
+  ---
+  duration_ms: 0.5464
+  type: 'test'
+  ...
+# Subtest: manual account status 8 still blocks business access with the correct explanation
+ok 70 - manual account status 8 still blocks business access with the correct explanation
+  ---
+  duration_ms: 0.4811
+  type: 'test'
+  ...
+# Subtest: manual account status 9 still blocks business access with the correct explanation
+ok 71 - manual account status 9 still blocks business access with the correct explanation
+  ---
+  duration_ms: 0.5222
+  type: 'test'
+  ...
+# Subtest: manual sessions revalidate the server policy so strict mode takes effect without clearing storage
+ok 72 - manual sessions revalidate the server policy so strict mode takes effect without clearing storage
+  ---
+  duration_ms: 0.5475
+  type: 'test'
+  ...
+# Subtest: failed phone exchanges retain only the numeric provider error in diagnostics
+ok 73 - failed phone exchanges retain only the numeric provider error in diagnostics
+  ---
+  duration_ms: 22.9796
+  type: 'test'
+  ...
+# Subtest: hand-entered registration cannot claim a verified WeChat phone or active account
+ok 74 - hand-entered registration cannot claim a verified WeChat phone or active account
+  ---
+  duration_ms: 8.546
+  type: 'test'
+  ...
+# Subtest: editing a verified profile preserves the verified phone and updates login details
+ok 75 - editing a verified profile preserves the verified phone and updates login details
+  ---
+  duration_ms: 10.1287
+  type: 'test'
+  ...
+# Subtest: a direct profile edit cannot replace the phone with an unverified number
+ok 76 - a direct profile edit cannot replace the phone with an unverified number
+  ---
+  duration_ms: 7.6964
+  type: 'test'
+  ...
+# Subtest: server requires the registration field sex even when the page is bypassed
+ok 77 - server requires the registration field sex even when the page is bypassed
+  ---
+  duration_ms: 7.4061
+  type: 'test'
+  ...
+# Subtest: server requires the registration field college even when the page is bypassed
+ok 78 - server requires the registration field college even when the page is bypassed
+  ---
+  duration_ms: 7.4004
+  type: 'test'
+  ...
+# Subtest: server requires the registration field sub even when the page is bypassed
+ok 79 - server requires the registration field sub even when the page is bypassed
+  ---
+  duration_ms: 10.0151
+  type: 'test'
+  ...
+# Subtest: server requires the registration field campus even when the page is bypassed
+ok 80 - server requires the registration field campus even when the page is bypassed
+  ---
+  duration_ms: 6.8493
+  type: 'test'
+  ...
+# Subtest: active status alone does not permit business access with an incomplete or unverified profile
+ok 81 - active status alone does not permit business access with an incomplete or unverified profile
+  ---
+  duration_ms: 7.5936
+  type: 'test'
+  ...
+# Subtest: order transactions recheck profile readiness after the initial user check
+ok 82 - order transactions recheck profile readiness after the initial user check
+  ---
+  duration_ms: 6.5947
+  type: 'test'
+  ...
+# Subtest: WeChat phone login creates one incomplete account and only completed registration enables business
+ok 83 - WeChat phone login creates one incomplete account and only completed registration enables business
+  ---
+  duration_ms: 10.4183
+  type: 'test'
+  ...
+# Subtest: first profile completion obeys the current school review rule and ignores client status
+ok 84 - first profile completion obeys the current school review rule and ignores client status
+  ---
+  duration_ms: 10.1029
+  type: 'test'
+  ...
+# Subtest: phone ownership is exclusive across campuses of a school and isolated between schools
+ok 85 - phone ownership is exclusive across campuses of a school and isolated between schools
+  ---
+  duration_ms: 8.5949
+  type: 'test'
+  ...
+# Subtest: failed, expired, mismatched-app and malformed phone authorizations create no account
+ok 86 - failed, expired, mismatched-app and malformed phone authorizations create no account
+  ---
+  duration_ms: 38.5768
+  type: 'test'
+  ...
+# Subtest: authorization cannot revive a disabled account or bypass rejected registration
+ok 87 - authorization cannot revive a disabled account or bypass rejected registration
+  ---
+  duration_ms: 8.0584
+  type: 'test'
+  ...
+# Subtest: successful phone rebinding rejects a stale profile save and releases only its own old phone
+ok 88 - successful phone rebinding rejects a stale profile save and releases only its own old phone
+  ---
+  duration_ms: 10.9916
+  type: 'test'
+  ...
+# Subtest: manual registration uses the cloud identity, leaves the phone unverified, and permits publishing
+ok 89 - manual registration uses the cloud identity, leaves the phone unverified, and permits publishing
+  ---
+  duration_ms: 10.3655
+  type: 'test'
+  ...
+# Subtest: public configuration advertises only the server-selected manual registration policy
+ok 90 - public configuration advertises only the server-selected manual registration policy
+  ---
+  duration_ms: 6.3799
+  type: 'test'
+  ...
+# Subtest: existing unverified profiles can be completed and edited without native authorization
+ok 91 - existing unverified profiles can be completed and edited without native authorization
+  ---
+  duration_ms: 8.424
+  type: 'test'
+  ...
+# Subtest: manual registration still obeys school review and disabled or rejected account states
+ok 92 - manual registration still obeys school review and disabled or rejected account states
+  ---
+  duration_ms: 9.3187
+  type: 'test'
+  ...
+# Subtest: manual registration retains required fields and cannot create accounts without identity
+ok 93 - manual registration retains required fields and cannot create accounts without identity
+  ---
+  duration_ms: 7.5748
+  type: 'test'
+  ...
+# Subtest: concurrent manual registrations enforce school phone ownership and create one account
+ok 94 - concurrent manual registrations enforce school phone ownership and create one account
+  ---
+  duration_ms: 10.4724
+  type: 'test'
+  ...
+# Subtest: manual registration detects legacy phone owners even before the uniqueness index is seeded
+ok 95 - manual registration detects legacy phone owners even before the uniqueness index is seeded
+  ---
+  duration_ms: 7.1236
+  type: 'test'
+  ...
+# Subtest: enabling manual registration never lets an already verified phone be replaced by typing
+ok 96 - enabling manual registration never lets an already verified phone be replaced by typing
+  ---
+  duration_ms: 6.5318
+  type: 'test'
+  ...
+# Subtest: restoring strict mode blocks manual accounts in login eligibility and in-flight business transactions
+ok 97 - restoring strict mode blocks manual accounts in login eligibility and in-flight business transactions
+  ---
+  duration_ms: 9.2499
+  type: 'test'
+  ...
+# Subtest: manual profile saves recheck concurrent account changes {"USER_STATUS":9}
+ok 98 - manual profile saves recheck concurrent account changes {"USER_STATUS":9}
+  ---
+  duration_ms: 7.8569
+  type: 'test'
+  ...
+# Subtest: manual profile saves recheck concurrent account changes {"USER_MOBILE":"13987654321","USER_MOBILE_VERIFIED":true}
+ok 99 - manual profile saves recheck concurrent account changes {"USER_MOBILE":"13987654321","USER_MOBILE_VERIFIED":true}
+  ---
+  duration_ms: 9.1975
+  type: 'test'
+  ...
+1..99
+# tests 99
+# suites 0
+# pass 99
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 352.7897

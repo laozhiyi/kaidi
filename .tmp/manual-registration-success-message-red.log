@@ -1,0 +1,34 @@
+[wechat-phone-login] { stage: 'native_callback', reason: 'permission_denied', errCode: 102 }
+[wechat-phone-login] { stage: 'native_callback', reason: 'ok', errCode: null }
+[wechat-phone-login] { stage: 'cloud_request', reason: '', errCode: null }
+[wechat-phone-login] { stage: 'cloud_success', reason: '', errCode: null }
+✖ phone authorization after manual entry keeps drafts and applies the verified phone (32.9202ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 107.9001
+
+✖ failing tests:
+
+test at scripts\tests\my-page-features.test.js:395:1
+✖ phone authorization after manual entry keeps drafts and applies the verified phone (32.9202ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + '微信手机号暂不可用，已切换为手动注册，请填写个人资料'
+  - ''
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\my-page-features.test.js:408:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '微信手机号暂不可用，已切换为手动注册，请填写个人资料',
+    expected: '',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

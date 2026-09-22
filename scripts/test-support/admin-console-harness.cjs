@@ -25,6 +25,7 @@ function harness(relative, get = () => ({}), options = {}) {
     error: error => errors.push(error && (error.msg || error.message) || String(error))
   };
   const Admin = { isAdmin(page, superOnly) { if (options.denied || (superOnly && options.superAdmin === false)) return false; page.setData({ isAdmin: true, isSuperAdmin: options.superAdmin !== false, admin: { name: 'admin', type: options.superAdmin === false ? 0 : 1 } }); return true; }, clearAdminToken() { events.push({ logout: true }); } };
+  Admin.getAdminToken = () => ({platform:options.platform !== false});
   // Use the production validation rules and content summary helper.
   const adminModule = { exports: {} };
   vm.runInNewContext(fs.readFileSync(path.join(mini, 'comm/biz/admin_biz.js'), 'utf8'), { module: adminModule, require: request => request.endsWith('/base_biz.js') ? class {} : {} });
@@ -56,6 +57,7 @@ function harness(relative, get = () => ({}), options = {}) {
       Page: value => { definition = value; }, Component: value => { definition = value; },
       require(request) {
         if (request.endsWith('/operations_biz.js')) return Ops;
+        if (request.endsWith('/tenant_biz.js')) return {directory:async load => load()};
         if (request.endsWith('/admin_biz.js')) return Admin;
         if (request.endsWith('/cloud_helper.js')) return cloud;
         if (request.endsWith('/page_helper.js')) return pageHelper;
@@ -64,7 +66,7 @@ function harness(relative, get = () => ({}), options = {}) {
         if (request.endsWith('/data_helper.js')) return {};
         if (request.endsWith('/public_biz.js')) return { removeCacheList() {}, getRichEditorDesc: (desc, content) => desc || content.filter(item => item.type === 'text').map(item => item.val).join('').slice(0, 100) };
         if (request.endsWith('/file_helper.js')) return { openDoc: (title, url) => events.push({ open: url, title }) };
-        if (/\/(?:admin_(?:console|settings|export|catalog|manager_form|news)_biz|address_biz|news_biz|validate|project_setting|chat_page)\.js$/.test(request)) return evaluate(path.relative(mini, path.resolve(path.dirname(absolute), request)));
+        if (/\/(?:admin_(?:console|settings|export|catalog|manager_form|news)_biz|mail_ui_biz|address_biz|news_biz|validate|project_setting|chat_page)\.js$/.test(request)) return evaluate(path.relative(mini, path.resolve(path.dirname(absolute), request)));
         throw new Error('Unexpected dependency: ' + request);
       }
     }, { filename: absolute });

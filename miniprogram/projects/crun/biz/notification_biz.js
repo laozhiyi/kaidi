@@ -1,7 +1,7 @@
 const Ops = require('./operations_biz.js');
 const Passport = require('../../../comm/biz/passport_biz.js');
 
-const POLL_MS = 25000;
+const POLL_MS = 60000;
 const listeners = new Set(), reading = new Map(), acknowledged = new Set();
 const empty = () => ({ unreadCount: 0, newsUnread: 0, personalUnread: 0, badge: '', featuredNews: null, loaded: false, error: false, signature: '' });
 let identity = '', state = empty(), active = true, timer = null, request = null, generation = 0, lastFetch = 0;
@@ -10,8 +10,9 @@ const ignore = () => {};
 function emit() { for (const listener of listeners) listener({ ...state }); }
 function syncIdentity() {
   const current = Passport.getUserId();
-  if (current !== identity) {
-    identity = current; state = empty(); lastFetch = 0; generation++; request = null; acknowledged.clear();
+  const marker = current + ':' + (Ops.scopeKey ? Ops.scopeKey() : '');
+  if (marker !== identity) {
+    identity = marker; state = empty(); lastFetch = 0; generation++; request = null; acknowledged.clear();
     emit();
   }
   return current;

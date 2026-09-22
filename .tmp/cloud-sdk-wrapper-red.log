@@ -1,0 +1,201 @@
+✖ production cloud wrapper supports manual registration and moderation with the installed SDK (194.6025ms)
+✖ production cloud wrapper supports phone authorization with the installed SDK (188.598ms)
+✖ production cloud wrapper supports scoped database operations and notifications with the installed SDK (190.8211ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 0
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 631.886
+
+✖ failing tests:
+
+test at scripts\tests\cloud-sdk-wrapper.test.js:14:3
+✖ production cloud wrapper supports manual registration and moderation with the installed SDK (194.6025ms)
+  AssertionError [ERR_ASSERTION]: AppError: 微信文字审核服务暂不可用，请稍后重试；持续失败请联系管理员
+      at textServiceError (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\validate\content_check.js:168:9)
+      at checkText (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\validate\content_check.js:133:9)
+      at checkTextMulti (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\validate\content_check.js:92:10)
+      at Object.checkTextMultiClient (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\validate\content_check.js:73:9)
+      at run (B:\zhumian\zm\kaidi\scripts\check-content-audit-sdk.cjs:54:29)
+      at main (B:\zhumian\zm\kaidi\scripts\check-content-audit-sdk.cjs:55:11)
+      at Object.<anonymous> (B:\zhumian\zm\kaidi\scripts\check-content-audit-sdk.cjs:93:1)
+      at Module._compile (node:internal/modules/cjs/loader:1872:14)
+      at Object..js (node:internal/modules/cjs/loader:2003:10)
+      at Module.load (node:internal/modules/cjs/loader:1594:32) {
+    code: 1600
+  }
+  node:internal/process/promises:394
+      triggerUncaughtException(err, true /* fromPromise */);
+      ^
+  
+  Assertiopenapi.bind:fail onError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'bind'
+  - 'security.msgSecCheck'
+  
+      at transport.callWXOpenAPI (B:\zhumian\zm\kaidi\scripts\check-content-audit-sdk.cjs:25:10)
+      at callWXOpenAPI (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\node_modules\wx-server-sdk\index.js:2364:53)
+      at Cloud.callable (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\node_modules\wx-server-sdk\index.js:2312:16)
+      at Proxy.<anonymous> (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\node_modules\wx-server-sdk\index.js:123:29)
+      at Object.apply (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\node_modules\wx-server-sdk\index.js:2281:37)
+      at Object.get (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\cloud\cloud_base.js:23:46)
+      at checkText (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\validate\content_check.js:125:26)
+      at checkTextMulti (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\validate\content_check.js:92:10)
+      at Object.checkTextMultiClient (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\validate\content_check.js:73:9)
+      at run (B:\zhumian\zm\kaidi\scripts\check-content-audit-sdk.cjs:54:29) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'bind',
+    expected: 'security.msgSecCheck',
+    operator: 'strictEqual',
+    diff: 'simple',
+    errCode: -1,
+    errMsg: 'openapi.bind:fail Expected values to be strictly equal:\n' +
+      '+ actual - expected\n' +
+      '\n' +
+      "+ 'bind'\n" +
+      "- 'security.msgSecCheck'\n"
+  }
+  
+  Node.js v24.19.0
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\cloud-sdk-wrapper.test.js:19:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\cloud-sdk-wrapper.test.js:14:3
+✖ production cloud wrapper supports phone authorization with the installed SDK (188.598ms)
+  AssertionError [ERR_ASSERTION]: TypeError: Cannot read properties of undefined (reading 'getPhoneNumber')
+      at B:\zhumian\zm\kaidi\scripts\check-wechat-login-sdk.cjs:32:52
+      at Object.<anonymous> (B:\zhumian\zm\kaidi\scripts\check-wechat-login-sdk.cjs:42:3)
+      at Module._compile (node:internal/modules/cjs/loader:1872:14)
+      at Object..js (node:internal/modules/cjs/loader:2003:10)
+      at Module.load (node:internal/modules/cjs/loader:1594:32)
+      at Module._load (node:internal/modules/cjs/loader:1396:12)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+      at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+      at node:internal/main/run_main_module:33:47
+  node:internal/process/promises:394
+      triggerUncaughtException(err, true /* fromPromise */);
+      ^
+  
+  Assertiopenapi.bind:fail onError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'bind'
+  - 'phonenumber.getPhoneNumber'
+  
+      at transport.callWXOpenAPI (B:\zhumian\zm\kaidi\scripts\check-wechat-login-sdk.cjs:20:10)
+      at callWXOpenAPI (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\node_modules\wx-server-sdk\index.js:2364:53)
+      at Cloud.callable (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\node_modules\wx-server-sdk\index.js:2312:16)
+      at Proxy.<anonymous> (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\node_modules\wx-server-sdk\index.js:123:29)
+      at Object.apply (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\node_modules\wx-server-sdk\index.js:2281:37)
+      at Object.get (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\cloud\cloud_base.js:23:46)
+      at B:\zhumian\zm\kaidi\scripts\check-wechat-login-sdk.cjs:32:32
+      at Object.<anonymous> (B:\zhumian\zm\kaidi\scripts\check-wechat-login-sdk.cjs:42:3)
+      at Module._compile (node:internal/modules/cjs/loader:1872:14)
+      at Object..js (node:internal/modules/cjs/loader:2003:10) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'bind',
+    expected: 'phonenumber.getPhoneNumber',
+    operator: 'strictEqual',
+    diff: 'simple',
+    errCode: -1,
+    errMsg: 'openapi.bind:fail Expected values to be strictly equal:\n' +
+      '+ actual - expected\n' +
+      '\n' +
+      "+ 'bind'\n" +
+      "- 'phonenumber.getPhoneNumber'\n"
+  }
+  
+  Node.js v24.19.0
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\cloud-sdk-wrapper.test.js:19:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\tests\cloud-sdk-wrapper.test.js:14:3
+✖ production cloud wrapper supports scoped database operations and notifications with the installed SDK (190.8211ms)
+  AssertionError [ERR_ASSERTION]: TypeError: Cannot read properties of undefined (reading 'send')
+      at B:\zhumian\zm\kaidi\scripts\check-operations-sdk.cjs:68:61
+  node:internal/process/promises:394
+      triggerUncaughtException(err, true /* fromPromise */);
+      ^
+  
+  Assertiopenapi.bind:fail onError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'bind'
+  - 'subscribeMessage.send'
+  
+      at wxTransport.callWXOpenAPI (B:\zhumian\zm\kaidi\scripts\check-operations-sdk.cjs:19:10)
+      at callWXOpenAPI (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\node_modules\wx-server-sdk\index.js:2364:53)
+      at Cloud.callable (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\node_modules\wx-server-sdk\index.js:2312:16)
+      at Proxy.<anonymous> (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\node_modules\wx-server-sdk\index.js:123:29)
+      at Object.apply (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\node_modules\wx-server-sdk\index.js:2281:37)
+      at Object.get (B:\zhumian\zm\kaidi\cloudfunctions\mcloud\framework\cloud\cloud_base.js:23:46)
+      at B:\zhumian\zm\kaidi\scripts\check-operations-sdk.cjs:68:36 {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'bind',
+    expected: 'subscribeMessage.send',
+    operator: 'strictEqual',
+    diff: 'simple',
+    errCode: -1,
+    errMsg: 'openapi.bind:fail Expected values to be strictly equal:\n' +
+      '+ actual - expected\n' +
+      '\n' +
+      "+ 'bind'\n" +
+      "- 'subscribeMessage.send'\n"
+  }
+  
+  Node.js v24.19.0
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (B:\zhumian\zm\kaidi\scripts\tests\cloud-sdk-wrapper.test.js:19:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

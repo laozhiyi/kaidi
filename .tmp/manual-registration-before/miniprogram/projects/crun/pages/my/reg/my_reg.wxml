@@ -1,0 +1,18 @@
+<view wx:if="{{!isLoad && !loadError}}" class="profile-load-state">正在加载登录信息…</view>
+<view wx:if="{{loadError}}" class="profile-load-state"><view>{{loadError}}</view><button class="profile-save" bindtap="_loadDetail">重新加载</button></view>
+
+<view wx:if="{{isLoad && !phoneVerified}}" class="wechat-login-page">
+  <view class="wechat-login-mark"><image mode="aspectFit" src="../../../images/tabbar/my_cur.png" /></view>
+  <view class="wechat-login-title">欢迎使用 GXNU随手取</view>
+  <view class="wechat-login-description">微信授权手机号，开启校园互助</view>
+  <button class="wechat-login-button" open-type="getPhoneNumber" bindtap="bindWechatPhoneTap" bindgetphonenumber="bindWechatLogin" loading="{{phoneAuthorizing}}" disabled="{{phoneAuthorizing}}">微信手机号一键登录</button>
+  <view class="wechat-login-note">首次登录后需完善个人资料</view>
+  <view wx:if="{{loginError}}" class="profile-save-error">{{loginError}}</view>
+</view>
+
+<view wx:if="{{isLoad && phoneVerified}}" class="profile-page">
+  <view class="profile-login-success">手机号已通过微信验证，请补全以下必填资料</view>
+	<include src="../personal/personal_form.wxml" />
+	<view class="profile-section profile-invite"><view class="profile-field"><text class="profile-field-label">邀请码（选填）</text><input class="profile-field-input" value="{{inviteCode}}" maxlength="6" placeholder="输入好友的6位邀请码" bindinput="bindInviteCodeInput" /></view></view>
+	<button bindtap="bindSubmitTap" loading="{{saving}}" disabled="{{saving || phoneAuthorizing}}" class="profile-save">保存资料并继续</button><view wx:if="{{saveError}}" class="profile-save-error">{{saveError}}</view>
+</view>

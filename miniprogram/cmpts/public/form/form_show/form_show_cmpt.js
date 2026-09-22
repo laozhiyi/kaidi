@@ -316,13 +316,19 @@ Component({
 		},
 
 		_setForm: function (idx, val, isSetData = true) {
-			let forms = this.data.forms;
-			let fields = this.data.fields;
+			const fields = this.data.fields;
+			const field = fields[idx];
+			if (!field) return;
+			const forms = Array.isArray(this.data.forms) ? this.data.forms : [];
+			// Parent property updates can reorder forms independently of fields.
+			let formIdx = forms.findIndex(item => item && item.mark === field.mark);
+			if (formIdx < 0) {
+				formIdx = forms.length;
+				forms.push({ mark: field.mark, title: field.title, type: field.type });
+			}
+			this.data.forms = forms;
 			fields[idx].val = val;
-			forms[idx].val = val;
-
-			// TODO是否需要，影响性能 
-			let typeArr = ['rows', 'text', 'textarea', 'carnumber', 'digit', 'idcard', 'int', 'tag'];
+			forms[formIdx].val = val;
 
 			// 去掉focus
 			for (let k = 0; k < fields.length; k++) {
@@ -332,27 +338,22 @@ Component({
 			}
 
 			// 提高性能
-			let formsName = 'forms[' + idx + '].val';
+			let formsName = 'forms[' + formIdx + ']';
 			let fieldsName = 'fields[' + idx + '].val';
 
 			// 是否渲染到页面
 			if (isSetData) {
 			this.setData({
-				[formsName]: val,
+				[formsName]: forms[formIdx],
 				[fieldsName]: val,
 			});
 			}
 			else {
 				// rows的输入不渲染，但增加一个条目数量
-				if (this.data.forms[idx].type == 'rows') {
+				if (field.type == 'rows') {
 					this.setData({
 						['fields[' + idx + '].rowsCnt']: val.length,
 					});
-				}
-				else {
-					// 不需要在界面上set数据 eg.rows的输入不渲染
-					this.data[formsName] = val;
-					this.data[fieldsName] = val;
 				}
 			}
 
@@ -521,20 +522,13 @@ Component({
 		},
 
 		setOneFormVal(formName, val) {
-			// 设定某个表单值
-			let forms = this.data.forms;
-			let fields = this.data.fields;
-			for (let k = 0; k < forms.length; k++) {
-				if (formName == forms[k].mark) {
-					forms[k].val = val;
-					fields[k].val = val;
-					break;
-				}
-			}
-			this.setData({
-				fields,
-				forms
-			});
+			const fields = Array.isArray(this.data.fields) ? this.data.fields : [];
+			const idx = fields.findIndex(item => item && item.mark === formName);
+			if (idx >= 0) return this._setForm(idx, val);
+			// Extra order metadata need not have a rendered field.
+			const forms = Array.isArray(this.data.forms) ? this.data.forms : [];
+			const formIdx = forms.findIndex(item => item && item.mark === formName);
+			if (formIdx >= 0) this.setData({ ['forms[' + formIdx + '].val']: val });
 		}
 	},
 

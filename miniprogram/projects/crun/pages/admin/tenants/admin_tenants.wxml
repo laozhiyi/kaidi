@@ -1,0 +1,41 @@
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 管理中心</text><text>/ 学校与校区</text></view>
+  <view class="ac-title">学校、地点与管理员范围</view>
+  <view wx:if="{{error}}" class="ac-card"><text>{{error}}</text><button bindtap="load" disabled="{{busy}}">重新加载</button></view>
+  <view wx:if="{{loading}}" class="ac-muted">正在加载…</view>
+  <view class="ac-card">
+    <view class="ac-section-title">学校目录</view>
+    <picker range="{{schools}}" range-key="name" value="{{schoolIndex}}" bindchange="schoolChange" disabled="{{busy || loading}}"><view class="tenant-picker">{{school.name || '选择学校'}}</view></picker>
+    <block wx:if="{{school}}">
+      <input class="tenant-input" placeholder="学校编号，如 school_a（创建后固定）" value="{{school.schoolId}}" data-key="school.schoolId" bindinput="edit" disabled="{{busy || loading || school.version > 0}}" maxlength="48" />
+      <input class="tenant-input" placeholder="学校名称" value="{{school.name}}" data-key="school.name" bindinput="edit" disabled="{{busy || loading}}" maxlength="60" />
+      <view class="ac-row"><text>启用学校</text><switch checked="{{school.enabled}}" data-key="school.enabled" bindchange="edit" disabled="{{busy || loading}}" /></view>
+    </block>
+    <view class="tenant-actions"><button bindtap="newSchool" disabled="{{busy || loading}}">新增学校</button><button bindtap="saveSchool" disabled="{{busy || loading || !school}}">保存学校</button></view>
+  </view>
+  <view class="ac-card" wx:if="{{school.version > 0}}">
+    <view class="ac-section-title">校区与地点</view>
+    <picker range="{{campuses}}" range-key="name" value="{{campusIndex}}" bindchange="campusChange" disabled="{{busy || loading}}"><view class="tenant-picker">{{campus.name || '选择或新增校区'}}</view></picker>
+    <view wx:if="{{campusLoading}}" class="ac-muted">正在加载地点…</view>
+    <view wx:if="{{campusError}}"><text>{{campusError}}</text><button bindtap="retryCampus" disabled="{{busy || loading || campusLoading}}">重试地点加载</button></view>
+    <block wx:if="{{campus}}">
+      <input class="tenant-input" placeholder="校区编号，如 east（创建后固定）" value="{{campus.campusId}}" data-key="campus.campusId" bindinput="edit" disabled="{{busy || loading || campus.version > 0}}" maxlength="48" />
+      <input class="tenant-input" placeholder="校区名称" value="{{campus.name}}" data-key="campus.name" bindinput="edit" disabled="{{busy || loading}}" maxlength="30" />
+      <view class="ac-row"><text>启用校区</text><switch checked="{{campus.enabled}}" data-key="campus.enabled" bindchange="edit" disabled="{{busy || loading}}" /></view>
+      <view>宿舍或配送区域（每行一个）</view><textarea class="tenant-text" value="{{phaseText}}" data-key="phaseText" bindinput="edit" disabled="{{busy || loading}}" maxlength="4000" placeholder="东区&#10;西区" />
+      <view>自提区域与站点（每行一组）</view><textarea class="tenant-text" value="{{pickupText}}" data-key="pickupText" bindinput="edit" disabled="{{busy || loading}}" maxlength="40000" placeholder="东门 | 菜鸟驿站、顺丰服务点" />
+      <view class="ac-muted">新校区默认暂停营业。切换到该校区后，在服务、价格、规则和客服设置中完成配置，再开放服务。</view>
+    </block>
+    <view class="tenant-actions"><button bindtap="newCampus" disabled="{{busy || loading}}">新增校区</button><button bindtap="saveCampus" disabled="{{busy || loading || campusLoading || !campus}}">保存校区</button></view>
+  </view>
+  <view class="ac-card" wx:if="{{admins.length}}">
+    <view class="ac-section-title">管理员授权</view>
+    <picker range="{{admins}}" range-key="name" value="{{adminIndex}}" bindchange="adminChange" disabled="{{busy || loading}}"><view class="tenant-picker">{{admins[adminIndex].name}}</view></picker>
+    <view wx:if="{{adminLoading}}" class="ac-muted">正在加载授权…</view>
+    <view wx:if="{{adminError}}"><text>{{adminError}}</text><button bindtap="retryAdmin" disabled="{{busy || loading || adminLoading}}">重试授权加载</button></view>
+    <view class="ac-muted">每行填写“学校编号/校区编号”。学校下全部校区用“学校编号/*”；清空可撤销全部范围。</view>
+    <textarea class="tenant-text" value="{{grantText}}" data-key="grantText" bindinput="edit" disabled="{{busy || loading || !adminReady}}" maxlength="10000" />
+    <view class="ac-row"><text>允许修改运营规则</text><switch checked="{{grantManager}}" data-key="grantManager" bindchange="edit" disabled="{{busy || loading || !adminReady}}" /></view>
+    <button bindtap="saveGrant" disabled="{{busy || loading || !adminReady}}">保存授权并使旧登录失效</button>
+  </view>
+</view>
