@@ -39,3 +39,8 @@ page { background: #f3f6fb; }
 .my-settings-close { display:flex; align-items:center; justify-content:center; width:60rpx; height:60rpx; margin:0; padding:0; border-radius:50%; color:#8190a5; background:#f3f6fa; font-size:28rpx; }
 .my-settings-close::after, .my-settings-cancel::after { border:0; }
 .my-settings-cancel { height:88rpx; margin-top:24rpx; border-radius:16rpx; color:#62748b; background:#f0f4f9; font-size:28rpx; line-height:88rpx; }
+.my-account-actions { display:flex; gap:16rpx; padding:20rpx; }
+.my-account-actions button { flex:1; min-width:0; margin:0; padding:18rpx 12rpx; border-radius:12rpx; font-size:27rpx; line-height:1.5; background:#f2f6fa; color:#334a65; }
+.my-account-actions button::after { border:0; }
+.my-account-actions .my-account-cancel { color:#b65059; background:#fff3f3; }
+.my-account-actions button[disabled] { color:#a1adbc; }

@@ -42,9 +42,14 @@ async function registerThroughSDK() {
     { mark: 'sex', val: '女' }, { mark: 'college', val: '计算机学院' },
     { mark: 'sub', val: '软件工程' }, { mark: 'campus', val: A.campusName }
   ] };
-  const result = await f.load('framework/core/application.js').app({ route: 'passport/register', PID: 'crun', scope: A, params }, {});
+  const app = f.load('framework/core/application.js');
+  const login = await app.app({ route: 'passport/wechat_identity_login', PID: 'crun', scope: A, params: {} }, {});
+  assert.equal(login.code, 200, login.msg);
+  params.pic = 'cloud://test/private/trusted-sdk-openid/' + login.data.token.mediaGeneration + '/avatar.png';
   const userId = tenant.run(A, () => f.store.schoolKey('crun', 'user', 'crun^^^trusted-sdk-openid'));
-  return { result, user: f.table('user').get(userId) };
+  const userBefore = JSON.stringify(f.table('user').get(userId));
+  const result = await app.app({ route: 'passport/register', PID: 'crun', scope: A, token: login.data.token.sessionToken, params }, {});
+  return { result, user: f.table('user').get(userId), userBefore };
 }
 
 async function main() {
@@ -79,15 +84,15 @@ async function main() {
     const rejected = await registerThroughSDK();
     assert.equal(rejected.result.code, 1600);
     assert.match(rejected.result.msg, /昵称.*未通过/);
-    assert.equal(rejected.user, undefined);
+    assert.equal(JSON.stringify(rejected.user), rejected.userBefore);
     response = { errcode: 48001, errmsg: 'private provider message' };
     const unavailable = await registerThroughSDK();
     assert.equal(unavailable.result.code, 1600);
     assert.match(unavailable.result.msg, /权限.*48001/);
-    assert.equal(unavailable.user, undefined);
+    assert.equal(JSON.stringify(unavailable.user), unavailable.userBefore);
     assert.equal(requests.length, 12);
     assert.ok(requests.every(api => api === 'security.msgSecCheck'));
-    console.log('Production cloud wrapper + installed wx-server-sdk ' + version + ': text audit, callable options and real manual registration pass/rejection/outage OK; 12 mocked requests, no network.');
+    console.log('Production cloud wrapper + installed wx-server-sdk ' + version + ': text audit, callable options and WeChat profile completion pass/rejection/outage OK; 12 mocked requests, no network.');
   } finally { transport.callWXOpenAPI = original; console.warn = originalWarn; }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

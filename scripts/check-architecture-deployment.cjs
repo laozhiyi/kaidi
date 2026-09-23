@@ -20,7 +20,10 @@ const expanded=manifest.indexes.map(index=>{
   const fields=[...manifest.prefixes[index.scope],...index.fields];
   assert.equal(new Set(fields.map(field=>field[0])).size,fields.length,'Repeated field');
   for(const [field,direction] of fields){assert.ok(/^[\w.]+$/.test(field));assert.ok(['asc','desc'].includes(direction));}
-  if(['bx_user','bx_identity_unique'].includes(index.collection))assert.equal(index.scope,'school');
+  if(['bx_user','bx_identity_unique'].includes(index.collection) && index.scope!=='school') {
+    assert.equal(index.scope,'system');assert.equal(index.access,'account_lifecycle');
+    assert.deepEqual(index.fields,[[index.collection==='bx_user'?'USER_MINI_OPENID':'userId','asc']]);
+  }
   return {...index,fields,unique:false};
 });
 for(const name of ['server-only','order-feed'])assert.deepEqual(read(path.join(root,'deployment/database-rules',name+'.json')),{read:false,write:false});

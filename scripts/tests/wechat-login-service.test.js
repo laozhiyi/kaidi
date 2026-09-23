@@ -12,7 +12,8 @@ const readyUser = () => ({ USER_MINI_OPENID: 'new-user', USER_STATUS: 1, USER_NA
   USER_MOBILE: mobile, USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: true,
   USER_PIC: 'cloud://test/avatar.png', USER_FORMS: profile().forms });
 async function setup(options) {
-  const f = fixture(options); await f.setup();
+  // Existing cases cover the retained phone flow; identity cases opt out.
+  const f = fixture({ phoneLoginEnabled: true, ...options }); await f.setup();
   f.cloud.getWXContext = () => ({ OPENID: 'new-user', APPID });
   f.phoneCalls = [];
   f.cloud.openapi.phonenumber = { async getPhoneNumber(input) {
@@ -26,6 +27,49 @@ async function setup(options) {
   f.putUser = (data = readyUser()) => f.put(A, 'user', tenant.run(A, () => f.store.schoolKey('crun', 'user', 'new-user')), data);
   return f;
 }
+
+test('WeChat nickname and avatar save independently and survive later identity login', async () => {
+  const f = await setup({ phoneLoginEnabled: false });
+  await tenant.run(A, () => f.passport().wechatIdentityLogin('new-user'));
+  const owners = f.table('identity_unique').size;
+  const saved = await tenant.run(A, () => f.passport().saveWechatProfile('new-user', {
+    name: '微信昵称', pic: 'cloud://test/wechat-avatar.jpg', mobile, forms: profile().forms, USER_STATUS: 1, USER_PROFILE_COMPLETE: true
+  }));
+  assert.equal(saved.token.name, '微信昵称'); assert.equal(saved.token.pic, 'cloud://test/wechat-avatar.jpg');
+  assert.equal(saved.token.status, 0); assert.equal(saved.token.profileComplete, false); assert.equal(saved.token.phoneVerified, false);
+  assert.equal(f.row().USER_MOBILE, ''); assert.deepEqual(JSON.parse(JSON.stringify(f.row().USER_FORMS)), []);
+  assert.equal(f.table('identity_unique').size, owners); assert.equal(f.phoneCalls.length, 0);
+  const login = await tenant.run(A, () => f.passport().wechatIdentityLogin('new-user'));
+  assert.equal(login.user.USER_NAME, '微信昵称'); assert.equal(login.user.USER_PIC, 'cloud://test/wechat-avatar.jpg');
+  await assert.rejects(tenant.run(A, () => new (f.service('mail_service'))()._user('new-user')));
+});
+
+test('saving only WeChat details preserves contact data and every review status', async () => {
+  const f = await setup({ phoneLoginEnabled: false });
+  for (const status of [0, 1, 8]) {
+    await f.putUser({ ...readyUser(), USER_STATUS: status });
+    const saved = await tenant.run(A, () => f.passport().saveWechatProfile('new-user', { name: '新昵称', pic: 'cloud://test/new.jpg' }));
+    assert.equal(saved.token.status, status); assert.equal(saved.token.profileComplete, true);
+    assert.equal(f.row().USER_MOBILE, mobile); assert.equal(f.row().USER_MOBILE_VERIFIED, true);
+    assert.deepEqual(JSON.parse(JSON.stringify(f.row().USER_FORMS)), profile().forms);
+  }
+});
+
+test('WeChat detail saving rejects missing, disabled, or concurrently deleted accounts', async () => {
+  const f = await setup({ phoneLoginEnabled: false }), input = { name: '微信昵称', pic: 'cloud://test/avatar.jpg' };
+  await assert.rejects(tenant.run(A, () => f.passport().saveWechatProfile('new-user', input)), /微信.*登录|账号/);
+  assert.equal(f.row(), undefined);
+  await f.putUser({ ...readyUser(), USER_STATUS: 9 });
+  await assert.rejects(tenant.run(A, () => f.passport().saveWechatProfile('new-user', input)), /停用|禁用/);
+  await f.putUser();
+  const transaction = f.store.transaction;
+  f.store.transaction = async callback => {
+    f.table('user').delete(tenant.run(A, () => f.store.schoolKey('crun', 'user', 'new-user')));
+    return transaction(callback);
+  };
+  await assert.rejects(tenant.run(A, () => f.passport().saveWechatProfile('new-user', input)), /登录|账号/);
+  assert.equal(f.row(), undefined);
+});
 
 test('failed phone exchanges retain only the numeric provider error in diagnostics', async () => {
   const logs = [], f = await setup({ console: { log() {}, info() {}, error() {}, warn: (...args) => logs.push(args) } });
@@ -49,6 +93,20 @@ test('hand-entered registration cannot claim a verified WeChat phone or active a
   })), /微信|授权/);
   assert.equal(f.row(), undefined);
 });
+
+for (const phoneLoginEnabled of [false, true]) {
+  test('profile submission cannot create a user even when the old manual flag is enabled: phone=' + phoneLoginEnabled, async () => {
+    const f = await setup({ phoneLoginEnabled, allowManualRegistration: true });
+    const usersBefore = f.table('user').size, phoneOwnersBefore = f.table('identity_unique').size;
+    await assert.rejects(tenant.run(A, () => f.passport().register('new-user', {
+      ...profile(), userId: 'forged-user', USER_MINI_OPENID: 'forged-user', mobileVerified: true
+    })), /微信.*登录/);
+    assert.equal(f.row(), undefined);
+    assert.equal(f.table('user').size, usersBefore);
+    assert.equal(f.table('identity_unique').size, phoneOwnersBefore);
+    assert.equal(f.phoneCalls.length, 0);
+  });
+}
 
 test('editing a verified profile preserves the verified phone and updates login details', async () => {
   const f = await setup(); await f.putUser();
@@ -174,8 +232,9 @@ test('successful phone rebinding rejects a stale profile save and releases only 
   assert.equal(tenant.run(A, () => f.table('identity_unique').has(f.store.schoolKey('crun', 'phone', mobile))), false);
 });
 
-test('manual registration uses the cloud identity, leaves the phone unverified, and permits publishing', async () => {
-  const f = await setup({ allowManualRegistration: true });
+test('profile completion after WeChat login leaves the phone unverified and permits publishing', async () => {
+  const f = await setup({ phoneLoginEnabled: false });
+  await tenant.run(A, () => f.passport().wechatIdentityLogin('new-user'));
   const result = await tenant.run(A, () => f.passport().register('new-user', {
     ...profile(), userId: 'forged-user', USER_MINI_OPENID: 'forged-user', mobileVerified: true, USER_MOBILE_VERIFIED: true
   }));
@@ -214,8 +273,9 @@ test('existing unverified profiles can be completed and edited without native au
   assert.equal(f.phoneCalls.length, 0);
 });
 
-test('manual registration still obeys school review and disabled or rejected account states', async () => {
-  const f = await setup({ allowManualRegistration: true });
+test('profile completion after WeChat login obeys school review and disabled or rejected account states', async () => {
+  const f = await setup({ phoneLoginEnabled: false });
+  await tenant.run(A, () => f.passport().wechatIdentityLogin('new-user'));
   f.table('school').get(A.schoolId).registrationReview = true;
   const registered = await tenant.run(A, () => f.passport().register('new-user', { ...profile(), status: 1 }));
   assert.equal(registered.token.status, 0);
@@ -230,24 +290,29 @@ test('manual registration still obeys school review and disabled or rejected acc
   await assert.rejects(tenant.run(A, () => f.passport().editBase('new-user', profile())), /停用|禁用/);
 });
 
-test('manual registration retains required fields and cannot create accounts without identity', async () => {
-  const f = await setup({ allowManualRegistration: true });
+test('profile completion retains required fields and rejects users who have not logged in', async () => {
+  const f = await setup({ phoneLoginEnabled: false });
   await assert.rejects(tenant.run(A, () => f.passport().register('', profile())), /登录/);
+  await assert.rejects(tenant.run(A, () => f.passport().editBase('new-user', profile())), /登录/);
+  await tenant.run(A, () => f.passport().wechatIdentityLogin('new-user'));
+  const before = structuredClone(f.row());
   for (const change of [{ mobile: '123' }, { forms: [] }, { pic: '' }, { name: '' }]) {
     await assert.rejects(tenant.run(A, () => f.passport().register('new-user', { ...profile(), ...change })), /手机|资料|性别|头像|昵称/);
-    assert.equal(f.row(), undefined);
+    assert.deepEqual(f.row(), before);
   }
-  await assert.rejects(tenant.run(A, () => f.passport().editBase('new-user', profile())), /注册|登录/);
 });
 
-test('concurrent manual registrations enforce school phone ownership and create one account', async () => {
-  const f = await setup({ allowManualRegistration: true });
+test('concurrent profile completions enforce school phone ownership for WeChat accounts', async () => {
+  const f = await setup({ phoneLoginEnabled: false });
+  await tenant.run(A, () => f.passport().wechatIdentityLogin('new-user'));
+  await tenant.run(B, () => f.passport().wechatIdentityLogin('second-user'));
   const competing = await Promise.allSettled([
     tenant.run(A, () => f.passport().register('new-user', profile(A))),
     tenant.run(B, () => f.passport().register('second-user', profile(B)))
   ]);
   assert.equal(competing.filter(result => result.status === 'fulfilled').length, 1);
   assert.match(competing.find(result => result.status === 'rejected').reason.message, /登记/);
+  await tenant.run(C, () => f.passport().wechatIdentityLogin('second-user'));
   const otherSchool = await tenant.run(C, () => f.passport().register('second-user', profile(C)));
   assert.equal(otherSchool.token.phoneVerified, false);
   const repeated = await Promise.all([
@@ -258,11 +323,13 @@ test('concurrent manual registrations enforce school phone ownership and create 
   assert.equal([...f.table('user').values()].filter(row => row.schoolId === C.schoolId && row.USER_MINI_OPENID === 'second-user').length, 1);
 });
 
-test('manual registration detects legacy phone owners even before the uniqueness index is seeded', async () => {
-  const f = await setup({ allowManualRegistration: true });
+test('profile completion detects legacy phone owners even before the uniqueness index is seeded', async () => {
+  const f = await setup({ phoneLoginEnabled: false });
+  await tenant.run(A, () => f.passport().wechatIdentityLogin('new-user'));
   await f.put(A, 'user', 'legacy-owner', { ...readyUser(), USER_MINI_OPENID: 'legacy-owner' });
   await assert.rejects(tenant.run(B, () => f.passport().register('new-user', profile(B))), /登记/);
-  assert.equal(f.row(), undefined);
+  assert.equal(f.row().USER_MOBILE, '');
+  assert.equal(f.row().USER_PROFILE_COMPLETE, false);
 });
 
 test('enabling manual registration never lets an already verified phone be replaced by typing', async () => {
@@ -274,6 +341,7 @@ test('enabling manual registration never lets an already verified phone be repla
 
 test('restoring strict mode blocks manual accounts in login eligibility and in-flight business transactions', async () => {
   const f = await setup({ allowManualRegistration: true });
+  await tenant.run(A, () => f.passport().wechatIdentityLogin('new-user'));
   await tenant.run(A, () => f.passport().register('new-user', profile()));
   await tenant.run(A, async () => {
     const mail = new (f.service('mail_service'))(), user = await mail._user('new-user');
@@ -303,3 +371,117 @@ for (const changed of [{ USER_STATUS: 9 }, { USER_MOBILE: '13987654321', USER_MO
     for (const [field, value] of Object.entries(changed)) assert.equal(f.row()[field], value);
   });
 }
+
+test('identity login creates an account without calling phone services or granting business access', async () => {
+  const f = await setup({ phoneLoginEnabled: false, allowManualRegistration: false });
+  const result = await tenant.run(A, () => f.passport().wechatIdentityLogin('new-user', {
+    userId: 'forged-user', mobile, USER_STATUS: 1, USER_MOBILE_VERIFIED: true
+  }));
+  assert.equal(result.token.id, 'new-user');
+  assert.equal(result.token.phoneVerified, false);
+  assert.equal(result.token.profileComplete, false);
+  assert.equal(result.token.status, 0);
+  assert.equal(result.token.allowManualRegistration, true);
+  assert.equal(result.user.USER_MOBILE || '', '');
+  assert.equal(f.row().USER_MINI_OPENID, 'new-user');
+  assert.equal(f.row().USER_MOBILE_VERIFIED, false);
+  assert.equal(f.phoneCalls.length, 0);
+  await assert.rejects(tenant.run(A, () => new (f.service('mail_service'))()._user('new-user')));
+  const completed = await tenant.run(A, () => f.passport().register('new-user', profile()));
+  assert.equal(completed.token.status, 1);
+  assert.equal(completed.token.profileComplete, true);
+  assert.equal(completed.token.phoneVerified, false);
+  assert.equal((await tenant.run(A, () => new (f.service('mail_service'))()._user('new-user'))).USER_MOBILE, mobile);
+  assert.equal(f.phoneCalls.length, 0);
+});
+
+test('identity login remains idempotent across campuses and keeps schools isolated', async () => {
+  const f = await setup({ phoneLoginEnabled: false });
+  await Promise.all([A, B, A].map(scope => tenant.run(scope, () => f.passport().wechatIdentityLogin('new-user'))));
+  assert.equal([...f.table('user').values()].filter(row => row.schoolId === A.schoolId && row.USER_MINI_OPENID === 'new-user').length, 1);
+  await tenant.run(C, () => f.passport().wechatIdentityLogin('new-user'));
+  assert.equal([...f.table('user').values()].filter(row => row.USER_MINI_OPENID === 'new-user').length, 2);
+  assert.equal(f.phoneCalls.length, 0);
+});
+
+test('identity login preserves existing verified and manual profiles and never approves review states', async () => {
+  const f = await setup({ phoneLoginEnabled: false });
+  for (const verified of [true, false]) for (const status of [1, 0, 8]) {
+    const original = { ...readyUser(), USER_MOBILE_VERIFIED: verified, USER_STATUS: status,
+      USER_FORMS: [...profile().forms, { mark: 'contacts', val: [{ name: '原联系人', phone: mobile, isDefault: true }] }] };
+    await f.putUser(original);
+    const result = await tenant.run(A, () => f.passport().wechatIdentityLogin('new-user'));
+    assert.equal(result.token.status, status);
+    assert.equal(result.token.phoneVerified, verified);
+    for (const field of ['USER_NAME', 'USER_MOBILE', 'USER_PIC', 'USER_FORMS', 'USER_STATUS']) {
+      assert.deepEqual(JSON.parse(JSON.stringify(f.row()[field])), original[field]);
+    }
+  }
+  await f.putUser({ ...readyUser(), USER_STATUS: 9 });
+  await assert.rejects(tenant.run(A, () => f.passport().wechatIdentityLogin('new-user')), /停用|禁用/);
+  assert.equal(f.row().USER_STATUS, 9);
+  assert.equal(f.phoneCalls.length, 0);
+});
+
+test('silent login never creates accounts and explicit identity login requires a trusted identity', async () => {
+  const f = await setup({ phoneLoginEnabled: false });
+  assert.equal((await tenant.run(A, () => f.passport().login('new-user'))).token, null);
+  assert.equal(f.row(), undefined);
+  await assert.rejects(tenant.run(A, () => f.passport().wechatIdentityLogin('')), /登录/);
+  assert.equal(f.row(), undefined);
+});
+
+test('real identity route uses trusted OPENID without phone or profile audit permission', async () => {
+  const f = await setup({ phoneLoginEnabled: false, allowManualRegistration: false });
+  Object.assign(f.load('config/config.js'), { CLIENT_CHECK_CONTENT: true });
+  let audits = 0;
+  f.cloud.openapi.security = { async msgSecCheck() { audits++; throw Error('No content audit permission'); } };
+  // Requests and the production validator share a realm in a cloud invocation.
+  f.load('framework/validate/data_check.js').check = require('../../cloudfunctions/mcloud/framework/validate/data_check.js').check;
+  const app = f.load('framework/core/application.js');
+  const params = { userId: 'forged-user', OPENID: 'forged-openid', mobile, status: 1, USER_MOBILE_VERIFIED: true };
+  const result = await app.app({ route: 'passport/wechat_identity_login', PID: 'crun', scope: A, params }, {});
+  assert.equal(result.code, 200, result.msg);
+  assert.equal(result.data.token.id, 'crun^^^new-user');
+  assert.equal(result.data.token.status, 0);
+  assert.equal(result.data.token.phoneLoginEnabled, false);
+  assert.equal(result.data.user.USER_MOBILE, '');
+  assert.equal(f.row(A, 'crun^^^new-user').USER_MINI_OPENID, 'crun^^^new-user');
+  assert.equal(f.row(A, 'forged-user'), undefined);
+  assert.equal(f.phoneCalls.length, 0);
+  assert.equal(audits, 0);
+  const size = f.table('user').size;
+  f.cloud.getWXContext = () => ({ APPID });
+  const missingIdentity = await app.app({ route: 'passport/wechat_identity_login', PID: 'crun', scope: A, params }, {});
+  assert.notEqual(missingIdentity.code, 200);
+  assert.equal(f.table('user').size, size);
+});
+
+test('disabled phone endpoints make no provider request and public policy permits manual contact details', async () => {
+  const f = await setup({ phoneLoginEnabled: false, allowManualRegistration: false });
+  let legacyCalls = 0;
+  f.cloud.getOpenData = async () => { legacyCalls++; return { list: [{ data: { phoneNumber: mobile } }] }; };
+  await assert.rejects(tenant.run(A, () => f.passport().wechatLogin('new-user', { code: 'unused' })), /停用|关闭/);
+  await assert.rejects(f.passport().getPhone('unused-cloud-id'), /停用|关闭/);
+  assert.equal(f.phoneCalls.length, 0);
+  assert.equal(legacyCalls, 0);
+  assert.equal(f.row(), undefined);
+  const config = await tenant.run(A, () => new (f.service('operations_service'))().config('new-user'));
+  assert.equal(config.phoneLoginEnabled, false);
+  assert.equal(config.allowManualRegistration, true);
+});
+
+test('basic mode can update a verified contact number without falsely preserving verification', async () => {
+  const f = await setup({ phoneLoginEnabled: false, allowManualRegistration: false });
+  await f.putUser();
+  const unchanged = await tenant.run(A, () => f.passport().editBase('new-user', profile()));
+  assert.equal(unchanged.token.phoneVerified, true);
+  const changed = await tenant.run(A, () => f.passport().editBase('new-user', { ...profile(), mobile: '13987654321' }));
+  assert.equal(changed.token.phoneVerified, false);
+  assert.equal(changed.token.profileComplete, true);
+  assert.equal(f.row().USER_MOBILE, '13987654321');
+  assert.equal(f.row().USER_MOBILE_VERIFIED, false);
+  assert.equal(tenant.run(A, () => f.table('identity_unique').has(f.store.schoolKey('crun', 'phone', mobile))), false);
+  await assert.rejects(tenant.run(A, () => f.passport().editBase('new-user', { ...profile(), mobile: '13800000000' })), /登记/);
+  assert.equal(f.phoneCalls.length, 0);
+});

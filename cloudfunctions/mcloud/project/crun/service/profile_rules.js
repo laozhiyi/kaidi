@@ -66,6 +66,7 @@ function isComplete(user) {
   return !!user && user.USER_PROFILE_COMPLETE !== false && !validationError({ name: user.USER_NAME,
     mobile: user.USER_MOBILE, pic: user.USER_PIC, forms: user.USER_FORMS });
 }
-function allowsManualRegistration() { return config.ALLOW_MANUAL_REGISTRATION === true; }
+function isPhoneLoginEnabled() { return config.WECHAT_PHONE_LOGIN_ENABLED === true; }
+function allowsManualRegistration() { return !isPhoneLoginEnabled() || config.ALLOW_MANUAL_REGISTRATION === true; }
 function isReady(user) { return !!user && (user.USER_MOBILE_VERIFIED === true || allowsManualRegistration()) && isComplete(user); }
-module.exports = { formValue, validationError, textForAudit, isComplete, isReady, allowsManualRegistration };
+module.exports = { formValue, validationError, textForAudit, isComplete, isReady, allowsManualRegistration, isPhoneLoginEnabled };

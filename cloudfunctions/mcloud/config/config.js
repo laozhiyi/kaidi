@@ -18,7 +18,8 @@ module.exports = {
 	ADMIN_CHECK_CONTENT: process.env.CONTENT_CHECK_DISABLED !== 'true', //后台图片文字是否校验
 
 	// ### 内测注册
-	ALLOW_MANUAL_REGISTRATION: process.env.ALLOW_MANUAL_REGISTRATION !== 'false', // 允许手填注册；false 恢复微信验证手机号要求
+	WECHAT_PHONE_LOGIN_ENABLED: process.env.WECHAT_PHONE_LOGIN_ENABLED === 'true', // 默认停用手机号识别，使用微信身份登录
+	ALLOW_MANUAL_REGISTRATION: process.env.ALLOW_MANUAL_REGISTRATION !== 'false', // 兼容已登录账号的手填联系电话策略；不允许表单直接建号
 
 	// ### 后台业务相关
 	ADMIN_LOGIN_CREDENTIALS_ONLY: process.env.ADMIN_LOGIN_CREDENTIALS_ONLY !== 'false', // 内测仅校验账号密码；false 恢复登录限流与账号状态检查

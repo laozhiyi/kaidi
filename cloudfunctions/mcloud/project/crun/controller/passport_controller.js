@@ -11,7 +11,33 @@ const profileRules = require('../service/profile_rules.js');
 
 class PassportController extends BaseProjectController {
 
+ async logout() {
+  this.validateData({});
+  return new (require('../service/account_service.js'))().logout(this._userId, this._token);
+ }
+
+ async cancelAccount() {
+  this.validateData({});
+  return new (require('../service/account_service.js'))().requestCancellation(this._userId, this._token);
+ }
+
+ async wechatIdentityLogin() {
+  this.validateData({});
+  return new PassportService().wechatIdentityLogin(this._userId);
+ }
+
+ async saveWechatProfile() {
+  const input = this.validateData({
+   name: 'must|string|min:1|max:30|name=昵称',
+   pic: 'must|string|min:1|max:500|name=头像'
+  });
+  await contentCheck.trackCloudImages([input.pic]);
+  await contentCheck.checkTextMultiClient({ 昵称: input.name }, { scene: 1, byField: true });
+  return new PassportService().saveWechatProfile(this._userId, input);
+ }
+
  async _checkProfileContent(input) {
+  await contentCheck.trackCloudImages([input.pic]);
   const error = profileRules.validationError(input);
   if (error) this.AppError(error);
   await contentCheck.checkTextMultiClient(profileRules.textForAudit(input), { scene: 1, byField: true });

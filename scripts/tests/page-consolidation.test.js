@@ -76,7 +76,12 @@ test('new-page development settings do not use hot reload or unused-file filteri
 test('redesigned page templates bind only existing handlers', () => {
   for (const route of ['about/index/about_index', 'my/index/my_index', 'admin/index/home/admin_home', 'operations/operations', 'admin/operations/admin_operations', 'feedback/my_list/feedback_my_list']) {
     let page;
-    vm.runInNewContext(read(mini + route + '.js'), { Page: p => { page = p; }, require: () => ({}) });
+    const load = file => {
+      const module = { exports: {} };
+      vm.runInNewContext(read(file), { module, Page: p => { page = p; }, require: name => name.endsWith('account_actions.js') ? load(mini + 'my/account_actions.js') : {} });
+      return module.exports;
+    };
+    load(mini + route + '.js');
     for (const match of read(mini + route + '.wxml').matchAll(/(?:bind|catch):?[\w-]+\s*=\s*["']([\w]+)["']/g)) assert.equal(typeof page[match[1]], 'function', route + ': ' + match[1]);
   }
 });

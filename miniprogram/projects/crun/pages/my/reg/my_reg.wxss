@@ -1,4 +1,8 @@
 @import "../personal/my_personal.wxss";
+.account-login-page { padding-top:48rpx; }
+.wechat-login-header { margin-bottom:32rpx; text-align:center; }
+.account-login-page .wechat-login-button { margin-top:28rpx; padding:0 18rpx; }
+.account-login-page .wechat-login-note { text-align:center; }
 .wechat-login-page { min-height:100vh; padding:100rpx 48rpx 60rpx; box-sizing:border-box; color:#243b5b; text-align:center; }
 .wechat-login-mark { display:flex; align-items:center; justify-content:center; width:132rpx; height:132rpx; margin:0 auto 36rpx; border-radius:36rpx; background:#fff; box-shadow:0 12rpx 36rpx rgba(57,123,200,.1); }
 .wechat-login-mark image { width:76rpx; height:76rpx; }
@@ -7,7 +11,13 @@
 .wechat-login-button { margin-top:80rpx; padding:24rpx 18rpx; border-radius:16rpx; background:#07a95a; color:#fff; font-size:30rpx; font-weight:600; line-height:1.5; }
 .wechat-login-button::after { border:0; }
 .wechat-login-button[disabled] { background:#80c8a3; color:#fff; }
-.wechat-login-manual { margin-top:24rpx; padding:22rpx 18rpx; border-radius:16rpx; background:#fff; color:#356893; font-size:28rpx; line-height:1.5; }
-.wechat-login-manual::after { border:1rpx solid #d9e4ee; border-radius:16rpx; }
 .wechat-login-note { margin-top:26rpx; color:#8494a9; font-size:24rpx; line-height:1.6; }
 .profile-login-success { margin:0 0 22rpx; padding:20rpx 24rpx; border-radius:12rpx; color:#22734c; background:#e8f6ee; font-size:24rpx; line-height:1.6; }
+.wechat-profile-overlay { position:fixed; inset:0; z-index:1000; }
+.wechat-profile-mask { position:absolute; inset:0; background:rgba(20,35,52,.45); }
+.wechat-profile-sheet { position:absolute; bottom:0; left:0; right:0; padding:32rpx 28rpx; padding-bottom:calc(32rpx + env(safe-area-inset-bottom)); border-radius:28rpx 28rpx 0 0; background:#f7fafc; box-sizing:border-box; }
+.wechat-profile-heading { margin-bottom:24rpx; color:#243b5b; font-size:30rpx; font-weight:600; }
+.wechat-profile-actions { display:flex; gap:20rpx; margin-top:24rpx; }
+.wechat-profile-actions button { flex:1; margin:0; padding:22rpx 16rpx; line-height:1.5; font-size:28rpx; border-radius:14rpx; }
+.wechat-profile-cancel { color:#51667e; background:#e9eff5; }
+.wechat-profile-cancel::after { border:0; }

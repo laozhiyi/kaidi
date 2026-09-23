@@ -38,6 +38,10 @@ module.exports = {
 	'home/setup_get': 'home_controller@getSetup',
 
 	'passport/login': 'passport_controller@login',
+ 'passport/logout': 'passport_controller@logout',
+ 'passport/cancel': 'passport_controller@cancelAccount',
+ 'passport/wechat_identity_login': 'passport_controller@wechatIdentityLogin',
+ 'passport/wechat_profile': 'passport_controller@saveWechatProfile',
  'passport/wechat_login': 'passport_controller@wechatLogin',
 	'passport/phone': 'passport_controller@getPhone',
 	'passport/my_detail': 'passport_controller@getMyDetail',

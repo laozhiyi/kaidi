@@ -22,6 +22,7 @@ class MaintenanceService extends Base {
   };
   return tenant.system(async()=>{
    const db=store.database(),cmd=db.command;
+   if(kind==='orders')result.accounts=await new (require('./account_service.js'))().sweep({budgetMs:Math.min(8000,Math.max(1,deadline-Date.now()))});
    const stateId=store.key('scheduled',kind,shard===undefined?'all':shard);
    const previous=await store.get(db,'worker_state',stateId);
    const cursors={...(previous&&previous.cursors||{})};

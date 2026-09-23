@@ -55,7 +55,7 @@ function client({ unselected = false, admin = false } = {}) {
         // and cloud scoping have their own tests using the real feed module.
         if (name.endsWith('/order_feed_biz.js')) return {watch(callbacks){const watcher={...callbacks,route:'operations/feed',closed:false,close(){this.closed=true;}};watchers.push(watcher);return watcher;}};
         if (name.endsWith('/public_biz.js')) return { isCacheList: key => cached.has(key), setCacheList: key => cached.add(key), removeCacheList: key => cached.delete(key) };
-        if (name.endsWith('/cache_helper.js')) return { get: key => key === 'user' ? { id: userId } : null };
+        if (name.endsWith('/cache_helper.js')) return { get: key => key === 'user' ? { id: userId, sessionToken: crypto.createHash('sha256').update(userId).digest('hex') } : null, remove: key => storage.delete(key) };
         if (name.endsWith('/constants.js')) return { CACHE_TOKEN: 'user', CACHE_ADMIN: 'admin', CACHE_WORK: 'work' };
         if (name.endsWith('/page_helper.js')) return { getPID: () => 'crun', fmtURLByPID: url => '/projects/crun' + url, showConfirm: async () => true, showSuccToast() {},
           getOptions(page, options = {}, key = 'id') { const value = options[key] || options.scene; if (!value) return false; page.setData({ [key]: value }); return true; },

@@ -61,7 +61,7 @@ function requestFixture() {
     const module = { exports: {} };
     cache.set(absolute, module);
     vm.runInNewContext(fs.readFileSync(absolute, 'utf8'), {
-      module, Buffer, Date, global: { PID: 'crun' }, console: { log() {}, warn() {}, error() {} },
+      module, Buffer, Date, process, global: { PID: 'crun' }, console: { log() {}, warn() {}, error() {} },
       require(name) {
         if (name === 'crypto') return require('node:crypto');
         if (name === 'async_hooks') return require('node:async_hooks');
@@ -115,10 +115,10 @@ function requestFixture() {
 }
 
 async function registered(f) {
-  const login = await f.passport.wechatLogin('sample-user-openid', { code: 'sample-phone-code' });
-  assert.equal(login.token.phoneVerified, true);
+  const login = await f.passport.wechatIdentityLogin('sample-user-openid');
+  assert.equal(login.token.phoneVerified, false);
   assert.equal(login.token.profileComplete, false);
-  const result = await f.passport.register('sample-user-openid', { name: '同学[1]', mobile: '13900000001', pic: 'sample-avatar',
+  const result = await f.passport.register('sample-user-openid', { name: '同学[1]', mobile: '13900000001', pic: 'cloud://test/sample-avatar.png',
     forms: [{ mark: 'sex', val: '男' }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' },
       { mark: 'campus', title: '校区', val: '育才校区' }] });
   const id = f.store.key('crun', 'user', result.token.id);
@@ -129,7 +129,7 @@ test('registered login reaches user details through the real request and model l
   const f = requestFixture(), { token, id, row } = await registered(f);
   assert.notEqual(id, token.id);
   assert.notEqual(id, token.key);
-  assert.equal(row.USER_LOGIN_CNT, 2);
+  assert.equal(row.USER_LOGIN_CNT, 1);
   f.table('user').set('foreign-user', { ...copy(row), _id: 'foreign-user', _pid: 'another-project' });
   const list = f.page('user/list/admin_user_list.js');
   await list.page.onLoad({ status: '1' });

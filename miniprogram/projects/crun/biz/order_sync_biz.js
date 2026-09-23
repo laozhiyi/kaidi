@@ -84,6 +84,7 @@ function connect() {
 }
 function start() { if (enabled()) { connect(); schedulePoll(); } }
 if (cloud.onScopeChange) cloud.onScopeChange(() => { stop(); signature = ''; lastRefresh = 0; start(); });
+if (cloud.onSessionChange) cloud.onSessionChange(() => { stop(); signature = ''; lastRefresh = 0; start(); });
 function subscribe(listener) {
   listeners.add(listener);
   if (listeners.size === 1) {

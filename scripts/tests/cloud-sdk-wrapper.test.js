@@ -7,7 +7,7 @@ const { spawnSync } = require('node:child_process');
 // The consumer, production cloud wrapper and installed SDK all run together.
 // Each standalone probe intercepts network transport and uses synthetic data.
 for (const [name, script] of [
-  ['manual registration and moderation', 'check-content-audit-sdk.cjs'],
+  ['WeChat profile completion and moderation', 'check-content-audit-sdk.cjs'],
   ['phone authorization', 'check-wechat-login-sdk.cjs'],
   ['scoped database operations and notifications', 'check-operations-sdk.cjs']
 ]) {

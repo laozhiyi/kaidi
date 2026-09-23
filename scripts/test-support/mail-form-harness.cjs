@@ -34,7 +34,7 @@ function harness(options = {}) {
     locations: { phases: ['一期', '二期'], pickupStations: [{ name: '一期', list: ['菜鸟驿站'] }] } };
   const pageHelper = { dataset: (e, key) => e.currentTarget.dataset[key], anchor() {}, fmtURLByPID: url => '/projects/crun' + url,
     showModal: message => { errors.push(message); return false; }, showNoneToast: message => errors.push(message) };
-  const passport = { isLogin: () => !!profile, getUserId: () => 'profile', loginMustBackWin: async () => true, loginMustCancelWin: async () => true };
+  const passport = { isLogin: () => !!profile, isLoggedOut: () => false, getUserId: () => 'profile', loginMustBackWin: async () => true, loginMustCancelWin: async () => true };
   const cloud = {
     callCloudData: async route => {
       if (route !== 'passport/my_detail') throw Error('Unexpected read: ' + route);

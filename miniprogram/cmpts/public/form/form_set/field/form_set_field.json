@@ -1,7 +1,5 @@
 {
-	"usingComponents": { 
-		"cmpt-picker-multi": "/cmpts/public/picker_multi/picker_multi_cmpt"
-	},
+	"usingComponents": {},
 	"navigationBarBackgroundColor": "#ffffff",
 	"navigationBarTextStyle": "black",
 	"enablePullDownRefresh": true,

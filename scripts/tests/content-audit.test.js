@@ -120,8 +120,8 @@ test('long Unicode fields remain valid text when split for auditing', async () =
   assert.ok(f.state.calls.every(item => item.content.length <= 1800 && Buffer.from(item.content).toString() === item.content));
 });
 
-function profile() {
-  return { name: '新同学', mobile: '13912345678', pic: 'cloud://test/avatar.png', forms: [
+function profile(f) {
+  return { name: '新同学', mobile: '13912345678', pic: f && f.avatar ? f.avatar('avatar.png') : 'cloud://test/avatar.png', forms: [
     { mark: 'sex', title: '性别', type: 'select', val: '女' },
     { mark: 'college', title: '学院', type: 'text', val: '计算机学院' },
     { mark: 'sub', title: '专业', type: 'text', val: '软件工程' },
@@ -142,14 +142,45 @@ async function routeFixture() {
   // in the same realm as the JSON request, as a real cloud invocation does.
   f.load('framework/validate/data_check.js').check = require('../../cloudfunctions/mcloud/framework/validate/data_check.js').check;
   const app = f.load('framework/core/application.js');
-  f.call = (route, params, token = 'audit-admin-token') => app.app({ route, PID: 'crun', scope: A, params: copy(params), token }, {});
+  f.call = (route, params, token = route.startsWith('admin/') ? 'audit-admin-token' : f.userToken || '') => app.app({ route, PID: 'crun', scope: A, params: copy(params), token }, {});
   f.configRow = () => f.table('operation_config').get(tenant.run(A, () => f.store.scopeKey('crun', 'config')));
   f.userRow = () => f.table('user').get(tenant.run(A, () => f.store.schoolKey('crun', 'user', 'crun^^^audit-user')));
   return f;
 }
 
-test('real registration audits only human profile text and stores a usable unverified manual account', async () => {
-  const f = await routeFixture(), result = await f.call('passport/register', profile());
+async function profileFixture() {
+  const f = await routeFixture();
+  const login = await f.call('passport/wechat_identity_login', {});
+  assert.equal(login.code, 200, login.msg);
+  f.userToken = login.data.token.sessionToken;
+  f.avatar = name => 'cloud://test/private/audit-user/' + login.data.token.mediaGeneration + '/' + name;
+  f.userBefore = copy(f.userRow());
+  return f;
+}
+
+test('the WeChat details route audits the nickname and updates only the trusted account', async () => {
+  const f = await profileFixture();
+  const result = await f.call('passport/wechat_profile', { name: '微信昵称', pic: f.avatar('wechat.jpg'),
+    userId: 'poster', USER_STATUS: 1, mobile: '13912345678', forms: profile(f).forms });
+  assert.equal(result.code, 200, result.msg);
+  assert.deepEqual(f.auditCalls.map(item => item.content), ['微信昵称']);
+  assert.equal(f.auditCalls[0].scene, 1); assert.equal(f.auditCalls[0].openid, 'audit-user');
+  assert.equal(result.data.token.id, 'crun^^^audit-user'); assert.equal(result.data.token.profileComplete, false);
+  assert.equal(f.userRow().USER_NAME, '微信昵称'); assert.equal(f.userRow().USER_MOBILE, '');
+  assert.equal(f.userRow().USER_STATUS, 0);
+  const other = f.table('user').get(tenant.run(A, () => f.store.schoolKey('crun', 'user', 'poster')));
+  assert.equal(other.USER_NAME, 'poster');
+});
+
+test('rejected nickname content leaves the stored WeChat details unchanged', async () => {
+  const f = await profileFixture(); f.auditResponse = () => ({ errCode: 0, result: { suggest: 'risky' } });
+  const result = await f.call('passport/wechat_profile', { name: '待修改昵称', pic: f.avatar('wechat.jpg') });
+  assert.notEqual(result.code, 200);
+  assert.deepEqual(copy(f.userRow()), f.userBefore); assert.equal(f.auditCalls.length, 1);
+});
+
+test('real WeChat profile completion audits only human text and stores an unverified contact number', async () => {
+  const f = await profileFixture(), result = await f.call('passport/register', profile(f));
   assert.equal(result.code, 200, result.msg);
   assert.deepEqual(f.auditCalls.map(item => item.content), ['新同学', '计算机学院', '软件工程']);
   assert.ok(f.auditCalls.every(item => item.scene === 1 && item.openid === 'audit-user'));
@@ -158,7 +189,7 @@ test('real registration audits only human profile text and stores a usable unver
 });
 
 test('profile audit selects contact names and address text without their phones or form metadata', async () => {
-  const f = await routeFixture(), input = profile();
+  const f = await profileFixture(), input = profile(f);
   input.forms.push({ mark: 'contacts', title: '常用联系人', type: 'json', val: [{ name: '张同学', phone: '13987654321', isDefault: true }] },
     { mark: 'addresses', title: '常用地址', type: 'json', val: JSON.stringify([{ label: '宿舍', detail: '一期1栋101', isDefault: true }]) });
   const result = await f.call('passport/register', input);
@@ -169,39 +200,39 @@ test('profile audit selects contact names and address text without their phones 
 });
 
 test('additional legacy contact text cannot disappear behind a boolean or another field', async () => {
-  const f = await routeFixture(), input = profile();
+  const f = await profileFixture(), input = profile(f);
   input.forms.push({ mark: 'contacts', type: 'json', val: [{ name: '张同学', note: '需要检查的附加说明', isDefault: true }] });
   f.auditResponse = item => ({ errCode: 0, result: { suggest: item.content.includes('需要检查的附加说明') ? 'risky' : 'pass' } });
   const result = await f.call('passport/register', input);
-  assert.equal(result.code, 1600); assert.match(result.msg, /常用联系人.*未通过/); assert.equal(f.userRow(), undefined);
+  assert.equal(result.code, 1600); assert.match(result.msg, /常用联系人.*未通过/); assert.deepEqual(copy(f.userRow()), f.userBefore);
 });
 
 test('unknown legacy form marks get safe field labels and still audit their actual values', async () => {
-  const f = await routeFixture(), input = profile();
+  const f = await profileFixture(), input = profile(f);
   input.forms.push({ mark: 'constructor', title: '旧版补充资料', val: '需要检查的附加说明' });
   f.auditResponse = item => ({ errCode: 0, result: { suggest: item.content.includes('需要检查的附加说明') ? 'risky' : 'pass' } });
   const result = await f.call('passport/register', input);
-  assert.equal(result.code, 1600); assert.match(result.msg, /补充资料.*未通过/); assert.equal(f.userRow(), undefined);
+  assert.equal(result.code, 1600); assert.match(result.msg, /补充资料.*未通过/); assert.deepEqual(copy(f.userRow()), f.userBefore);
 });
 
 test('legacy fields sharing a display label cannot overwrite each other during text selection', async () => {
-  const f = await routeFixture(), input = profile();
+  const f = await profileFixture(), input = profile(f);
   input.forms.push({ mark: 'contacts', val: '需要检查的旧联系人' }, { mark: 'commonContact', val: '新的联系人' });
   f.auditResponse = item => ({ errCode: 0, result: { suggest: item.content.includes('需要检查的旧联系人') ? 'risky' : 'pass' } });
   const result = await f.call('passport/register', input);
-  assert.equal(result.code, 1600); assert.match(result.msg, /常用联系人.*未通过/); assert.equal(f.userRow(), undefined);
+  assert.equal(result.code, 1600); assert.match(result.msg, /常用联系人.*未通过/); assert.deepEqual(copy(f.userRow()), f.userBefore);
 });
 
-test('a nickname rejection is returned by the real route without creating registration records', async () => {
-  const f = await routeFixture(); f.auditResponse = () => ({ errCode: 0, result: { suggest: 'risky' } });
-  const result = await f.call('passport/register', profile());
+test('a nickname rejection leaves the WeChat account incomplete and does not bind its contact number', async () => {
+  const f = await profileFixture(); f.auditResponse = () => ({ errCode: 0, result: { suggest: 'risky' } });
+  const result = await f.call('passport/register', profile(f));
   assert.equal(result.code, 1600); assert.match(result.msg, /昵称.*未通过/);
-  assert.equal(f.userRow(), undefined); assert.equal(f.table('identity_unique').size, 0);
+  assert.deepEqual(copy(f.userRow()), f.userBefore); assert.equal(f.table('identity_unique').size, 0);
 });
 
 test('editing a profile identifies the rejected field and preserves the prior profile', async () => {
-  const f = await routeFixture(); assert.equal((await f.call('passport/register', profile())).code, 200);
-  const previous = copy(f.userRow()), input = profile(); input.forms[2].val = '待修改专业';
+  const f = await profileFixture(); assert.equal((await f.call('passport/register', profile(f))).code, 200);
+  const previous = copy(f.userRow()), input = profile(f); input.forms[2].val = '待修改专业';
   input.forms[2].type = 'image'; // client-provided type must not suppress this known text field.
   f.auditResponse = item => ({ errCode: 0, result: { suggest: item.content.includes('待修改专业') ? 'risky' : 'pass' } });
   const result = await f.call('passport/edit_base', input);
@@ -210,17 +241,17 @@ test('editing a profile identifies the rejected field and preserves the prior pr
 });
 
 test('profile format errors are shown before calling an unavailable audit service', async () => {
-  const f = await routeFixture(), input = profile(); input.forms[1].val = '';
+  const f = await profileFixture(), input = profile(f); input.forms[1].val = '';
   f.auditResponse = () => { throw { errCode: 48001 }; };
   const result = await f.call('passport/register', input);
-  assert.match(result.msg, /填写所在学院/); assert.equal(f.auditCalls.length, 0); assert.equal(f.userRow(), undefined);
+  assert.match(result.msg, /填写所在学院/); assert.equal(f.auditCalls.length, 0); assert.deepEqual(copy(f.userRow()), f.userBefore);
 });
 
-test('a profile audit outage leaves no account and reports the service problem', async () => {
-  const f = await routeFixture(); f.auditResponse = () => { throw { errCode: 48001 }; };
-  const result = await f.call('passport/register', profile());
+test('a profile audit outage preserves the incomplete WeChat account and reports the service problem', async () => {
+  const f = await profileFixture(); f.auditResponse = () => { throw { errCode: 48001 }; };
+  const result = await f.call('passport/register', profile(f));
   assert.equal(result.code, 1600); assert.match(result.msg, /审核服务.*(?:权限|配置)/);
-  assert.doesNotMatch(result.msg, /内容不合适/); assert.equal(f.userRow(), undefined);
+  assert.doesNotMatch(result.msg, /内容不合适/); assert.deepEqual(copy(f.userRow()), f.userBefore);
 });
 
 for (const [section, value] of [['service', { enabled: true, openHour: 9, closeHour: 20 }],

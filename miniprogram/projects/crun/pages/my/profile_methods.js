@@ -13,17 +13,19 @@ let campusCache = null;
 let campusRequest = null;
 let campusCacheVersion = 0;
 let manualRegistrationAllowed = false;
+let phoneLoginEnabled = false;
 const REQUEST_TIMEOUT = 12000;
 const PROFILE_CACHE_TTL = 30000;
 const DISK_CACHE_TTL = 6 * 60 * 60 * 1000;
 const CAMPUS_CACHE_KEY = 'crun-profile-campuses-v1';
 const PROFILE_CACHE_KEY = 'crun-profile-user-v1';
 const scopeKey = () => Ops.scopeKey ? Ops.scopeKey() : '';
+const sessionEpoch = () => cloudHelper.getSessionEpoch ? cloudHelper.getSessionEpoch() : PassportBiz.logoutEpoch ? PassportBiz.logoutEpoch() : 0;
 let cacheScope = '';
 function checkScope() {
   const next = scopeKey();
   if (next !== cacheScope) {
-    cacheScope = next; campusCacheVersion++; campusCache=null; campusRequest=null; manualRegistrationAllowed=false;
+    cacheScope = next; campusCacheVersion++; campusCache=null; campusRequest=null; manualRegistrationAllowed=false; phoneLoginEnabled=false;
     profileCacheVersion++; profileCache=null; profileRequest=null; profileCacheUserId=''; profileCachedAt=0;
     Address.configure({phases:[],pickupStations:[]});
   }
@@ -48,17 +50,11 @@ function initProfileCapabilities(page) {
   page.setData({ canGetWechatPhone: supportsNative('button.open-type.getPhoneNumber'),
     canChooseWechatAvatar: supportsNative('button.open-type.chooseAvatar'), canUseWechatNickname: supportsNative('input.type.nickname') });
 }
-function applyRegistrationPolicy(page, allowed) {
+function applyRegistrationPolicy(page, allowed, phoneEnabled = page.data.phoneLoginEnabled) {
   if (page._unloaded) return;
-  allowed = allowed === true;
-  const capabilityError = page.data.phoneCapabilityError;
-  const manualRegistration = allowed && !page.data.phoneVerified
-    && (page.data.manualRegistration === true || page.data.canGetWechatPhone === false || !!capabilityError);
-  const patch = { allowManualRegistration: allowed, manualRegistration };
-  if (capabilityError && !page.data.phoneVerified) {
-    patch.loginError = manualRegistration ? '微信手机号暂不可用，已切换为手动注册，请填写个人资料' : capabilityError;
-  }
-  page.setData(patch);
+  phoneEnabled = phoneEnabled === true;
+  allowed = !phoneEnabled || allowed === true;
+  page.setData({ phoneLoginEnabled: phoneEnabled, allowManualRegistration: allowed });
 }
 function isProfileReady(user) {
   return !!(user && user.USER_PROFILE_COMPLETE === true && (user.USER_MOBILE_VERIFIED === true || user.allowManualRegistration === true));
@@ -69,13 +65,14 @@ async function loadCampuses(page, force = false) {
   if (!campusCache) {
     const saved = readDiskCache(CAMPUS_CACHE_KEY, 'shared');
     if (saved && Array.isArray(saved.campuses) && saved.locations) {
-      campusCache = saved.campuses; manualRegistrationAllowed = saved.allowManualRegistration === true; Address.configure(saved.locations);
+      campusCache = saved.campuses; manualRegistrationAllowed = saved.allowManualRegistration === true;
+      phoneLoginEnabled = saved.phoneLoginEnabled === true; Address.configure(saved.locations);
     }
   }
   if (!force && campusCache) {
     if (!page._unloaded) {
       page.setData({ campuses: campusCache, addressPhaseOptions:Address.PHASES.slice() });
-      applyRegistrationPolicy(page, manualRegistrationAllowed);
+      applyRegistrationPolicy(page, manualRegistrationAllowed, phoneLoginEnabled);
     }
     return campusCache;
   }
@@ -89,18 +86,19 @@ async function loadCampuses(page, force = false) {
         Address.configure(config.locations || {phases:[],pickupStations:[]});
         campusCache = campuses;
         manualRegistrationAllowed = config.allowManualRegistration === true;
-        writeDiskCache(CAMPUS_CACHE_KEY, {campuses, allowManualRegistration:manualRegistrationAllowed, locations:config.locations || {phases:[],pickupStations:[]}}, 'shared');
+        phoneLoginEnabled = config.phoneLoginEnabled === true;
+        writeDiskCache(CAMPUS_CACHE_KEY, {campuses, allowManualRegistration:manualRegistrationAllowed, phoneLoginEnabled, locations:config.locations || {phases:[],pickupStations:[]}}, 'shared');
       }
-      return { campuses, allowManualRegistration: config.allowManualRegistration === true };
+      return { campuses, allowManualRegistration: config.allowManualRegistration === true, phoneLoginEnabled: config.phoneLoginEnabled === true };
     }).finally(() => { if (campusRequest === pending) campusRequest = null; });
     campusRequest = pending;
   }
   try {
-    const { campuses, allowManualRegistration } = await campusRequest;
+    const { campuses, allowManualRegistration, phoneLoginEnabled } = await campusRequest;
     if (requestScope !== scopeKey() || version !== campusCacheVersion) return [];
     if (!page._unloaded) {
       page.setData({ campuses, campusError:'', addressPhaseOptions:Address.PHASES.slice() });
-      applyRegistrationPolicy(page, allowManualRegistration);
+      applyRegistrationPolicy(page, allowManualRegistration, phoneLoginEnabled);
     }
     return campuses;
   } catch (error) {
@@ -113,28 +111,51 @@ async function loadCampuses(page, force = false) {
   }
 }
 function applyUser(page, user) {
-  if (typeof user.allowManualRegistration === 'boolean') applyRegistrationPolicy(page, user.allowManualRegistration);
+  if (typeof user.allowManualRegistration === 'boolean' || typeof user.phoneLoginEnabled === 'boolean') {
+    applyRegistrationPolicy(page, typeof user.allowManualRegistration === 'boolean' ? user.allowManualRegistration : page.data.allowManualRegistration,
+      typeof user.phoneLoginEnabled === 'boolean' ? user.phoneLoginEnabled : page.data.phoneLoginEnabled);
+  }
   if (page._profileDirty || page.data.campusPickerVisible || page.data.contactEditorVisible || page.data.addressEditorVisible || page.data.collectionSaving) return;
   const p = ProfileBiz.readProfile(user);
   const campuses = page.data.campuses && page.data.campuses.length ? page.data.campuses : DEFAULT_CAMPUSES;
   const forms = Array.isArray(user.USER_FORMS) ? user.USER_FORMS : [];
   page.setData(Object.assign({ phoneVerified: user.USER_MOBILE_VERIFIED === true, accountStatus: typeof user.USER_STATUS === 'number' ? user.USER_STATUS : -1, formName: user.USER_NAME || '', formMobile: user.USER_MOBILE || '', formPic: user.USER_PIC || '', formForms: forms, fields: projectSetting.USER_FIELDS, genderOptions: ['男', '女'], profileSex: String(ProfileBiz.formValue(forms, 'sex') || ''), profileCollege: String(ProfileBiz.formValue(forms, 'college') || ''), profileSub: String(ProfileBiz.formValue(forms, 'sub') || '') }, p, {
-    manualRegistration: page.data.allowManualRegistration === true && user.USER_MOBILE_VERIFIED !== true
-      && (page.data.manualRegistration === true || typeof user.USER_STATUS === 'number' || page.data.canGetWechatPhone === false),
     campuses, campusIndex: campuses.indexOf(p.campus), campusPickerVisible: false, campusDraft: '', contactEditorVisible: false, addressEditorVisible: false, editingContactIndex: -1, editingAddressIndex: -1, contactDraft: { name: '', phone: '' }, addressDraft: { label: '', detail: '' }
   }));
 }
-function bindProfileNameInput(e) { this._profileDirty = true; this.setData({ formName: e.detail.value }); }
+function profileBusy(page) {
+  return page._unloaded || page.data.saving || page.data.phoneAuthorizing || page.data.identityLoggingIn || page.data.collectionSaving || page.data.loggingOut || page.data.cancellingAccount;
+}
+function bindProfileNameInput(e) {
+  if (profileBusy(this)) return;
+  this._profileDirty = true; this.setData({ formName: e.detail.value });
+}
+function readSubmittedNickname(page, e) {
+  const values = e && e.detail && e.detail.value;
+  if (values && Object.prototype.hasOwnProperty.call(values, 'nickname')) {
+    // Native security checks can clear the input after bindinput/bindblur.
+    page._profileDirty = true;
+    page.setData({ formName: typeof values.nickname === 'string' ? values.nickname : '' });
+  }
+}
+function bindPicTap(e) {
+  if (profileBusy(this) || PassportBiz.isLoggedOut() && !this.data.wechatProfileVisible) return;
+  const pic = e && e.detail && e.detail.avatarUrl;
+  if (typeof pic !== 'string' || !pic.trim()) return;
+  this._profileDirty = true; this.setData({ formPic: pic });
+}
 function bindProfileMobileInput(e) {
-  if (this.data.phoneVerified || !this.data.allowManualRegistration) return;
+  if (this.data.phoneLoginEnabled === true && (this.data.phoneVerified || !this.data.allowManualRegistration)) return;
   this._profileDirty = true; this.setData({ formMobile: e.detail.value });
 }
 function bindChooseAvatar() {
-  if (this.data.saving || this.data.phoneAuthorizing || this.data.collectionSaving) return;
+  if (profileBusy(this) || PassportBiz.isLoggedOut() && !this.data.wechatProfileVisible) return;
+  const epoch = sessionEpoch();
   const success = result => {
     const file = result.tempFiles && result.tempFiles[0];
     const path = file && file.tempFilePath || result.tempFilePaths && result.tempFilePaths[0];
-    if (this._unloaded || !path) return;
+    if (profileBusy(this) || PassportBiz.isLoggedOut() && !this.data.wechatProfileVisible || !path
+      || epoch !== sessionEpoch()) return;
     this._profileDirty = true; this.setData({ formPic: path });
   };
   const fail = error => { if (!this._unloaded && !/cancel/i.test(error && error.errMsg || '')) pageHelper.showNoneToast('头像选择失败，请重试'); };
@@ -143,12 +164,12 @@ function bindChooseAvatar() {
   else pageHelper.showNoneToast('当前微信无法选择图片，请更新微信后重试');
 }
 function bindWechatPhoneTap() {
-  if (this.data.phoneAuthorizing || this.data.saving || this.data.collectionSaving) return;
+  if (this.data.phoneLoginEnabled !== true || this.data.phoneAuthorizing || this.data.saving || this.data.collectionSaving || this.data.loggingOut) return;
   // The native button still needs to open its sheet; do not disable it on tap.
   PassportBiz.traceWechatPhoneTap();
 }
 async function bindWechatPhone(e) {
-  if (this.data.phoneAuthorizing || this.data.saving || this.data.collectionSaving) return;
+  if (this.data.phoneLoginEnabled !== true || this.data.phoneAuthorizing || this.data.saving || this.data.collectionSaving || this.data.loggingOut) return;
   this.setData({ phoneAuthorizing: true, saveError: '' });
   try {
     const result = await PassportBiz.loginByWechatPhone(e);
@@ -156,7 +177,7 @@ async function bindWechatPhone(e) {
     if (this._unloaded) return;
     if (!result.user || result.user.USER_MOBILE_VERIFIED !== true) throw new Error('手机号授权未完成，请重试');
     // Keep unsaved edits to all other fields when rebinding the phone.
-    this.setData({ formMobile: result.user.USER_MOBILE, phoneVerified: true, manualRegistration: false });
+    this.setData({ formMobile: result.user.USER_MOBILE, phoneVerified: true });
     this._profileDirty = true;
   } catch (error) {
     if (!this._unloaded) {
@@ -199,12 +220,15 @@ function bindProfileFieldInput(e) {
 }
 function getCachedProfileUser() { checkScope(); const userId = PassportBiz.getUserId(); return userId ? readDiskCache(PROFILE_CACHE_KEY, userId) : null; }
 function getProfileUser(options, force = false) {
+  if (PassportBiz.isLoggedOut()) return Promise.resolve(null);
   checkScope();
   const userId = PassportBiz.getUserId();
+  if (!userId) return Promise.resolve(null);
   if (!force && profileCache && profileCacheUserId === userId && Date.now() - profileCachedAt < PROFILE_CACHE_TTL) return Promise.resolve(profileCache);
   if (!force && profileRequest && profileRequest.userId === userId) return profileRequest.promise;
-  const pending = { userId, version: profileCacheVersion, scope: scopeKey() };
+  const pending = { userId, version: profileCacheVersion, scope: scopeKey(), sessionEpoch: sessionEpoch() };
   pending.promise = withTimeout(cloudHelper.callCloudSumbit('passport/my_detail', {}, options || { title: 'bar' })).then(response => {
+    if (PassportBiz.isLoggedOut() || pending.version !== profileCacheVersion || pending.sessionEpoch !== sessionEpoch()) return null;
     const data = response && response.data;
     const user = data && typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length ? data : null;
     if (pending.scope !== scopeKey()) throw new Error('校区已切换，请重新加载个人资料');
@@ -222,13 +246,14 @@ function invalidateProfileCache() {
   try { const userId = PassportBiz.getUserId(); if (userId) wx.removeStorageSync(PROFILE_CACHE_KEY + ':' + userId + ':' + scopeKey()); } catch (_) {}
 }
 function clearLocalCaches() {
-  campusCacheVersion++; campusCache = null; campusRequest = null; manualRegistrationAllowed = false;
+  campusCacheVersion++; campusCache = null; campusRequest = null; manualRegistrationAllowed = false; phoneLoginEnabled = false;
   invalidateProfileCache();
   for (const key of wx.getStorageInfoSync().keys) {
     if (key.startsWith(CAMPUS_CACHE_KEY + ':') || key.startsWith(PROFILE_CACHE_KEY + ':')) wx.removeStorageSync(key);
   }
   if (Ops.clearUploadCache) Ops.clearUploadCache();
 }
+if (cloudHelper.onSessionChange) cloudHelper.onSessionChange(invalidateProfileCache);
 function bindContactInput(e) { if (!this.data.collectionSaving) this.setData({ ['contactDraft.' + e.currentTarget.dataset.field]: e.detail.value }); }
 function bindAddressInput(e) { if (!this.data.collectionSaving) this.setData({ ['addressDraft.' + e.currentTarget.dataset.field]: e.detail.value }); }
 function itemIndex(e, list) {
@@ -247,7 +272,10 @@ function collectionForms(page, contacts, addresses) {
   return forms;
 }
 async function saveCollections(page, patch, closeEditor = {}) {
-  if (page.data.collectionSaving) return false;
+  if (profileBusy(page) || !PassportBiz.getUserId()) return false;
+  const userId = PassportBiz.getUserId(), requestScope = scopeKey(), epoch = sessionEpoch();
+  const isCurrent = () => !page._unloaded && !PassportBiz.isLoggedOut() && PassportBiz.getUserId() === userId && scopeKey() === requestScope
+    && epoch === sessionEpoch();
   const contacts = ProfileBiz.normalizeContacts(patch.contacts || page.data.contacts);
   const addresses = ProfileBiz.normalizeAddresses(patch.addresses || page.data.addresses);
   const forms = collectionForms(page, contacts, addresses);
@@ -256,13 +284,14 @@ async function saveCollections(page, patch, closeEditor = {}) {
     await withTimeout(cloudHelper.callCloudSumbit('passport/edit_base', {
       name: page.data.formName || '', mobile: page.data.formMobile || '', pic: page.data.formPic || '', forms
     }, { title: '保存中' }));
+    if (!isCurrent()) return false;
     invalidateProfileCache();
     page._profileDirty = true;
     if (!page._unloaded) page.setData({ contacts, addresses, formForms: forms, ...closeEditor });
     return true;
   } catch (error) {
     const message = error && (error.msg || error.message) || '保存失败，请重试';
-    if (!page._unloaded) { page.setData({ saveError: message }); pageHelper.showNoneToast(message); }
+    if (isCurrent()) { page.setData({ saveError: message }); pageHelper.showNoneToast(message); }
     return false;
   } finally { if (!page._unloaded) page.setData({ collectionSaving: false }); }
 }
@@ -344,7 +373,7 @@ function bindSaveAddress() {
 function finishProfile(page) {
   const myPage = '/projects/crun/pages/my/index/my_index';
   if (page.data.accountStatus !== undefined && page.data.accountStatus !== 1) return wx.switchTab({ url: myPage });
-  const returnUrl = !page.data.isEdit && page.data.retUrl;
+  const returnUrl = page.data.retUrl;
   if (returnUrl === 'back' && getCurrentPages().length > 1) return wx.navigateBack();
   if (returnUrl && returnUrl !== 'back') {
     const tabs = [myPage, '/projects/crun/pages/default/index/default_index', '/projects/crun/pages/order/index/order_index'];
@@ -353,11 +382,53 @@ function finishProfile(page) {
   }
   wx.switchTab({ url: myPage });
 }
-async function bindSubmitTap() {
-  if (this.data.saving || this.data.phoneAuthorizing) return;
+async function bindSaveWechatProfile(e, options = {}) {
+  if (profileBusy(this)) return;
+  readSubmittedNickname(this, e);
+  const userId = PassportBiz.getUserId(), requestScope = scopeKey(), epoch = sessionEpoch();
+  const isCurrent = () => !this._unloaded && !PassportBiz.isLoggedOut() && !!userId && PassportBiz.getUserId() === userId && scopeKey() === requestScope
+    && epoch === sessionEpoch();
   this.setData({ saving: true, saveError: '' });
   try {
-    if (this.data.phoneVerified !== true && this.data.allowManualRegistration !== true) throw new Error('请先授权微信手机号');
+    if (!userId) throw new Error('请先点击微信登录');
+    const name = String(this.data.formName || '').trim();
+    if (!name || name.length > 30) throw new Error('请选择或填写昵称（最多30字）');
+    if (!this.data.formPic) throw new Error('请点击选择头像');
+    const pic = await withTimeout(cloudHelper.transTempPicOne(this.data.formPic, 'user/', '', false));
+    if (!isCurrent()) return;
+    if (typeof pic !== 'string' || !/^(?:cloud|https):\/\//.test(pic)) throw new Error('头像上传未完成，请重新选择');
+    // Keep the uploaded file for retries if the subsequent save fails.
+    this.setData({ formName: name, formPic: pic });
+    const result = await withTimeout(cloudHelper.callCloudSumbit('passport/wechat_profile', { name, pic }, { title: '保存中', hint: false }));
+    if (!isCurrent()) return;
+    const token = result && result.data && result.data.token;
+    if (!token || token.id !== userId || ![0, 1, 8].includes(token.status) || !token.name || !token.pic
+      || typeof token.profileComplete !== 'boolean' || typeof token.phoneVerified !== 'boolean') throw new Error('资料状态暂未同步，请重试');
+    PassportBiz.setToken(token);
+    invalidateProfileCache();
+    this._profileDirty = false;
+    this.setData({ formName: token.name, formPic: token.pic, accountStatus: token.status });
+    if (options.stayOnPage) return token;
+    pageHelper.showSuccToast('头像和昵称已保存', 1200, () => {
+      if (isCurrent()) wx.switchTab({ url: '/projects/crun/pages/my/index/my_index' });
+    });
+    return token;
+  } catch (error) {
+    if (!this._unloaded && (!userId || isCurrent())) {
+      const message = error && (error.msg || error.message) || '保存失败，请稍后重试';
+      this.setData({ saveError: message }); pageHelper.showNoneToast(message);
+    }
+  } finally { if (!this._unloaded) this.setData({ saving: false }); }
+}
+async function bindSubmitTap(e) {
+  if (profileBusy(this)) return;
+  readSubmittedNickname(this, e);
+  const userId = PassportBiz.getUserId(), requestScope = scopeKey(), epoch = sessionEpoch();
+  const isCurrent = () => !this._unloaded && !PassportBiz.isLoggedOut() && PassportBiz.getUserId() === userId && requestScope === scopeKey() && epoch === sessionEpoch();
+  this.setData({ saving: true, saveError: '' });
+  try {
+    if (!PassportBiz.getUserId()) throw new Error('请先点击微信登录');
+    if (this.data.phoneLoginEnabled === true && this.data.phoneVerified !== true && this.data.allowManualRegistration !== true) throw new Error('请先授权微信手机号');
     if (!/^1[3-9][0-9]{9}$/.test(this.data.formMobile || '')) throw new Error('请填写正确的手机号');
     if (!(this.data.campuses || []).includes(this.data.campus)) throw new Error('请选择所在校区');
     if (!['男', '女'].includes(this.data.profileSex)) throw new Error('请选择性别');
@@ -376,10 +447,13 @@ async function bindSubmitTap() {
     const data = validate.check({ ...this.data, formForms: forms }, projectSetting.USER_CHECK_FORM, this);
     if (!data) return;
     const pic = await cloudHelper.transTempPicOne(this.data.formPic, 'user/', '', false);
+    if (!isCurrent()) return;
     for (const item of forms) if (item.type === 'image' && Array.isArray(item.val)) item.val = await cloudHelper.transTempPics(item.val, 'user/');
+    if (!isCurrent()) return;
     const result = await withTimeout(cloudHelper.callCloudSumbit(this.data.isEdit ? 'passport/edit_base' : 'passport/register', {
       name: this.data.formName, mobile: this.data.formMobile, pic, forms
     }, { title: '保存中' }));
+    if (!isCurrent()) return;
     let message = this.data.isEdit ? '保存成功' : '资料已完善';
     const token = result && result.data && result.data.token;
     if (!this.data.isEdit) {
@@ -398,11 +472,12 @@ async function bindSubmitTap() {
     }
     invalidateProfileCache();
     this._profileDirty = false;
-    pageHelper.showSuccToast(message, 1200, () => finishProfile(this));
+    pageHelper.showSuccToast(message, 1200, () => { if (isCurrent()) finishProfile(this); });
   } catch (error) {
+    if (userId && !isCurrent()) return;
     const message = error && (error.msg || error.message) || '保存失败，请稍后重试';
     this.setData({ saveError: message });
     pageHelper.showNoneToast(message);
-  } finally { this.setData({ saving: false }); }
+  } finally { if (!this._unloaded) this.setData({ saving: false }); }
 }
-module.exports = { initProfileCapabilities, applyRegistrationPolicy, isProfileReady, loadCampuses, getCachedProfileUser, getProfileUser, invalidateProfileCache, clearLocalCaches, applyUser, finishProfile, bindProfileNameInput, bindProfileMobileInput, bindChooseAvatar, bindWechatPhoneTap, bindWechatPhone, bindCampusChange, bindOpenCampusPicker, bindSelectCampus, bindConfirmCampus, bindCloseCampusPicker, bindProfileSheetTouchMove, bindGenderTap, bindProfileFieldInput, bindContactInput, bindAddressInput, bindAddressPhase, bindAddContact, bindEditContact, bindSetDefaultContact, bindDeleteContact, bindCancelContact, bindSaveContact, bindAddAddress, bindEditAddress, bindSetDefaultAddress, bindDeleteAddress, bindCancelAddress, bindSaveAddress, bindSubmitTap };
+module.exports = { initProfileCapabilities, applyRegistrationPolicy, isProfileReady, loadCampuses, getCachedProfileUser, getProfileUser, invalidateProfileCache, clearLocalCaches, applyUser, finishProfile, bindProfileNameInput, bindProfileMobileInput, bindPicTap, bindChooseAvatar, bindWechatPhoneTap, bindWechatPhone, bindCampusChange, bindOpenCampusPicker, bindSelectCampus, bindConfirmCampus, bindCloseCampusPicker, bindProfileSheetTouchMove, bindGenderTap, bindProfileFieldInput, bindContactInput, bindAddressInput, bindAddressPhase, bindAddContact, bindEditContact, bindSetDefaultContact, bindDeleteContact, bindCancelContact, bindSaveContact, bindAddAddress, bindEditAddress, bindSetDefaultAddress, bindDeleteAddress, bindCancelAddress, bindSaveAddress, bindSaveWechatProfile, bindSubmitTap };

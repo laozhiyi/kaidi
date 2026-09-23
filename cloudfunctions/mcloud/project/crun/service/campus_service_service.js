@@ -141,7 +141,7 @@ class CampusServiceService extends BaseProjectService {
 		}, requestId, userId);
 	}
 
-	async _saveMessage(message, requestId, actorId) {
+	async _saveMessage(message, requestId, actorId, replyToId) {
 		if (typeof requestId !== 'string' || !/^[\w-]{16,100}$/.test(requestId)) this.AppError('消息请求标识无效，请重试');
 		const store = require('./operation_store.js');
 		const id = store.key(this.getProjectId(), 'chat', message.CSM_SENDER, actorId, requestId);
@@ -150,6 +150,9 @@ class CampusServiceService extends BaseProjectService {
 			if (message.CSM_SENDER === 'admin') {
 				const admin = await store.get(tx, 'admin', actorId);
 				if (!require('../../../framework/tenancy/tenant_context.js').isAdminEnabled(admin) || admin._pid !== this.getProjectId()) this.AppError('管理员权限已失效');
+				const source = replyToId && await store.get(tx, 'campus_service_message', replyToId);
+				if (!source || source.CSM_USER_ID !== message.CSM_USER_ID || source.CSM_SESSION_ID !== message.CSM_SESSION_ID
+					|| !await require('./account_service.js').guardRelated(tx, message.CSM_USER_ID)) this.AppError('会话已失效，账号可能正在注销');
 			}
 			const old = await store.get(tx, 'campus_service_message', id);
 			if (old) {
@@ -339,7 +342,7 @@ class CampusServiceService extends BaseProjectService {
 			CSM_READ: 0,
 			CSM_ADD_TIME: this._timestamp,
 			CSM_EDIT_TIME: this._timestamp
-		}, requestId, adminId);
+		}, requestId, adminId, last._id);
 	}
 
 

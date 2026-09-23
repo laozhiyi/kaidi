@@ -27,6 +27,14 @@ const CODE = {
 
 const readRequests = new Map();
 let readEpoch = 0;
+let sessionEpoch = 0;
+const sessionListeners = new Set();
+const loggedOutKey = constants.CACHE_LOGGED_OUT || 'CACHE_LOGGED_OUT';
+function invalidateSessionRequests(reason) {
+ sessionEpoch++; invalidateReadRequests();
+ for (const listener of sessionListeners) { try { listener(reason); } catch (_) {} }
+}
+const staleSession = () => Object.assign(new Error('登录状态已更新，已忽略旧请求'), { code: 2301, staleSession: true });
 let loadingCount = 0, barLoadingCount = 0;
 function isReadRoute(route) {
 	return /(?:\/|_)(list|detail|view|summary|stats|stat|records|context|featured|get|is_fav|my_code|chat)$/.test(route)
@@ -87,19 +95,25 @@ async function callCloudData(route, params = {}, options) {
 async function callCloud(route, params = {}, options = {}) {
 	options = options || {};
 	if (typeof route !== 'string' || !route) return Promise.reject(new Error('请求地址无效'));
+ const userRequest = !route.startsWith('admin/') && !route.startsWith('work/') && route !== 'tenant/catalog';
+ const globalAccount = route === 'passport/logout' || route === 'passport/cancel';
+ const epoch = sessionEpoch;
+ const current = () => !userRequest || options.ignoreSessionChange === true || epoch === sessionEpoch;
  params = JSON.parse(JSON.stringify(params));
- const scope = route === 'tenant/catalog' ? null : options.scope || Tenant.snapshot() || await ensureScope({ allowDisabled: route.startsWith('admin/') });
+ const scope = route === 'tenant/catalog' || globalAccount ? null : options.scope || Tenant.snapshot() || await ensureScope({ allowDisabled: route.startsWith('admin/') });
  let token = '';
  const cache = cacheHelper.get(route.startsWith('admin/') ? constants.CACHE_ADMIN : route.startsWith('work/') ? constants.CACHE_WORK : constants.CACHE_TOKEN);
- if (cache) token = route.startsWith('admin/') || route.startsWith('work/') ? cache.token || '' : cache.id || '';
+ if (!current()) throw staleSession();
+ if (cache) token = route.startsWith('admin/') || route.startsWith('work/') ? cache.token || '' : wx.getStorageSync(loggedOutKey) === true ? '' : cache.sessionToken || '';
+ if (options.authToken !== undefined && route === 'passport/logout') token = options.authToken;
  if (scope && Tenant.key(scope) !== Tenant.key()) throw Object.assign(new Error('校区已切换，请重新操作'), { code: 1600, staleScope: true });
  const scopeGeneration = Tenant.generation();
 	const data = { route, token, PID: pageHelper.getPID(), params, ...(scope ? { scope: { schoolId: scope.schoolId, campusId: scope.campusId } } : {}) };
 	const key = isReadRoute(route) && options.dedupe !== false ? readEpoch + ':' + stableKey(data) : '';
 	let request = key && readRequests.get(key);
 	if (!request) {
-  const unlock = isReadRoute(route) || route === 'tenant/catalog' ? () => {} : Tenant.lock();
-		request = callCloudOnce(data, options).finally(unlock);
+  const unlock = isReadRoute(route) || route === 'tenant/catalog' || globalAccount ? () => {} : Tenant.lock();
+		request = callCloudOnce(data, { ...options, isSessionCurrent: current }).finally(unlock);
 		if (key) {
 			readRequests.set(key, request);
 			const clear = () => { if (readRequests.get(key) === request) readRequests.delete(key); };
@@ -109,6 +123,7 @@ async function callCloud(route, params = {}, options = {}) {
 	// Callers decorate their DTOs. Sharing a mutable result would corrupt a
 	// concurrent page's data even when sharing the network request is safe.
 	return request.then(result => {
+  if (!current()) throw staleSession();
   if (scope && (scopeGeneration !== Tenant.generation() || Tenant.key(scope) !== Tenant.key())) throw Object.assign(new Error('校区已切换，已忽略旧响应'), { code: 1600, staleScope: true });
   return JSON.parse(JSON.stringify(result));
  });
@@ -150,9 +165,16 @@ function callCloudOnce(data, options) {
 			data,
 			success: function (res) {
 				if (settled) return;
+    if (options.isSessionCurrent && !options.isSessionCurrent()) { finish(staleSession()); return; }
 				if (!res || !res.result || typeof res.result.code !== 'number') {
 					finish({ msg: '服务响应不完整，请重试', retryable: true }); return;
 				}
+    if (res.result.code === 2301) {
+     wx.setStorageSync(loggedOutKey, true);
+     cacheHelper.remove(constants.CACHE_TOKEN);
+     invalidateSessionRequests('expired');
+     finish(res.result); return;
+    }
 				if (res.result.code == CODE.LOGIC || res.result.code == CODE.DATA) {
 					console.log(res)
 					// 逻辑错误&数据校验错误 
@@ -200,6 +222,7 @@ function callCloudOnce(data, options) {
 			},
 			fail: function (err) {
 				if (settled) return;
+    if (options.isSessionCurrent && !options.isSessionCurrent()) { finish(staleSession()); return; }
 				if (hint) {
 					console.log(err)
 					if (err && err.errMsg && err.errMsg.includes('-501000') && err.errMsg.includes('Environment not found')) {
@@ -314,7 +337,10 @@ async function transTempPics(imgList, dir, id, prefix = '') {
 			let rd = prefix + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
 			let cloudPath = id ? dir + id + '/' + rd + ext : dir + rd + ext;
 
-			if (pageHelper.getPID())
+			const account = dir === 'user/' ? cacheHelper.get(constants.CACHE_TOKEN) : null;
+			if (account && account.id && /^[a-f0-9]{32}$/.test(account.mediaGeneration || ''))
+				cloudPath = 'private/' + account.id.split('^^^').pop() + '/' + account.mediaGeneration + '/profile/' + rd + ext;
+			else if (pageHelper.getPID())
 				cloudPath = pageHelper.getPID() + '/' + cloudPath;
 
 
@@ -473,6 +499,9 @@ async function transTempPicOne(img, dir, id, isCheck = true) {
 }
 
 module.exports = {
+ invalidateSessionRequests,
+ getSessionEpoch() { return sessionEpoch; },
+ onSessionChange(listener) { sessionListeners.add(listener); return () => sessionListeners.delete(listener); },
  ensureScope,
  scopeSnapshot: Tenant.snapshot,
  scopeKey: Tenant.key,

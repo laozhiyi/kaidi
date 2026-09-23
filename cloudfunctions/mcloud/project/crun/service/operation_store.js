@@ -17,7 +17,10 @@ async function transaction(fn) {
  // The installed wx-server-sdk forwards the second argument as retry count.
  // Disable its immediate retries so competing clients do not retry in lockstep.
  for (let attempt = 0; ; attempt++) {
-  try { return await database().runTransaction(fn, 0); }
+  try { return await database().runTransaction(async tx => {
+   await require('./account_service.js').guardTransaction(tx);
+   return fn(tx);
+  }, 0); }
   catch (error) {
    const conflict = error && (error.code === 'DATABASE_TRANSACTION_CONFLICT' || /DATABASE_TRANSACTION_CONFLICT/.test(error.errMsg || ''));
    if (!conflict) throw error; // An unknown commit/network outcome is not safe to replay here.

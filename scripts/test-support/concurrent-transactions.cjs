@@ -9,7 +9,7 @@ function concurrentTransactions(fixture, options = {}) {
   fixture.store.get = async (tx, name, id) => tx && tx.readDocument ? tx.readDocument(name, id) : plainGet(tx, name, id);
   fixture.store.set = async (tx, name, id, row) => tx && tx.writeDocument ? tx.writeDocument(name, id, row) : plainSet(tx, name, id, row);
   async function attemptTransaction(callback) {
-      const reads = new Map(), writes = new Map();
+      const reads = new Map(), writes = new Map(), queryReads = [];
       const key = (name, id) => name + ':' + id;
       const tx = {
         readDocument(name, id) {
@@ -26,7 +26,20 @@ function concurrentTransactions(fixture, options = {}) {
         },
         collection(name) {
           name = name.replace(/^bx_/, '');
-          return { doc: id => ({ get: async () => ({ data: tx.readDocument(name, id) }), set: async ({ data }) => tx.writeDocument(name, id, data) }) };
+          const matches = require('./tenant-memory.cjs').matches;
+          function query(filter = {}, limit = 100) {
+            return {
+              where: next => query({ $and: [filter, next] }, limit),
+              limit: size => query(filter, size),
+              async get() {
+                const rows = [...fixture.table(name).values()].filter(row => matches(row, filter)).slice(0, limit);
+                queryReads.push({ name, filter, limit, fingerprint: JSON.stringify(rows) });
+                return { data: rows.map(row => tx.readDocument(name, row._id)) };
+              },
+              doc: id => ({ get: async () => ({ data: tx.readDocument(name, id) }), set: async ({ data }) => tx.writeDocument(name, id, data) })
+            };
+          }
+          return query();
         }
       };
       metrics.active++;
@@ -37,7 +50,9 @@ function concurrentTransactions(fixture, options = {}) {
         // Optional synthetic commit latency keeps transactions overlapped. It
         // exercises conflict handling; it is not a Tencent Cloud latency model.
         if (options.commitDelayMs) await new Promise(resolve => setTimeout(resolve, options.commitDelayMs));
-        const conflict = [...reads.values()].some(read => JSON.stringify(fixture.table(read.name).get(read.id) || null) !== read.fingerprint);
+        const matches = require('./tenant-memory.cjs').matches;
+        const conflict = [...reads.values()].some(read => JSON.stringify(fixture.table(read.name).get(read.id) || null) !== read.fingerprint)
+          || queryReads.some(read => JSON.stringify([...fixture.table(read.name).values()].filter(row => matches(row, read.filter)).slice(0, read.limit)) !== read.fingerprint);
         if (conflict) {
           metrics.conflicts++;
           throw Object.assign(new Error('simulated transaction conflict'), { code: 'DATABASE_TRANSACTION_CONFLICT' });

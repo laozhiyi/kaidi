@@ -18,7 +18,7 @@ class InviteService extends Base {
     const pid = this.getProjectId();
     const id = store.scopeKey(pid, 'invite-code', userId);
     const current = await store.get(store.database(), 'invite', id);
-    if (current) return { code: current.INV_CODE };
+    if (current && current.INV_USER_ID === userId && current.INV_CODE) return { code: current.INV_CODE };
     const legacy = await store.database().collection(store.collection('invite')).where({ _pid: pid, INV_USER_ID: userId }).orderBy('INV_ADD_TIME', 'asc').limit(1).get();
     let code = legacy.data[0] && legacy.data[0].INV_CODE || newCode();
     for (let attempt = 0; attempt < 8; attempt++) {
@@ -26,14 +26,16 @@ class InviteService extends Base {
       if (owners.data[0] && owners.data[0].INV_USER_ID !== userId) { code = newCode(); continue; }
       const result = await store.transaction(async tx => {
         const existing = await store.get(tx, 'invite', id);
-        if (existing) return { code: existing.INV_CODE };
+        if (existing && existing.INV_USER_ID === userId && existing.INV_CODE) return { code: existing.INV_CODE };
+        const currentUser = await store.get(tx, 'user', user._id);
+        if (!currentUser || currentUser.USER_MINI_OPENID !== userId || currentUser.USER_STATUS !== 1) this.AppError('账号不可用');
         const uniqueId = store.schoolKey(pid, 'invite-code', code);
         const owner = await store.get(tx, 'identity_unique', uniqueId);
         if (owner && owner.userId !== userId) return null;
         const now = Date.now();
         await store.set(tx, 'identity_unique', uniqueId, { _pid: pid, userId, code, updatedAt: now });
         await store.set(tx, 'invite', id, {
-          _pid: pid, INV_ID: id, INV_KIND: 'code', INV_USER_ID: userId, INV_USER_NAME: user.USER_NAME || '',
+          _pid: pid, INV_ID: id, INV_KIND: 'code', INV_USER_ID: userId, INV_USER_NAME: currentUser.USER_NAME || '',
           INV_ACCEPT_USER_ID: '', INV_ACCEPT_USER_NAME: '', INV_CODE: code, INV_STATUS: 0,
           INV_REWARD_STATUS: 0, INV_REWARD_DESC: '', INV_ADD_TIME: now, INV_EDIT_TIME: now, INV_ACCEPT_TIME: 0
         });
@@ -60,13 +62,18 @@ class InviteService extends Base {
     const id = store.scopeKey(pid, 'invite-accept', userId);
     return store.transaction(async tx => {
       const old = await store.get(tx, 'invite', id);
-      if (old) return { accepted: true, alreadyAccepted: true, inviter: old.INV_USER_ID };
+      if (old && old.INV_ACCEPT_USER_ID === userId) return { accepted: true, alreadyAccepted: true, inviter: old.INV_USER_ID };
       const current = await store.get(tx, 'user', user._id);
-      if (!current || current._pid !== pid || current.USER_STATUS === 9) this.AppError('账号不可用');
+      if (!current || current._pid !== pid || current.USER_MINI_OPENID !== userId || current.USER_STATUS === 9) this.AppError('账号不可用');
+      const source = await store.get(tx, 'invite', invite._id);
+      const currentInviter = await store.get(tx, 'user', inviter._id);
+      if (!source || source.INV_USER_ID !== invite.INV_USER_ID || source.INV_CODE !== code || !currentInviter
+        || currentInviter.USER_MINI_OPENID !== invite.INV_USER_ID || currentInviter.USER_STATUS === 9
+        || !await require('./account_service.js').guardRelated(tx, invite.INV_USER_ID)) return { accepted: false, reason: '邀请码已失效' };
       const now = Date.now();
       await store.set(tx, 'invite', id, {
-        _pid: pid, INV_ID: id, INV_KIND: 'accept', INV_USER_ID: invite.INV_USER_ID, INV_USER_NAME: inviter.USER_NAME || '',
-        INV_ACCEPT_USER_ID: userId, INV_ACCEPT_USER_NAME: user.USER_NAME || '', INV_CODE: code, INV_STATUS: 1,
+        _pid: pid, INV_ID: id, INV_KIND: 'accept', INV_USER_ID: invite.INV_USER_ID, INV_USER_NAME: currentInviter.USER_NAME || '',
+        INV_ACCEPT_USER_ID: userId, INV_ACCEPT_USER_NAME: current.USER_NAME || '', INV_CODE: code, INV_STATUS: 1,
         INV_REWARD_STATUS: 0, INV_REWARD_DESC: '', INV_ADD_TIME: now, INV_EDIT_TIME: now, INV_ACCEPT_TIME: now
       });
       return { accepted: true, inviter: invite.INV_USER_ID };

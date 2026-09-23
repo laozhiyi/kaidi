@@ -202,28 +202,49 @@ function smokeRender(code) {
     const content = JSON.stringify(tree), controls = buttons(tree), elements = nodes(tree);
     assert.ok(content.includes(fixture.expected), fixture.title + ' 缺少：' + fixture.expected);
     for (const value of fixture.absent || []) assert.ok(!content.includes(value), fixture.title + ' 不应展示：' + value);
+    if (data.phoneLoginEnabled === false) assert.ok(!controls.some(button => button.attr.openType === 'getPhoneNumber'), fixture.title + ' 不应挂载手机号授权控件');
+    if (fixture.identityLogin) {
+      const login = controls.filter(button => button.attr.bindtap === 'bindOpenWechatProfile');
+      assert.equal(login.length, 1, fixture.title + ' 必须明确点击微信登录');
+      assert.equal(nodeText(login[0]), '点击微信登录');
+      assert.ok(!login[0].attr.openType, '基础登录不能调用原生手机号能力');
+      assert.equal(!!login[0].attr.disabled, !!data.identityLoggingIn);
+      assert.ok(!elements.some(node => node.tag === 'wx-input'), '点击登录前不读取或展示个人资料');
+    }
     if (fixture.login) {
       const phone = controls.find(button => button.attr.bindgetphonenumber === 'bindWechatLogin');
       assert.equal(phone && phone.attr.openType, 'getPhoneNumber', fixture.title + ' 必须使用微信手机号授权');
       assert.equal(!!phone.attr.disabled, !!data.phoneAuthorizing);
       assert.ok(!elements.some(node => node.tag === 'wx-input'), '授权前不展示手填注册表');
-      assert.equal(controls.some(button => button.attr.bindtap === 'bindManualRegistration'), !!fixture.manualEntry, '手填入口由服务端内测开关控制');
+      assert.equal(controls.some(button => button.attr.bindtap === 'bindManualRegistration'), false, '手动注册选项已移除，服务端开关不能重新显示');
     }
-    if (fixture.profile) {
+    if (fixture.profile || fixture.wechatOnly) {
       const inputs = elements.filter(node => node.tag === 'wx-input');
-      const manual = data.manualRegistration === true;
-      assert.ok(inputs.some(node => node.attr.bindinput === 'bindProfileNameInput' && node.attr.type === (manual || !data.canUseWechatNickname ? 'text' : 'nickname')), '昵称填写方式必须适配手动注册和微信能力');
+      assert.ok(inputs.some(node => node.attr.name === 'nickname' && node.attr.bindinput === 'bindProfileNameInput' && node.attr.type === (!data.canUseWechatNickname ? 'text' : 'nickname')), '昵称必须适配微信能力并由原生表单收集最终值');
       const phoneInput = inputs.find(node => node.attr.bindinput === 'bindProfileMobileInput');
-      assert.equal(!!phoneInput, data.allowManualRegistration === true && !data.phoneVerified, '只有允许手填的未验证号码可编辑');
+      assert.equal(!!phoneInput, !fixture.wechatOnly && (data.phoneLoginEnabled === false || data.allowManualRegistration === true && !data.phoneVerified), '头像昵称单独保存；完整资料允许手填联系电话');
       if (phoneInput) assert.equal(phoneInput.attr.type, 'number');
       const avatar = controls.find(button => button.attr.openType === 'chooseAvatar' || button.attr.bindtap === 'bindChooseAvatar');
       assert.ok(avatar, '必须能够选择头像');
-      assert.equal(avatar.attr.openType === 'chooseAvatar', !manual && data.canChooseWechatAvatar !== false, '微信头像不可用或手动模式时应支持普通图片选择');
+      assert.equal(avatar.attr.openType === 'chooseAvatar', data.canChooseWechatAvatar !== false, '微信头像不可用时应支持普通图片选择');
       const phone = controls.find(button => button.attr.bindgetphonenumber === 'bindWechatPhone');
-      if (data.canGetWechatPhone !== false && !phoneInput) assert.equal(phone && phone.attr.openType, 'getPhoneNumber');
-      const save = controls.find(button => button.attr.bindtap === 'bindSubmitTap');
+      if (!fixture.wechatOnly && data.canGetWechatPhone !== false && !phoneInput) assert.equal(phone && phone.attr.openType, 'getPhoneNumber');
+      assert.equal(!!avatar.attr.disabled, !!(data.saving || data.phoneAuthorizing || data.loggingOut || data.collectionSaving || data.identityLoggingIn || data.cancellingAccount));
+      const form = elements.find(node => node.tag === 'wx-form');
+      assert.ok(form && ['bindProfileFormSubmit', 'bindSubmitTap', 'bindPersonalSubmit', 'bindConfirmWechatProfile'].includes(form.attr.bindsubmit), '原生表单必须连接真实保存方法');
+      if (fixture.wechatOnly) assert.equal(form.attr.bindsubmit, 'bindConfirmWechatProfile', '头像昵称在同一登录弹层确认');
+      const save = controls.find(button => button.attr.formType === 'submit');
       assert.ok(save, '必须存在资料保存入口');
-      assert.equal(!!save.attr.disabled, !!(data.saving || data.phoneAuthorizing));
+      assert.equal(!!save.attr.disabled, !!(data.saving || data.phoneAuthorizing || data.loggingOut || data.identityLoggingIn || data.cancellingAccount));
+    }
+    if (fixture.page === 'my/personal/my_personal') {
+      const logout = controls.filter(button => button.attr.bindtap === 'bindLogoutTap');
+      assert.equal(logout.length, 1, fixture.title + ' 必须有一个退出登录入口');
+      assert.equal(nodeText(logout[0]), '退出登录');
+      assert.equal(!!logout[0].attr.disabled, !!(data.saving || data.phoneAuthorizing || data.loggingOut || data.cancellingAccount));
+      assert.equal(controls.filter(button => button.attr.bindtap === 'bindCancelAccountTap').length, 1, '所有已登录账号均可申请注销');
+      assert.ok(!controls.some(button => button.attr.bindtap === 'bindContactProfileToggle'), '联系资料始终展开');
+      if (data.isLoad) assert.ok(content.includes('联系资料') && content.includes('所在校区'), '个人资料必须展示完整联系表单');
     }
     if (fixture.route) {
       const card = elements.find(node => node.attr && node.attr.class === 'my-profile');

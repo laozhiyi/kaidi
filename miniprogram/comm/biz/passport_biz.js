@@ -10,6 +10,16 @@ const cloudHelper = require('../../helper/cloud_helper.js');
 const pageHelper = require('../../helper/page_helper.js');
 const constants = require('../constants.js');
 let sessionVersion = 0;
+let logoutVersion = 0;
+const pendingLogoutKey = constants.CACHE_PENDING_LOGOUT || 'CACHE_PENDING_LOGOUT';
+const cancellationKey = constants.CACHE_CANCELLATION || 'CACHE_CANCELLATION';
+let revoking = null;
+function clearPrivateCaches() {
+ if (typeof wx.getStorageInfoSync !== 'function') return;
+ for (const key of wx.getStorageInfoSync().keys || []) {
+  if (key.startsWith('crun-profile-user-v1:') || /_LIST(?:_deadtime)?$/.test(key) || /^crun-.*draft/.test(key)) wx.removeStorageSync(key);
+ }
+}
 
 function phoneErrorCode(error) {
  for (const value of [error && error.errCode, error && error.errcode, error && error.errno]) {
@@ -52,6 +62,29 @@ class PassportBiz extends BaseBiz {
 		return await PassportBiz.loginCheck(false, 'must', 'bar', that);
 	}
 
+ // 仅由用户点击“微信登录”触发，打开页面不能恢复会话。
+ static async loginByUser(that) {
+  const version = logoutVersion;
+  const response = await cloudHelper.callCloudSumbit('passport/wechat_identity_login', {}, { title: '微信登录中', hint: false });
+  if (version !== logoutVersion) throw new Error('登录状态已更新，请重新登录');
+  const data = response && response.data;
+  const token = data && data.token, user = data && data.user;
+  if (!token || typeof token.id !== 'string' || !token.id || !token.sessionToken || !user || Array.isArray(user)
+    || ![0, 1, 8].includes(token.status) || user.USER_STATUS !== token.status
+    || typeof token.profileComplete !== 'boolean' || typeof token.phoneVerified !== 'boolean') {
+   throw new Error('微信登录未完成，请重新点击登录');
+  }
+  PassportBiz.setToken(token);
+  wx.removeStorageSync(pendingLogoutKey);
+  wx.removeStorageSync(cancellationKey);
+  if (that && !that._unloaded) that.setData({ isLogin: PassportBiz.isLogin() });
+  return data;
+ }
+
+ static isLoggedOut() {
+  return wx.getStorageSync(constants.CACHE_LOGGED_OUT) === true;
+ }
+
 	// 必须登陆 可以取消(窗口形式) 
 	static async loginMustCancelWin(that) {
 		return await PassportBiz.loginCheck(true, 'cancel', '', that);
@@ -64,33 +97,39 @@ class PassportBiz extends BaseBiz {
 
 	// 获取token  
 	static getToken() {
+		if (PassportBiz.isLoggedOut()) return null;
 		let token = cacheHelper.get(constants.CACHE_TOKEN);
-		return token || null;
+		return token && token.sessionToken ? token : null;
 	}
 
 	// 设置token
 	static setToken(token) {
 		if (!token) return;
+		const previous = cacheHelper.get(constants.CACHE_TOKEN);
+  if (!token.sessionToken && previous && previous.id === token.id) token = { ...token, sessionToken: previous.sessionToken };
+		if (!token.sessionToken) return;
 		sessionVersion++;
 		cacheHelper.set(constants.CACHE_TOKEN, token, constants.CACHE_TOKEN_EXPIRE);
+		wx.removeStorageSync(constants.CACHE_LOGGED_OUT);
+  if ((!previous || previous.sessionToken !== token.sessionToken) && cloudHelper.invalidateSessionRequests) cloudHelper.invalidateSessionRequests();
 	}
 
 	//  获取user id 
 	static getUserId() {
-		let token = cacheHelper.get(constants.CACHE_TOKEN);
+		let token = PassportBiz.getToken();
 		if (!token) return '';
 		return token.id || '';
 	}
 
 	// 获取user name 
 	static getUserName() {
-		let token = cacheHelper.get(constants.CACHE_TOKEN);
+		let token = PassportBiz.getToken();
 		if (!token) return '';
 		return token.name || '';
 	}
 
 	static getStatus() {
-		let token = cacheHelper.get(constants.CACHE_TOKEN);
+		let token = PassportBiz.getToken();
 		if (!token) return -1;
 		return typeof token.status === 'number' ? token.status : -1;
 	}
@@ -134,7 +173,9 @@ class PassportBiz extends BaseBiz {
 
 	// 登录判断及处理
 	static async loginCheck(mustLogin = false, method = 'back', title = '', that = null) {
+  if (PassportBiz.isLoggedOut()) return PassportBiz._loginDecision(null, mustLogin, method, that);
   const token = PassportBiz.getToken();
+  if (!token) return PassportBiz._loginDecision(null, mustLogin, method, that);
   // Manual sessions recheck the temporary server policy on guarded entry.
   if (token && method !== 'must' && !(token.allowManualRegistration === true && token.phoneVerified !== true)
     && typeof token.phoneVerified === 'boolean' && typeof token.profileComplete === 'boolean') {
@@ -146,7 +187,8 @@ class PassportBiz extends BaseBiz {
    // A stale background refresh must not undo a newer authorization or save.
    if (version !== sessionVersion) return PassportBiz._loginDecision(PassportBiz.getToken(), mustLogin, method, that);
    const current = result && result.data && result.data.token || null;
-   if (current) PassportBiz.setToken(current); else PassportBiz.clearToken();
+   if (current) PassportBiz.setToken(current);
+   else PassportBiz.clearToken();
    return PassportBiz._loginDecision(current, mustLogin, method, that);
   } catch (err) {
    if (version === sessionVersion && err && err.code && err.code !== 500 && !err.staleScope) PassportBiz.clearToken();
@@ -164,8 +206,8 @@ class PassportBiz extends BaseBiz {
   }
   const completing = !!(token && (token.phoneVerified || token.allowManualRegistration));
   wx.showModal({
-   title: completing ? '完善个人资料' : '登录 / 注册',
-   content: completing ? '请先补全个人资料，再使用此功能。' : '请先登录或注册并完善个人资料，再使用此功能。',
+   title: completing ? '完善联系资料' : '微信登录',
+   content: completing ? '发布或接单前，请先完善联系资料。' : '请先使用微信登录。',
    confirmText: completing ? '完善资料' : '去登录', cancelText: method === 'back' ? '返回' : '取消',
    success(result) {
     if (result.confirm) {
@@ -196,6 +238,7 @@ class PassportBiz extends BaseBiz {
   // Cloud development already supplies trusted OPENID. This is a phone code,
   // not wx.login's session code; do not persist it or retry it automatically.
   let response;
+  const version = logoutVersion;
   tracePhoneLogin('cloud_request');
   try {
    response = await cloudHelper.callCloudSumbit('passport/wechat_login', { code: detail.code }, { title: '微信登录中', hint: false });
@@ -205,7 +248,8 @@ class PassportBiz extends BaseBiz {
    throw Object.assign(new Error(failure.message), { reason: failure.reason });
   }
   const data = response && response.data;
-  if (!data || !data.token || !data.token.id || data.token.phoneVerified !== true) {
+  if (version !== logoutVersion) throw new Error('登录状态已更新，请重新登录');
+  if (!data || !data.token || !data.token.id || !data.token.sessionToken || data.token.phoneVerified !== true) {
    tracePhoneLogin('invalid_response');
    throw new Error('微信登录未完成，请重新授权');
   }
@@ -219,6 +263,49 @@ class PassportBiz extends BaseBiz {
   sessionVersion++;
 		cacheHelper.remove(constants.CACHE_TOKEN);
 	}
+
+ static logout() {
+  wx.setStorageSync(constants.CACHE_LOGGED_OUT, true);
+  logoutVersion++;
+  PassportBiz.clearToken();
+  clearPrivateCaches();
+  if (cloudHelper.invalidateSessionRequests) cloudHelper.invalidateSessionRequests();
+ }
+
+ static logoutEpoch() { return logoutVersion; }
+ static onSessionChange(listener) { return cloudHelper.onSessionChange ? cloudHelper.onSessionChange(listener) : () => {}; }
+
+ static logoutByUser() {
+  const token = PassportBiz.getToken();
+  if (token && token.sessionToken) wx.setStorageSync(pendingLogoutKey, { token: token.sessionToken, createdAt: Date.now() });
+  PassportBiz.logout();
+  return PassportBiz.flushLogout();
+ }
+
+ static flushLogout() {
+  if (revoking) return revoking;
+  const pending = wx.getStorageSync(pendingLogoutKey);
+  if (!pending || !pending.token) return Promise.resolve(true);
+  const request = cloudHelper.callCloudSumbit('passport/logout', {}, { hint: false, authToken: pending.token,
+   ignoreSessionChange: true }).then(() => {
+    const current = wx.getStorageSync(pendingLogoutKey);
+    if (current && current.token === pending.token) wx.removeStorageSync(pendingLogoutKey);
+    return true;
+   }).catch(() => false).finally(() => { if (revoking === request) revoking = null; });
+  revoking = request; return request;
+ }
+
+ static async cancelAccount() {
+  const token = PassportBiz.getToken(), version = logoutVersion;
+  if (!token) throw new Error('请先登录');
+  const response = await cloudHelper.callCloudSumbit('passport/cancel', {}, { title: '申请注销', hint: false });
+  const data = response && response.data;
+  if (!data || !Number.isFinite(data.cancelAt) || data.cancelAt - data.requestedAt !== 7200000) throw new Error('注销申请未确认，请重试');
+  if (version !== logoutVersion) return data;
+  wx.setStorageSync(cancellationKey, { requestedAt: data.requestedAt, cancelAt: data.cancelAt });
+  PassportBiz.logout();
+  return data;
+ }
 
 	// 手机号码
 	static async getPhone(e, that) {
@@ -238,4 +325,10 @@ PassportBiz.CHECK_FORM = {
 };
 
 
+if (cloudHelper.onSessionChange) cloudHelper.onSessionChange(reason => {
+ if (reason !== 'expired') return;
+ logoutVersion++; sessionVersion++;
+ clearPrivateCaches();
+ wx.reLaunch({ url: '/projects/crun/pages/my/index/my_index' });
+});
 module.exports = PassportBiz;

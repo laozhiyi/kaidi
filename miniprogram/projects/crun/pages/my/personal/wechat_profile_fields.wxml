@@ -1,0 +1,15 @@
+<view class="profile-section profile-wechat">
+  <view class="profile-section-head"><view><view class="profile-section-title">头像和昵称</view><view class="profile-section-subtitle">用于个人主页和订单展示</view></view></view>
+  <view class="profile-field-list">
+    <button wx:if="{{canChooseWechatAvatar}}" class="profile-avatar-button" open-type="chooseAvatar" bind:chooseavatar="bindPicTap" disabled="{{saving || phoneAuthorizing || identityLoggingIn || collectionSaving || loggingOut || cancellingAccount}}">
+      <view><view class="profile-field-label">头像</view><view class="profile-field-note">点击选择头像</view></view>
+      <image wx:if="{{formPic}}" class="profile-avatar" mode="aspectFill" src="{{formPic}}" /><view wx:else class="profile-avatar-placeholder"><text class="icon-cameraadd"></text></view><text class="icon-right profile-arrow"></text>
+    </button>
+    <button wx:else class="profile-avatar-button" bindtap="bindChooseAvatar" disabled="{{saving || phoneAuthorizing || identityLoggingIn || collectionSaving || loggingOut || cancellingAccount}}">
+      <view><view class="profile-field-label">头像</view><view class="profile-field-note">从相册选择或拍照</view></view>
+      <image wx:if="{{formPic}}" class="profile-avatar" mode="aspectFill" src="{{formPic}}" /><view wx:else class="profile-avatar-placeholder"><text class="icon-cameraadd"></text></view><text class="icon-right profile-arrow"></text>
+    </button>
+    <view class="profile-field"><text class="profile-field-label">昵称</text><input class="profile-field-input" name="nickname" type="{{!canUseWechatNickname ? 'text' : 'nickname'}}" value="{{formName}}" maxlength="30" placeholder="{{!canUseWechatNickname ? '请输入昵称' : '点击填写，可选择微信昵称'}}" bindinput="bindProfileNameInput" bindblur="bindProfileNameInput" disabled="{{saving || phoneAuthorizing || identityLoggingIn || collectionSaving || loggingOut || cancellingAccount}}" /></view>
+  </view>
+  <view wx:if="{{canUseWechatNickname}}" class="profile-nickname-hint">点击昵称框，可选择键盘上方的微信昵称</view>
+</view>

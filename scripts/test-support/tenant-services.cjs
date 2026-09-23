@@ -14,6 +14,7 @@ function fixture(options = {}){
   // Exercise both account-status policies; neither may require school grants.
   serverConfig.ADMIN_LOGIN_CREDENTIALS_ONLY=options.credentialsOnly===true;
   serverConfig.ALLOW_MANUAL_REGISTRATION=options.allowManualRegistration===true;
+  serverConfig.WECHAT_PHONE_LOGIN_ENABLED=options.phoneLoginEnabled===true;
   const raw=memory(),db=wrap(raw.db),cache=new Map();let nextId=0;
   const cloud={database:()=>db,getWXContext:()=>({OPENID:'poster'}),logger:()=>({error(){},info(){},warn(){}}),openapi:{subscribeMessage:{send:async()=>({errCode:0})}}};
   class Base {constructor(){this._timestamp=Date.now();}getProjectId(){return 'crun';}AppError(message,code){throw new AppError(message,code);}async insertLog(){}async initSetup(){}}

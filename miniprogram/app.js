@@ -2,9 +2,11 @@ const setting = require('./setting/setting.js');
 const InviteBiz = require('./projects/crun/biz/invite_biz.js');
 const Notifications = require('./projects/crun/biz/notification_biz.js');
 const OrderSync = require('./projects/crun/biz/order_sync_biz.js');
+const Passport = require('./comm/biz/passport_biz.js');
 
 App({
 	onShow: function (options = {}) {
+  Passport.flushLogout();
 		const code = options.query && options.query.inviteCode;
 		if (code) InviteBiz.capture(code);
 		Notifications.resume();

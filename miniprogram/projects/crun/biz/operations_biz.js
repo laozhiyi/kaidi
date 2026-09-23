@@ -3,6 +3,8 @@ const Passport = require('../../../comm/biz/passport_biz.js');
 const Admin = require('../../../comm/biz/admin_biz.js');
 const md5 = require('../../../lib/tools/md5_lib.js').md5;
 const uploadCache = new Map();
+let sessionGeneration = 0;
+if (cloud.onSessionChange) cloud.onSessionChange(() => { sessionGeneration++; uploadCache.clear(); });
 const commands = new Map(), changeListeners = new Set();
 const requestId = () => 'req_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
 async function get(route, params = {}, scope) { const result = await cloud.callCloudSumbit(route, params, {hint:false, ...(scope ? { scope } : {})}); if (!result || result.data === undefined) throw new Error('未收到有效响应，请重试'); return result.data; }
@@ -47,7 +49,11 @@ function command(route, params = {}, options = {}) {
  // Freeze the payload before signing or yielding. A form can keep changing
  // while the request is in flight, and retries must send the identical body.
  params = JSON.parse(JSON.stringify(params));
- if (cloud.scopeSnapshot && !cloud.scopeSnapshot() && cloud.ensureScope) return cloud.ensureScope({ allowDisabled: route.startsWith('admin/') }).then(() => command(route, params, options));
+ const generation = sessionGeneration;
+ if (cloud.scopeSnapshot && !cloud.scopeSnapshot() && cloud.ensureScope) return cloud.ensureScope({ allowDisabled: route.startsWith('admin/') }).then(() => {
+  if (!route.startsWith('admin/') && generation !== sessionGeneration) throw new Error('登录状态已变化，请重新操作');
+  return command(route, params, options);
+ });
  const key = pendingKey(route, params); if (!key) return Promise.reject(new Error('请先登录'));
  const signature = md5(JSON.stringify(params));
  const active = commands.get(key);
@@ -56,7 +62,7 @@ function command(route, params = {}, options = {}) {
   return Promise.reject(new Error('上一项操作仍在处理中，请稍后再提交修改'));
  }
  const task = { signature };
- options = { ...options, scope: cloud.scopeSnapshot && cloud.scopeSnapshot() };
+ options = { ...options, generation, scope: cloud.scopeSnapshot && cloud.scopeSnapshot() };
  const unlock = cloud.scopeLock ? cloud.scopeLock() : () => {};
  // Install the lock before any asynchronous login, upload or cloud response.
  task.promise = Promise.resolve().then(() => sendCommand(route, params, options, key, signature)).finally(() => {
@@ -74,6 +80,8 @@ function withRecovery(error, route, params, key) {
  return error;
 }
 async function sendCommand(route, params, options, key, signature) {
+ const sameSession = () => route.startsWith('admin/') || options.generation === sessionGeneration;
+ if (!sameSession()) throw new Error('登录状态已变化，请重新操作');
  if (pendingKey(route, params) !== key) throw new Error('登录账号已变化，请返回重试');
  let pending = wx.getStorageSync(key);
  if (pending && pending.signature !== signature) {
@@ -87,12 +95,15 @@ async function sendCommand(route, params, options, key, signature) {
  const retries = options.retries === undefined ? 2 : Math.min(2, Math.max(0, Number(options.retries) || 0));
  let result;
  for (let attempt = 0; ; attempt++) {
+  if (!sameSession()) throw withRecovery(new Error('登录状态已变化，请先核对上次提交结果'), route, params, key);
   if (pendingKey(route, params) !== key) throw new Error('登录账号已变化，请返回重试');
   try {
-   result = await get(route,{...params,requestId:pending.requestId},options.scope); break;
+   result = await get(route,{...params,requestId:pending.requestId},options.scope);
+   if (!sameSession()) throw Object.assign(new Error('登录状态已变化，请先核对上次提交结果'), { staleSession: true });
+   break;
   }
   catch (error) {
-   const businessError = error && error.code && error.code !== 500;
+   const businessError = error && error.code && error.code !== 500 && !error.staleSession;
    if (!businessError) { pending = {...pending,uncertain:true}; wx.setStorageSync(key,pending); }
    if (attempt >= retries || !error || error.retryable !== true || error.code && error.code !== 500) {
     if (businessError && !pending.uncertain) {
@@ -122,7 +133,10 @@ function orderChanged(route, result) {
 async function upload(paths) {
  if(!Array.isArray(paths)||paths.length>6)throw new Error('最多上传6张图片');
  if (!paths.length) return [];
+ const generation = sessionGeneration;
+ const isCurrent = () => { if (generation !== sessionGeneration) throw new Error('登录状态已变化，请重新选择图片'); };
  const config=await get('operations/config'),result=[];
+ isCurrent();
  for(const original of paths){
   if(original.startsWith('cloud://')){result.push(original);continue;}
   if(uploadCache.has(config.uploadPrefix+original)){result.push(uploadCache.get(config.uploadPrefix+original));continue;}
@@ -130,7 +144,8 @@ async function upload(paths) {
   const info=await new Promise((resolve,reject)=>wx.getFileInfo({filePath,success:resolve,fail:reject}));
   if(info.size>1024*1024){const compressed=await new Promise((resolve,reject)=>wx.compressImage({src:filePath,quality:60,success:resolve,fail:reject}));filePath=compressed.tempFilePath;}
   const finalInfo=await new Promise((resolve,reject)=>wx.getFileInfo({filePath,success:resolve,fail:reject}));if(finalInfo.size>1024*1024)throw new Error('图片压缩后仍超过1MB，请选择较小图片');
-  const file=await wx.cloud.uploadFile({cloudPath:config.uploadPrefix+requestId()+'.jpg',filePath});if(uploadCache.size>100)uploadCache.clear();uploadCache.set(config.uploadPrefix+original,file.fileID);result.push(file.fileID);
+  isCurrent();
+  const file=await wx.cloud.uploadFile({cloudPath:config.uploadPrefix+requestId()+'.jpg',filePath});isCurrent();if(uploadCache.size>100)uploadCache.clear();uploadCache.set(config.uploadPrefix+original,file.fileID);result.push(file.fileID);
  }
  return result;
 }

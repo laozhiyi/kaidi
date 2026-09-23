@@ -1,6 +1,13 @@
 <view wx:if="{{!isLoad && !loadError}}" class="profile-load-state">正在加载个人资料…</view>
 <view wx:if="{{loadError}}" class="profile-load-state"><view>{{loadError}}</view><button class="profile-save" bindtap="_loadDetail">重新加载</button></view>
-<view wx:if="{{isLoad}}" class="profile-page">
-  <include src="personal_form.wxml" />
-  <button bindtap="bindSubmitTap" loading="{{saving}}" disabled="{{saving || phoneAuthorizing}}" class="profile-save">保存资料</button><view wx:if="{{saveError}}" class="profile-save-error">{{saveError}}</view>
+<view wx:if="{{isLoad || hasSession}}" class="profile-page">
+  <block wx:if="{{isLoad}}">
+    <form bindsubmit="bindPersonalSubmit">
+      <include src="wechat_profile_fields.wxml" />
+      <include src="personal_form.wxml" />
+      <button form-type="submit" loading="{{saving}}" disabled="{{saving || phoneAuthorizing || loggingOut || cancellingAccount}}" class="profile-save">保存资料</button><view wx:if="{{saveError}}" class="profile-save-error">{{saveError}}</view>
+    </form>
+  </block>
+  <button bindtap="bindLogoutTap" disabled="{{saving || phoneAuthorizing || loggingOut || cancellingAccount}}" class="profile-logout">退出登录</button>
+  <button bindtap="bindCancelAccountTap" disabled="{{saving || phoneAuthorizing || loggingOut || cancellingAccount}}" class="profile-cancel-account">注销账户</button>
 </view>

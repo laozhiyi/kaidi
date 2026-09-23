@@ -131,10 +131,8 @@ test('the feed endpoint returns only current-campus opaque revisions',async()=>{
 });
 test('super admins can update the shared school registration policy without school grants',async()=>{
   const f=await setup();f.table('school').get(A.schoolId).registrationReview=true;
-  const Passport=f.service('passport_service'),p={name:'新同学',mobile:'13900000009',pic:'avatar',forms:[{mark:'sex',val:'女'},{mark:'college',val:'计算机学院'},{mark:'sub',val:'软件工程'},{mark:'campus',val:B.campusName}]};
-  f.cloud.getWXContext=()=>({OPENID:'new-user',APPID:'wx3d8dc6fb0e764ec7'});
-  f.cloud.openapi.phonenumber={getPhoneNumber:async()=>({errCode:0,phoneInfo:{phoneNumber:p.mobile,purePhoneNumber:p.mobile,countryCode:'86',watermark:{appid:'wx3d8dc6fb0e764ec7'}}})};
-  await tenant.run(B,()=>new Passport().wechatLogin('new-user',{code:'school-phone-code'}));
+  const Passport=f.service('passport_service'),p={name:'新同学',mobile:'13900000009',pic:'cloud://test/avatar.png',forms:[{mark:'sex',val:'女'},{mark:'college',val:'计算机学院'},{mark:'sub',val:'软件工程'},{mark:'campus',val:B.campusName}]};
+  await tenant.run(B,()=>new Passport().wechatIdentityLogin('new-user'));
   const result=await tenant.run(B,()=>new Passport().register('new-user',p));assert.equal(result.token.status,0);
   const same=await tenant.run(A,()=>new Passport().login('new-user'));assert.equal(same.token.status,0);
   const local={_id:'local',_pid:'crun',ADMIN_STATUS:1,ADMIN_TYPE:1,ADMIN_SCOPES:[{schoolId:A.schoolId,campusId:A.campusId}]};f.table('admin').set(local._id,local);

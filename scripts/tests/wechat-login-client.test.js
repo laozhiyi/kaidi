@@ -4,20 +4,21 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const ready = { id: 'student', name: '同学', status: 1, phoneVerified: true, profileComplete: true };
-function client(initial = null) {
+const ready = { id: 'student', sessionToken: 'a'.repeat(64), name: '同学', status: 1, phoneVerified: true, profileComplete: true };
+function client(initial = null, storage = new Map()) {
   let token = initial;
   const calls = [], modals = [], navigation = [], diagnostics = [], responses = new Map();
   const module = { exports: {} };
   const wx = { showModal: args => modals.push(args), navigateTo: args => navigation.push(args),
-    redirectTo: args => navigation.push(args), navigateBack() {}, reLaunch: args => navigation.push(args), showToast() {} };
+    redirectTo: args => navigation.push(args), navigateBack() {}, reLaunch: args => navigation.push(args), showToast() {},
+    getStorageSync: key => storage.get(key), setStorageSync: (key, value) => storage.set(key, value), removeStorageSync: key => storage.delete(key) };
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../miniprogram/comm/biz/passport_biz.js'), 'utf8'), {
     module, wx, console: { info: (...args) => diagnostics.push(args), warn: (...args) => diagnostics.push(args) },
     getCurrentPages: () => [{ route: 'projects/crun/pages/mail/add/mail_add' }],
     require(name) {
       if (name.endsWith('base_biz.js')) return class {};
       if (name.endsWith('cache_helper.js')) return { get: () => token, set: (_, value) => { token = value; }, remove: () => { token = null; } };
-      if (name.endsWith('constants.js')) return { CACHE_TOKEN: 'user', CACHE_TOKEN_EXPIRE: 3600 };
+      if (name.endsWith('constants.js')) return { CACHE_TOKEN: 'user', CACHE_TOKEN_EXPIRE: 3600, CACHE_LOGGED_OUT: 'logged-out' };
       if (name.endsWith('page_helper.js')) return { fmtURLByPID: url => '/projects/crun' + url, getCurrentPageUrlWithArgs: () => '/projects/crun/pages/mail/add/mail_add' };
       if (name.endsWith('cloud_helper.js')) return { async callCloudSumbit(route, params) {
         calls.push({ route, params }); const response = responses.get(route);
@@ -28,8 +29,113 @@ function client(initial = null) {
       throw Error('Unexpected passport dependency: ' + name);
     }
   });
-  return { passport: module.exports, calls, modals, navigation, diagnostics, responses, get token() { return token; } };
+  return { passport: module.exports, calls, modals, navigation, diagnostics, responses, storage, get token() { return token; } };
 }
+
+test('logout keeps silent refresh and business guards signed out across an app restart', async () => {
+  const f = client({ ...ready });
+  f.passport.logout();
+  assert.equal(f.token, null);
+  const restarted = client(null, f.storage);
+  for (const session of [f, restarted]) {
+    session.responses.set('passport/login', { token: { ...ready } });
+    assert.equal(await session.passport.loginSilence(), false);
+    assert.equal(await session.passport.loginSilenceMust(), false);
+    assert.equal(await session.passport.loginMustCancelWin(), false);
+    assert.equal(session.passport.getUserId(), '');
+    assert.equal(session.calls.length, 0);
+    assert.equal(session.modals.length, 1);
+  }
+});
+
+test('a login response started before logout cannot restore the session', async () => {
+  const f = client({ ...ready }); let finish;
+  f.responses.set('passport/login', () => new Promise(resolve => { finish = resolve; }));
+  const pending = f.passport.loginSilenceMust();
+  f.passport.logout();
+  finish({ token: { ...ready } });
+  assert.equal(await pending, false);
+  assert.equal(f.token, null);
+});
+
+test('deliberate login restores an existing manual account without registering it again', async () => {
+  const f = client({ ...ready });
+  f.passport.logout();
+  f.responses.set('passport/wechat_identity_login', { token: { ...ready, phoneVerified: false, allowManualRegistration: true }, user: { USER_NAME: '同学', USER_STATUS: 1 } });
+  const result = await f.passport.loginByUser();
+  assert.equal(result.user.USER_NAME, '同学');
+  assert.equal(f.passport.isLoggedOut(), false);
+  assert.equal(f.passport.isLogin(), true);
+  assert.equal(f.token.phoneVerified, false);
+  assert.deepEqual(f.calls.map(call => call.route), ['passport/wechat_identity_login']);
+  assert.deepEqual(JSON.parse(JSON.stringify(f.calls[0].params)), {});
+});
+
+test('failed deliberate login preserves logout and can be retried', async () => {
+  const f = client({ ...ready });
+  f.passport.logout();
+  f.responses.set('passport/wechat_identity_login', new Error('offline'));
+  await assert.rejects(f.passport.loginByUser(), /offline|登录/);
+  assert.equal(f.passport.isLoggedOut(), true);
+  assert.equal(await f.passport.loginSilenceMust(), false);
+  assert.equal(f.calls.length, 1);
+  f.responses.set('passport/wechat_identity_login', { token: { ...ready }, user: { USER_STATUS: 1 } });
+  assert.equal((await f.passport.loginByUser()).token.id, 'student');
+});
+
+test('identity login keeps a new authenticated account even before required business details are completed', async () => {
+  const f = client(); f.passport.logout();
+  f.responses.set('passport/wechat_identity_login', { token: { ...ready, status: 0, phoneVerified: false, profileComplete: false, allowManualRegistration: true },
+    user: { USER_NAME: '', USER_STATUS: 0, USER_MOBILE_VERIFIED: false, USER_PROFILE_COMPLETE: false } });
+  const result = await f.passport.loginByUser();
+  assert.equal(result.token.id, 'student');
+  assert.equal(f.passport.isLoggedOut(), false);
+  assert.equal(f.passport.getUserId(), 'student');
+  assert.equal(f.passport.isLogin(), false, 'business readiness is still required');
+  assert.deepEqual(f.calls.map(call => call.route), ['passport/wechat_identity_login']);
+});
+
+test('an explicit identity response cannot restore a session after a later logout', async () => {
+  const f = client(); let finish;
+  f.responses.set('passport/wechat_identity_login', () => new Promise(resolve => { finish = resolve; }));
+  const pending = f.passport.loginByUser();
+  await Promise.resolve();
+  f.passport.logout();
+  assert.equal(typeof finish, 'function');
+  finish({ token: { ...ready }, user: { USER_STATUS: 1 } });
+  await assert.rejects(pending, /登录/);
+  assert.equal(f.passport.isLoggedOut(), true);
+  assert.equal(f.token, null);
+});
+
+test('incomplete or disabled identity responses never clear a deliberate logout', async () => {
+  for (const response of [null, { token: ready }, { token: null, user: {} }, { token: { ...ready, status: 9 }, user: { USER_STATUS: 9 } }]) {
+    const f = client(); f.passport.logout();
+    f.responses.set('passport/wechat_identity_login', response);
+    await assert.rejects(f.passport.loginByUser(), /登录|停用|禁用/);
+    assert.equal(f.passport.isLoggedOut(), true);
+    assert.equal(f.token, null);
+  }
+});
+
+test('new phone authorization can log back in after logout', async () => {
+  const f = client({ ...ready });
+  f.passport.logout();
+  f.responses.set('passport/wechat_login', { token: { ...ready }, user: { USER_MOBILE: '13912345678' } });
+  await f.passport.loginByWechatPhone({ detail: { errMsg: 'getPhoneNumber:ok', code: 'new-code' } });
+  assert.equal(f.passport.isLoggedOut(), false);
+  assert.equal(f.passport.isLogin(), true);
+});
+
+test('phone authorization started before logout cannot sign the user back in', async () => {
+  const f = client({ ...ready }); let finish;
+  f.responses.set('passport/wechat_login', () => new Promise(resolve => { finish = resolve; }));
+  const pending = f.passport.loginByWechatPhone({ detail: { errMsg: 'getPhoneNumber:ok', code: 'old-code' } });
+  f.passport.logout();
+  finish({ token: { ...ready }, user: { USER_MOBILE: '13912345678' } });
+  await assert.rejects(pending, /登录/);
+  assert.equal(f.token, null);
+});
 
 for (const overrides of [{ phoneVerified: false }, { profileComplete: false }, { status: 0 }, { status: 8 }, { status: 9 }]) {
   test('cached account ' + JSON.stringify(overrides) + ' cannot pass the business login gate', async () => {
@@ -40,12 +146,24 @@ for (const overrides of [{ phoneVerified: false }, { profileComplete: false }, {
   });
 }
 
-test('legacy cached tokens must refresh readiness before being used', async () => {
+test('legacy cached tokens without a server credential require an explicit login', async () => {
   const f = client({ id: 'student', status: 1 });
   f.responses.set('passport/login', { token: { ...ready, phoneVerified: false } });
   assert.equal(await f.passport.loginSilence(), false);
-  assert.equal(f.calls[0].route, 'passport/login');
-  assert.equal(f.token.phoneVerified, false);
+  assert.equal(f.calls.length, 0);
+  assert.equal(f.passport.isLogin(), false);
+  assert.equal(f.passport.getToken(), null);
+});
+
+test('offline logout is local immediately and retries server revocation after restart', async () => {
+  const f = client({ ...ready });
+  f.responses.set('passport/logout', () => { throw new Error('offline'); });
+  const revoking = f.passport.logoutByUser();
+  assert.equal(f.passport.getToken(), null); assert.equal(f.passport.isLoggedOut(), true);
+  assert.equal(await revoking, false); assert.ok(f.storage.get('CACHE_PENDING_LOGOUT'));
+  const restarted = client(null, f.storage); restarted.responses.set('passport/logout', { ok: true });
+  assert.equal(await restarted.passport.flushLogout(), true);
+  assert.equal(f.storage.has('CACHE_PENDING_LOGOUT'), false); assert.equal(restarted.passport.isLoggedOut(), true);
 });
 
 test('phone authorization sends only the one-time code and retains the incomplete authenticated session', async () => {
@@ -111,7 +229,7 @@ test('phone diagnostics identify the failing boundary without exposing authoriza
 });
 
 test('an earlier silent login reply cannot overwrite a completed phone login', async () => {
-  const f = client(); let finish;
+  const f = client({ ...ready }); let finish;
   f.responses.set('passport/login', () => new Promise(resolve => { finish = resolve; }));
   const old = f.passport.loginSilenceMust();
   f.responses.set('passport/wechat_login', { token: { ...ready }, user: { USER_MOBILE: '13912345678' } });

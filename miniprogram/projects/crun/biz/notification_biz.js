@@ -18,6 +18,7 @@ function syncIdentity() {
   return current;
 }
 function stopTimer() { if (timer !== null) clearTimeout(timer); timer = null; }
+if (Passport.onSessionChange) Passport.onSessionChange(() => { generation++; request = null; syncIdentity(); });
 function schedule() {
   stopTimer();
   if (active && listeners.size) timer = setTimeout(() => {

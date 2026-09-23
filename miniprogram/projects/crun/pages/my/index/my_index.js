@@ -5,12 +5,14 @@ const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
 const profileMethods = require('../profile_methods.js');
 const InviteBiz = require('../../../biz/invite_biz.js');
 const Notifications = require('../../../biz/notification_biz.js');
+const accountActions = require('../account_actions.js');
 
-Page({
-  data: { user: null, loading: false, userError: '', settingsVisible: false, unreadCount: 0, messageBadge: '' },
+Page(Object.assign({
+  data: { user: null, hasSession: false, loggingOut: false, cancellingAccount: false, loading: false, userError: '', settingsVisible: false, unreadCount: 0, messageBadge: '' },
   onLoad() {
     ProjectBiz.initPage(this);
-    if (PassportBiz.isLogin()) {
+    this.setData({ hasSession: !!PassportBiz.getToken() });
+    if (PassportBiz.getToken()) {
       const token = PassportBiz.getToken();
       this.setData({ user: { USER_NAME: token.name, USER_PIC: token.pic || '', USER_STATUS: token.status, USER_MOBILE_VERIFIED: token.phoneVerified, USER_PROFILE_COMPLETE: token.profileComplete, allowManualRegistration: token.allowManualRegistration } });
     }
@@ -22,6 +24,7 @@ Page({
     const tabBar = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
     if (tabBar) tabBar.setData({ selected: 2 });
     await PassportBiz.loginSilenceMust(this);
+    if (!this._unloaded) this.setData({ hasSession: !!PassportBiz.getToken() });
     if (this._visible && PassportBiz.isLogin()) Notifications.refresh(true);
     if (!this._unloaded) await this._loadUser();
   },
@@ -34,13 +37,8 @@ Page({
       try {
         const user = await profileMethods.getProfileUser({ hint: false }, true);
         if (this._unloaded) return;
-        this.setData({ user: user || null });
-        if (user && user.USER_STATUS !== 9 && !profileMethods.isProfileReady(user)) {
-          if (this._visible && !this._openingCompletion) {
-            this._openingCompletion = true;
-            wx.navigateTo({ url: '/projects/crun/pages/my/reg/my_reg', complete: () => { this._openingCompletion = false; } });
-          }
-        } else if (user && user.USER_STATUS === 1) InviteBiz.acceptPending().catch(() => {});
+        this.setData({ user: user || null, hasSession: !!PassportBiz.getToken() });
+        if (user && user.USER_STATUS === 1 && profileMethods.isProfileReady(user)) InviteBiz.acceptPending().catch(() => {});
       } catch (error) {
         if (!this._unloaded) this.setData({ userError: '资料加载失败，点击重试' });
       } finally {
@@ -99,6 +97,6 @@ Page({
     wx.navigateTo({ url });
   },
   onShareAppMessage() {
-    return { title: '校园跑腿，便捷互助', path: '/projects/crun/pages/default/index/default_index' };
+    return { title: 'GXNU校跑，便捷互助', path: '/projects/crun/pages/default/index/default_index' };
   }
-});
+}, accountActions));

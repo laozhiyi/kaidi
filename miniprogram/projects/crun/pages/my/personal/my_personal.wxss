@@ -17,7 +17,7 @@ page { background: #f3f6fb; }
 .profile-phone-authorize { flex-shrink:0; margin:0 0 0 16rpx; padding:12rpx 16rpx; border-radius:10rpx; background:#edf5ff; color:#397bc8; font-size:23rpx; line-height:1.4; }
 .profile-phone-authorize::after { border:0; }
 .profile-avatar-button { display:flex; align-items:center; width:100%; min-height:112rpx; padding:16rpx 0; border:0; border-bottom:1rpx solid #edf1f6; border-radius:0; background:transparent; text-align:left; }
-.profile-avatar-button::after, .profile-save::after { border:0; }
+.profile-avatar-button::after, .profile-save::after, .profile-logout::after { border:0; }
 .profile-avatar-button > view:first-child { flex:1; min-width:0; }
 .profile-field-note { margin-top:5rpx; color:#98a6b7; font-size:21rpx; line-height:1.4; }
 .profile-avatar, .profile-avatar-placeholder { flex-shrink:0; width:74rpx; height:74rpx; border-radius:16rpx; }
@@ -64,9 +64,22 @@ page { background: #f3f6fb; }
 .profile-required-hint { margin-top:14rpx; }
 .profile-save { width:100%; height:86rpx; margin-top:24rpx; border-radius:14rpx; color:#fff; background:#397bc8; font-size:29rpx; font-weight:600; line-height:86rpx; box-shadow:0 8rpx 18rpx rgba(57,123,200,.16); }
 .profile-save[disabled] { color:#9aa9ba; background:#dce4ee; box-shadow:none; }
+.profile-logout { width:100%; height:86rpx; margin-top:24rpx; border:1rpx solid #eadbdd; border-radius:14rpx; color:#c95353; background:#fff; font-size:29rpx; font-weight:500; line-height:84rpx; box-sizing:border-box; }
+.profile-logout[disabled] { color:#9aa9ba; border-color:#e1e7ef; background:#f5f7fa; }
+.profile-cancel-account { width:100%; margin-top:20rpx; color:#8b6269; background:transparent; font-size:26rpx; }
+.profile-cancel-account::after { border:0; }
+.profile-cancel-account[disabled] { color:#9aa9ba; }
 .profile-save-error { margin-top:12rpx; text-align:center; }
 .profile-load-state { margin:60rpx 24rpx; padding:30rpx; text-align:center; color:#8190a5; font-size:26rpx; }
 .profile-invite { margin-top:20rpx; }
+.profile-personal { margin-top:20rpx; }
+.profile-nickname-hint { margin-top:18rpx; color:#8494a9; font-size:22rpx; line-height:1.6; }
+.profile-next-actions { margin-top:30rpx; text-align:center; }
+.profile-secondary, .profile-skip { width:100%; margin-top:18rpx; padding:20rpx 16rpx; border-radius:14rpx; font-size:26rpx; line-height:1.5; }
+.profile-secondary { color:#397bc8; background:#e8f1fc; }
+.profile-skip { margin-top:8rpx; color:#8494a9; background:transparent; }
+.profile-secondary::after, .profile-skip::after { border:0; }
+.profile-secondary[disabled], .profile-skip[disabled] { color:#a1adbc; }
 .profile-invite .profile-field { border-bottom:0; }
 .profile-invite .profile-field-label { width:auto; margin-right:20rpx; }
 @media (max-width:360px) { .profile-page { padding-left:18rpx; padding-right:18rpx; } .profile-section { padding-left:20rpx; padding-right:20rpx; } .profile-field > .profile-field-label, .profile-choice-field > .profile-field-label { width:122rpx; } }

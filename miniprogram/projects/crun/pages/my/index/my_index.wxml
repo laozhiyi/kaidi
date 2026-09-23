@@ -1,15 +1,15 @@
 <view class="my-page">
-  <view class="my-profile" bindtap="url" data-url="{{user && (user.USER_MOBILE_VERIFIED || user.allowManualRegistration) && user.USER_PROFILE_COMPLETE ? '../personal/my_personal' : '../reg/my_reg'}}" hover-class="my-tap">
+  <view class="my-profile" bindtap="url" data-url="{{user || hasSession ? '../personal/my_personal' : '../reg/my_reg'}}" hover-class="my-tap">
     <view class="my-avatar" wx:if="{{!user || !user.USER_PIC}}"><image mode="aspectFit" src="../../../images/tabbar/my_cur.png" /></view>
     <image wx:else class="my-avatar" src="{{user.USER_PIC}}" mode="aspectFill" />
     <view class="my-profile-copy">
-      <view class="my-name">{{user ? (user.USER_NAME || '校园用户') : '欢迎来到校园跑腿'}}</view>
+      <view class="my-name">{{user ? (user.USER_NAME || '微信用户') : '欢迎来到GXNU校跑'}}</view>
       <view class="my-profile-desc">
         <text wx:if="{{user && user.USER_STATUS==9}}" class="my-status">账号已停用</text>
-        <text wx:elif="{{user && (!(user.USER_MOBILE_VERIFIED || user.allowManualRegistration) || !user.USER_PROFILE_COMPLETE)}}" class="my-status">{{user.USER_MOBILE_VERIFIED || user.allowManualRegistration ? '请完善个人资料' : '请授权微信手机号登录'}}</text>
+        <text wx:elif="{{user && !user.USER_PROFILE_COMPLETE}}" class="my-status">已登录，发单或接单前完善联系资料</text>
         <text wx:elif="{{user && user.USER_STATUS==0}}" class="my-status">已注册，待审核</text>
         <text wx:elif="{{user && user.USER_STATUS==8}}" class="my-status">审核未通过，请修改资料</text>
-        <text wx:else>{{user?'查看或修改个人资料':'点击登录 / 注册账号'}}</text>
+        <text wx:else>{{user || hasSession ? '查看或修改个人资料' : '点击微信登录'}}</text>
       </view>
     </view>
     <text class="my-profile-arrow icon-right"></text>
@@ -43,6 +43,10 @@
     <view class="my-link" bindtap="bindSetTap" hover-class="my-tap"><view class="my-link-icon"><text class="icon-settings"></text></view><view class="my-link-copy my-link-title">设置与后台管理</view><text class="my-arrow icon-right"></text></view>
   </view>
   <view wx:if="{{userError}}" class="my-load-error" bindtap="_loadUser">{{userError}}</view>
+  <view wx:if="{{user || hasSession}}" class="my-card my-account-actions">
+    <button bindtap="bindLogoutTap" loading="{{loggingOut}}" disabled="{{loggingOut || cancellingAccount}}">退出登录</button>
+    <button class="my-account-cancel" bindtap="bindCancelAccountTap" loading="{{cancellingAccount}}" disabled="{{loggingOut || cancellingAccount}}">注销账户</button>
+  </view>
   <view class="tab-bar-placeholder"></view>
   <view wx:if="{{settingsVisible}}" class="my-settings-layer">
     <view class="my-settings-mask" catchtap="bindCloseSettings" catchtouchmove="bindSettingsTouchMove"></view>

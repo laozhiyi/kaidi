@@ -1,5 +1,5 @@
 <view class="ac-page ac-login-page">
-  <view class="ac-login-brand"><view class="ac-login-icon"><text class="icon-settings"></text></view><view class="ac-eyebrow">随手取</view><view class="ac-title">管理后台</view><view class="ac-subtitle">登录后管理校区服务与日常运营</view></view>
+  <view class="ac-login-brand"><view class="ac-login-icon"><text class="icon-settings"></text></view><view class="ac-eyebrow">GXNU校跑</view><view class="ac-title">管理后台</view><view class="ac-subtitle">登录后管理校区服务与日常运营</view></view>
   <view class="ac-card">
     <view class="ac-form-field"><view class="ac-label">管理员账号</view><input class="ac-input" placeholder="输入管理员账号" maxlength="30" placeholder-class="ac-placeholder" model:value="{{name}}" disabled="{{loggingIn}}" /></view>
     <view class="ac-form-field"><view class="ac-label">登录密码</view><input class="ac-input" placeholder="输入管理员密码" maxlength="128" type="text" password="{{true}}" placeholder-class="ac-placeholder" model:value="{{pwd}}" disabled="{{loggingIn}}" bindconfirm="bindLoginTap" confirm-type="go" /></view>

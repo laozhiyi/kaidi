@@ -39,6 +39,7 @@ function controller(f, params, actor = 'rider') {
   Buffer, console: { warn() {} }, require(name) {
    if (name.endsWith('app_error.js')) return Error;
    if (name.endsWith('cloud_base.js')) return { getCloud: () => cloud };
+   if (name.endsWith('account_context.js')) return require('../../cloudfunctions/mcloud/framework/core/account_context.js');
    if (name.endsWith('config.js')) return { CLIENT_CHECK_CONTENT: true, ADMIN_CHECK_CONTENT: false };
    if (name === 'crypto') return require('node:crypto');
    throw Error('Unexpected audit dependency ' + name);

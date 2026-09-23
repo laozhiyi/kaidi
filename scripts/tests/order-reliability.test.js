@@ -142,6 +142,7 @@ test('SDK transactions retry only definite conflicts, with rollback-aware SDK re
     if (name.endsWith('config.js')) return { COLLECTION_PRFIX: 'bx_' };
     if (name.endsWith('app_error.js')) return Error;
     if (name.endsWith('tenant_context.js')) return require('../../cloudfunctions/mcloud/framework/tenancy/tenant_context.js');
+    if (name === './account_service.js') return require('../../cloudfunctions/mcloud/project/crun/service/account_service.js');
     return require(name);
   } });
   assert.equal(await module.exports.transaction(() => 42), 42); assert.equal(calls, 3);

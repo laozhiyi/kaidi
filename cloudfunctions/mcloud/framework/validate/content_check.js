@@ -168,12 +168,21 @@ function textServiceError(code, reason) {
 	return new AppError(message + (code === null ? '' : '（错误码：' + code + '）'));
 }
 
+async function trackCloudImages(values) {
+ const request = require('../core/account_context.js').getStore();
+ if (request && request.trackMedia) await request.trackMedia(values);
+}
+
 async function checkCloudImage(fileID, allowed = []) {
  if (typeof fileID !== 'string' || !fileID.startsWith('cloud://')) throw new AppError('图片须先上传');
  const cloud = cloudBase.getCloud(), openid = cloud.getWXContext().OPENID;
+ const request = require('../core/account_context.js').getStore();
+ const generation = request && request.mediaGeneration || '';
  const match = /^cloud:\/\/[^/]+\/(.+)$/.exec(fileID), filePath = match && match[1] || '';
  if (openid && allowed.includes(fileID) && filePath.startsWith('private-evidence/' + openid + '/')) return fileID;
- if (!openid || !filePath.startsWith('private/' + openid + '/')) throw new AppError('不可引用其他用户的图片，请重新上传');
+ const prefix = 'private/' + openid + '/' + (generation ? generation + '/' : '');
+ if (!openid || !filePath.startsWith(prefix) || /(?:^|\/)\.\.?\//.test(filePath)) throw new AppError('不可引用其他账户的图片，请重新上传');
+ if (request && request.trackMedia) await request.trackMedia([fileID]);
  const result = await cloud.downloadFile({fileID}); const buffer = result.fileContent;
  if (!buffer || buffer.length > 1024 * 1024) throw new AppError('图片超过1MB，请压缩后重试');
  const isPng=buffer.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
@@ -182,11 +191,17 @@ async function checkCloudImage(fileID, allowed = []) {
  if (config.CLIENT_CHECK_CONTENT || config.ADMIN_CHECK_CONTENT) await checkImg(buffer.toString('base64'),isPng?'png':'jpeg');
  // Finalized evidence is server-owned. Storage rules MUST deny client writes to private-evidence/.
  const digest=require('crypto').createHash('sha256').update(buffer).digest('hex');
- const saved=await cloud.uploadFile({cloudPath:'private-evidence/'+openid+'/'+digest+(isPng?'.png':'.jpg'),fileContent:buffer});
+ const cloudPath='private-evidence/'+openid+'/'+(generation ? generation+'/' : '')+digest+(isPng?'.png':'.jpg');
+ // Keep both the upload and its archive discoverable even if the business
+ // write fails, or a later edit removes this image from the visible record.
+ if (request && request.trackMedia) await request.trackMedia([fileID.slice(0, fileID.indexOf('/', 8) + 1) + cloudPath]);
+ const saved=await cloud.uploadFile({cloudPath,fileContent:buffer});
  if(!saved || !saved.fileID)throw new AppError('图片归档失败，请重试');
+ if (request && request.trackMedia) await request.trackMedia([saved.fileID]);
  return saved.fileID;
 }
 module.exports = {
+ trackCloudImages,
  checkCloudImage,
 	checkImg,
 	checkImgClient,

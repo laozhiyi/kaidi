@@ -30,12 +30,16 @@ class OperationsService extends Base {
   const total = count.total;
   return { list: result.data, page, size, total, count: Math.ceil(total / size), hasMore: page * size < total };
  }
- async config(userId) { return {...await new Config().getConfig(),allowManualRegistration:profileRules.allowsManualRegistration(),templateId:process.env.ORDER_SUBSCRIBE_TEMPLATE_ID || '',uploadPrefix:'private/'+userId.split('^^^').pop()+'/'}; }
+ async config(userId) {
+  const generation = require('./account_service.js').mediaGeneration();
+  return {...await new Config().getConfig(),allowManualRegistration:profileRules.allowsManualRegistration(),phoneLoginEnabled:profileRules.isPhoneLoginEnabled(),templateId:process.env.ORDER_SUBSCRIBE_TEMPLATE_ID || '',
+   uploadPrefix:userId ? 'private/'+userId.split('^^^').pop()+'/'+(generation ? generation+'/' : '') : ''};
+ }
  async notifications(userId,page,options={}) {return new (require('./notification_service.js'))().list(userId,{...options,page});}
  async notificationSummary(userId) {return new (require('./notification_service.js'))().summary(userId);}
  async markRead(userId,id,kind) {return new (require('./notification_service.js'))().markRead(userId,id,kind);}
  async markAllRead(userId) {return new (require('./notification_service.js'))().markAllRead(userId);}
- async subscribe(userId,enabled) {await new Mail()._user(userId);if(typeof enabled!=='boolean')this.AppError('订阅设置无效');await store.set(store.database(),'subscription',store.scopeKey(this.getProjectId(),userId),{_pid:this.getProjectId(),userId,enabled,updatedAt:Date.now()});return {ok:true};}
+ async subscribe(userId,enabled) {await new Mail()._user(userId);if(typeof enabled!=='boolean')this.AppError('订阅设置无效');await store.transaction(tx=>store.set(tx,'subscription',store.scopeKey(this.getProjectId(),userId),{_pid:this.getProjectId(),userId,enabled,updatedAt:Date.now()}));return {ok:true};}
  async orders(page, status, options = {}) {
   const db = store.database(), where = { MAIL_ADMIN_DELETED: db.command.neq(true) };
   if (status !== undefined && status !== -1) {
