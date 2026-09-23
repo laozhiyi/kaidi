@@ -8,7 +8,7 @@ Page(Object.assign({
     canGetWechatPhone: true, canChooseWechatAvatar: true, canUseWechatNickname: true, loadError: '' },
   async onLoad(options = {}) {
     ProjectBiz.initPage(this);
-    if (PassportBiz.isLoggedOut() || !PassportBiz.getToken()) return wx.reLaunch({ url: MY_PAGE });
+    if (PassportBiz.isLoggedOut() || !PassportBiz.getUserId()) return wx.reLaunch({ url: MY_PAGE });
     let retUrl = '';
     try { retUrl = decodeURIComponent(options.retUrl || ''); } catch (_) {}
     this.setData({ hasSession: true, isEdit: PassportBiz.isProfileReady(PassportBiz.getToken()), retUrl });

@@ -6,9 +6,9 @@
     <view class="wechat-login-description">微信登录，开启校园互助</view>
   </view>
   <block wx:if="{{!phoneLoginEnabled}}">
-    <button class="wechat-login-button" bindtap="bindOpenWechatProfile" disabled="{{identityLoggingIn || saving}}">点击微信登录</button>
-    <view class="wechat-login-note">设置头像和昵称后，继续完善个人资料</view>
-    <view wx:if="{{loginError && !wechatProfileVisible}}" class="profile-save-error">{{loginError}}</view>
+    <button class="wechat-login-button" bindtap="bindOpenWechatProfile" loading="{{identityLoggingIn}}" disabled="{{identityLoggingIn || saving}}">{{identityLoggingIn ? '微信登录中' : '点击微信登录'}}</button>
+    <view class="wechat-login-note">登录后进入个人资料页，按提示填写资料</view>
+    <view wx:if="{{loginError}}" class="profile-save-error">{{loginError}}</view>
   </block>
   <form wx:else bindsubmit="bindProfileFormSubmit">
     <block wx:if="{{phoneVerified}}">
@@ -25,18 +25,4 @@
     </block>
     <view wx:if="{{loginError || saveError}}" class="profile-save-error">{{saveError || loginError}}</view>
   </form>
-</view>
-<view wx:if="{{wechatProfileVisible && !phoneLoginEnabled}}" class="wechat-profile-overlay">
-  <view class="wechat-profile-mask" catchtap="bindCloseWechatProfile" catchtouchmove="bindProfileSheetTouchMove"></view>
-  <view class="wechat-profile-sheet">
-    <view class="wechat-profile-heading">GXNU校跑 · 微信登录</view>
-    <form bindsubmit="bindConfirmWechatProfile">
-      <include src="../personal/wechat_profile_fields.wxml" />
-      <view wx:if="{{loginError || saveError}}" class="profile-save-error">{{saveError || loginError}}</view>
-      <view class="wechat-profile-actions">
-        <button class="wechat-profile-cancel" bindtap="bindCloseWechatProfile" disabled="{{saving || identityLoggingIn}}">取消</button>
-        <button class="wechat-login-button" form-type="submit" loading="{{saving || identityLoggingIn}}" disabled="{{saving || identityLoggingIn}}">确认并继续</button>
-      </view>
-    </form>
-  </view>
 </view>

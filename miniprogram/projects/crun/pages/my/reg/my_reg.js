@@ -67,33 +67,11 @@ Page(Object.assign({
       fail: () => { this._navigating = false; this.setData({ loginError: '页面打开失败，请重试' }); } });
   },
   bindOpenWechatProfile() {
-    if (this._unloaded || this._navigating || this.data.wechatProfileVisible || this.data.phoneLoginEnabled || this.data.identityLoggingIn || this.data.saving) return;
-    this.setData({ wechatProfileVisible: true, loginError: '', saveError: '' });
+    if (this._unloaded || this._navigating || this.data.phoneLoginEnabled || this.data.identityLoggingIn || this.data.saving) return;
+    return this.bindWechatAccountLogin();
   },
-  bindCloseWechatProfile() {
-    if (this.data.identityLoggingIn || this.data.saving) return;
-    this.setData({ wechatProfileVisible: false, loginError: '', saveError: '' });
-    if (this.data.hasSession) this._openPersonal();
-  },
-  bindConfirmWechatProfile(e) {
-    if (!this.data.wechatProfileVisible || this._navigating || this.data.identityLoggingIn || this.data.saving) return;
-    const value = e && e.detail && e.detail.value;
-    const name = String(value && Object.prototype.hasOwnProperty.call(value, 'nickname') ? value.nickname : '').trim();
-    this.setData({ formName: name, saveError: '' });
-    const error = !name || name.length > 30 ? '请选择或填写昵称（最多30字）' : !this.data.formPic ? '请点击选择头像' : '';
-    if (error) { this.setData({ loginError: error }); wx.showToast({ title: error, icon: 'none' }); return; }
-    return this.bindWechatAccountLogin(e);
-  },
-  async bindWechatAccountLogin(e) {
+  async bindWechatAccountLogin() {
     if (this._unloaded || this._navigating || this.data.phoneLoginEnabled === true || this.data.identityLoggingIn || this.data.phoneAuthorizing || this.data.saving) return;
-    const submitted = e && e.detail && e.detail.value;
-    const name = String(submitted && Object.prototype.hasOwnProperty.call(submitted, 'nickname') ? submitted.nickname : this.data.formName || '').trim();
-    const pic = this.data.formPic || '';
-    this.setData({ formName: name });
-    if (!!name !== !!pic) {
-      const message = name ? '请点击选择头像' : '请点击填写微信昵称';
-      this.setData({ loginError: message }); wx.showToast({ title: message, icon: 'none' }); return;
-    }
     const version = this._detailVersion = (this._detailVersion || 0) + 1;
     const isCurrent = () => !this._unloaded && version === this._detailVersion;
     this.setData({ identityLoggingIn: true, loginError: '', loadError: '' });
@@ -107,13 +85,7 @@ Page(Object.assign({
       this.setData({ hasSession: true, isLoad: true, loginError: '', loadError: '' });
       this._profileDirty = false;
       profileMethods.applyUser(this, result.user);
-      if (name && pic) { this._profileDirty = true; this.setData({ formName: name, formPic: pic }); }
       if (result.cancellationCancelled) wx.showToast({ title: '已取消账户注销', icon: 'none' });
-      if (name && pic) {
-        this.setData({ identityLoggingIn: false });
-        const saved = await profileMethods.bindSaveWechatProfile.call(this, { detail: { value: { nickname: name } } }, { stayOnPage: true });
-        if (!saved || !isCurrent()) return;
-      }
       return this._openPersonal();
     } catch (error) {
       if (isCurrent()) {

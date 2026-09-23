@@ -10,12 +10,13 @@ const ignore = () => {};
 function emit() { for (const listener of listeners) listener({ ...state }); }
 function syncIdentity() {
   const current = Passport.getUserId();
-  const marker = current + ':' + (Ops.scopeKey ? Ops.scopeKey() : '');
+  const ready = Passport.isLogin();
+  const marker = current + ':' + ready + ':' + (Ops.scopeKey ? Ops.scopeKey() : '');
   if (marker !== identity) {
     identity = marker; state = empty(); lastFetch = 0; generation++; request = null; acknowledged.clear();
     emit();
   }
-  return current;
+  return ready ? current : '';
 }
 function stopTimer() { if (timer !== null) clearTimeout(timer); timer = null; }
 if (Passport.onSessionChange) Passport.onSessionChange(() => { generation++; request = null; syncIdentity(); });
