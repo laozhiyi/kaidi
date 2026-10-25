@@ -11,7 +11,7 @@
         <view wx:if="{{item.type==='text'}}" class="about-content"><text user-select>{{item.val}}</text></view>
         <image wx:elif="{{item.type==='img'}}" class="about-image" mode="widthFix" src="{{item.val}}" data-url="{{item.val}}" bindtap="bindImage" show-menu-by-longpress />
       </block>
-      <view wx:if="{{!about.length}}" class="op-muted">{{key==='SETUP_CONTENT_ABOUT'?'GXNU校跑提供校区内的快递代取与互助服务。具体开放校区和服务规则以平台当前配置为准。':'联系方式尚未配置，如需帮助，请通过校区客服联系运营人员。'}}</view>
+      <view wx:if="{{!about.length}}" class="op-muted">{{emptyText}}</view>
     </block>
   </view>
   <button wx:if="{{key==='SETUP_CONTENT_ABOUT'}}" class="op-button-secondary" bindtap="bindContact">联系我们</button>

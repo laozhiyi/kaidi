@@ -15,6 +15,8 @@
 		<view wx:if="{{orderError}}" class="card"><view>{{orderError}}</view><button bindtap="loadOrder">重新加载订单</button></view>
 		<view wx:if="{{orderTarget}}" class="card"><view class="card-title"><text class="card-title-text">申诉对象</text></view><view>{{orderTarget.name}} · {{orderTarget.role}}</view><view class="tips">来自关联订单的另一位参与者。提交后由管理员核实并评定星级，审核前不影响对方信誉分。</view></view>
 
+		<aftersales-card />
+
 		<!-- 选择投诉对象 -->
 		<view wx:if="{{!orderTarget && !orderLoading && !orderError}}" class="card">
 			<view class="card-title">

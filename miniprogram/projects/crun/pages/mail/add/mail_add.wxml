@@ -24,11 +24,6 @@
    </view>
    <view wx:if="{{configError}}" class="pub-inline-error pub-view"><text class="pub-text">{{loadError}}，已保留所填内容。</text><text class="pub-text" bindtap="bindRetryLoad">重试</text></view>
 
-   <view class="pub-card pub-options pub-deadline-card pub-view">
-    <view class="pub-deadline pub-view"><view class="pub-option-label pub-view"><text class="icon-time pub-text"></text><text class="pub-text">客户期望接单截止时间</text></view><deadline-picker value="{{formEnd}}" disabled="{{submitting}}" bind:select="bindEndSelect" /></view>
-    <view wx:if="{{formEndFocus}}" class="pub-validation pub-view">{{formEndFocus}}</view>
-   </view>
-
    <template is="{{serviceForm}}" data="{{packageItems,packageTypes,serviceType,totalFee,totalCount,config,submitting,mailValues}}" />
 
    <view class="pub-card pub-route-card pub-view">
@@ -59,13 +54,17 @@
       <view class="pub-input-box pub-view"><input class="pub-input" value="{{mailValues.tel2}}" maxlength="50" placeholder="微信号或备用电话" placeholder-class="pub-placeholder" bindinput="bindMailInput" data-mark="tel2" /></view>
      </view>
     </view>
+   <view class="pub-card pub-options pub-deadline-card pub-view">
+    <view class="pub-deadline pub-view"><view class="pub-option-label pub-view"><text class="icon-time pub-text"></text><text class="pub-text">期待送达时间</text></view><deadline-picker value="{{formEnd}}" disabled="{{submitting}}" bind:select="bindEndSelect" /></view>
+    <view wx:if="{{formEndFocus}}" class="pub-validation pub-view">{{formEndFocus}}</view>
+   </view>
 <view wx:if="{{config.urgentEnabled}}" class="pub-card pub-options pub-view">
     <view class="pub-option-row pub-view"><view class="pub-view"><view class="pub-option-label pub-view">加急 <text class="pub-urgent-tag pub-text">可选</text></view><view class="pub-caption pub-view">优先处理，预计 {{config.urgentMinutes}} 分钟内完成</view></view><switch class="pub-switch" checked="{{urgent}}" color="#397bc8" bindchange="bindUrgentChange"/></view>
    </view>
    <view class="pub-settlement pub-view" bindtap="bindSettlementTap"><text class="icon-info pub-text"></text><view class="pub-view"><text class="pub-text">费用线下结算，请勿提前转账</text><view class="pub-view">平台不代收、不担保 · 查看结算说明</view></view><text class="icon-right pub-text"></text></view>
   </view>
 
-  <view class="pub-submit-bar pub-view"><view class="pub-total pub-view"><view class="pub-total-label pub-view">{{serviceType === 'buy' ? '跑腿费 · 不含商品款' : '共 ' + totalCount + ' 件 · 线下费用'}}</view><view class="pub-total-price pub-view"><text class="pub-text">¥</text>{{totalFee}}</view></view><button class="pub-submit pub-button-base {{(submitting || pageLoading || configError || (!serviceState.canPublish && !editId)) ? 'pub-disabled' : ''}}" hover-class="pub-submit-hover" bindtap="bindFormSubmit" loading="{{submitting}}" disabled="{{submitting || pageLoading || configError || (!serviceState.canPublish && !editId)}}">{{editId ? '保存修改' : serviceState.kind==='paused' ? '暂时停止接单' : serviceState.kind==='closed' ? '营业后可发布' : serviceType === 'buy' ? '发布代买订单' : serviceType === 'send' ? '发布代送订单' : '发布代取订单'}}<text wx:if="{{!submitting && serviceState.canPublish}}" class="icon-right pub-text"></text></button></view>
+  <view class="pub-submit-bar pub-view"><view class="pub-total pub-view"><view class="pub-total-label pub-view">{{serviceType === 'buy' ? '跑腿费 · 不含商品款' : '共 ' + totalCount + ' 件 · 线下费用'}}</view><view class="pub-total-price pub-view"><text class="pub-text">¥</text>{{totalFee}}</view></view><button class="pub-submit pub-button-base {{(submitting || pageLoading || configError || (!serviceState.canPublish && !editId) || (serviceType !== 'buy' && totalCount < 1)) ? 'pub-disabled' : ''}}" hover-class="pub-submit-hover" bindtap="bindFormSubmit" loading="{{submitting}}" disabled="{{submitting || pageLoading || configError || (!serviceState.canPublish && !editId) || (serviceType !== 'buy' && totalCount < 1)}}">{{(serviceType !== 'buy' && totalCount < 1) ? '请先选择包裹' : editId ? '保存修改' : serviceState.kind==='paused' ? '暂时停止接单' : serviceState.kind==='closed' ? '营业后可发布' : serviceType === 'buy' ? '发布代买订单' : serviceType === 'send' ? '发布代送订单' : '发布代取订单'}}<text wx:if="{{!submitting && serviceState.canPublish}}" class="icon-right pub-text"></text></button></view>
   <view class="pub-form-engine pub-view"><cmpt-form-show id="cmpt-form" mark="mail-add-engine" isCacheMatch="{{false}}" fields="{{fields}}" forms="{{formForms}}" isDefMatch="{{true}}"/></view>
  </block>
  <include src="./mail_profile_picker.wxml" />

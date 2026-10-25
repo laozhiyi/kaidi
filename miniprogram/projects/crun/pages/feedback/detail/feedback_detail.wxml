@@ -48,6 +48,8 @@
 		<view class="reply-wait-icon">⏳</view>
 		<view class="reply-wait-text">客服正在加急处理中，请耐心等待</view>
 	</view>
+
+	<aftersales-card />
 </view>
 
 <view wx:elif="{{isLoad && !error}}" class="empty">

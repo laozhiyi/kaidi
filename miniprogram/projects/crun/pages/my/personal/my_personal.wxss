@@ -71,6 +71,20 @@ page { background: #f3f6fb; }
 .profile-cancel-account[disabled] { color:#9aa9ba; }
 .profile-save-error { margin-top:12rpx; text-align:center; }
 .profile-load-state { margin:60rpx 24rpx; padding:30rpx; text-align:center; color:#8190a5; font-size:26rpx; }
+.profile-card-field { padding:22rpx 0; border-bottom:1rpx solid #edf1f6; }
+.profile-card-head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; }
+.profile-card-optional { color:#8494a9; font-size:22rpx; line-height:1.4; }
+.profile-card-body { margin-top:18rpx; }
+.profile-card-preview { position:relative; width:220rpx; height:150rpx; }
+.profile-card-image { width:220rpx; height:150rpx; border-radius:12rpx; background:#f0f4f9; }
+.profile-card-delete { position:absolute; top:-12rpx; right:-12rpx; width:44rpx; height:44rpx; border-radius:50%; background:#c95353; color:#fff; font-size:22rpx; display:flex; align-items:center; justify-content:center; }
+.profile-card-add { width:220rpx; height:150rpx; border:1rpx dashed #b8c7da; border-radius:12rpx; background:#f7f9fc; color:#7a8ba1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6rpx; }
+.profile-card-add-text { font-size:22rpx; }
+.profile-disclaimer { display:flex; align-items:center; flex-wrap:wrap; margin-top:22rpx; color:#52647c; font-size:24rpx; line-height:1.5; }
+.profile-disclaimer-check { display:flex; align-items:center; }
+.profile-disclaimer-box { width:34rpx; height:34rpx; margin-right:12rpx; border:2rpx solid #b8c7da; border-radius:8rpx; background:#fff; color:#fff; font-size:22rpx; display:flex; align-items:center; justify-content:center; box-sizing:border-box; }
+.profile-disclaimer-on .profile-disclaimer-box { border-color:#397bc8; background:#397bc8; }
+.profile-disclaimer-link { color:#397bc8; }
 .profile-invite { margin-top:20rpx; }
 .profile-personal { margin-top:20rpx; }
 .profile-nickname-hint { margin-top:18rpx; color:#8494a9; font-size:22rpx; line-height:1.6; }

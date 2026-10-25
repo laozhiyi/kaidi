@@ -67,16 +67,27 @@ Page({
 		pageHelper.url(e, this);
 	},
 
-	bindSaveTap: function (e) {
-		let formContent = this.selectComponent("#contentEditor").getNodeList();
+	bindSaveTap: function () {
+		const editor = this.selectComponent("#contentEditor");
+		if (!editor) {
+			pageHelper.showModal('正文编辑器尚未加载，请稍后重试');
+			return;
+		}
 
-		let parent = pageHelper.getPrevPage(2);
-		if (!parent) return;
+		const formContent = editor.getNodeList();
+		if (!formContent || !formContent.length) {
+			pageHelper.showModal('详细内容不能为空');
+			return;
+		}
 
-		parent.setData({
-			formContent
-		}, () => {
-			parent._setContentDesc();
+		const parent = pageHelper.getPrevPage(2);
+		if (!parent) {
+			pageHelper.showModal('无法返回公告编辑页，请重新打开正文编辑');
+			return;
+		}
+
+		parent.setData({ formContent }, () => {
+			if (typeof parent._setContentDesc === 'function') parent._setContentDesc();
 		});
 
 		wx.navigateBack();

@@ -119,7 +119,7 @@ async function registered(f) {
   assert.equal(login.token.phoneVerified, false);
   assert.equal(login.token.profileComplete, false);
   const result = await f.passport.register('sample-user-openid', { name: '同学[1]', mobile: '13900000001', pic: 'cloud://test/sample-avatar.png',
-    forms: [{ mark: 'sex', val: '男' }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' },
+    forms: [{ mark: 'sex', val: '男' }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' }, { mark: 'studentId', val: '20240001' }, { mark: 'disclaimer', val: true },
       { mark: 'campus', title: '校区', val: '育才校区' }] });
   const id = f.store.key('crun', 'user', result.token.id);
   return { token: result.token, id, row: f.table('user').get(id) };

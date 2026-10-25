@@ -17,7 +17,7 @@
      <view class="pub-package {{item.count > 0 ? 'pub-package-selected' : ''}} pub-view" wx:for="{{packageTypes}}" wx:key="mark">
       <view class="pub-parcel pub-parcel-{{item.mark}} pub-view"><view class="pub-view"></view></view>
       <view class="pub-package-name pub-view">{{item.label}}</view><view class="pub-package-price pub-view">¥<text class="pub-text">{{item.price}}</text><text class="pub-per-item pub-text"> /件</text></view>
-      <view class="pub-counter pub-view"><button class="pub-counter-button pub-button-base {{(item.count===0 || totalCount<=1) ? 'pub-disabled' : ''}}" disabled="{{item.count===0 || totalCount<=1}}" bindtap="bindPackageTap" data-index="{{index}}" data-step="-1">−</button><text class="pub-text">{{item.count}}</text><button class="pub-counter-button pub-counter-add pub-button-base {{(totalCount>=config.maxPackages) ? 'pub-disabled' : ''}}" disabled="{{totalCount>=config.maxPackages}}" bindtap="bindPackageTap" data-index="{{index}}" data-step="1">＋</button></view>
+      <view class="pub-counter pub-view"><button class="pub-counter-button pub-button-base {{item.count===0 ? 'pub-disabled' : ''}}" disabled="{{item.count===0}}" bindtap="bindPackageTap" data-index="{{index}}" data-step="-1">−</button><text class="pub-text">{{item.count}}</text><button class="pub-counter-button pub-counter-add pub-button-base {{(totalCount>=config.maxPackages) ? 'pub-disabled' : ''}}" disabled="{{totalCount>=config.maxPackages}}" bindtap="bindPackageTap" data-index="{{index}}" data-step="1">＋</button></view>
      </view>
     </view>
     <view wx:if="{{packageItems.length}}" class="pub-package-details pub-view">
@@ -38,7 +38,7 @@
       <input class="pub-package-note-input pub-input" value="{{item.note}}" maxlength="300" data-index="{{index}}" data-mark="note" bindinput="bindPackageItemInput" placeholder="{{serviceType === 'send' ? '物品名称、交接方式等（选填）' : '备注（选填）'}}"/>
      </view>
     </view>
-    <view class="pub-footnote pub-view">共 {{totalCount}} 件包裹 · 请按实际大小选择规格</view>
+    <view class="pub-footnote pub-view">{{totalCount > 0 ? '共 ' + totalCount + ' 件包裹 · 请按实际大小选择规格' : '当前 0 件 · 请至少选择 1 件包裹后再发布'}}</view>
    </view>
 
 </template>

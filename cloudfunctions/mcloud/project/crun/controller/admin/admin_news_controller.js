@@ -119,8 +119,13 @@ class AdminNewsController extends BaseProjectAdminController {
 		};
 
 
-		// 取得数据
-		let input = this.validateData(rules);
+		// 取得数据。空规则不会返回原始参数，发布接口需要保留完整请求体。
+		let input = { ...(this._request || {}) };
+
+		// 兼容旧版客户端传入的表单字段名，并在进入服务层前统一标准化。
+		const rawTitle = input.title !== undefined ? input.title : input.formTitle;
+		input.title = typeof rawTitle === 'string' ? rawTitle.trim() : '';
+		if (!input.title) this.AppError('标题不能为空');
 
 		// 内容审核
 		await contentCheck.checkTextMultiAdmin(input);
@@ -163,16 +168,22 @@ class AdminNewsController extends BaseProjectAdminController {
 			 
 		};
 
-		// 取得数据
-		let input = this.validateData(rules);
+		// 取得数据。编辑接口同样需要保留完整请求体。
+		let input = { ...(this._request || {}) };
+
+		const rawTitle = input.title !== undefined ? input.title : input.formTitle;
+		if (rawTitle !== undefined) {
+			input.title = typeof rawTitle === 'string' ? rawTitle.trim() : '';
+			if (!input.title) this.AppError('标题不能为空');
+		}
 
 		// 内容审核
 		await contentCheck.checkTextMultiAdmin(input);
 
 		let service = new AdminNewsService();
-		let result = service.editNews(input);
+		let result = await service.editNews(input);
 
-		this.logNews('修改了文章《' + input.title + '》');
+		this.logNews('修改了文章《' + (input.title || '') + '》');
 
 		return result;
 	}
@@ -211,8 +222,8 @@ class AdminNewsController extends BaseProjectAdminController {
 		 
 		};
 
-		// 取得数据
-		let input = this.validateData(rules);
+		// 空规则不会返回原始参数，图片更新接口需要保留完整请求体。
+		let input = { ...(this._request || {}) };
 
 		let service = new AdminNewsService();
 		return await service.updateNewsPic(input);
@@ -227,8 +238,8 @@ class AdminNewsController extends BaseProjectAdminController {
 			 
 		};
 
-		// 取得数据
-		let input = this.validateData(rules);
+		// 空规则不会返回原始参数，表单图片更新接口需要保留完整请求体。
+		let input = { ...(this._request || {}) };
 
 		// 内容审核
 		await contentCheck.checkTextMultiAdmin(input);

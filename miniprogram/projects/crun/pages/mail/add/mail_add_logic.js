@@ -24,12 +24,12 @@ module.exports = {
 		serviceType: 'take', serviceName: '快递代取', serviceForm:'parcel-fields',
 		serviceState: { kind: 'loading', canPublish: false }, campusIndex: 0,
 		packageTypes: [
-			{ mark: 'small', label: '小件', price: '1.50', count: 1 },
+			{ mark: 'small', label: '小件', price: '1.50', count: 0 },
 			{ mark: 'medium', label: '中件', price: '3.00', count: 0 },
 			{ mark: 'large', label: '大件', price: '5.00', count: 0 },
 		],
-		totalCount: 1,
-		totalFee: '1.50',
+		totalCount: 0,
+		totalFee: '0.00',
         customPrice: '',
 		urgent: false,
 		config:null,campuses:[],campus:'',configError:false,loadError:'',pageLoading:false,submitting:false,hasPendingSubmission:false,
@@ -47,6 +47,11 @@ module.exports = {
 		profileAddressIndex: -1, profileContactIndex: -1,
 	},
 
+	/** 代取/代送初始 0 件由用户自选；代买没有件数选择器，内部固定 1 件用于承载购买地点与跑腿费。 */
+	_initialCount: function (serviceType) {
+		return serviceType === 'buy' ? 1 : 0;
+	},
+
 	onLoad: async function (options) {
 		ProjectBiz.initPage(this);
 		if (!options || !options.embedded) { if (!await PassportBiz.loginMustBackWin(this)) return; }
@@ -54,7 +59,11 @@ module.exports = {
 		// 编辑模式：带上 id 参数时，从云端拉取原订单回填表单
 		const editId = (options && options.id) || '';
 		const serviceType = options && SERVICE_NAMES[options.service] ? options.service : 'take';
-		this.setData({ editId, serviceType, serviceName: SERVICE_NAMES[serviceType], serviceForm:Plugins.get(serviceType).form });
+		// 代取/代送的包裹由用户自选，初始 0 件；代买没有件数选择器，固定按 1 件内部计费。
+		const initialCount = this._initialCount(serviceType);
+		const initialTypes = this.data.packageTypes.map((x, i) => ({ ...x, count: i === 0 ? initialCount : 0 }));
+		this.setData({ editId, serviceType, serviceName: SERVICE_NAMES[serviceType], serviceForm:Plugins.get(serviceType).form,
+			packageTypes: initialTypes, totalCount: initialCount, totalFee: initialCount ? initialTypes[0].price : '0.00' });
 
 		const formData = MailBiz.initFormData();
 		// The client validator expects the category id in string form.
@@ -75,9 +84,9 @@ module.exports = {
 		);
 		formData.formForms = [
 			{ mark: 'title', title: '任务名称', type: 'text', val: SERVICE_NAMES[serviceType] },
-			{ mark: 'num', title: '快递件数', type: 'int', val: '1' },
+			{ mark: 'num', title: '快递件数', type: 'int', val: String(initialCount) },
 			{ mark: 'weight', title: '预估重量(kg)', type: 'int', val: '1' },
-			{ mark: 'price', title: '代取费用(元)', type: 'digit', val: '1.50' },
+			{ mark: 'price', title: '代取费用(元)', type: 'digit', val: initialCount ? '1.50' : '0.00' },
 			{ mark: 'code', title: '取件码', type: 'textarea', val: '' },
 			{ mark: 'img', title: '相关图片', type: 'image', val: [] },
 			{ mark: 'address2', title: '收件地址', type: 'textarea', val: '' },
@@ -85,7 +94,7 @@ module.exports = {
 			{ mark: 'tel', title: '手机号', type: 'mobile', val: '' },
 			{ mark: 'tel2', title: '第二联系方式', type: 'text', val: '' },
 			{ mark: 'desc', title: '备注', type: 'textarea', val: '' },
-			{ mark: 'small', title: '小件数量', type: 'int', val: '1' },
+			{ mark: 'small', title: '小件数量', type: 'int', val: String(initialCount) },
 			{ mark: 'medium', title: '中件数量', type: 'int', val: '0' },
 			{ mark: 'large', title: '大件数量', type: 'int', val: '0' },
 			{ mark: 'urgent', title: '加急订单', type: 'switch', val: false },
@@ -358,7 +367,7 @@ module.exports = {
 		const packages = this.data.packageTypes.slice();
 		const nextCount = Math.max(0, packages[index].count + step);
 		const currentTotal = packages.reduce((sum, item) => sum + item.count, 0);
-		if (step < 0 && currentTotal <= 1) return;
+		if (step < 0 && packages[index].count <= 0) return;
  if(step>0 && currentTotal>=this.data.config.maxPackages){wx.showToast({title:'已达到每单件数上限',icon:'none'});return;}
 		packages[index] = Object.assign({}, packages[index], { count: nextCount });
 
@@ -479,6 +488,12 @@ module.exports = {
     if (!item) return;
     this._profileEdited.address2 = true;
     this._setFormVal('address2', Address.formatAddress(item));
+    // 常用地址的补充信息带入订单补充说明；已包含时不重复追加。
+    const note = String(item.note || '').trim();
+    if (note) {
+     const desc = String(this.data.mailValues.desc || '').trim();
+     if (!desc.includes(note)) this._setFormVal('desc', (desc ? desc + '\n' : '') + note);
+    }
    } else {
     const item = this.data.profileContacts[this.data.profileContactIndex];
     if (!item) return;
@@ -562,7 +577,9 @@ module.exports = {
 		const old = this.data.mailValues || {};
 		const campus = this.data.campus || '';
 		const mailValues = { code: '', address2: old.address2 || '', poster: old.poster || '', tel: old.tel || '', tel2: '', desc: '' };
-		const values = { title: this.data.serviceName, num: '1', weight: '1', price: this.data.packageTypes && this.data.packageTypes[0] ? this.data.packageTypes[0].price : '1.50', code: '', img: [], address2: mailValues.address2, poster: mailValues.poster, tel: mailValues.tel, tel2: mailValues.tel2, desc: '', small: '1', medium: '0', large: '0', urgent: false, campus, formEnd: end, packages: [] };
+		const initialCount = this._initialCount(this.data.serviceType);
+		const firstPrice = this.data.packageTypes && this.data.packageTypes[0] ? this.data.packageTypes[0].price : '1.50';
+		const values = { title: this.data.serviceName, num: String(initialCount), weight: '1', price: initialCount ? firstPrice : '0.00', code: '', img: [], address2: mailValues.address2, poster: mailValues.poster, tel: mailValues.tel, tel2: mailValues.tel2, desc: '', small: String(initialCount), medium: '0', large: '0', urgent: false, campus, formEnd: end, packages: [] };
 		const resetValue = item => Object.prototype.hasOwnProperty.call(values, item.mark) ? values[item.mark] : (item.type === 'image' ? [] : item.type === 'switch' ? false : '');
 		// Reset the parent snapshot too: subsequent property updates must not restore the previous order.
 		this.setData({ formForms: (this.data.formForms || []).map(item => ({ ...item, val: resetValue(item) })) });
@@ -572,8 +589,8 @@ module.exports = {
 		}
 		// These flags protect this order's draft, not all future orders on the home page.
 		this._profileEdited = {};
-		const packageTypes = (this.data.packageTypes || []).map((item, index) => Object.assign({}, item, { count: index === 0 ? 1 : 0 }));
-		this.setData({ editId: '', mailId: '', formEnd: end, formEndFocus: '', mailValues, proofImages: [], proofPreview: {}, packageItems: [], packageTypes, totalCount: 1, totalFee: packageTypes[0] ? packageTypes[0].price : '1.50', urgent: false, campus, campusIndex: Math.max(0, (this.data.campuses || []).indexOf(campus)) });
+		const packageTypes = (this.data.packageTypes || []).map((item, index) => Object.assign({}, item, { count: index === 0 ? initialCount : 0 }));
+		this.setData({ editId: '', mailId: '', formEnd: end, formEndFocus: '', mailValues, proofImages: [], proofPreview: {}, packageItems: [], packageTypes, totalCount: initialCount, totalFee: initialCount ? firstPrice : '0.00', urgent: false, campus, campusIndex: Math.max(0, (this.data.campuses || []).indexOf(campus)) });
 		this._syncPackageItems([]);
 		this._setFormVal('title', this.data.serviceName);
 		this.bindClosePackagePickup();
@@ -617,7 +634,7 @@ module.exports = {
   try {
    if(!await PassportBiz.loginMustCancelWin(this))return;
    const packages = Array.isArray(this.data.packageItems) ? this.data.packageItems : [];
-   if (!packages.length) throw new Error('请先选择包裹');
+   if (!packages.length) throw new Error('请至少选择1件包裹');
    const missingPickup = packages.findIndex(item => !String(item.pickupPoint || '').trim());
    if (missingPickup >= 0) throw new Error(this.data.serviceType === 'buy' ? '请填写购买地点' : '请填写第' + (missingPickup + 1) + '件包裹的取件点');
    if (packages.some(item => !/^\d+(?:\.\d{1,2})?$/.test(String(item.price)) || Number(item.price) < 0.01 || Number(item.price) > 10000)) throw new Error('跑腿费须在0.01至10000元之间，最多保留两位小数');

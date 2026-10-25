@@ -121,6 +121,9 @@ Page({
 		}
 		data = validate.check(data, AdminNewsBiz.CHECK_FORM, this);
 		if (!data) return;
+		const title = String(this.data.formTitle || '').trim();
+		if (!title) return pageHelper.showModal('请填写公告标题');
+		data.title = title;
 
 		const formComponent = this.selectComponent("#cmpt-form");
 		let forms = formComponent ? formComponent.getForms(true) : [];
@@ -129,14 +132,14 @@ Page({
 
 		data.cateName = AdminNewsBiz.getCateName(data.cateId);
 
+		if (!this.data.imgList || this.data.imgList.length === 0) {
+			return pageHelper.showModal('请上传封面图');
+		}
+
 		this.setData({ isSubmit: true });
 		try {
 			let newsId = this.data.id;
 			data.id = newsId;
-
-			if (this.data.imgList.length == 0) {
-				return pageHelper.showModal('请上传封面图');
-			}
 
 			// 提取简介  
 			data.desc = PublicBiz.getRichEditorDesc(data.desc, this.data.formContent);
@@ -180,7 +183,9 @@ Page({
 			pageHelper.showSuccToast('修改成功', 2000, callback);
 
 		} catch (err) {
-			console.log(err);
+			console.error('[admin/news_edit] 保存失败:', err);
+			const message = err && (err.msg || err.message);
+			pageHelper.showModal(message || '保存失败，请稍后重试');
 		} finally {
 			wx.hideLoading();
 			this.setData({ isSubmit: false });

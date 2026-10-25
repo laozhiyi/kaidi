@@ -4,10 +4,17 @@
 	<button catchtap="bindViewModeTap" data-view="true" class="btn {{isView?'bg-blue':'bg-grey light'}} round">预览</button>
 </view>
 
+<view class="emoji-bar" wx:if="{{!isView}}">
+	<view class="emoji-toggle" catchtap="bindEmojiToggle" role="button" aria-label="插入表情">😊 表情</view>
+	<scroll-view wx:if="{{emojiOpen}}" class="emoji-list" scroll-x enhanced show-scrollbar="{{false}}">
+		<text wx:for="{{emojiList}}" wx:key="*this" class="emoji-item" catchtap="bindEmojiTap" data-emoji="{{item}}">{{item}}</text>
+	</scroll-view>
+</view>
+
 <view class="editor-wrapper" style="min-height: {{consoleMode?'360rpx':'400px'}};{{viewMode && !consoleMode?'margin-top:50rpx':''}}">
 	<block wx:for="{{nodeList}}" wx:for-item="node" wx:key="index">
 		<view class="editor-node-wrapper {{cur==index?'cur':''}} {{isView?'is-view':''}}">
-			<textarea disabled="{{isView}}" id="editor-node-{{index}}" wx:if="{{node.type==='text'}}" auto-height="true" cursor-spacing="60" bindinput="bindTextareaInput" class="editor-textarea" data-idx="{{index}}" maxlength="-1" value="{{node.val}}"></textarea>
+			<textarea disabled="{{isView}}" id="editor-node-{{index}}" wx:if="{{node.type==='text'}}" auto-height="true" cursor-spacing="60" bindinput="bindTextareaInput" class="editor-textarea" data-idx="{{index}}" maxlength="-1" value="{{node.val}}" bindfocus="bindTextareaFocus" bindblur="bindTextareaBlur"></textarea>
 			<image bindtap="url" data-type="image" data-url="{{node.val}}"  id="editor-node-{{index}}" wx:if="{{node.type==='img'}}" mode="widthFix" class="loading editor-image" src="{{node.val}}" lazy-load="true"></image>
 
 			<view class="editor-delete" wx:if="{{!isView}}">

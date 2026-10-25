@@ -125,6 +125,8 @@ function profile(f) {
     { mark: 'sex', title: '性别', type: 'select', val: '女' },
     { mark: 'college', title: '学院', type: 'text', val: '计算机学院' },
     { mark: 'sub', title: '专业', type: 'text', val: '软件工程' },
+    { mark: 'studentId', title: '学号', type: 'text', val: '20240001' },
+    { mark: 'disclaimer', title: '免责声明', type: 'bool', val: true },
     { mark: 'campus', title: '所在校区', type: 'select', val: A.campusName },
     { mark: 'payPic', title: '支付凭证', type: 'image', val: ['cloud://test/payment.png'] }
   ] };

@@ -159,7 +159,8 @@ function fmtText(content, len = -1) {
 	
 	let str = content.replace(/[\r\n]/g, ""); //去掉回车换行
 	if (len > 0) {
-		str = str.substr(0, len);
+		// 按字符截断，避免切开表情的代理对
+		str = Array.from(str).slice(0, len).join('');
 	}
 	return str.trim();
 }

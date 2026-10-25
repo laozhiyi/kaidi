@@ -8,7 +8,8 @@ const Address = require('../../biz/address_biz.js');
 const PassportBiz = require('../../../../comm/biz/passport_biz.js');
 const InviteBiz = require('../../biz/invite_biz.js');
 const DEFAULT_CAMPUSES = [];
-const PERSONAL_MARKS = new Set(['sex', 'college', 'sub']);
+const PERSONAL_MARKS = new Set(['sex', 'college', 'sub', 'studentId', 'studentCard', 'disclaimer']);
+const STUDENT_ID_RE = /^[A-Za-z0-9]{6,20}$/;
 let campusCache = null;
 let campusRequest = null;
 let campusCacheVersion = 0;
@@ -119,8 +120,11 @@ function applyUser(page, user) {
   const p = ProfileBiz.readProfile(user);
   const campuses = page.data.campuses && page.data.campuses.length ? page.data.campuses : DEFAULT_CAMPUSES;
   const forms = Array.isArray(user.USER_FORMS) ? user.USER_FORMS : [];
-  page.setData(Object.assign({ phoneVerified: user.USER_MOBILE_VERIFIED === true, accountStatus: typeof user.USER_STATUS === 'number' ? user.USER_STATUS : -1, formName: user.USER_NAME || '', formMobile: user.USER_MOBILE || '', formPic: user.USER_PIC || '', formForms: forms, fields: projectSetting.USER_FIELDS, genderOptions: ['男', '女'], profileSex: String(ProfileBiz.formValue(forms, 'sex') || ''), profileCollege: String(ProfileBiz.formValue(forms, 'college') || ''), profileSub: String(ProfileBiz.formValue(forms, 'sub') || '') }, p, {
-    campuses, campusIndex: campuses.indexOf(p.campus), campusPickerVisible: false, campusDraft: '', contactEditorVisible: false, addressEditorVisible: false, editingContactIndex: -1, editingAddressIndex: -1, contactDraft: { name: '', phone: '' }, addressDraft: { label: '', detail: '' }
+  page.setData(Object.assign({ phoneVerified: user.USER_MOBILE_VERIFIED === true, accountStatus: typeof user.USER_STATUS === 'number' ? user.USER_STATUS : -1, formName: user.USER_NAME || '', formMobile: user.USER_MOBILE || '', formPic: user.USER_PIC || '', formForms: forms, fields: projectSetting.USER_FIELDS, genderOptions: ['男', '女'], profileSex: String(ProfileBiz.formValue(forms, 'sex') || ''), profileCollege: String(ProfileBiz.formValue(forms, 'college') || ''), profileSub: String(ProfileBiz.formValue(forms, 'sub') || ''),
+    profileStudentId: String(ProfileBiz.formValue(forms, 'studentId') || ''),
+    profileStudentCard: [].concat(ProfileBiz.formValue(forms, 'studentCard') || []).filter(value => typeof value === 'string' && value).slice(0, 1),
+    profileDisclaimer: ProfileBiz.formValue(forms, 'disclaimer') === true }, p, {
+    campuses, campusIndex: campuses.indexOf(p.campus), campusPickerVisible: false, campusDraft: '', contactEditorVisible: false, addressEditorVisible: false, editingContactIndex: -1, editingAddressIndex: -1, contactDraft: { name: '', phone: '' }, addressDraft: { label: '', detail: '', note: '' }
   }));
 }
 function profileBusy(page) {
@@ -214,9 +218,37 @@ function bindCampusChange(e) {
 function bindGenderTap(e) { this._profileDirty = true; this.setData({ profileSex: e.currentTarget.dataset.value || '' }); }
 function bindProfileFieldInput(e) {
   const field = e.currentTarget.dataset.field;
-  if (!['profileCollege', 'profileSub'].includes(field)) return;
+  if (!['profileCollege', 'profileSub', 'profileStudentId'].includes(field)) return;
   this._profileDirty = true;
   this.setData({ [field]: e.detail.value });
+}
+function bindDisclaimerTap() {
+  if (profileBusy(this)) return;
+  this._profileDirty = true; this.setData({ profileDisclaimer: !this.data.profileDisclaimer });
+}
+function bindViewDisclaimer() {
+  wx.navigateTo({ url: '/projects/crun/pages/about/index/about_index?key=SETUP_CONTENT_DISCLAIMER' });
+}
+function bindChooseStudentCard() {
+  if (profileBusy(this)) return;
+  const success = result => {
+    const file = result.tempFiles && result.tempFiles[0];
+    const path = file && file.tempFilePath || result.tempFilePaths && result.tempFilePaths[0];
+    if (profileBusy(this) || !path) return;
+    this._profileDirty = true; this.setData({ profileStudentCard: [path] });
+  };
+  const fail = error => { if (!this._unloaded && !/cancel/i.test(error && error.errMsg || '')) pageHelper.showNoneToast('图片选择失败，请重试'); };
+  if (typeof wx.chooseMedia === 'function' && supportsNative('chooseMedia')) wx.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'], success, fail });
+  else if (typeof wx.chooseImage === 'function') wx.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'], success, fail });
+  else pageHelper.showNoneToast('当前微信无法选择图片，请更新微信后重试');
+}
+function bindPreviewStudentCard() {
+  const url = (this.data.profileStudentCard || [])[0];
+  if (url) wx.previewImage({ current: url, urls: [url] });
+}
+function bindDeleteStudentCard() {
+  if (profileBusy(this)) return;
+  this._profileDirty = true; this.setData({ profileStudentCard: [] });
 }
 function getCachedProfileUser() { checkScope(); const userId = PassportBiz.getUserId(); return userId ? readDiskCache(PROFILE_CACHE_KEY, userId) : null; }
 function getProfileUser(options, force = false) {
@@ -332,7 +364,7 @@ function bindSaveContact() {
 }
 function bindAddAddress() {
   if (this.data.collectionSaving) return;
-  this.setData({ addressEditorVisible: true, editingAddressIndex: -1, addressDraft: { label: '', detail: '' } });
+  this.setData({ addressEditorVisible: true, editingAddressIndex: -1, addressDraft: { label: '', detail: '', note: '' } });
 }
 function bindEditAddress(e) {
   if (this.data.collectionSaving) return;
@@ -352,23 +384,23 @@ function bindDeleteAddress(e) {
   const index = itemIndex(e, this.data.addresses || []);
   if (index < 0) return;
   const editing = this.data.editingAddressIndex;
-  const editor = editing === index ? { addressEditorVisible: false, editingAddressIndex: -1, addressDraft: { label: '', detail: '' } }
+  const editor = editing === index ? { addressEditorVisible: false, editingAddressIndex: -1, addressDraft: { label: '', detail: '', note: '' } }
     : editing > index ? { editingAddressIndex: editing - 1 } : {};
   return saveCollections(this, { addresses: this.data.addresses.filter((_, i) => i !== index) }, editor);
 }
 function bindCancelAddress() {
-  if (!this.data.collectionSaving) this.setData({ addressEditorVisible: false, editingAddressIndex: -1, addressDraft: { label: '', detail: '' }, saveError: '' });
+  if (!this.data.collectionSaving) this.setData({ addressEditorVisible: false, editingAddressIndex: -1, addressDraft: { label: '', detail: '', note: '' }, saveError: '' });
 }
 function bindSaveAddress() {
   if (this.data.collectionSaving) return;
   const draft = this.data.addressDraft || {};
-  const item = { label: String(draft.label || '').trim(), detail: String(draft.detail || '').trim() };
+  const item = { label: String(draft.label || '').trim(), detail: String(draft.detail || '').trim(), note: Array.from(String(draft.note || '').trim()).slice(0, 60).join('') };
   if (!Address.PHASES.includes(item.label)) return pageHelper.showNoneToast('请选择地址所属期数');
   if (!item.detail) return pageHelper.showNoneToast('请填写详细地址');
   const addresses = (this.data.addresses || []).slice(), index = this.data.editingAddressIndex;
   if (index >= 0 && index < addresses.length) addresses[index] = { ...addresses[index], ...item };
   else addresses.push(item);
-  return saveCollections(this, { addresses }, { addressEditorVisible: false, editingAddressIndex: -1, addressDraft: { label: '', detail: '' } });
+  return saveCollections(this, { addresses }, { addressEditorVisible: false, editingAddressIndex: -1, addressDraft: { label: '', detail: '', note: '' } });
 }
 function finishProfile(page) {
   const myPage = '/projects/crun/pages/my/index/my_index';
@@ -434,6 +466,12 @@ async function bindSubmitTap(e) {
     if (!['男', '女'].includes(this.data.profileSex)) throw new Error('请选择性别');
     if (!String(this.data.profileCollege || '').trim()) throw new Error('请填写所在学院');
     if (!String(this.data.profileSub || '').trim()) throw new Error('请填写所学专业');
+    const studentId = String(this.data.profileStudentId || '').trim();
+    // Required on first registration; legacy accounts may leave it empty when editing.
+    if (!this.data.isEdit || studentId) {
+      if (!STUDENT_ID_RE.test(studentId)) throw new Error(studentId ? '学号为6-20位字母或数字' : '请填写学号');
+    }
+    if (!this.data.isEdit && this.data.profileDisclaimer !== true) throw new Error('请阅读并同意免责声明');
     const inviteCode = this.data.isEdit ? '' : InviteBiz.normalize(this.data.inviteCode);
     if (inviteCode && !/^[A-Z0-9]{6}$/.test(inviteCode)) throw new Error('邀请码为6位字母或数字');
     const personal = [
@@ -441,6 +479,9 @@ async function bindSubmitTap(e) {
       { mark: 'college', title: '学院', type: 'text', val: this.data.profileCollege.trim() },
       { mark: 'sub', title: '专业', type: 'text', val: this.data.profileSub.trim() }
     ];
+    if (studentId) personal.push({ mark: 'studentId', title: '学号', type: 'text', val: studentId });
+    if ((this.data.profileStudentCard || []).length) personal.push({ mark: 'studentCard', title: '学生证', type: 'image', val: this.data.profileStudentCard.slice(0, 1) });
+    if (this.data.profileDisclaimer === true) personal.push({ mark: 'disclaimer', title: '免责声明', type: 'bool', val: true });
     const contacts = ProfileBiz.normalizeContacts(this.data.contacts), addresses = ProfileBiz.normalizeAddresses(this.data.addresses);
     const forms = collectionForms(this, contacts, addresses).filter(item => !PERSONAL_MARKS.has(item.mark) && item.mark !== 'campus').concat(personal);
     forms.push({ mark: 'campus', title: '所在校区', type: 'select', val: this.data.campus });
@@ -480,4 +521,4 @@ async function bindSubmitTap(e) {
     pageHelper.showNoneToast(message);
   } finally { if (!this._unloaded) this.setData({ saving: false }); }
 }
-module.exports = { initProfileCapabilities, applyRegistrationPolicy, isProfileReady, loadCampuses, getCachedProfileUser, getProfileUser, invalidateProfileCache, clearLocalCaches, applyUser, finishProfile, bindProfileNameInput, bindProfileMobileInput, bindPicTap, bindChooseAvatar, bindWechatPhoneTap, bindWechatPhone, bindCampusChange, bindOpenCampusPicker, bindSelectCampus, bindConfirmCampus, bindCloseCampusPicker, bindProfileSheetTouchMove, bindGenderTap, bindProfileFieldInput, bindContactInput, bindAddressInput, bindAddressPhase, bindAddContact, bindEditContact, bindSetDefaultContact, bindDeleteContact, bindCancelContact, bindSaveContact, bindAddAddress, bindEditAddress, bindSetDefaultAddress, bindDeleteAddress, bindCancelAddress, bindSaveAddress, bindSaveWechatProfile, bindSubmitTap };
+module.exports = { initProfileCapabilities, applyRegistrationPolicy, isProfileReady, loadCampuses, getCachedProfileUser, getProfileUser, invalidateProfileCache, clearLocalCaches, applyUser, finishProfile, bindProfileNameInput, bindProfileMobileInput, bindPicTap, bindChooseAvatar, bindWechatPhoneTap, bindWechatPhone, bindCampusChange, bindOpenCampusPicker, bindSelectCampus, bindConfirmCampus, bindCloseCampusPicker, bindProfileSheetTouchMove, bindGenderTap, bindProfileFieldInput, bindDisclaimerTap, bindViewDisclaimer, bindChooseStudentCard, bindPreviewStudentCard, bindDeleteStudentCard, bindContactInput, bindAddressInput, bindAddressPhase, bindAddContact, bindEditContact, bindSetDefaultContact, bindDeleteContact, bindCancelContact, bindSaveContact, bindAddAddress, bindEditAddress, bindSetDefaultAddress, bindDeleteAddress, bindCancelAddress, bindSaveAddress, bindSaveWechatProfile, bindSubmitTap };

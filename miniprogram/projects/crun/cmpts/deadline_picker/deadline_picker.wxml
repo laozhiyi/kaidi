@@ -1,7 +1,7 @@
-<view class="deadline-trigger {{disabled ? 'deadline-disabled' : ''}}" bindtap="open"><text class="deadline-text">{{value || '请选择截止时间'}}</text><text class="deadline-arrow deadline-text">›</text></view>
+<view class="deadline-trigger {{disabled ? 'deadline-disabled' : ''}}" bindtap="open"><text class="deadline-text">{{value || '请选择送达时间'}}</text><text class="deadline-arrow deadline-text">›</text></view>
 <view wx:if="{{visible}}" class="deadline-mask" catchtouchmove="stop" bindtap="close">
   <view class="deadline-sheet" catchtap="stop">
-    <view class="deadline-head"><view><view class="deadline-title">期望接单截止时间</view><view class="deadline-note">请选择未来 7 天内的时间</view></view><button class="deadline-close deadline-button" bindtap="close" aria-label="关闭时间选择">×</button></view>
+    <view class="deadline-head"><view><view class="deadline-title">期待送达时间</view><view class="deadline-note">请选择未来 7 天内的时间</view></view><button class="deadline-close deadline-button" bindtap="close" aria-label="关闭时间选择">×</button></view>
     <view class="deadline-quick"><button class="deadline-button" data-minutes="30" bindtap="selectQuick">30 分钟后</button><button class="deadline-button" data-minutes="60" bindtap="selectQuick">1 小时后</button><button class="deadline-button" data-minutes="180" bindtap="selectQuick">3 小时后</button></view>
     <scroll-view scroll-y class="deadline-body">
       <view class="deadline-label">日期</view>
@@ -11,6 +11,6 @@
       <view class="deadline-label">分钟 <text class="deadline-text">{{selectedMinute}} 分</text></view>
       <view class="deadline-grid"><button wx:for="{{minutes}}" wx:key="value" class="deadline-time {{selectedMinute === item.value ? 'selected' : ''}} deadline-button {{(item.disabled) ? 'deadline-button-disabled' : ''}}" disabled="{{item.disabled}}" data-value="{{item.value}}" bindtap="selectMinute">{{item.value}}</button></view>
     </scroll-view>
-    <view class="deadline-foot"><view wx:if="{{error}}" class="deadline-error">{{error}}</view><view class="deadline-summary">已选：{{draft}}</view><button class="deadline-confirm deadline-button" bindtap="confirm">确认截止时间</button></view>
+    <view class="deadline-foot"><view wx:if="{{error}}" class="deadline-error">{{error}}</view><view class="deadline-summary">已选：{{draft}}</view><button class="deadline-confirm deadline-button" bindtap="confirm">确认送达时间</button></view>
   </view>
 </view>

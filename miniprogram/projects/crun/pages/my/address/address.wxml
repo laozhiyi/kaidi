@@ -4,7 +4,7 @@
     <view class="profile-section-title-row"><view class="profile-section-title">地址</view><button class="profile-add-button" bindtap="bindAddAddress">+ 添加</button></view>
     <view wx:if="{{addresses.length}}" class="profile-item-list">
       <view wx:for="{{addresses}}" wx:key="index" class="profile-item-card">
-        <view class="profile-item-main"><view class="profile-item-title">{{item.label}} <text wx:if="{{item.isDefault}}" class="default">默认</text></view><view class="profile-item-detail">{{item.detail}}</view></view>
+        <view class="profile-item-main"><view class="profile-item-title">{{item.label}} <text wx:if="{{item.isDefault}}" class="default">默认</text></view><view class="profile-item-detail">{{item.detail}}</view><view wx:if="{{item.note}}" class="profile-item-note">备注：{{item.note}}</view></view>
         <view class="profile-item-actions"><text bindtap="bindSetDefaultAddress" data-index="{{index}}">设默认</text><text bindtap="bindEditAddress" data-index="{{index}}">编辑</text><text class="danger" bindtap="bindDeleteAddress" data-index="{{index}}">删除</text></view>
       </view>
     </view>
@@ -15,6 +15,8 @@
       <view class="address-phase-options"><button wx:for="{{addressPhaseOptions}}" wx:key="*this" class="address-phase {{addressDraft.label === item ? 'selected' : ''}}" data-phase="{{item}}" bindtap="bindAddressPhase" disabled="{{collectionSaving}}">{{item}}</button></view>
       <view class="address-field-label">详细地址 <text>*</text></view>
       <textarea class="address-detail" value="{{addressDraft.detail}}" placeholder="详细地址，例如：3栋201室" auto-height maxlength="180" bindinput="bindAddressInput" data-field="detail" disabled="{{collectionSaving}}" />
+      <view class="address-field-label">补充信息（选填）</view>
+      <input class="address-note" value="{{addressDraft.note}}" placeholder="例如：放门口架子上、电话联系" maxlength="60" bindinput="bindAddressInput" data-field="note" disabled="{{collectionSaving}}" />
       <view class="profile-editor-actions"><button bindtap="bindCancelAddress" disabled="{{collectionSaving}}">取消</button><button class="primary" bindtap="bindSaveAddress" loading="{{collectionSaving}}" disabled="{{collectionSaving}}">{{collectionSaving ? '保存中' : '保存并关闭'}}</button></view>
     </view>
   </view>

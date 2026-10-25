@@ -16,6 +16,7 @@ function harness(options = {}) {
   let app, token = options.guest ? null : { id: 'poster', sessionToken: 'b'.repeat(64), name: '小周', pic: 'cloud://avatar', status: 1, phoneVerified: true, profileComplete: true }, stopped = 0;
   const user = { USER_NAME: '小周', USER_MOBILE: '13800000000', USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: true, USER_PIC: 'cloud://avatar', USER_STATUS: 1, USER_FORMS: [
     { mark: 'campus', val: '育才校区' }, { mark: 'sex', val: '男' }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' },
+    { mark: 'studentId', val: '20240001' }, { mark: 'disclaimer', val: true },
     { mark: 'contacts', val: [{ name: '甲', phone: '13800000001', isDefault: false }, { name: '乙', phone: '13800000002', isDefault: true }] },
     { mark: 'addresses', val: [{ label: '宿舍', detail: '一栋', isDefault: false }, { label: '学院', detail: '二栋', isDefault: true }] }
   ] };
@@ -617,6 +618,8 @@ test('unsupported profile capabilities still allow profile completion after expl
   page.bindGenderTap(event({ value: '女' }));
   page.bindProfileFieldInput(event({ field: 'profileCollege' }, '计算机学院'));
   page.bindProfileFieldInput(event({ field: 'profileSub' }, '软件工程'));
+  page.bindProfileFieldInput(event({ field: 'profileStudentId' }, '20240001'));
+  page.bindDisclaimerTap();
   page.bindCampusChange(event({}, 0));
   await page.bindSubmitTap();
   assert.equal(page.data.saveError, '');

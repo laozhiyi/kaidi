@@ -7,6 +7,8 @@ module.exports = { //crun
 	SETUP_CONTENT_ITEMS: [
 		{ title: '关于我们', key: 'SETUP_CONTENT_ABOUT' },
 		{ title: '联系我们', key: 'SETUP_CONTENT_CONTACT' },
+		{ title: '免责声明', key: 'SETUP_CONTENT_DISCLAIMER' },
+		{ title: '售后群', key: 'SETUP_CONTENT_AFTERSALES' },
 	],
 
 	// 用户

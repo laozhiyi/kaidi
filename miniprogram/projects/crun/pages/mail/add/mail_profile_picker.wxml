@@ -4,7 +4,7 @@
     <scroll-view scroll-y enhanced class="pub-profile-picker-body">
       <block wx:if="{{addressPickerVisible}}">
         <view wx:for="{{profileAddresses}}" wx:key="index" class="pub-profile-picker-item {{profileAddressIndex === index ? 'pub-profile-selected' : ''}} pub-view" data-index="{{index}}" bindtap="bindSelectProfileAddress">
-          <view class="pub-profile-picker-copy pub-view"><view class="pub-profile-picker-title pub-view">{{item.label || '常用地址'}}<text wx:if="{{item.isDefault}}" class="pub-default-badge pub-text">默认</text></view><view class="pub-profile-picker-text pub-view">{{item.detail}}</view></view>
+          <view class="pub-profile-picker-copy pub-view"><view class="pub-profile-picker-title pub-view">{{item.label || '常用地址'}}<text wx:if="{{item.isDefault}}" class="pub-default-badge pub-text">默认</text></view><view class="pub-profile-picker-text pub-view">{{item.detail}}</view><view wx:if="{{item.note}}" class="pub-profile-picker-caption pub-view">备注：{{item.note}}</view></view>
           <view class="pub-profile-radio pub-view">{{profileAddressIndex === index ? '✓' : ''}}</view>
         </view>
         <view wx:if="{{!profileAddresses.length}}" class="pub-profile-empty pub-view"><view class="pub-view">还没有常用地址</view><view class="pub-profile-picker-caption pub-view">点击下方“管理地址”添加</view></view>

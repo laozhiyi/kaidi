@@ -1,0 +1,12 @@
+.as-card { margin: 0 0 24rpx; padding: 28rpx; border-radius: 18rpx; background: #fff; box-sizing: border-box; box-shadow: 0 8rpx 22rpx rgba(36, 63, 96, .04); }
+.as-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18rpx; }
+.as-title { color: #243b5b; font-size: 30rpx; font-weight: 600; }
+.as-tag { color: #397bc8; font-size: 22rpx; }
+.as-muted { color: #8494a9; font-size: 24rpx; line-height: 1.6; }
+.as-link { margin-left: 12rpx; color: #397bc8; }
+.as-text-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; padding: 10rpx 0; }
+.as-text { flex: 1; min-width: 0; color: #52647c; font-size: 26rpx; line-height: 1.7; word-break: break-all; }
+.as-copy, .as-save { flex-shrink: 0; padding: 8rpx 18rpx; border-radius: 10rpx; background: #edf5ff; color: #397bc8; font-size: 23rpx; line-height: 1.4; }
+.as-qr-wrap { display: flex; flex-direction: column; align-items: center; padding: 14rpx 0; }
+.as-qr { width: 360rpx; border-radius: 12rpx; background: #f0f4f9; }
+.as-save { margin-top: 14rpx; }

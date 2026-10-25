@@ -15,7 +15,12 @@ function normalizeContacts(list) {
   return setDefault(out);
 }
 function normalizeAddresses(list) {
-  const out = (Array.isArray(list) ? list : []).map(x => ({ label: String(x && x.label || '常用地址').trim() || '常用地址', detail: String(x && x.detail || '').trim(), isDefault: !!(x && x.isDefault) })).filter(x => x.detail);
+  const out = (Array.isArray(list) ? list : []).map(x => {
+    const item = { label: String(x && x.label || '常用地址').trim() || '常用地址', detail: String(x && x.detail || '').trim(), isDefault: !!(x && x.isDefault) };
+    // 补充信息只在非空时保留，避免改变旧数据结构。按字符截断，防止切开表情。
+    const note = Array.from(String(x && x.note || '').trim()).slice(0, 60).join('');
+    return note ? Object.assign(item, { note }) : item;
+  }).filter(x => x.detail);
   return setDefault(out);
 }
 function setDefault(list) {

@@ -28,6 +28,7 @@ class AdminNewsService extends BaseProjectAdminService {
 		qr,
 		draft = false
 	}) {
+		title = typeof title === 'string' ? title.trim() : '';
 		if (!title) this.AppError('标题不能为空');
 		if (typeof draft !== 'boolean') this.AppError('发布状态无效');
 
@@ -127,6 +128,10 @@ class AdminNewsService extends BaseProjectAdminService {
 		qr
 	}) {
 		if (!id) this.AppError('id不能为空');
+		if (title !== undefined) {
+			title = typeof title === 'string' ? title.trim() : '';
+			if (!title) this.AppError('标题不能为空');
+		}
 
 		let data = {
 			NEWS_EDIT_TIME: this._timestamp,

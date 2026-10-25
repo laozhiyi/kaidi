@@ -90,6 +90,8 @@ async function formHarness(entry = 'mail_add.js', options = {}) {
  if (component) { component.lifetimes.attached.call(page); await new Promise(resolve => setImmediate(resolve)); }
  else await page.onLoad(options.mail ? { id: options.mail._id } : { service: options.service });
  assert.equal(page.data.isLoad, true);
+ // Parcel counts now start at 0; new-order pages add one small parcel like a user tapping "+".
+ if (!options.mail && !page.data.packageItems.length) page.bindPackageTap({ currentTarget: { dataset: { index: 0, step: 1 } } });
  return { page, calls, errors, uploads, backend: f, Controller, async show() {
   if (component) { component.pageLifetimes.show.call(page); await new Promise(resolve => setImmediate(resolve)); }
   else await page.onShow();

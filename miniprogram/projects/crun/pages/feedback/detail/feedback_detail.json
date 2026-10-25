@@ -1,5 +1,5 @@
 {
-	"usingComponents": {},
+	"usingComponents": { "aftersales-card": "/projects/crun/cmpts/aftersales_card/aftersales_card" },
 	"enablePullDownRefresh": true,
 	"navigationBarTitleText": "反馈详情"
 }

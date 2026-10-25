@@ -1,0 +1,18 @@
+<view class="as-card">
+  <view class="as-head"><text class="as-title">售后群</text><text class="as-tag">遇到问题可加群咨询</text></view>
+  <view wx:if="{{loading}}" class="as-muted">正在加载…</view>
+  <view wx:elif="{{error}}" class="as-muted">售后群信息加载失败<text class="as-link" bindtap="load">重试</text></view>
+  <block wx:elif="{{nodes.length}}">
+    <block wx:for="{{nodes}}" wx:key="index">
+      <view wx:if="{{item.type==='text'}}" class="as-text-row">
+        <text class="as-text" user-select>{{item.val}}</text>
+        <text class="as-copy" bindtap="bindCopy" data-text="{{item.val}}" role="button" aria-label="复制群信息">复制</text>
+      </view>
+      <view wx:elif="{{item.type==='img'}}" class="as-qr-wrap">
+        <image class="as-qr" src="{{item.val}}" mode="widthFix" data-url="{{item.val}}" bindtap="bindPreview" show-menu-by-longpress />
+        <text class="as-save" bindtap="bindSave" data-url="{{item.val}}" role="button" aria-label="保存二维码">保存二维码</text>
+      </view>
+    </block>
+  </block>
+  <view wx:else class="as-muted">售后群暂未开放，请通过“我的申诉”提交反馈，管理员会尽快处理。</view>
+</view>

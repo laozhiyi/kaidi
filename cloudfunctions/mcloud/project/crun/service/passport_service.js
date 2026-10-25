@@ -46,6 +46,12 @@ class PassportService extends BaseProjectService {
   checkAvatar(userId, pic, previous);
   const error = profileRules.validationError({ name, mobile, pic, forms });
   if (error) this.AppError(error);
+  // First-time completion must carry a student ID and the disclaimer consent;
+  // legacy accounts editing their profile are only format-checked above.
+  if (registering && (!previous || previous.USER_PROFILE_COMPLETE === false)) {
+   const requiredError = profileRules.requiredForRegistration(forms);
+   if (requiredError) this.AppError(requiredError);
+  }
   const cfg = await new (require('./operation_config_service.js'))().getConfig();
   const campus = profileRules.formValue(forms, 'campus');
   if (!cfg.campuses.includes(campus) && campus !== profileRules.formValue(previous && previous.USER_FORMS, 'campus')) this.AppError('请选择有效的所在校区');
