@@ -83,7 +83,7 @@ function order(row) {
   const obj = row.MAIL_OBJ || {};
   const progress = MailUI.progress(row);
   return { ...row, MAIL_OBJ: obj, statusLabel: row.status || STATUS[row.MAIL_STATUS] || '状态未知', tone: TONES[row.MAIL_STATUS] || 'muted',
-    orderNo: row.MAIL_ID || row._id, deliveryAddress: Address.formatOrderAddress(row), createdText: time(row.MAIL_ADD_TIME), dueText: time(row.MAIL_DUE_TIME), endText: time(row.MAIL_END_TIME),
+    orderNo: row.MAIL_ID || row._id, deliveryAddress: Address.formatOrderAddress(row), createdText: time(row.MAIL_ADD_TIME), dueText: time(row.MAIL_DUE_TIME), endText: time(row.MAIL_END_TIME), expectText: time(row.MAIL_EXPECT_TIME) || time(row.MAIL_END_TIME),
     priceText: Number.isFinite(Number(obj.price)) ? Number(obj.price).toFixed(2) : '—',
     showProgress: progress.visible, steps: progress.steps,
     history: (row.MAIL_HISTORY || []).filter(Boolean).map((item, index) => ({ ...item, key: item.id || String(index), timeText: time(item.at), label: ACTIONS[item.action] || '更新订单', actorText: ({ admin: '管理员', poster: '发布人', rider: '接单人', system: '系统' })[item.actor] || '系统' })),

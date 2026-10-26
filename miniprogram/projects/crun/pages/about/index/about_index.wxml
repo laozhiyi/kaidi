@@ -1,6 +1,6 @@
 <view class="op-page">
   <view class="op-card about-header">
-    <view class="about-mark">跑</view><view class="about-name">GXNU校跑</view><view class="op-muted">校园生活，便捷互助</view>
+    <view class="about-mark">取</view><view class="about-name">GXNU随手取</view><view class="op-muted">校园生活，便捷互助</view>
   </view>
   <view class="op-card">
     <view class="op-title">{{title}}</view>

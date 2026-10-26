@@ -32,6 +32,7 @@ module.exports = {
 		totalFee: '0.00',
         customPrice: '',
 		urgent: false,
+		expectLead: 0,
 		config:null,campuses:[],campus:'',configError:false,loadError:'',pageLoading:false,submitting:false,hasPendingSubmission:false,
 		proofImages: [], proofPreview:{}, packageItems: [], profileContacts: [], profileAddresses: [], contactPickerVisible: false, addressPickerVisible: false,
 		mailValues: {
@@ -153,7 +154,8 @@ module.exports = {
    const preferredCampus = !this._campusEdited && this._profileCampus && config.campuses.includes(this._profileCampus) ? this._profileCampus : this.data.campus;
    this.setData({ config, campuses: config.campuses,
     campus: config.campuses.includes(preferredCampus) ? preferredCampus : config.campuses[0],
-    campusIndex: Math.max(0, config.campuses.indexOf(preferredCampus)) });
+    campusIndex: Math.max(0, config.campuses.indexOf(preferredCampus)),
+    expectLead: this._expectLead(config, this.data.urgent) });
    if (this.data.mailValues) {
     ['address2','poster','tel','tel2'].forEach(mark => { if ((!this._profileEdited || !this._profileEdited[mark]) && this._profileDefaults && !this.data.mailValues[mark] && this._profileDefaults[mark]) this._setFormVal(mark, this._profileDefaults[mark]); });
    }
@@ -298,8 +300,8 @@ module.exports = {
 				desc: String(obj.desc || ''),
 			};
 
-			// 回填：截止时间
-			const formEnd = mail.end2 || mail.MAIL_END_TIME || obj.end || '';
+			// 回填：期待送达时间（老订单只存了接单截止，回落展示）
+			const formEnd = mail.expect2 || mail.MAIL_EXPECT_TIME || mail.end2 || mail.MAIL_END_TIME || obj.end || '';
 
 			// 回填：分类
 			const formCateId = String(mail.MAIL_CATE_ID || this.data.formCateId || '');
@@ -513,9 +515,15 @@ module.exports = {
   bindPackageImageTap(e) { const index = Number(e.currentTarget.dataset.index); const current=this.data.packageItems[index]; if(current && String(current.code||'').trim()){ wx.showToast({title:'取件码和截图二选一',icon:'none'}); return; } wx.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'], success: res => { const file = res.tempFiles && res.tempFiles[0]; if (!file) return; if(!contentCheckHelper.imgTypeCheck(file.tempFilePath) || !contentCheckHelper.imgSizeCheck(file.size, 1024*1000*10)){ wx.showToast({title:'图片格式或大小不符合要求',icon:'none'}); return; } const items = this.data.packageItems.slice(); items[index] = Object.assign({}, items[index], { images: [file.tempFilePath], code:'' }); this.setData({ packageItems: items }); this._setFormVal('packages', items); } }); },
   bindPackagePreviewImage(e) { const index = Number(e.currentTarget.dataset.index); const item = this.data.packageItems[index]; if (item && item.images && item.images.length) wx.previewImage({ urls: item.images, current: item.images[0] }); },
 
+	// 期待送达时间至少要留出配送时长，否则骑手接到单也赶不及。
+	_expectLead: function (config, urgent) {
+		const minutes = config ? Number(urgent ? config.urgentMinutes : config.deliveryMinutes) : 0;
+		return Number.isFinite(minutes) && minutes > 0 ? minutes * 60000 : 0;
+	},
+
 	bindUrgentChange: function (e) {
 		const urgent = !!e.detail.value;
-		this.setData({ urgent });
+		this.setData({ urgent, expectLead: this._expectLead(this.data.config, urgent) });
 		this._setFormVal('urgent', urgent);
 	},
 
@@ -654,12 +662,12 @@ module.exports = {
    for (const mark of plugin.extraFields) forms.push({mark,title:mark,type:'text',val:this.data.mailValues[mark]});
    // Submit the visible destination directly even if the component still returns an older value.
    forms.push({mark:'address2',title:'收件地址',type:'textarea',val:address2});
-   if(addressPhase)forms.push({mark:'addressPhase',title:'所属期数',type:'text',val:addressPhase});
+   if(addressPhase)forms.push({mark:'addressPhase',title:'所在地点',type:'text',val:addressPhase});
     const packageRows = await this._uploadPackageImages((Array.isArray(this.data.packageItems) ? this.data.packageItems : []).map(({_used,...item})=>item));
     forms.push({mark:'packages',title:'逐件凭证',type:'json',val:packageRows});
    for(const item of forms)if(item.type==='image')item.val=await Ops.upload(item.val||[]);
    forms.push({mark:'campus',title:'校区',type:'text',val:this.data.campus});
-   if(data.end)forms.push({mark:'formEnd',title:'接单截止时间',type:'date',val:data.end});
+   if(data.end)forms.push({mark:'formEnd',title:'期待送达时间',type:'date',val:data.end});
    const params={forms,cateId:data.cateId,price:String(this.data.totalFee)};if(this.data.editId)params.id=this.data.editId;
    const result=await Ops.command(this.data.editId?'mail/edit':'mail/insert',params);
    this.setData({mailId:result._id||result.id});wx.hideLoading();PublicBiz.removeCacheList('mail-list');

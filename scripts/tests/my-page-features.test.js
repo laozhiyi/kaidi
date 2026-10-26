@@ -16,7 +16,7 @@ function harness(options = {}) {
   let app, token = options.guest ? null : { id: 'poster', sessionToken: 'b'.repeat(64), name: '小周', pic: 'cloud://avatar', status: 1, phoneVerified: true, profileComplete: true }, stopped = 0;
   const user = { USER_NAME: '小周', USER_MOBILE: '13800000000', USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: true, USER_PIC: 'cloud://avatar', USER_STATUS: 1, USER_FORMS: [
     { mark: 'campus', val: '育才校区' }, { mark: 'sex', val: '男' }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' },
-    { mark: 'studentId', val: '20240001' }, { mark: 'disclaimer', val: true },
+    { mark: 'studentId', val: '20240001' }, { mark: 'studentCard', val: ['cloud://test/student-card.png'] }, { mark: 'disclaimer', val: true },
     { mark: 'contacts', val: [{ name: '甲', phone: '13800000001', isDefault: false }, { name: '乙', phone: '13800000002', isDefault: true }] },
     { mark: 'addresses', val: [{ label: '宿舍', detail: '一栋', isDefault: false }, { label: '学院', detail: '二栋', isDefault: true }] }
   ] };
@@ -619,11 +619,14 @@ test('unsupported profile capabilities still allow profile completion after expl
   page.bindProfileFieldInput(event({ field: 'profileCollege' }, '计算机学院'));
   page.bindProfileFieldInput(event({ field: 'profileSub' }, '软件工程'));
   page.bindProfileFieldInput(event({ field: 'profileStudentId' }, '20240001'));
+  page.bindChooseStudentCard();
+  assert.equal(page.data.profileStudentCard[0], 'temp/new');
   page.bindDisclaimerTap();
   page.bindCampusChange(event({}, 0));
   await page.bindSubmitTap();
   assert.equal(page.data.saveError, '');
-  assert.equal(h.images.length, 1);
+  // 头像 + 学生证各选一次图片
+  assert.equal(h.images.length, 2);
   assert.equal(h.calls.find(call => call.route === 'passport/register').params.mobile, '13912345678');
   assert.equal(h.calls.filter(call => /wechat_login|passport\/phone/.test(call.route)).length, 0);
   assert.equal(h.token.phoneVerified, false);
@@ -954,16 +957,59 @@ test('sent and received reviews have independent pages, queries and late-respons
   assert.deepEqual(h.calls.map(call => call.params.direction), ['sent', 'received']);
 });
 
-test('address edits require one of the five phases and preserve the existing detail during selection', async () => {
+test('address edits require a configured place or dormitory phase and preserve the existing detail during selection', async () => {
   const h = harness(), page = h.page('my/address/address.js'); await readyProfile(h, page); page.applyUser(page, h.user);
   page.bindEditAddress(event({ index: 1 }));
   assert.equal(page.data.addressDraft.detail, '二栋');
+  assert.equal(page.data.addressDraft.label, '');
+  page.bindAddressInput(event({ field: 'detail' }, ''));
   await page.bindSaveAddress(); assert.equal(h.calls.length, 0);
-  page.bindAddressPhase(event({ phase: '奥林苑' })); assert.equal(page.data.addressDraft.label, '');
-  page.bindAddressPhase(event({ phase: '五期' })); assert.equal(page.data.addressDraft.detail, '二栋');
+  page.bindAddressInput(event({ field: 'detail' }, '二栋'));
+  page.bindOpenPlacePicker(); assert.equal(page.data.placePickerVisible, true);
+  page.bindSelectPlace(event({ label: '六期' })); assert.equal(page.data.placeDraft, '');
+  page.bindConfirmPlace(); assert.equal(page.data.placePickerVisible, false);
+  assert.equal(page.data.addressDraft.label, '');
+  page.bindOpenPlacePicker();
+  page.bindSelectPlace(event({ label: '二期' })); page.bindConfirmPlace();
+  assert.equal(page.data.addressDraft.label, '二期');
+  assert.equal(page.data.addressDraft.detail, '二栋');
+  assert.equal(page.data.placePickerVisible, false);
   await page.bindSaveAddress();
-  assert.equal(page.data.addresses[1].label, '五期'); assert.equal(page.data.addresses[1].detail, '二栋');
-  assert.equal(h.calls[0].params.forms.find(form => form.mark === 'address').val, '五期 二栋');
+  assert.equal(page.data.addresses[1].label, '二期'); assert.equal(page.data.addresses[1].detail, '二栋');
+  assert.equal(h.calls[0].params.forms.find(form => form.mark === 'address').val, '二期 二栋');
+});
+
+test('the place picker lists every configured campus location next to the dormitory phases', async () => {
+  const h = harness(), page = h.page('my/address/address.js'); await readyProfile(h, page); page.applyUser(page, h.user);
+  const groups = page.data.placeGroups;
+  assert.equal(groups.length, 2);
+  assert.equal(groups[0].key, 'dorm');
+  assert.equal(groups[1].key, 'campus');
+  assert.equal(groups[0].items.map(item => item.label).join(','), '一期,二期,三期,四期,五期');
+  assert.equal(groups[0].items[0].name, '怡园');
+  const campus = groups[1].items.map(item => item.label);
+  // 5 个宿舍区地点由期数承载，其余地点逐个保留，总数仍等于地点表的条数。
+  assert.equal(groups[0].items.length + campus.length, page.data.addressPhaseOptions.length);
+  for (const place of ['图书馆', '东大门', '荷园餐厅', '校友林']) assert.ok(campus.includes(place), place);
+  for (const dorm of ['雅园', '怡园', '知园']) assert.ok(!campus.includes(dorm), dorm);
+  page.bindAddAddress(); page.bindOpenPlacePicker();
+  page.bindSelectPlace(event({ label: '图书馆' }));
+  page.bindConfirmPlace();
+  page.bindAddressInput(event({ field: 'detail' }, '三楼自习区'));
+  await page.bindSaveAddress();
+  assert.equal(page.data.addresses.at(-1).label, '图书馆');
+  assert.equal(page.data.addresses.at(-1).detail, '三楼自习区');
+  assert.equal(page.data.addressEditorVisible, false);
+  // 地点是选填项：只填详细地址也能保存，清除地点后不再带标签。
+  page.bindAddAddress(); page.bindOpenPlacePicker();
+  page.bindSelectPlace(event({ label: '二期' }));
+  page.bindClearPlace();
+  page.bindConfirmPlace();
+  assert.equal(page.data.addressDraft.label, '');
+  page.bindAddressInput(event({ field: 'detail' }, '图书馆三楼自习区'));
+  await page.bindSaveAddress();
+  assert.equal(page.data.addresses.at(-1).label, '');
+  assert.equal(page.data.addresses.at(-1).detail, '图书馆三楼自习区');
 });
 
 test('feedback prevents duplicate clicks, preserves a failed draft and retries its original content', async () => {

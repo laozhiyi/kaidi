@@ -57,7 +57,7 @@ class MailBiz extends BaseBiz {
 MailBiz.CHECK_FORM = {
 	cateId: 'formCateId|must|id|name=分类',
 	order: 'formOrder|must|int|min:0|max:9999|name=排序号',
-	end: 'formEnd|must|string|name=接单截止时间',
+	end: 'formEnd|must|string|name=期待送达时间',
 	forms: 'formForms|array',
 };
 

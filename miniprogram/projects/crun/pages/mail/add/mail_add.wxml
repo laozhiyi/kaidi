@@ -55,7 +55,7 @@
      </view>
     </view>
    <view class="pub-card pub-options pub-deadline-card pub-view">
-    <view class="pub-deadline pub-view"><view class="pub-option-label pub-view"><text class="icon-time pub-text"></text><text class="pub-text">期待送达时间</text></view><deadline-picker value="{{formEnd}}" disabled="{{submitting}}" bind:select="bindEndSelect" /></view>
+    <view class="pub-deadline pub-view"><view class="pub-option-label pub-view"><text class="icon-time pub-text"></text><text class="pub-text">期待送达时间</text></view><deadline-picker value="{{formEnd}}" lead="{{expectLead}}" disabled="{{submitting}}" bind:select="bindEndSelect" /></view>
     <view wx:if="{{formEndFocus}}" class="pub-validation pub-view">{{formEndFocus}}</view>
    </view>
 <view wx:if="{{config.urgentEnabled}}" class="pub-card pub-options pub-view">

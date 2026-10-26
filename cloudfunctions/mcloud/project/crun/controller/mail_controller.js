@@ -60,10 +60,29 @@ class MailController extends Base {
    return Number.isFinite(at) && at > 0 && Number.isFinite(new Date(at).getTime()) ? time.timestamp2Time(at, pattern) : '';
   };
   mail.end=format(mail.MAIL_END_TIME,'Y/M/D h:m:s'); mail.end2=format(mail.MAIL_END_TIME,'Y-M-D h:m');
+  mail.expect=format(mail.MAIL_EXPECT_TIME,'Y/M/D h:m:s'); mail.expect2=format(mail.MAIL_EXPECT_TIME,'Y-M-D h:m');
   for(const key of ['MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_OVER_TIME']) mail[key]=format(mail[key],'Y-M-D h:m');
   return mail;
  }
- async viewMail() {const p=this.validateData({id:'must|id'});return this._format(await new MailService().viewMail(this._userId,p.id));}
- async getMailList() {const p=this.validateData({search:'string|max:30',sortType:'string|max:30',sortVal:'string|max:30',orderBy:'object',whereEx:'object',cursor:'object',isTotal:'bool',oldTotal:'int|min:0',page:'int|default=1|min:1|max:500',size:'int|default=20|min:1|max:50'});const result=await new MailService().getMailList(this._userId,p);result.list=result.list.map(m=>{const left=m.MAIL_END_TIME-Date.now(),minutes=left<=0?0:Math.ceil(left/60000),hours=Math.floor(minutes/60),rest=minutes%60;m.MAIL_OBJ=m.MAIL_OBJ||{};m.MAIL_OBJ.leftTimeLabel=left<=0?'已截止':hours>0?hours+'小时'+(rest?rest+'分钟':''):minutes+'分钟';return this._format(m);});return result;}
+ /** 「期待送达」展示文案：今天/明天/后天 + 时间，更远则用 MM-DD + 时间。固定按东八区计算，不受运行环境时区影响。 */
+ _expectLabel(at) {
+  const value = Number(at);
+  if (!Number.isFinite(value) || value <= 0) return '';
+  const zone = 8 * 3600000, day = 86400000;
+  const part = (ts, mode) => {
+   const d = new Date(ts + zone);
+   if (mode === 'md') return String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+   return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+  };
+  const dayKey = ts => Math.floor((ts + zone) / day);
+  const diff = dayKey(value) - dayKey(Date.now());
+  const hm = part(value, 'hm');
+  if (diff === 0) return '今天 ' + hm;
+  if (diff === 1) return '明天 ' + hm;
+  if (diff === 2) return '后天 ' + hm;
+  return part(value, 'md') + ' ' + hm;
+ }
+ async viewMail() {const p=this.validateData({id:'must|id'});const mail=this._format(await new MailService().viewMail(this._userId,p.id));if(mail)mail.expectLabel=this._expectLabel(mail.MAIL_EXPECT_TIME || mail.MAIL_END_TIME);return mail;}
+ async getMailList() {const p=this.validateData({search:'string|max:30',sortType:'string|max:30',sortVal:'string|max:30',orderBy:'object',whereEx:'object',cursor:'object',isTotal:'bool',oldTotal:'int|min:0',page:'int|default=1|min:1|max:500',size:'int|default=20|min:1|max:50'});const result=await new MailService().getMailList(this._userId,p);result.list=result.list.map(m=>{const left=m.MAIL_END_TIME-Date.now(),minutes=left<=0?0:Math.ceil(left/60000),hours=Math.floor(minutes/60),rest=minutes%60;m.MAIL_OBJ=m.MAIL_OBJ||{};m.MAIL_OBJ.leftTimeLabel=left<=0?'已截止':hours>0?hours+'小时'+(rest?rest+'分钟':''):minutes+'分钟';m.MAIL_OBJ.leftSoon=left>0&&left<=7200000;m.MAIL_OBJ.expectLabel=this._expectLabel(m.MAIL_EXPECT_TIME||m.MAIL_END_TIME);return this._format(m);});return result;}
 }
 module.exports=MailController;

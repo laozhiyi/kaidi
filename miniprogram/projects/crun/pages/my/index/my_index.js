@@ -97,6 +97,6 @@ Page(Object.assign({
     wx.navigateTo({ url });
   },
   onShareAppMessage() {
-    return { title: 'GXNU校跑，便捷互助', path: '/projects/crun/pages/default/index/default_index' };
+    return { title: 'GXNU随手取，便捷互助', path: '/projects/crun/pages/default/index/default_index' };
   }
 }, accountActions));

@@ -1,28 +1,48 @@
 <view wx:if="{{!isLoad && !loadError}}" class="profile-load-state">正在加载登录信息…</view>
 <view wx:if="{{loadError}}" class="profile-load-state"><view>{{loadError}}</view><button class="profile-save" bindtap="_loadDetail">重新加载</button></view>
-<view wx:if="{{isLoad}}" class="profile-page account-login-page">
-  <view class="wechat-login-header">
-    <view class="wechat-login-title">GXNU校跑</view>
-    <view class="wechat-login-description">微信登录，开启校园互助</view>
-  </view>
+<view wx:if="{{isLoad}}" class="profile-page account-login-page{{phoneLoginEnabled ? '' : ' account-login-page--guest'}}">
   <block wx:if="{{!phoneLoginEnabled}}">
-    <button class="wechat-login-button" bindtap="bindOpenWechatProfile" loading="{{identityLoggingIn}}" disabled="{{identityLoggingIn || saving}}">{{identityLoggingIn ? '微信登录中' : '点击微信登录'}}</button>
-    <view class="wechat-login-note">登录后进入个人资料页，按提示填写资料</view>
-    <view wx:if="{{loginError}}" class="profile-save-error">{{loginError}}</view>
+    <view class="login-brand">
+      <view class="login-brand-mark"><text class="icon-cardboard"></text></view>
+      <view class="login-brand-name">GXNU随手取</view>
+      <view class="login-brand-slogan">校内代取 · 随手就取</view>
+    </view>
+    <view class="login-card">
+      <view class="login-card-title">微信登录</view>
+      <view class="login-card-desc">登录后同步个人资料、订单进度与消息</view>
+      <button class="login-submit" bindtap="bindOpenWechatProfile" loading="{{identityLoggingIn}}" disabled="{{identityLoggingIn || saving}}">{{identityLoggingIn ? '微信登录中' : '点击微信登录'}}</button>
+      <view class="login-tip">登录后进入个人资料页，按提示填写资料</view>
+      <view wx:if="{{loginError}}" class="profile-save-error login-error">{{loginError}}</view>
+    </view>
+    <view class="login-services">
+      <view class="login-services-title">平台服务</view>
+      <view class="login-service-list">
+        <view class="login-service"><view class="login-service-icon"><text class="icon-mail"></text></view><view class="login-service-label">帮我取</view><view class="login-service-desc">快递代取</view></view>
+        <view class="login-service"><view class="login-service-icon login-service-send"><text class="icon-deliver"></text></view><view class="login-service-label">帮我送</view><view class="login-service-desc">物品代送</view></view>
+        <view class="login-service"><view class="login-service-icon login-service-buy"><text class="icon-shop"></text></view><view class="login-service-label">帮我买</view><view class="login-service-desc">商品代买</view></view>
+      </view>
+    </view>
+    <view class="login-foot">遇到问题可在「我的 · 校区客服」联系我们</view>
   </block>
-  <form wx:else bindsubmit="bindProfileFormSubmit">
-    <block wx:if="{{phoneVerified}}">
-      <include src="../personal/wechat_profile_fields.wxml" />
-      <block>
-        <include src="../personal/personal_form.wxml" />
-        <view class="profile-section profile-invite"><view class="profile-field"><text class="profile-field-label">邀请码（选填）</text><input class="profile-field-input" value="{{inviteCode}}" maxlength="6" placeholder="输入好友的6位邀请码" bindinput="bindInviteCodeInput" /></view></view>
+  <block wx:else>
+    <view class="wechat-login-header">
+      <view class="wechat-login-title">GXNU随手取</view>
+      <view class="wechat-login-description">微信登录，开启校园互助</view>
+    </view>
+    <form bindsubmit="bindProfileFormSubmit">
+      <block wx:if="{{phoneVerified}}">
+        <include src="../personal/wechat_profile_fields.wxml" />
+        <block>
+          <include src="../personal/personal_form.wxml" />
+          <view class="profile-section profile-invite"><view class="profile-field"><text class="profile-field-label">邀请码（选填）</text><input class="profile-field-input" value="{{inviteCode}}" maxlength="6" placeholder="输入好友的6位邀请码" bindinput="bindInviteCodeInput" /></view></view>
+        </block>
+        <button form-type="submit" loading="{{saving}}" disabled="{{saving || phoneAuthorizing}}" class="profile-save wechat-login-button">保存资料并继续</button>
       </block>
-      <button form-type="submit" loading="{{saving}}" disabled="{{saving || phoneAuthorizing}}" class="profile-save wechat-login-button">保存资料并继续</button>
-    </block>
-    <block wx:else>
-      <button wx:if="{{canGetWechatPhone}}" class="wechat-login-button" open-type="getPhoneNumber" bindtap="bindWechatPhoneTap" bindgetphonenumber="bindWechatLogin" loading="{{phoneAuthorizing}}" disabled="{{phoneAuthorizing}}">微信手机号一键登录</button>
-      <view wx:else class="wechat-login-note">当前微信不支持手机号授权，请更新微信后重试</view>
-    </block>
-    <view wx:if="{{loginError || saveError}}" class="profile-save-error">{{saveError || loginError}}</view>
-  </form>
+      <block wx:else>
+        <button wx:if="{{canGetWechatPhone}}" class="wechat-login-button" open-type="getPhoneNumber" bindtap="bindWechatPhoneTap" bindgetphonenumber="bindWechatLogin" loading="{{phoneAuthorizing}}" disabled="{{phoneAuthorizing}}">微信手机号一键登录</button>
+        <view wx:else class="wechat-login-note">当前微信不支持手机号授权，请更新微信后重试</view>
+      </block>
+      <view wx:if="{{loginError || saveError}}" class="profile-save-error">{{saveError || loginError}}</view>
+    </form>
+  </block>
 </view>

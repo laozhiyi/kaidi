@@ -14,17 +14,19 @@ function parse(value) {
   return Number.isFinite(timestamp) && format(timestamp) === value ? timestamp : NaN;
 }
 
-function valid(value, now = Date.now()) {
+function valid(value, now = Date.now(), lead = 0) {
   const timestamp = parse(value);
-  return timestamp > now && timestamp <= now + 7 * DAY;
+  const from = now + Math.max(0, Number(lead) || 0);
+  return timestamp > from && timestamp <= now + 7 * DAY;
 }
 
-function after(duration = 3 * DAY, now = Date.now()) {
-  return format(Math.min(Math.ceil((now + duration) / STEP) * STEP, Math.floor((now + 7 * DAY) / STEP) * STEP));
+function after(duration = 3 * DAY, now = Date.now(), lead = 0) {
+  const safe = Math.max(duration, Number(lead) || 0);
+  return format(Math.min(Math.ceil((now + safe) / STEP) * STEP, Math.floor((now + 7 * DAY) / STEP) * STEP));
 }
 
-function options(value, now = Date.now(), requestedDate, requestedHour) {
-  const min = Math.ceil((now + 1) / STEP) * STEP;
+function options(value, now = Date.now(), requestedDate, requestedHour, lead = 0) {
+  const min = Math.ceil((now + Math.max(1, Number(lead) || 0)) / STEP) * STEP;
   const max = now + 7 * DAY;
   const proposed = parse(value);
   const timestamp = Number.isFinite(proposed) && proposed > now && proposed <= max

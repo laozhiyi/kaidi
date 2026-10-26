@@ -6,7 +6,7 @@
 	<view wx:if="{{formCateIdFocus}}" class="hint-desc error">{{formCateIdFocus}}</view>
 
 	<view class="form-group arrow" id="formEnd">
-		<view class="title must">接单截止时间</view>
+		<view class="title must">期待送达时间</view>
 		<cmpt-picker-time mark="formEnd" mode="fullminute" timeModeStep="5" bind:select="url" data-type="picker" data-item="formEnd" endYear="2035" item="{{formEnd}}">
 			<view class="form-text">{{formEnd||'请选择'}}</view>
 		</cmpt-picker-time>

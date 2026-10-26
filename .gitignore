@@ -16,6 +16,7 @@ node_modules/
 # Local development assistants and planning notes
 .claude/
 docs/
+.workbuddy/
 
 # Local artifacts generated during the multi-campus architecture validation
 .tmp/architecture-*

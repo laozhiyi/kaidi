@@ -20,7 +20,7 @@ Page(Object.assign({
   onUnload() { this._unloaded = true; },
   _updateTitle() {
     if (!this._unloaded) wx.setNavigationBarTitle({ title: this.data.phoneLoginEnabled !== true
-      ? (this.data.hasSession ? (this.data.showContactProfile ? '完善联系资料' : '头像和昵称') : 'GXNU校跑')
+      ? (this.data.hasSession ? (this.data.showContactProfile ? '完善联系资料' : '头像和昵称') : 'GXNU随手取')
       : this.data.phoneVerified ? '完善个人资料' : '登录 / 注册' });
   },
   async _loadDetail() {

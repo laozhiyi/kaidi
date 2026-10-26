@@ -1,15 +1,29 @@
 'use strict';
 
-const PHASES = ['一期', '二期', '三期', '四期', '五期'];
+// 默认地点表与校区种子数据同源；运行时应以 tenant 配置里的 locations.phases 为准。
+const { YANSHAN_PHASES: PHASES } = require('./tenant_defaults.js');
+// 早期安装只有「一期~五期」这套标记，雁山校区已按地图改为具体地点名。
+// 存量用户地址和存订单里仍是旧标记，解析和校验都要继续认。
+const LEGACY_PHASES = ['一期', '二期', '三期', '四期', '五期'];
 const clean = value => typeof value === 'string' ? value.trim() : '';
 function withoutCampus(value, campus) {
  const address = clean(value), prefix = clean(campus);
  return prefix && address.startsWith(prefix) ? address.slice(prefix.length).replace(/^[\s·：:-]+/, '') : address;
 }
-const phaseOf = (value, campus, phases = PHASES) => phases.slice().sort((a,b)=>b.length-a.length).find(phase => withoutCampus(value, campus).startsWith(phase)) || '';
+// 长名优先，避免「体育场」抢在「标准体育场」前面匹配。
+const allPhases = phases => [...new Set([...(phases || PHASES), ...LEGACY_PHASES])].sort((a,b)=>b.length-a.length);
+const phaseOf = (value, campus, phases) => allPhases(phases).find(phase => withoutCampus(value, campus).startsWith(phase)) || '';
 function formValue(forms, mark) {
  const field = (Array.isArray(forms) ? forms : []).find(item => item && item.mark === mark);
  return field ? field.val : undefined;
+}
+
+// 可选择、可提交的地点：配置未更新时回落到默认表，并始终保留旧标记以兼容存量数据。
+function phasesOf(locations) {
+ const list = locations && Array.isArray(locations.phases)
+  ? locations.phases.map(item => clean(item)).filter(Boolean) : [];
+ const picked = !list.length || list.every(item => LEGACY_PHASES.includes(item)) ? PHASES.slice() : list;
+ return [...new Set([...picked, ...LEGACY_PHASES])];
 }
 function campusOf(mail) {
  const value = clean(formValue(mail.MAIL_FORMS, 'campus')) || clean((mail.MAIL_OBJ || {}).campus);
@@ -29,8 +43,8 @@ function resolve(mail, phases = PHASES) {
   .map(clean).find(value => value && value.length <= 30) || '';
  const trailingPhase = detail.match(/^(.+?)\s*[·•]\s*(一期|二期|三期|四期|五期)$/);
  if (trailingPhase) { detail = trailingPhase[1].trim(); phase = phase || trailingPhase[2]; }
- if (campusDetail && (!saved || phases.includes(saved))) {
-  phase = phase || (phases.includes(saved) ? saved : '');
+ if (campusDetail && (!saved || allPhases(phases).includes(saved))) {
+  phase = phase || (allPhases(phases).includes(saved) ? saved : '');
   detail = campusDetail[1].trim();
  }
  // Read this order's submitted address, including its phase, before the derived object.
@@ -48,4 +62,4 @@ function complete(mail) {
  return { ...mail, MAIL_OBJ: result };
 }
 
-module.exports = { PHASES, phaseOf, resolve, complete };
+module.exports = { PHASES, LEGACY_PHASES, phasesOf, phaseOf, resolve, complete };

@@ -19,12 +19,12 @@ function validateForms(forms, config, now) {
  for (const [key,name,max,required] of [['title','任务名称',50,true],['code','取件码',500,false],['address2','收件地址',200,true],['poster','联系人',30,true],['tel','手机号',11,true],['desc','备注',500,false],['tel2','\u7b2c\u4e8c\u8054\u7cfb\u65b9\u5f0f',100,false],['campus','校区',30,true]]) obj[key] = text(input[key] == null ? '' : input[key],name,max,required);
  if (!/^1[3-9][0-9]{9}$/.test(obj.tel)) fail('手机号格式不正确');
  if (!config.campuses.includes(obj.campus)) fail('该校区不在服务范围');
- const phases = config.locations ? config.locations.phases : deliveryAddress.PHASES;
- const addressPhase = text(input.addressPhase == null ? '' : input.addressPhase, '配送区域', 30);
+ const phases = deliveryAddress.phasesOf(config.locations);
+ const addressPhase = text(input.addressPhase == null ? '' : input.addressPhase, '配送地点', 30);
  if (addressPhase) {
-  if (!phases.includes(addressPhase)) fail('所属区域无效');
+  if (!phases.includes(addressPhase)) fail('所选地点不在可选范围内');
   const prefix = deliveryAddress.phaseOf(obj.address2, obj.campus, phases);
-  if (prefix && prefix !== addressPhase) fail('收件地址与所属区域不一致');
+  if (prefix && prefix !== addressPhase) fail('收件地址与所选地点不一致');
   obj.addressPhase = addressPhase;
  }
  obj.address2 = text(deliveryAddress.resolve({ MAIL_OBJ:obj, MAIL_FORMS:forms }, phases),'收件地址',200,true);
@@ -34,11 +34,16 @@ function validateForms(forms, config, now) {
  const quote = plugins.get(obj.serviceType).normalize(input, obj, config, {text,images,fail});
  const totalFee = quote.totalFee;
  if (!Number.isSafeInteger(totalFee) || totalFee < 1 || totalFee > 1000000) fail('订单费用超出范围');
- let endTime = now + 3 * 86400000;
- if (input.formEnd) { const value = text(input.formEnd,'截止时间',20,true); if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(value)) fail('截止时间格式无效'); endTime = Date.parse(value.replace(' ','T') + '+08:00'); const expected = value.length === 16 ? value + ':00' : value; if (!Number.isFinite(endTime) || new Date(endTime + 8 * 3600000).toISOString().slice(0,19).replace('T',' ') !== expected) fail('截止时间不是有效日期'); }
- if (!Number.isFinite(endTime) || endTime <= now || endTime > now + 7 * 86400000) fail('接单截止时间须在未来7天内');
- const normalized = Object.keys(obj).filter(k => !['imgUrl','imgUrls'].includes(k)).map(mark => ({ mark, title:mark, type:typeof obj[mark] === 'number' ? 'digit' : typeof obj[mark] === 'boolean' ? 'switch' : 'text', val:obj[mark] })); normalized.push({mark:'img',title:'相关图片',type:'image',val:obj.imgUrls}); if (input.formEnd) normalized.push({mark:'formEnd',title:'接单截止时间',type:'date',val:input.formEnd});
- return { obj, forms:normalized, totalFee, endTime, schemaVersion:2,
+ // 下单人选的是「期待送达时间」；接单截止由它往前减掉配送时长推算，
+ // 这样骑手接到单时仍留得出配送时间。状态机只认推算出来的 endTime。
+ const deliveryMinutes = obj.urgent ? config.urgentMinutes : config.deliveryMinutes;
+ const deliveryMs = (Number.isFinite(deliveryMinutes) && deliveryMinutes > 0 ? deliveryMinutes : 60) * 60000;
+ const windowText = deliveryMs >= 3600000 ? Math.round(deliveryMs / 3600000 * 10) / 10 + ' 小时' : Math.round(deliveryMs / 60000) + ' 分钟';
+ let endTime = now + 3 * 86400000, expectTime = endTime + deliveryMs;
+ if (input.formEnd) { const value = text(input.formEnd,'期待送达时间',20,true); if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(value)) fail('期待送达时间格式无效'); const at = Date.parse(value.replace(' ','T') + '+08:00'); const expected = value.length === 16 ? value + ':00' : value; if (!Number.isFinite(at) || new Date(at + 8 * 3600000).toISOString().slice(0,19).replace('T',' ') !== expected) fail('期待送达时间不是有效日期'); if (at <= now + deliveryMs) fail('期待送达时间至少要留出 ' + windowText + ' 的配送时间'); if (at > now + 7 * 86400000) fail('期待送达时间须在未来7天内'); expectTime = at; endTime = at - deliveryMs; }
+ if (!Number.isFinite(expectTime) || expectTime <= now || expectTime > now + 7 * 86400000) fail('期待送达时间须在未来7天内');
+ const normalized = Object.keys(obj).filter(k => !['imgUrl','imgUrls'].includes(k)).map(mark => ({ mark, title:mark, type:typeof obj[mark] === 'number' ? 'digit' : typeof obj[mark] === 'boolean' ? 'switch' : 'text', val:obj[mark] })); normalized.push({mark:'img',title:'相关图片',type:'image',val:obj.imgUrls}); if (input.formEnd) normalized.push({mark:'formEnd',title:'期待送达时间',type:'date',val:input.formEnd});
+ return { obj, forms:normalized, totalFee, endTime, expectTime, schemaVersion:2,
   ruleSnapshot:{serviceType:obj.serviceType,pluginVersion:plugins.get(obj.serviceType).version,configVersion:config.version || 0,
    currency:'CNY',paymentMode:'offline',referenceFee:quote.referenceFee,totalFee,
    smallPrice:config.smallPrice,mediumPrice:config.mediumPrice,largePrice:config.largePrice,
@@ -56,7 +61,7 @@ function project(mail, userId, admin = false) {
  const mypost = !!userId && mail.MAIL_USER_ID === userId;
  const myaccept = !!userId && mail.MAIL_ACCEPT_USER_ID === userId;
  const privateAccess = admin || mypost || myaccept;
- const keys = ['_id','MAIL_ID','MAIL_STATUS','MAIL_END_TIME','MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_PICKUP_TIME','MAIL_OVER_TIME','MAIL_TOTAL_FEE','MAIL_PAYMENT_MODE','MAIL_CATE_ID','MAIL_CATE_NAME','MAIL_DUE_TIME','MAIL_DELIVERED_TIME','MAIL_VERSION','MAIL_SCHEMA_VERSION','schoolId','campusId'];
+ const keys = ['_id','MAIL_ID','MAIL_STATUS','MAIL_END_TIME','MAIL_EXPECT_TIME','MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_PICKUP_TIME','MAIL_OVER_TIME','MAIL_TOTAL_FEE','MAIL_PAYMENT_MODE','MAIL_CATE_ID','MAIL_CATE_NAME','MAIL_DUE_TIME','MAIL_DELIVERED_TIME','MAIL_VERSION','MAIL_SCHEMA_VERSION','schoolId','campusId'];
  if (privateAccess) keys.push('MAIL_RULE_SNAPSHOT','MAIL_FORMS','MAIL_EXCEPTION','MAIL_DELIVERY_PROOF','MAIL_PAY_STATUS','MAIL_CAN_REVIEW','MAIL_REVIEWED');
  if (admin || mypost) keys.push('MAIL_HISTORY');
  const out = {}; keys.forEach(k => { if (mail[k] !== undefined) out[k] = mail[k]; });

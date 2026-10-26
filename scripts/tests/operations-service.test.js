@@ -159,7 +159,7 @@ test('admin login verifies password before issuing a token and password changes 
 });
 
 test('registration is unique under racing calls and cannot self-authorize or edit a disabled profile',async()=>{
- const f=fixture(),svc=new (f.load('passport_service.js'))();f.config.registrationReview=true;const input={name:'同学',mobile:'13912345678',pic:'cloud://test/avatar.png',forms:[{mark:'sex',val:'男'},{mark:'college',val:'计算机学院'},{mark:'sub',val:'软件工程'},{mark:'studentId',val:'20240001'},{mark:'disclaimer',val:true},{mark:'campus',val:'育才校区'}],status:1};
+ const f=fixture(),svc=new (f.load('passport_service.js'))();f.config.registrationReview=true;const input={name:'同学',mobile:'13912345678',pic:'cloud://test/avatar.png',forms:[{mark:'sex',val:'男'},{mark:'college',val:'计算机学院'},{mark:'sub',val:'软件工程'},{mark:'studentId',val:'20240001'},{mark:'studentCard',val:['cloud://test/student-card.png']},{mark:'disclaimer',val:true},{mark:'campus',val:'育才校区'}],status:1};
  await svc.wechatIdentityLogin('newuser');
  await Promise.all([svc.register('newuser',input),svc.register('newuser',input)]);const users=[...f.table('user').values()].filter(x=>x.USER_MINI_OPENID==='newuser');assert.equal(users.length,1);assert.equal(users[0].USER_STATUS,0);assert.equal(users[0].USER_MOBILE_VERIFIED,false);
  await svc.wechatIdentityLogin('newuser2');

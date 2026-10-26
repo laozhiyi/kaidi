@@ -79,6 +79,7 @@ Page({
 				MAIL_TOTAL_FEE: Number(mail.MAIL_TOTAL_FEE || 0),
 				endTimestamp,
 				MAIL_END_TIME: mail.end2 || obj.end || '',
+				MAIL_EXPECT_TIME: mail.MAIL_EXPECT_TIME || 0,
 				MAIL_ADD_TIME: mail.MAIL_ADD_TIME,
 				MAIL_OBJ: obj,
                 MAIL_MEDIA: mail.MAIL_MEDIA || {},

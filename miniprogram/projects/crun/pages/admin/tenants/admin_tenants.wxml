@@ -22,7 +22,7 @@
       <input class="tenant-input" placeholder="校区编号，如 east（创建后固定）" value="{{campus.campusId}}" data-key="campus.campusId" bindinput="edit" disabled="{{busy || loading || campus.version > 0}}" maxlength="48" />
       <input class="tenant-input" placeholder="校区名称" value="{{campus.name}}" data-key="campus.name" bindinput="edit" disabled="{{busy || loading}}" maxlength="30" />
       <view class="ac-row"><text>启用校区</text><switch checked="{{campus.enabled}}" data-key="campus.enabled" bindchange="edit" disabled="{{busy || loading}}" /></view>
-      <view>宿舍或配送区域（每行一个）</view><textarea class="tenant-text" value="{{phaseText}}" data-key="phaseText" bindinput="edit" disabled="{{busy || loading}}" maxlength="4000" placeholder="东区&#10;西区" />
+      <view>所在地点（每行一个，如：雅园、图书馆）</view><textarea class="tenant-text" value="{{phaseText}}" data-key="phaseText" bindinput="edit" disabled="{{busy || loading}}" maxlength="4000" placeholder="东区&#10;西区" />
       <view>自提区域与站点（每行一组）</view><textarea class="tenant-text" value="{{pickupText}}" data-key="pickupText" bindinput="edit" disabled="{{busy || loading}}" maxlength="40000" placeholder="东门 | 菜鸟驿站、顺丰服务点" />
       <view class="ac-muted">新校区默认暂停营业。切换到该校区后，在服务、价格、规则和客服设置中完成配置，再开放服务。</view>
     </block>

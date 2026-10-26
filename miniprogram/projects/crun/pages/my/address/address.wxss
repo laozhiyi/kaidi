@@ -8,10 +8,39 @@
 .address-editor-title { margin-bottom:22rpx; color:#24344c; font-size:30rpx; font-weight:600; }
 .address-field-label { margin:20rpx 0 14rpx; color:#62748b; font-size:25rpx; }
 .address-field-label text { color:#c27b42; }
-.address-phase-options { display:flex; flex-wrap:wrap; gap:12rpx; }
-.address-phase { display:flex; align-items:center; justify-content:center; width:calc((100% - 24rpx) / 3); height:82rpx; margin:0; padding:0; border-radius:14rpx; font-size:27rpx; color:#62748b; background:#f0f4f9; line-height:1.5; }
-.address-phase::after { border:0; }
-.address-phase.selected { background:#e8f1ff; color:#397bc8; box-shadow:inset 0 0 0 2rpx #397bc8; font-weight:600; }
+.address-field-optional { margin-left:8rpx; color:#94a3b8 !important; font-size:22rpx; }
+/* 所在地点：与发单页「期待送达时间」同一套触发条 + 底部选择面板 */
+.place-trigger { display:flex; align-items:center; justify-content:space-between; min-height:88rpx; padding:12rpx 22rpx; box-sizing:border-box; color:#397bc8; background:#f1f6fe; border-radius:14rpx; font-size:28rpx; }
+.place-empty { color:#8d9bb0; }
+.place-text { flex:1; min-width:0; }
+.place-arrow { margin-left:20rpx; font-size:40rpx; line-height:1; }
+.place-mask { position:fixed; top:0; bottom:0; left:0; right:0; z-index:21000; display:flex; align-items:flex-end; background:rgba(25,42,66,.45); }
+.place-sheet { width:100%; height:86vh; display:flex; flex-direction:column; box-sizing:border-box; padding:28rpx 28rpx calc(24rpx + env(safe-area-inset-bottom)); border-radius:30rpx 30rpx 0 0; background:#fff; color:#24344c; }
+.place-head { display:flex; align-items:flex-start; justify-content:space-between; flex-shrink:0; margin-bottom:8rpx; }
+.place-head-main { flex:1; min-width:0; }
+.place-title { font-size:32rpx; font-weight:600; }
+.place-note { margin-top:6rpx; color:#8190a5; font-size:24rpx; }
+.place-close { width:76rpx; height:76rpx; flex-shrink:0; margin:-14rpx -10rpx 0 10rpx; padding:0; color:#8190a5; font-size:44rpx; line-height:1; background:transparent; }
+.place-close::after { border:0; }
+.place-body { flex:1; height:0; min-height:0; }
+.place-group-head { display:flex; align-items:baseline; justify-content:space-between; margin:22rpx 0 14rpx; }
+.place-group-title { font-size:27rpx; font-weight:600; }
+.place-group-hint { color:#94a3b8; font-size:22rpx; }
+.place-grid { display:flex; flex-wrap:wrap; gap:12rpx; }
+.place-chip { display:flex; flex-direction:column; align-items:center; justify-content:center; width:calc((100% - 24rpx) / 3); min-height:84rpx; margin:0; padding:10rpx 8rpx; box-sizing:border-box; border:0; border-radius:14rpx; background:#f4f7fb; color:#516681; font-size:25rpx; font-weight:400; line-height:1.35; text-align:center; word-break:break-all; }
+.place-chip::after { border:0; }
+.place-chip-dorm { min-height:112rpx; }
+.place-chip-label { font-size:26rpx; }
+.place-chip-name { margin-top:4rpx; color:#8d9bb0; font-size:21rpx; }
+.place-chip.selected { background:#397bc8; color:#fff; font-weight:600; box-shadow:0 6rpx 16rpx rgba(57,123,200,.18); }
+.place-chip.selected .place-chip-name { color:rgba(255,255,255,.84); }
+.place-chip[disabled] { opacity:.55; }
+.place-foot { flex-shrink:0; padding-top:18rpx; border-top:1rpx solid #edf1f6; }
+.place-summary { margin-bottom:16rpx; color:#516681; font-size:25rpx; text-align:center; }
+.place-clear { margin-left:16rpx; color:#397bc8; font-size:23rpx; }
+.place-confirm { width:100%; min-height:88rpx; display:flex; align-items:center; justify-content:center; margin:0; padding:0; border:0; border-radius:16rpx; background:#397bc8; color:#fff; font-size:29rpx; font-weight:600; }
+.place-confirm::after { border:0; }
+.place-confirm[disabled] { opacity:.55; }
 .address-detail { width:100%; min-height:110rpx; box-sizing:border-box; padding:20rpx; border-radius:14rpx; background:#f5f8fc; color:#24344c; font-size:27rpx; line-height:1.6; }
 .address-note { width:100%; height:80rpx; box-sizing:border-box; padding:0 20rpx; border-radius:14rpx; background:#f5f8fc; color:#24344c; font-size:27rpx; }
 .profile-item-note { margin-top:6rpx; color:#8494a9; font-size:24rpx; line-height:1.5; word-break:break-all; }

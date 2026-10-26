@@ -74,6 +74,7 @@ page { background: #f3f6fb; }
 .profile-card-field { padding:22rpx 0; border-bottom:1rpx solid #edf1f6; }
 .profile-card-head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; }
 .profile-card-optional { color:#8494a9; font-size:22rpx; line-height:1.4; }
+.profile-card-required { color:#c27b42; font-size:22rpx; line-height:1.4; }
 .profile-card-body { margin-top:18rpx; }
 .profile-card-preview { position:relative; width:220rpx; height:150rpx; }
 .profile-card-image { width:220rpx; height:150rpx; border-radius:12rpx; background:#f0f4f9; }

@@ -1,7 +1,13 @@
 const ProjectBiz = require('../../../biz/project_biz.js');
+const Address = require('../../../biz/address_biz.js');
 const profileMethods = require('../profile_methods.js');
 Page(Object.assign({
-  data: { isLoad: false, isEdit: true, addresses: [], addressPhaseOptions: require('../../../biz/address_biz.js').PHASES, loadError: '', collectionSaving: false },
+  data: {
+    isLoad: false, isEdit: true, addresses: [],
+    addressPhaseOptions: Address.PHASES, placeGroups: Address.placeGroups(),
+    placePickerVisible: false, placeDraft: '',
+    loadError: '', collectionSaving: false
+  },
   onLoad() { ProjectBiz.initPage(this); return this._loadProfile(); },
   onUnload() { this._unloaded = true; },
   async _loadProfile(force = false) {

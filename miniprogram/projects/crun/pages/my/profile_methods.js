@@ -72,7 +72,7 @@ async function loadCampuses(page, force = false) {
   }
   if (!force && campusCache) {
     if (!page._unloaded) {
-      page.setData({ campuses: campusCache, addressPhaseOptions:Address.PHASES.slice() });
+      page.setData({ campuses: campusCache, addressPhaseOptions:Address.PHASES.slice(), placeGroups: Address.placeGroups() });
       applyRegistrationPolicy(page, manualRegistrationAllowed, phoneLoginEnabled);
     }
     return campusCache;
@@ -98,7 +98,7 @@ async function loadCampuses(page, force = false) {
     const { campuses, allowManualRegistration, phoneLoginEnabled } = await campusRequest;
     if (requestScope !== scopeKey() || version !== campusCacheVersion) return [];
     if (!page._unloaded) {
-      page.setData({ campuses, campusError:'', addressPhaseOptions:Address.PHASES.slice() });
+      page.setData({ campuses, campusError:'', addressPhaseOptions:Address.PHASES.slice(), placeGroups: Address.placeGroups() });
       applyRegistrationPolicy(page, allowManualRegistration, phoneLoginEnabled);
     }
     return campuses;
@@ -124,7 +124,7 @@ function applyUser(page, user) {
     profileStudentId: String(ProfileBiz.formValue(forms, 'studentId') || ''),
     profileStudentCard: [].concat(ProfileBiz.formValue(forms, 'studentCard') || []).filter(value => typeof value === 'string' && value).slice(0, 1),
     profileDisclaimer: ProfileBiz.formValue(forms, 'disclaimer') === true }, p, {
-    campuses, campusIndex: campuses.indexOf(p.campus), campusPickerVisible: false, campusDraft: '', contactEditorVisible: false, addressEditorVisible: false, editingContactIndex: -1, editingAddressIndex: -1, contactDraft: { name: '', phone: '' }, addressDraft: { label: '', detail: '', note: '' }
+    campuses, campusIndex: campuses.indexOf(p.campus), campusPickerVisible: false, campusDraft: '', contactEditorVisible: false, addressEditorVisible: false, placePickerVisible: false, placeDraft: '', editingContactIndex: -1, editingAddressIndex: -1, contactDraft: { name: '', phone: '' }, addressDraft: { label: '', detail: '', note: '' }
   }));
 }
 function profileBusy(page) {
@@ -364,17 +364,38 @@ function bindSaveContact() {
 }
 function bindAddAddress() {
   if (this.data.collectionSaving) return;
-  this.setData({ addressEditorVisible: true, editingAddressIndex: -1, addressDraft: { label: '', detail: '', note: '' } });
+  this.setData({ addressEditorVisible: true, editingAddressIndex: -1, placePickerVisible: false, placeDraft: '', addressDraft: { label: '', detail: '', note: '' } });
 }
 function bindEditAddress(e) {
   if (this.data.collectionSaving) return;
   const index = itemIndex(e, this.data.addresses || []);
-  if (index >= 0) this.setData({ addressEditorVisible: true, editingAddressIndex: index, addressDraft: { ...this.data.addresses[index], label: Address.phaseOf(this.data.addresses[index]) } });
+  if (index >= 0) {
+    const saved = this.data.addresses[index];
+    this.setData({ addressEditorVisible: true, editingAddressIndex: index, placePickerVisible: false, placeDraft: '', addressDraft: { ...saved, label: Address.initialPlace(saved) } });
+  }
 }
-function bindAddressPhase(e) {
-  const phase = e.currentTarget.dataset.phase;
-  if (!this.data.collectionSaving && Address.PHASES.includes(phase)) this.setData({ 'addressDraft.label': phase });
+// 地点用底部弹层选择：上半部分是宿舍区（一期~五期），下半部分是地图上的其余地点。
+function bindOpenPlacePicker() {
+  if (this.data.collectionSaving) return;
+  if (typeof wx.hideKeyboard === 'function') wx.hideKeyboard();
+  this.setData({ placePickerVisible: true, placeDraft: this.data.addressDraft.label || '' });
 }
+function bindSelectPlace(e) {
+  if (this.data.collectionSaving) return;
+  const label = e.currentTarget.dataset.label;
+  if (Address.validPlace(label)) this.setData({ placeDraft: label });
+}
+function bindConfirmPlace() {
+  if (this.data.collectionSaving) return;
+  this.setData({ 'addressDraft.label': this.data.placeDraft || '', placePickerVisible: false, placeDraft: '' });
+}
+function bindClearPlace() {
+  if (!this.data.collectionSaving) this.setData({ placeDraft: '' });
+}
+function bindClosePlacePicker() {
+  if (!this.data.collectionSaving) this.setData({ placePickerVisible: false, placeDraft: '' });
+}
+function bindPlaceSheetStop() { }
 function bindSetDefaultAddress(e) {
   const index = itemIndex(e, this.data.addresses || []);
   if (index < 0) return;
@@ -389,18 +410,19 @@ function bindDeleteAddress(e) {
   return saveCollections(this, { addresses: this.data.addresses.filter((_, i) => i !== index) }, editor);
 }
 function bindCancelAddress() {
-  if (!this.data.collectionSaving) this.setData({ addressEditorVisible: false, editingAddressIndex: -1, addressDraft: { label: '', detail: '', note: '' }, saveError: '' });
+  if (!this.data.collectionSaving) this.setData({ addressEditorVisible: false, editingAddressIndex: -1, placePickerVisible: false, placeDraft: '', addressDraft: { label: '', detail: '', note: '' }, saveError: '' });
 }
 function bindSaveAddress() {
   if (this.data.collectionSaving) return;
   const draft = this.data.addressDraft || {};
   const item = { label: String(draft.label || '').trim(), detail: String(draft.detail || '').trim(), note: Array.from(String(draft.note || '').trim()).slice(0, 60).join('') };
-  if (!Address.PHASES.includes(item.label)) return pageHelper.showNoneToast('请选择地址所属期数');
+  // 地点是选填项：没选就按详细地址送达，只有填了才需要在可选范围内。
+  if (item.label && !Address.validPlace(item.label)) return pageHelper.showNoneToast('所选地点不在可选范围内');
   if (!item.detail) return pageHelper.showNoneToast('请填写详细地址');
   const addresses = (this.data.addresses || []).slice(), index = this.data.editingAddressIndex;
   if (index >= 0 && index < addresses.length) addresses[index] = { ...addresses[index], ...item };
   else addresses.push(item);
-  return saveCollections(this, { addresses }, { addressEditorVisible: false, editingAddressIndex: -1, addressDraft: { label: '', detail: '', note: '' } });
+  return saveCollections(this, { addresses }, { addressEditorVisible: false, editingAddressIndex: -1, placePickerVisible: false, placeDraft: '', addressDraft: { label: '', detail: '', note: '' } });
 }
 function finishProfile(page) {
   const myPage = '/projects/crun/pages/my/index/my_index';
@@ -471,6 +493,8 @@ async function bindSubmitTap(e) {
     if (!this.data.isEdit || studentId) {
       if (!STUDENT_ID_RE.test(studentId)) throw new Error(studentId ? '学号为6-20位字母或数字' : '请填写学号');
     }
+    const studentCard = (this.data.profileStudentCard || []).filter(value => typeof value === 'string' && value);
+    if (!this.data.isEdit && !studentCard.length) throw new Error('请上传学生证照片');
     if (!this.data.isEdit && this.data.profileDisclaimer !== true) throw new Error('请阅读并同意免责声明');
     const inviteCode = this.data.isEdit ? '' : InviteBiz.normalize(this.data.inviteCode);
     if (inviteCode && !/^[A-Z0-9]{6}$/.test(inviteCode)) throw new Error('邀请码为6位字母或数字');
@@ -521,4 +545,4 @@ async function bindSubmitTap(e) {
     pageHelper.showNoneToast(message);
   } finally { if (!this._unloaded) this.setData({ saving: false }); }
 }
-module.exports = { initProfileCapabilities, applyRegistrationPolicy, isProfileReady, loadCampuses, getCachedProfileUser, getProfileUser, invalidateProfileCache, clearLocalCaches, applyUser, finishProfile, bindProfileNameInput, bindProfileMobileInput, bindPicTap, bindChooseAvatar, bindWechatPhoneTap, bindWechatPhone, bindCampusChange, bindOpenCampusPicker, bindSelectCampus, bindConfirmCampus, bindCloseCampusPicker, bindProfileSheetTouchMove, bindGenderTap, bindProfileFieldInput, bindDisclaimerTap, bindViewDisclaimer, bindChooseStudentCard, bindPreviewStudentCard, bindDeleteStudentCard, bindContactInput, bindAddressInput, bindAddressPhase, bindAddContact, bindEditContact, bindSetDefaultContact, bindDeleteContact, bindCancelContact, bindSaveContact, bindAddAddress, bindEditAddress, bindSetDefaultAddress, bindDeleteAddress, bindCancelAddress, bindSaveAddress, bindSaveWechatProfile, bindSubmitTap };
+module.exports = { initProfileCapabilities, applyRegistrationPolicy, isProfileReady, loadCampuses, getCachedProfileUser, getProfileUser, invalidateProfileCache, clearLocalCaches, applyUser, finishProfile, bindProfileNameInput, bindProfileMobileInput, bindPicTap, bindChooseAvatar, bindWechatPhoneTap, bindWechatPhone, bindCampusChange, bindOpenCampusPicker, bindSelectCampus, bindConfirmCampus, bindCloseCampusPicker, bindProfileSheetTouchMove, bindGenderTap, bindProfileFieldInput, bindDisclaimerTap, bindViewDisclaimer, bindChooseStudentCard, bindPreviewStudentCard, bindDeleteStudentCard, bindContactInput, bindAddressInput, bindOpenPlacePicker, bindSelectPlace, bindConfirmPlace, bindClearPlace, bindClosePlacePicker, bindPlaceSheetStop, bindAddContact, bindEditContact, bindSetDefaultContact, bindDeleteContact, bindCancelContact, bindSaveContact, bindAddAddress, bindEditAddress, bindSetDefaultAddress, bindDeleteAddress, bindCancelAddress, bindSaveAddress, bindSaveWechatProfile, bindSubmitTap };

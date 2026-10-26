@@ -65,4 +65,4 @@ function scenarios() {
     ...identityCases.map(fixture => ({ ...fixture, data: { phoneLoginEnabled: false, ...fixture.data } }))]
     .map(fixture => ({ ...fixture, base: 'projects/crun/pages/' + fixture.page }));
 }
-module.exports = { scenarios, pageState, previewTitle: 'GXNU校跑 · 微信登录与账户资料', previewSummary: '点击登录，选择头像昵称，进入始终展开的个人资料。' };
+module.exports = { scenarios, pageState, previewTitle: 'GXNU随手取 · 微信登录与账户资料', previewSummary: '点击登录，选择头像昵称，进入始终展开的个人资料。' };

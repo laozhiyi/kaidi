@@ -30,9 +30,14 @@ function validationError({ name, mobile, pic, forms }) {
   return '';
 }
 const STUDENT_ID_RE = /^[A-Za-z0-9]{6,20}$/;
+const hasImage = value => {
+  const list = Array.isArray(value) ? value : [value];
+  return list.length > 0 && list.every(item => typeof item === 'string' && /^(?:cloud:\/\/|https?:\/\/)/.test(item));
+};
 /** Extra checks applied only when a profile is completed for the first time. */
 function requiredForRegistration(forms) {
   if (!STUDENT_ID_RE.test(String(formValue(forms, 'studentId') || '').trim())) return '请填写学号（6-20位字母或数字）';
+  if (!hasImage(formValue(forms, 'studentCard'))) return '请上传学生证照片';
   if (formValue(forms, 'disclaimer') !== true) return '请阅读并同意免责声明';
   return '';
 }

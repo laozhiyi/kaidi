@@ -45,6 +45,10 @@ page { background: #f3f6fb; }
 .delivery-page .od-campus text { margin-right: 5rpx; }
 .delivery-page .od-tags { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 20rpx; }
 .delivery-page .od-tag { padding: 5rpx 13rpx; border-radius: 8rpx; background: #f3f6fa; color: #718298; font-size: 22rpx; }
+.delivery-page .od-expect { display: flex; align-items: center; margin-top: 22rpx; padding: 12rpx 16rpx; border-radius: 12rpx; background: #edf4fd; font-size: 24rpx; }
+.delivery-page .od-expect .icon-time { margin-right: 8rpx; color: #528bcf; font-size: 24rpx; }
+.delivery-page .od-expect-label { margin-right: 10rpx; color: #7d8ba0; }
+.delivery-page .od-expect-time { color: #2c3d55; }
 .delivery-page .od-fee { flex-shrink: 0; max-width: 45%; text-align: right; }
 .delivery-page .od-fee-label, .delivery-page .od-label { color: #8995a7; font-size: 23rpx; }
 .delivery-page .od-price { margin-top: 2rpx; color: #3375be; font-family: Arial, sans-serif; font-size: 49rpx; font-weight: 600; line-height: 1.3; word-break: break-all; }

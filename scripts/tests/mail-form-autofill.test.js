@@ -95,7 +95,9 @@ test('saving the first common address fills the home form through the actual pro
   const addressPage = h.instance({ data: {}, methods });
   methods.applyUser(addressPage, h.getProfile());
   addressPage.bindAddAddress();
-  addressPage.bindAddressPhase({ currentTarget: { dataset: { phase: '二期' } } });
+  addressPage.bindOpenPlacePicker();
+  addressPage.bindSelectPlace({ currentTarget: { dataset: { label: '二期' } } });
+  addressPage.bindConfirmPlace();
   addressPage.bindAddressInput({ currentTarget: { dataset: { field: 'detail' } }, detail: { value: '2栋202室' } });
   assert.equal(await addressPage.bindSaveAddress(), true);
   await h.show();

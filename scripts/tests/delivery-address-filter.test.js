@@ -59,7 +59,7 @@ test('publishing rejects invalid or conflicting delivery phases', async () => {
     const forms = f.forms();
     forms.find(item => item.mark === 'address2').val = '五期 宿舍101';
     forms.push({ mark: 'addressPhase', val: phase });
-    await assert.rejects(f.publish({ forms, requestId: f.req('bad-phase-' + index) }), /区域/);
+    await assert.rejects(f.publish({ forms, requestId: f.req('bad-phase-' + index) }), /地点|区域/);
   }
 });
 

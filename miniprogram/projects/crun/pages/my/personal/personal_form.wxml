@@ -7,11 +7,12 @@
     <view class="profile-field"><text class="profile-field-label">专业</text><input class="profile-field-input" value="{{profileSub}}" maxlength="80" placeholder="请输入所学专业" bindinput="bindProfileFieldInput" data-field="profileSub" /></view>
     <view class="profile-field"><text class="profile-field-label">学号</text><input class="profile-field-input" value="{{profileStudentId}}" maxlength="20" placeholder="请输入学号（6-20位字母或数字）" bindinput="bindProfileFieldInput" data-field="profileStudentId" /></view>
     <view class="profile-card-field">
-      <view class="profile-card-head"><text class="profile-field-label">学生证</text><text class="profile-card-optional">选填，可用于身份核验</text></view>
+      <view class="profile-card-head"><text class="profile-field-label">学生证</text><text class="profile-card-required">必填，用于身份核验</text></view>
       <view class="profile-card-body">
         <view wx:if="{{profileStudentCard.length}}" class="profile-card-preview"><image class="profile-card-image" src="{{profileStudentCard[0]}}" mode="aspectFill" bindtap="bindPreviewStudentCard" aria-label="预览学生证" /><view class="profile-card-delete" bindtap="bindDeleteStudentCard" role="button" aria-label="删除学生证图片"><text class="icon-close"></text></view></view>
         <view wx:else class="profile-card-add" bindtap="bindChooseStudentCard" role="button" aria-label="上传学生证"><text class="icon-add"></text><text class="profile-card-add-text">上传</text></view>
       </view>
+      <view wx:if="{{!isEdit && !profileStudentCard.length}}" class="profile-required-hint">请上传学生证照片后再保存</view>
     </view>
     <view class="profile-campus-control {{campus ? 'profile-campus-selected' : ''}}" bindtap="bindOpenCampusPicker" hover-class="profile-campus-pressed" role="button" aria-label="选择所在校区"><view><view class="profile-field-label">所在校区</view><view class="profile-campus-value">{{campus || '请选择所在校区'}}</view></view><view class="profile-campus-action">{{campus ? '更换' : '选择'}}<text class="icon-right"></text></view></view>
   </view>

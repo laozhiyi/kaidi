@@ -3,7 +3,7 @@
     <view class="my-avatar" wx:if="{{!user || !user.USER_PIC}}"><image mode="aspectFit" src="../../../images/tabbar/my_cur.png" /></view>
     <image wx:else class="my-avatar" src="{{user.USER_PIC}}" mode="aspectFill" />
     <view class="my-profile-copy">
-      <view class="my-name">{{user ? (user.USER_NAME || '微信用户') : '欢迎来到GXNU校跑'}}</view>
+      <view class="my-name">{{user ? (user.USER_NAME || '微信用户') : '欢迎来到GXNU随手取'}}</view>
       <view class="my-profile-desc">
         <text wx:if="{{user && user.USER_STATUS==9}}" class="my-status">账号已停用</text>
         <text wx:elif="{{user && !user.USER_PROFILE_COMPLETE}}" class="my-status">已登录，发单或接单前完善联系资料</text>

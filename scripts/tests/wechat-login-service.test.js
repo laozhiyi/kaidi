@@ -6,7 +6,7 @@ const APPID = 'wx3d8dc6fb0e764ec7';
 const mobile = '13912345678';
 const profile = (scope = A) => ({ name: '新同学', mobile, pic: 'cloud://test/avatar.png', forms: [
   { mark: 'sex', val: '女' }, { mark: 'college', val: '计算机学院' },
-  { mark: 'sub', val: '软件工程' }, { mark: 'studentId', val: '20240001' }, { mark: 'disclaimer', val: true }, { mark: 'campus', val: scope.campusName }
+  { mark: 'sub', val: '软件工程' }, { mark: 'studentId', val: '20240001' }, { mark: 'studentCard', val: ['cloud://test/student-card.png'] }, { mark: 'disclaimer', val: true }, { mark: 'campus', val: scope.campusName }
 ] });
 const readyUser = () => ({ USER_MINI_OPENID: 'new-user', USER_STATUS: 1, USER_NAME: '新同学',
   USER_MOBILE: mobile, USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: true,
@@ -129,7 +129,7 @@ for (const mark of ['sex', 'college', 'sub', 'campus']) {
     const f = await setup(); await f.putUser(); const input = profile();
     input.forms = input.forms.filter(item => item.mark !== mark);
     await assert.rejects(tenant.run(A, () => f.passport().editBase('new-user', input)), /性别|学院|专业|校区|资料/);
-    assert.equal(f.row().USER_FORMS.length, 6);
+    assert.equal(f.row().USER_FORMS.length, 7);
   });
 }
 

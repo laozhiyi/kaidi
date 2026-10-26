@@ -298,6 +298,11 @@ page {
 	line-height: 28rpx;
 }
 
+/* 期待送达是常态信息，用次要文字色；红色只留给「快截止」的倒计时 */
+.deadline-expect {
+	color: #94a3b8;
+}
+
 /* 分隔线 */
 .card-divider {
 	height: 1rpx;
@@ -324,9 +329,14 @@ page {
 
 .info-row .lbl {
 	flex-shrink: 0;
-	width: 96rpx;
+	width: 108rpx;
 	font-size: 26rpx;
 	color: #94a3b8;
+}
+
+/* 期待送达是下单人指定的时间，沿用页面主色作为轻强调 */
+.info-row-expect .expect-val {
+	color: #397bc8;
 }
 
 .info-row .val {
@@ -382,11 +392,14 @@ page {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	flex-wrap: wrap;
+	gap: 16rpx;
 }
 
 .price-block {
 	display: flex;
 	align-items: baseline;
+	flex-shrink: 0;
 	color: #ff4d4f;
 }
 
@@ -406,6 +419,7 @@ page {
 	margin-left: 10rpx;
 	font-size: 22rpx;
 	color: #94a3b8;
+	white-space: nowrap;
 }
 
 .price-block.muted {
@@ -419,10 +433,12 @@ page {
 .actions {
 	display: flex;
 	align-items: center;
+	flex-shrink: 0;
+	margin-left: auto;
 }
 
 .actions button {
-	margin: 0 0 0 14rpx;
+	margin: 0;
 	padding: 0;
 	height: 60rpx;
 	min-height: 60rpx;
@@ -431,6 +447,11 @@ page {
 	font-size: 26rpx;
 	font-weight: 500;
 	box-sizing: border-box;
+	flex-shrink: 0;
+}
+
+.actions button + button {
+	margin-left: 14rpx;
 }
 
 .actions button::after {
@@ -520,11 +541,15 @@ page {
 	line-height: 34rpx;
 }
 
-.order-fav-row { display:flex; align-items:center; justify-content:space-between; margin:-8rpx 0 14rpx; color:#91a0b3; font-size:23rpx; }
-.order-fav-button { display:flex; align-items:center; gap:8rpx; margin:0; padding:0 14rpx; height:64rpx; line-height:64rpx; border-radius:14rpx; background:#f4f7fb; color:#72839a; font-size:24rpx; }
-.order-fav-button::after { border:0; }
-.order-fav-button.saved { background:#fff5e7; color:#c88620; }
-.order-fav-button[disabled] { opacity:.6; }
+/* 收藏复用 .btn-ghost 的外观，只收紧内边距给数字让位 */
+.btn-fav {
+	padding: 0 12rpx !important;
+}
+
+/* 已收藏只变文字色，与详情页 .od-favorite.saved 的处理一致 */
+.btn-fav.saved {
+	color: #c88620 !important;
+}
 .order-fav-error { margin:12rpx 28rpx; padding:12rpx; color:#a47835; font-size:23rpx; text-align:center; }
 
 /* 小屏适配 */
@@ -543,7 +568,7 @@ page {
 	}
 
 	.info-row .lbl {
-		width: 84rpx;
+		width: 96rpx;
 		font-size: 24rpx;
 	}
 
@@ -563,6 +588,10 @@ page {
 
 	.btn-primary {
 		padding: 0 20rpx !important;
+	}
+
+	.actions .btn-fav {
+		padding: 0 8rpx !important;
 	}
 
 	.nick {

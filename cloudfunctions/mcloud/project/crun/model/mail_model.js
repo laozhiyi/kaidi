@@ -23,7 +23,8 @@ MailModel.DB_STRUCTURE = {
 	MAIL_ADMIN_DELETED: 'bool|true|default=false|comment=管理员软删除标记',
 	MAIL_ADMIN_DELETED_AT: 'int|false|default=0|comment=管理员删除时间',
 	MAIL_ADMIN_DELETED_BY: 'string|false|comment=执行删除的管理员',
-	MAIL_END_TIME: 'int|false|default=0|comment=截止时间',
+	MAIL_END_TIME: 'int|false|default=0|comment=接单截止时间（由期待送达时间 − 配送时长推算）',
+	MAIL_EXPECT_TIME: 'int|false|default=0|comment=下单人期待送达时间',
 
 	MAIL_CATE_ID: 'string|true|default=0|comment=分类',
 	MAIL_CATE_NAME: 'string|false|comment=分类冗余',

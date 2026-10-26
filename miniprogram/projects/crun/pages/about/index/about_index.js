@@ -2,7 +2,7 @@ const ProjectBiz = require('../../../biz/project_biz.js');
 const projectSetting = require('../../../public/project_setting.js');
 const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const EMPTY_TEXT = {
-  SETUP_CONTENT_ABOUT: 'GXNU校跑提供校区内的快递代取与互助服务。具体开放校区和服务规则以平台当前配置为准。',
+  SETUP_CONTENT_ABOUT: 'GXNU随手取提供校区内的快递代取与互助服务。具体开放校区和服务规则以平台当前配置为准。',
   SETUP_CONTENT_CONTACT: '联系方式尚未配置，如需帮助，请通过校区客服联系运营人员。',
   SETUP_CONTENT_DISCLAIMER: '本平台仅为校园同学之间的互助信息撮合，不对订单履约、物品完好及交易纠纷承担担保责任。请在发布和接单前核实对方信息，妥善保管个人隐私与贵重物品，并遵守校规校纪与相关法律法规。使用平台即表示你已知悉并同意以上内容。',
   SETUP_CONTENT_AFTERSALES: '售后群信息尚未配置，如需帮助，请通过校区客服联系运营人员。'

@@ -68,7 +68,9 @@
 							<view class="card-side">
 								<text wx:if="{{order.MAIL_OBJ.distance}}" class="distance">{{order.MAIL_OBJ.distance}}km</text>
 								<text wx:if="{{order.MAIL_OBJ.urgent}}" class="urgent-tag">加急</text>
-								<text class="deadline">剩 {{order.MAIL_OBJ.leftTimeLabel}}</text>
+								<text wx:if="{{order.MAIL_OBJ.leftSoon}}" class="deadline">剩 {{order.MAIL_OBJ.leftTimeLabel}}</text>
+								<text wx:elif="{{order.MAIL_OBJ.expectLabel}}" class="deadline deadline-expect">期望 {{order.MAIL_OBJ.expectLabel}}</text>
+								<text wx:else class="deadline">剩 {{order.MAIL_OBJ.leftTimeLabel}}</text>
 							</view>
 						</view>
 
@@ -86,6 +88,10 @@
 							<view class="info-row">
 								<text class="lbl">送达</text>
 								<text class="val">{{order.deliveryAddress || '送达地点待补充'}}</text>
+							</view>
+							<view wx:if="{{order.MAIL_OBJ.expectLabel}}" class="info-row info-row-expect">
+								<text class="lbl">期待送达</text>
+								<text class="val expect-val">{{order.MAIL_OBJ.expectLabel}}</text>
 							</view>
 							<view class="info-row">
 								<text wx:if="{{order.MAIL_OBJ.serviceType !== 'buy'}}" class="lbl">类型</text>
@@ -105,10 +111,6 @@
 						<view class="card-divider"></view>
 
 						<!-- 底部：金额 + 操作 -->
-						<view class="order-fav-row">
-							<text>{{order.MAIL_FAV_CNT}} 人收藏</text>
-							<button class="order-fav-button {{order.MAIL_IS_FAV ? 'saved' : ''}}" catchtap="bindFavoriteTap" data-id="{{order._id}}" disabled="{{!!favoriteBusyId || (!order.MAIL_IS_FAV && order.MAIL_CAN_FAV === false)}}" loading="{{favoriteBusyId === order._id}}" aria-label="{{order.MAIL_IS_FAV ? '取消收藏订单' : '收藏订单'}}"><text class="icon-{{order.MAIL_IS_FAV ? 'favorfill' : 'favor'}}"></text><text>{{order.MAIL_IS_FAV ? '已收藏' : '收藏'}}</text></button>
-						</view>
 						<view class="card-bot">
 							<view class="price-block">
 								<text class="symbol">¥</text>
@@ -116,6 +118,7 @@
 								<text class="tip">{{order.MAIL_OBJ.serviceType === 'buy' ? '跑腿费' : '含打赏'}}</text>
 							</view>
 							<view class="actions" catchtap="bindStop">
+								<button class="btn-ghost btn-fav {{order.MAIL_IS_FAV ? 'saved' : ''}}" catchtap="bindFavoriteTap" data-id="{{order._id}}" disabled="{{!!favoriteBusyId || (!order.MAIL_IS_FAV && order.MAIL_CAN_FAV === false)}}" loading="{{favoriteBusyId === order._id}}" aria-label="{{order.MAIL_IS_FAV ? '取消收藏订单' : '收藏订单'}}">{{order.MAIL_IS_FAV ? '已收藏' : '收藏'}}({{order.MAIL_FAV_CNT || 0}})</button>
 								<button class="btn-ghost" catchtap="bindDetailTap" data-id="{{order._id}}">详情</button>
 								<button class="btn-primary" catchtap="bindAcceptTap" data-id="{{order._id}}" data-idx="{{index}}" loading="{{acceptingId === order._id}}" disabled="{{!!acceptingId || order.MAIL_CAN_FAV === false}}" hover-stay-time="80">{{acceptingId === order._id ? '接单中' : order.MAIL_CAN_FAV === false ? '已不可接单' : '立即接单'}}</button>
 							</view>
@@ -146,7 +149,7 @@
 				<view class="order-list" wx:if="{{dataList && dataList.list && dataList.list.length}}">
 					<view wx:for="{{dataList.list}}" wx:key="_id" wx:for-item="order" class="order-card shadow card-project" bindtap="bindDetailTap" data-id="{{order._id}}" hover-class="order-card-hover">
 						<view class="card-top">
-							<view class="user-info"><image class="avatar" src="{{order.MAIL_OBJ.posterPic || '/projects/crun/images/menu/mail.png'}}" mode="aspectFill"></image><view class="user-meta"><view class="nick-line"><text class="nick">{{order.MAIL_OBJ.poster || '匿名用户'}}</text></view><text class="sub">截止 {{order.end2 || order.MAIL_END_TIME || '未设置'}}</text></view></view>
+							<view class="user-info"><image class="avatar" src="{{order.MAIL_OBJ.posterPic || '/projects/crun/images/menu/mail.png'}}" mode="aspectFill"></image><view class="user-meta"><view class="nick-line"><text class="nick">{{order.MAIL_OBJ.poster || '匿名用户'}}</text></view><text class="sub">期望 {{order.expect2 || order.end2 || '未设置'}}</text></view></view>
 							<view class="card-side"><text class="status-tag status-taking">{{order.status || '已接单'}}</text></view>
 						</view>
 						<view class="card-divider"></view>
