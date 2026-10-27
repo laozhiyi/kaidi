@@ -40,6 +40,7 @@ class OperationsService extends Base {
    config.campuses = names.length ? names : [scope.campusName];
   }
   return {...config,allowManualRegistration:profileRules.allowsManualRegistration(),phoneLoginEnabled:profileRules.isPhoneLoginEnabled(),templateId:process.env.ORDER_SUBSCRIBE_TEMPLATE_ID || '',
+   chatTemplateId:process.env.CHAT_SUBSCRIBE_TEMPLATE_ID || '',
    uploadPrefix:userId ? 'private/'+userId.split('^^^').pop()+'/'+(generation ? generation+'/' : '') : ''};
  }
  async notifications(userId,page,options={}) {return new (require('./notification_service.js'))().list(userId,{...options,page});}

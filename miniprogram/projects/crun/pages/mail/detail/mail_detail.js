@@ -153,9 +153,9 @@ Page({
   finally { if (!this._unloaded) this.setData({ favoriteBusy: false }); }
  },
  bindBackOrders() { wx.switchTab({ url: '/projects/crun/pages/order/index/order_index' }); },
- bindServiceHelpTap() { wx.navigateTo({ url: '/projects/crun/pages/campus_service/list/campus_service_list' }); },
+ bindServiceHelpTap() { wx.navigateTo({ url: '/projects/crun/pages/customer_service/chat/customer_service_chat' }); },
  bindCopyOrderTap() { const mail = this.data.mail; if (mail) wx.setClipboardData({ data: String(mail.MAIL_ID || mail._id) }); },
- bindNoticeTap() { wx.showModal({ title: '结算说明', content: this.data.detailUI && this.data.detailUI.legacyPayment ? '本单未标记为线下结算订单，请联系校区客服核对支付与退款记录，勿重复向对方转账。' : '费用由双方线下协商结算，平台不代收、不担保；请勿提前向陌生人转账。', showCancel: false, confirmText: '我知道了' }); },
+ bindNoticeTap() { wx.showModal({ title: '结算说明', content: this.data.detailUI && this.data.detailUI.legacyPayment ? '本单未标记为线下结算订单，请联系在线客服核对支付与退款记录，勿重复向对方转账。' : '费用由双方线下协商结算，平台不代收、不担保；请勿提前向陌生人转账。', showCancel: false, confirmText: '我知道了' }); },
  bindManageTap() { if (this.data.detailUI && this.data.detailUI.participant) wx.navigateTo({ url: '../my_detail/mail_my_detail?id=' + this.data.id }); },
  async bindAcceptTap() {
   const mail = this.data.mail;

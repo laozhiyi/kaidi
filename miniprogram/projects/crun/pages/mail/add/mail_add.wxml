@@ -19,7 +19,7 @@
   <view class="pub-content pub-view">
    <view wx:if="{{!serviceState.canPublish}}" class="pub-card pub-service pub-view">
     <view class="pub-service-row pub-service-{{serviceState.kind}} pub-view"><view class="pub-status-label pub-view"><view class="pub-status-dot pub-view"></view><text class="pub-text">{{serviceState.title}}</text></view><text wx:if="{{serviceState.hours}}" class="pub-hours pub-text">{{serviceState.hours}}</text></view>
-    <view class="pub-service-detail pub-view"><view class="pub-view">{{serviceState.description}}</view><view class="pub-service-actions pub-view"><text class="pub-text" bindtap="bindServiceHelpTap">联系校区客服 <text class="icon-right pub-text"></text></text><text class="pub-text" bindtap="bindRetryLoad">刷新状态</text></view></view>
+    <view class="pub-service-detail pub-view"><view class="pub-view">{{serviceState.description}}</view><view class="pub-service-actions pub-view"><text class="pub-text" bindtap="bindServiceHelpTap">联系在线客服 <text class="icon-right pub-text"></text></text><text class="pub-text" bindtap="bindRetryLoad">刷新状态</text></view></view>
    </view>
    <view wx:if="{{configError}}" class="pub-inline-error pub-view"><text class="pub-text">{{loadError}}，已保留所填内容。</text><text class="pub-text" bindtap="bindRetryLoad">重试</text></view>
 

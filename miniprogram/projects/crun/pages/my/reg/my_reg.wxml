@@ -22,7 +22,7 @@
         <view class="login-service"><view class="login-service-icon login-service-buy"><text class="icon-shop"></text></view><view class="login-service-label">帮我买</view><view class="login-service-desc">商品代买</view></view>
       </view>
     </view>
-    <view class="login-foot">遇到问题可在「我的 · 校区客服」联系我们</view>
+    <view class="login-foot">遇到问题可在「我的 · 在线客服」联系我们</view>
   </block>
   <block wx:else>
     <view class="wechat-login-header">

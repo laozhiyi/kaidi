@@ -7,14 +7,22 @@ Component({
     { key: 'home', label: '工作台', icon: 'icon-home' },
     { key: 'orders', label: '订单', icon: 'icon-form' },
     { key: 'feedback', label: '投诉', icon: 'icon-message' },
-    { key: 'users', label: '用户', icon: 'icon-group', schoolOnly:true },
+    { key: 'users', label: '用户', icon: 'icon-group', schoolOnly: true },
     { key: 'settings', label: '管理', icon: 'icon-settings' }
   ] },
-  lifetimes:{attached(){this.setData({canManageUsers:!!(Admin.isSchoolAdmin && Admin.isSchoolAdmin())});}},
+  lifetimes: {
+    attached() {
+      // 客服能处理投诉、订单履约和用户注册审核，但授权/删除/停用仍是管理员的事，
+      // 页面入口只按学校授权过滤，不再对客服隐藏「用户」。
+      this.setData({
+        canManageUsers: !!(Admin.isSchoolAdmin && Admin.isSchoolAdmin())
+      });
+    }
+  },
   methods: {
     bindNavigate(e) {
       const key = e.currentTarget.dataset.key;
-      if(key==='users'&&!this.data.canManageUsers)return;
+      if (key === 'users' && !this.data.canManageUsers) return;
       if (key !== this.data.active && this.data.items.some(item => item.key === key)) UI.go(key, {}, true);
     }
   }

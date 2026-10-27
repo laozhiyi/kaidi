@@ -63,7 +63,7 @@ function service(config, now = Date.now()) {
  const pad = n => String(n).padStart(2, '0');
  const hours = validHours ? pad(config.openHour) + ':00–' + pad(config.closeHour) + ':00' : '';
  if (config.enabled !== true) return { kind: 'paused', title: '校区暂时停止接单', hours,
-  description: '管理员已暂停新订单。你可以先填写信息，或联系校区客服了解恢复时间。', canPublish: false };
+  description: '管理员已暂停新订单。你可以先填写信息，或联系在线客服了解恢复时间。', canPublish: false };
  if (config.enforceBusinessHours !== true) return { kind: 'open', title: '正常接单', hours: '全天可发布',
   description: '填写取送信息，发布后等待骑手接单', canPublish: true };
  const hour = new Date(now + 8 * 3600000).getUTCHours();
@@ -103,7 +103,7 @@ function detail(mail, now = Date.now()) {
  const legacyPayment = mail.MAIL_PAYMENT_MODE !== 'offline';
  const expired = status === 0 && Number(mail.MAIL_END_TIME) > 0 && Number(mail.MAIL_END_TIME) <= now;
  const state = expired ? { title: '订单已过期', note: '已超过接单截止时间，本单不再接受接取', icon: 'time', tone: 'muted', step: -1 }
-  : STATUS[status] || { title: '订单状态待确认', note: '请刷新订单或联系校区客服', icon: 'info', tone: 'muted', step: -1 };
+  : STATUS[status] || { title: '订单状态待确认', note: '请刷新订单或联系在线客服', icon: 'info', tone: 'muted', step: -1 };
  const orderProgress = progress(mail, now);
  const fee = obj.price == null ? Number(mail.MAIL_TOTAL_FEE) / 100 : Number(obj.price);
  const packages = ['small', 'medium', 'large'].map((key, i) => ({ key, label: ['小件', '中件', '大件'][i], count: Number(obj[key]) || 0 })).filter(x => x.count > 0);
@@ -128,7 +128,7 @@ function detail(mail, now = Date.now()) {
   actor: x.actor === 'admin' ? '管理员' : x.actor === 'poster' ? '发布者' : x.actor === 'rider' ? '骑手' : '系统', time: time(x.at) || '时间待确认'
  })).reverse() : [];
  let title = mail.myaccept && status === 1 ? '请前往快递点取件' : mail.myaccept && status === 4 ? '配送进行中' : mail.myaccept && status === 2 ? '等待发布者确认' : state.title;
- let note = !participant && status === 0 && !expired ? '接单后可查看联系人信息、取件码和截图' : mail.myaccept && status === 1 ? '取齐本单包裹后，拍照留证并点击“已取件”开始配送' : mail.myaccept && status === 4 ? '送到收件地址后，选择放置指定位置或当面交付，并提交凭证' : mail.myaccept && status === 2 ? '已通知发布者核对，可提醒对方确认收货；送达满8小时自动确认' : state.note;
+ let note = !participant && status === 0 && !expired ? '接单后可查看联系人信息、取件码和截图' : mail.myaccept && status === 1 ? '取齐本单包裹后，上传凭证（照片或视频）并点击“已取件”开始配送' : mail.myaccept && status === 4 ? '送到收件地址后，选择放置指定位置或当面交付，并提交凭证' : mail.myaccept && status === 2 ? '已通知发布者核对，可提醒对方确认收货；送达满8小时自动确认' : state.note;
  if (orderProgress.adminCompleted) { title = '管理员已完结订单'; note = '本单由管理员处理完结，具体情况请查看处理记录'; }
  if (serviceType !== 'take') {
   if (status === 1) { title = serviceType === 'buy' ? (mail.myaccept ? '请前往购买商品' : '等待骑手购买') : (mail.myaccept ? '请前往取件地址' : '等待骑手取件'); note = serviceType === 'buy' ? '请按要求购买，超出预算先联系发布者；购齐后开始配送' : '请按填写的取件位置交接物品，取齐后开始配送'; }

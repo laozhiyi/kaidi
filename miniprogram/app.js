@@ -7,7 +7,9 @@ const Passport = require('./comm/biz/passport_biz.js');
 App({
 	onShow: function (options = {}) {
   Passport.flushLogout();
-		const code = options.query && options.query.inviteCode;
+		const query = options.query || {};
+		// 分享卡片带 inviteCode；小程序码带 scene（可能是 %3D 编码过的参数串）。
+		const code = query.inviteCode || InviteBiz.parseScene(query.scene);
 		if (code) InviteBiz.capture(code);
 		Notifications.resume();
 		OrderSync.resume();

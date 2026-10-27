@@ -46,3 +46,6 @@ cloudfunctions/tenantMigrator/
 .tmp/client-detail-recovery-*
 .tmp/favorites-deleted-orders-*
 .tmp/maintenance-deleted-orders-*
+
+# Local UI audit artifacts
+.tmp/audit-*

@@ -144,10 +144,10 @@ class MailService extends Base {
     mail.MAIL_DUE_TIME = expectEnd > now ? expectEnd : now + (mail.MAIL_DELIVERY_MINUTES || config.deliveryMinutes) * 60000;
    } else if (action === 'pickup') {
     if (!rider || state !== 1) this.AppError('仅已接单订单可确认取件');
-    // 取件须拍照留证：至少1张，最多10张，可附1段15秒视频。
-    const proof = rules.images(input.images || []);
-    if (!proof.length) this.AppError('取件请先拍摄并上传至少1张凭证照片');
-    mail.MAIL_PICKUP_PROOF = {images:proof, video:rules.videos(input.videos || [])[0] || '', note:rules.text(input.note || '','取件说明',300,false), at:now};
+    // 取件须留证：照片（最多10张）与视频（1段15秒）二选一，有其一即可。
+    const proof = rules.images(input.images || []), video = rules.videos(input.videos || [])[0] || '';
+    if (!proof.length && !video) this.AppError('取件请上传至少1张凭证照片或1段视频');
+    mail.MAIL_PICKUP_PROOF = {images:proof, video, note:rules.text(input.note || '','取件说明',300,false), at:now};
     mail.MAIL_STATUS = 4; mail.MAIL_PICKUP_TIME = now;
    } else if (action === 'cancel') {
     if (!poster || state !== 0) this.AppError('只有发布者可取消待接单订单；已接单请提交异常申请'); mail.MAIL_STATUS = 99; note = rules.text(input.note || '发布者取消','取消原因',300,true);
@@ -155,9 +155,11 @@ class MailService extends Base {
     if (!rider || state !== 4) this.AppError('仅配送中的接单人可提交送达');
     // 两种送达方式：放置指定位置（须凭证）/ 当面交付（由发布人确认收货）。
     const mode = input.mode === 'face' ? 'face' : 'place';
-    const proof = rules.images(input.images || []); note = rules.text(input.note || '','送达说明',300,mode !== 'face');
-    if (mode === 'place' && !proof.length) this.AppError('放置指定位置请至少上传1张凭证照片');
-    mail.MAIL_DELIVERY_PROOF = {images:proof, video:rules.videos(input.videos || [])[0] || '', note, mode, at:now};
+    // 送达凭证同样是照片 / 视频二选一。
+    const proof = rules.images(input.images || []), video = rules.videos(input.videos || [])[0] || '';
+    note = rules.text(input.note || '','送达说明',300,mode !== 'face');
+    if (mode === 'place' && !proof.length && !video) this.AppError('放置指定位置请上传至少1张凭证照片或1段视频');
+    mail.MAIL_DELIVERY_PROOF = {images:proof, video, note, mode, at:now};
     mail.MAIL_DELIVERED_TIME = now; mail.MAIL_STATUS = 2;
     mail.MAIL_AUTO_CONFIRM_AT = now + AUTO_CONFIRM_MS;
     message = { title: mode === 'face' ? '骑手已当面交付' : '骑手已放置包裹',
@@ -166,8 +168,9 @@ class MailService extends Base {
     if (!rider || state !== 2 || !mail.MAIL_DELIVERY_PROOF) this.AppError('仅待收货订单的接单骑手可更新送达凭证');
     const proof = rules.images(input.images || []); note = rules.text(input.note || '','送达说明',300,mail.MAIL_DELIVERY_PROOF.mode !== 'face');
     const mode = mail.MAIL_DELIVERY_PROOF.mode === 'face' ? 'face' : 'place';
-    if (mode === 'place' && !proof.length) this.AppError('请至少保留1张送达照片');
-    mail.MAIL_DELIVERY_PROOF = {...mail.MAIL_DELIVERY_PROOF,images:proof,video:rules.videos(input.videos === undefined ? (mail.MAIL_DELIVERY_PROOF.video ? [mail.MAIL_DELIVERY_PROOF.video] : []) : input.videos)[0] || '',note,updatedAt:now};
+    const video = rules.videos(input.videos === undefined ? (mail.MAIL_DELIVERY_PROOF.video ? [mail.MAIL_DELIVERY_PROOF.video] : []) : input.videos)[0] || '';
+    if (mode === 'place' && !proof.length && !video) this.AppError('请至少保留1张送达照片或1段视频');
+    mail.MAIL_DELIVERY_PROOF = {...mail.MAIL_DELIVERY_PROOF,images:proof,video,note,updatedAt:now};
    } else if (action === 'confirm') {
     if (!poster || state !== 2) this.AppError('仅发布者可确认已送达订单'); mail.MAIL_STATUS = 9; mail.MAIL_OVER_TIME = now; mail.MAIL_POSTER_ARCHIVED = true; mail.MAIL_RIDER_ARCHIVED = true;
    } else if (action === 'exception') {

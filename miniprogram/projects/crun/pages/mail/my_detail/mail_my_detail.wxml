@@ -19,24 +19,27 @@
  <view wx:if="{{panel}}" class="od-sheet-mask" catchtouchmove="bindStopProp" bindtap="bindClosePanel">
   <view class="od-sheet" catchtap="bindStopProp">
    <view class="od-sheet-handle"></view>
-   <view class="od-heading"><text class="od-sheet-title">{{panel === 'update_proof' ? '更新送达凭证' : panel === 'deliver' ? '提交送达凭证' : panel === 'pickup' ? '取件拍照凭证' : '反馈配送异常'}}</text><button class="od-close" bindtap="bindClosePanel" disabled="{{busy}}"><text class="icon-close"></text></button></view>
+   <view class="od-heading"><text class="od-sheet-title">{{panel === 'update_proof' ? '更新送达凭证' : panel === 'deliver' ? '提交送达凭证' : panel === 'pickup' ? '提交取件凭证' : '反馈配送异常'}}</text><button class="od-close" bindtap="bindClosePanel" disabled="{{busy}}"><text class="icon-close"></text></button></view>
    <scroll-view scroll-y class="od-sheet-body">
-    <view class="od-sheet-note">{{panel === 'update_proof' ? '可修改送达说明，删除传错的凭证后重新添加。更新后请等待发布者确认收货。' : panel === 'deliver' ? '选择送达方式：放置指定位置需拍照留证；当面交付由发布者收到同步后确认收货。' : panel === 'pickup' ? '取件需拍照留证：拍下包裹与取件位置，最多10张照片并可附1段15秒视频。' : '请说明遇到的问题，提交后由后台跟进。申请取消不代表订单立即取消。'}}</view>
+    <view class="od-sheet-note">{{panel === 'update_proof' ? '可修改送达说明，删除传错的凭证后重新添加。更新后请等待发布者确认收货。' : panel === 'deliver' ? '选择送达方式：放置指定位置需上传照片或15秒视频留证；当面交付由发布者收到同步后确认收货。' : panel === 'pickup' ? '取件需留证：上传照片（最多10张）或录1段15秒视频，两种选一种即可。' : '请说明遇到的问题，提交后由后台跟进。申请取消不代表订单立即取消。'}}</view>
     <view wx:if="{{panel === 'deliver' || panel === 'update_proof'}}" class="od-mode-list">
-     <view class="od-mode {{deliveryMode === 'place' ? 'od-mode-active' : ''}}" data-mode="place" bindtap="bindDeliveryMode" role="button"><view class="od-mode-radio"></view><view class="od-mode-copy"><view class="od-mode-title">放置指定位置</view><view class="od-mode-desc">放到约定位置后拍照留证，发布者核对后确认收货</view></view></view>
+     <view class="od-mode {{deliveryMode === 'place' ? 'od-mode-active' : ''}}" data-mode="place" bindtap="bindDeliveryMode" role="button"><view class="od-mode-radio"></view><view class="od-mode-copy"><view class="od-mode-title">放置指定位置</view><view class="od-mode-desc">放到约定位置后拍照或录像留证，发布者核对后确认收货</view></view></view>
      <view class="od-mode {{deliveryMode === 'face' ? 'od-mode-active' : ''}}" data-mode="face" bindtap="bindDeliveryMode" role="button"><view class="od-mode-radio"></view><view class="od-mode-copy"><view class="od-mode-title">当面交付</view><view class="od-mode-desc">当面交给收件人，发布者收到同步后点击确认收货</view></view></view>
     </view>
     <picker wx:if="{{panel === 'exception'}}" range="{{reasons}}" value="{{reasonIndex}}" bindchange="bindReason" disabled="{{busy}}"><view class="od-reason"><text>问题类型</text><text>{{reasons[reasonIndex]}} <text class="icon-unfold"></text></text></view></picker>
     <textarea class="od-textarea" placeholder="{{panel === 'exception' ? '请描述具体问题及希望如何处理（必填）' : panel === 'pickup' ? '取件说明（选填）' : deliveryMode === 'face' ? '交付说明（选填）' : '请填写送达位置与物品情况（必填）'}}" value="{{note}}" bindinput="bindNote" maxlength="{{panel === 'exception' ? 500 : 300}}" disabled="{{busy}}"/>
-    <view class="od-upload-heading"><text>{{panel === 'exception' ? '补充照片（选填，最多10张）' : deliveryMode === 'face' && panel !== 'pickup' ? '交付照片（选填，最多10张）' : '凭证照片（至少1张，最多10张）'}}</text><text>{{images.length}} / 10</text></view>
-    <view class="od-upload-grid">
-     <view wx:for="{{images}}" wx:key="*this" class="od-upload-item"><image wx:if="{{imagePreviews[item] !== ''}}" src="{{imagePreviews[item] || item}}" class="od-upload-photo" mode="aspectFill"/><view wx:else class="od-upload-unavailable">照片暂不可用</view><button class="od-upload-remove" data-index="{{index}}" catchtap="bindRemoveImage" disabled="{{busy}}"><text class="icon-close"></text></button></view>
-     <button wx:if="{{images.length < 10}}" class="od-upload-add" bindtap="bindImages" disabled="{{busy}}"><text class="icon-camera"></text><text>添加照片</text></button>
-    </view>
-    <view wx:if="{{panel !== 'exception'}}">
-     <view wx:if="{{videoPreview}}" class="od-video-item"><video class="od-video-player" src="{{videoPreview}}" object-fit="cover" show-center-play-btn enable-progress-gesture="{{false}}"/><view class="od-video-remove" catchtap="bindRemoveVideo"><text class="icon-close"></text></view></view>
-     <view wx:else class="od-upload-video" bindtap="bindVideo" role="button"><text class="icon-camera"></text><text>拍摄或选择 15 秒视频（选填，最多1段）</text></view>
-    </view>
+    <view class="od-upload-heading"><text>{{panel === 'exception' ? '补充照片（选填，最多10张）' : video ? '凭证视频' : deliveryMode === 'face' && panel !== 'pickup' ? '交付凭证（选填）' : '凭证（二选一，至少1份）'}}</text><text>{{video ? '1 / 1 段' : images.length + ' / 10 张'}}</text></view>
+    <block wx:if="{{video && panel !== 'exception'}}">
+     <view class="od-video-item"><video class="od-video-player" src="{{videoPreview || video}}" object-fit="cover" show-center-play-btn enable-progress-gesture="{{false}}"/><view class="od-video-remove" catchtap="bindRemoveVideo"><text class="icon-close"></text></view></view>
+     <view class="od-upload-tip">照片和视频二选一：已添加视频凭证，删除后可改传照片</view>
+    </block>
+    <block wx:else>
+     <view class="od-upload-grid">
+      <view wx:for="{{images}}" wx:key="*this" class="od-upload-item"><image wx:if="{{imagePreviews[item] !== ''}}" src="{{imagePreviews[item] || item}}" class="od-upload-photo" mode="aspectFill"/><view wx:else class="od-upload-unavailable">照片暂不可用</view><button class="od-upload-remove" data-index="{{index}}" catchtap="bindRemoveImage" disabled="{{busy}}"><text class="icon-close"></text></button></view>
+      <button wx:if="{{images.length < 10}}" class="od-upload-add" bindtap="bindAddProof" disabled="{{busy}}" aria-label="添加凭证照片或视频"><text class="icon-cameraadd"></text><text>{{images.length ? '继续添加' : '添加凭证'}}</text></button>
+     </view>
+     <view class="od-upload-tip">{{panel === 'exception' ? '最多10张照片' : '照片最多10张；也可以改成1段15秒视频，两种选一种'}}</view>
+    </block>
    </scroll-view>
    <button class="od-primary od-sheet-submit" bindtap="bindSubmitPanel" loading="{{busy}}" disabled="{{busy || loading || error}}">{{panel === 'update_proof' ? '保存更新' : panel === 'deliver' ? '提交，通知发布者' : panel === 'pickup' ? '提交取件凭证' : '提交异常说明'}}</button>
   </view>

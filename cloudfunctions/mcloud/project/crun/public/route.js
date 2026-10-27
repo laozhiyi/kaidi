@@ -48,6 +48,7 @@ module.exports = {
 	'passport/my_detail': 'passport_controller@getMyDetail',
 	'passport/register': 'passport_controller@register',
 	'passport/edit_base': 'passport_controller@editBase',
+	'passport/staff_invite_redeem': 'passport_controller@redeemStaffInvite',
 	'check/img': 'check_controller@checkImg',
 
 	// 收藏
@@ -131,22 +132,17 @@ module.exports = {
 	'pay/query': 'pay_controller@queryPay',
 	'pay/refund': 'pay_controller@refund',
 
-	// ========== 校区客服 ==========
-	'campus_service/list': 'campus_service_controller@getCampusServiceList',
-	'campus_service/detail': 'campus_service_controller@getCampusServiceDetail',
-	'campus_service/chat': 'campus_service_controller@getCampusChat',
-	'campus_service/send': 'campus_service_controller@sendCampusMessage',
+	// ========== 在线客服（全校共享客服池） ==========
+	'customer_service/chat': 'customer_service_controller@getChat',
+	'customer_service/send': 'customer_service_controller@sendMessage',
+	'customer_service/badge': 'customer_service_controller@badge',
 
-	// ========== 后台校区客服管理 ==========
-	'admin/campus_service_list': 'admin/admin_campus_service_controller@getAdminCampusServiceList',
-	'admin/campus_service_detail': 'admin/admin_campus_service_controller@getAdminCampusServiceDetail',
-	'admin/campus_service_insert': 'admin/admin_campus_service_controller@insertCampusService#demo',
-	'admin/campus_service_update': 'admin/admin_campus_service_controller@updateCampusService#demo',
-	'admin/campus_service_del': 'admin/admin_campus_service_controller@delCampusService#demo',
-	'admin/campus_service_status': 'admin/admin_campus_service_controller@statusCampusService#demo',
-	'admin/campus_chat_list': 'admin/admin_campus_service_controller@getAdminCampusChatList',
-	'admin/campus_chat_detail': 'admin/admin_campus_service_controller@getAdminCampusChatDetail',
-	'admin/campus_chat_reply': 'admin/admin_campus_service_controller@replyCampusMessage#demo',
+	// ========== 后台在线客服 ==========
+	'admin/customer_service_sessions': 'admin/admin_customer_service_controller@sessions',
+	'admin/customer_service_chat': 'admin/admin_customer_service_controller@chat',
+	'admin/customer_service_reply': 'admin/admin_customer_service_controller@reply#demo',
+	'admin/customer_service_badge': 'admin/admin_customer_service_controller@badge',
+	'admin/customer_service_invite': 'admin/admin_customer_service_controller@inviteCreate#demo',
 
 	// ========== 订单评价 ==========
 	'review/insert': 'review_controller@insert',
@@ -162,6 +158,7 @@ module.exports = {
 
 	// ========== 邀请好友 ==========
 	'invite/my_code': 'invite_controller@getMyInviteCode',
+	'invite/my_qrcode': 'invite_controller@getMyInviteQr',
 	'invite/my_list': 'invite_controller@getMyInviteList',
 	'invite/my_stat': 'invite_controller@getMyInviteStat',
 	'invite/accept': 'invite_controller@acceptInvite',

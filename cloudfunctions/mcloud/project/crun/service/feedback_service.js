@@ -68,9 +68,11 @@ class FeedbackService extends Base {
   rules.text(reply,'处理说明',500,true);new Mail()._request(requestId);if(![0,1,2].includes(status))this.AppError('反馈状态无效');
   if (!Number.isInteger(version) || version < 0) this.AppError('反馈版本无效，请刷新');
   const action = rating.ratingAction || 'keep', score = rating.reviewScore;
+  const allowRating = rating.allowRating !== false;
   if (!['keep', 'rate', 'clear'].includes(action)) this.AppError('评分处理方式无效');
   if (action === 'rate' && (status !== 1 || !Number.isInteger(score) || score < 1 || score > 5)) this.AppError('审核处理完成后才可给出1至5星评分');
   if (action !== 'rate' && score !== undefined) this.AppError('请明确选择审核评分');
+  if (!allowRating && action !== 'keep') this.AppError('信誉分评分只能由管理员处理');
   const fingerprint = store.key(reply,version,status,action,score === undefined ? null : score);
   await store.transaction(async tx=>{await new Mail()._actor(tx,{adminId});const row=await store.get(tx,'feedback',id);if(!row||row._pid!==this.getProjectId())this.AppError('反馈不存在');
    const key=store.key(this.getProjectId(),adminId,requestId);const seen=await store.get(tx,'feedback_request',key);if(seen){if(seen.id!==id || !(seen.fingerprint===fingerprint || action==='keep' && seen.fingerprint===store.key(reply,version,status)))this.AppError('请求标识已被使用');return;}
@@ -81,6 +83,8 @@ class FeedbackService extends Base {
    const oldScore = row.FB_STATUS === 1 ? Number(row.FB_REVIEW_SCORE || 0) : 0;
    const nextScore = status !== 1 || action === 'clear' ? 0 : action === 'rate' ? score : Number(row.FB_REVIEW_SCORE || 0);
    if (nextScore && !target) this.AppError('无法核实被申诉用户，请先撤销评分');
+   // 客服只能回复与结案：改状态会顺带撤销已生效的评分，这里一并拦住。
+   if (!allowRating && nextScore !== oldScore) this.AppError('信誉分评分只能由管理员处理，请保持原处理结果');
    const patch = action === 'rate' ? { FB_TARGET_USER_ID: target.userId, FB_TARGET_NAME: target.name, FB_TARGET_ROLE: target.role,
     FB_REVIEW_SCORE: score, FB_REVIEW_POINTS: reputation.points(score), FB_REVIEW_TIME: now, FB_REVIEW_ADMIN_ID: adminId, FB_REVIEW_REASON: reply }
     : nextScore ? {} : { FB_REVIEW_SCORE: 0, FB_REVIEW_POINTS: 0, FB_REVIEW_TIME: 0, FB_REVIEW_REASON: '' };

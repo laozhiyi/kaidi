@@ -515,8 +515,11 @@ async function bindSubmitTap(e) {
     if (!isCurrent()) return;
     for (const item of forms) if (item.type === 'image' && Array.isArray(item.val)) item.val = await cloudHelper.transTempPics(item.val, 'user/');
     if (!isCurrent()) return;
-    const result = await withTimeout(cloudHelper.callCloudSumbit(this.data.isEdit ? 'passport/edit_base' : 'passport/register', {
-      name: this.data.formName, mobile: this.data.formMobile, pic, forms
+    const isRegister = !this.data.isEdit;
+    const result = await withTimeout(cloudHelper.callCloudSumbit(isRegister ? 'passport/register' : 'passport/edit_base', {
+      name: this.data.formName, mobile: this.data.formMobile, pic, forms,
+      // 邀请码随注册一起提交，由服务端在注册事务后立即绑定，避免中途丢失。
+      inviteCode: isRegister ? inviteCode : ''
     }, { title: '保存中' }));
     if (!isCurrent()) return;
     let message = this.data.isEdit ? '保存成功' : '资料已完善';

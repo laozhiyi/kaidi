@@ -54,7 +54,7 @@ Page({
       if (!result || !Array.isArray(result.list)) throw new Error('消息加载失败');
       const incoming = result.list.map(item => ({ ...item, key: item.key || (item.kind || 'notification') + ':' + item._id,
         time: notificationTime(item.createdAt),
-        category: item.newsId || item.kind === 'news' ? '校园公告' : item.reputation ? '信誉分通知' : item.feedbackId ? '申诉处理' : item.orderId ? '订单动态' : '系统通知'
+        category: item.newsId || item.kind === 'news' ? '校园公告' : item.reputation ? '信誉分通知' : item.feedbackId ? '申诉处理' : item.orderId ? '订单动态' : item.chat ? '客服回复' : '系统通知'
       }));
       const list = reset ? incoming : Array.from(new Map(this.data.list.concat(incoming).map(item => [item.key, item])).values());
       this.setData({ list, page, hasMore: !!result.hasMore, nextCursor: result.nextCursor || null, loading: false, hasUpdates: false });

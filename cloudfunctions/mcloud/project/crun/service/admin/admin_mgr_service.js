@@ -68,17 +68,34 @@ class AdminMgrService extends BaseProjectAdminService {
 	/**
 	 * 按用户记录维护微信后台账号。角色为空表示取消授权：
 	 * 停用账号并清掉当前会话，避免已登录的旧令牌继续生效。
+	 *
+	 * 只有微信身份创建的账号（ADMIN_WECHAT=true）才会被认领。账号密码管理员
+	 * 绝不能被微信身份接管：两者的密码、状态与会话互相牵连，一旦合并成一条
+	 * 记录，用户管理会把这个管理员判定成“在改自己的角色”，并连带影响停用／删除。
 	 */
-	async _syncAdmin(user, role) {
+	async _syncAdmin(user, role, keepAdminId = '') {
 		const openid = user.USER_MINI_OPENID;
-		let admin = await AdminModel.getOne({ ADMIN_USER_ID: user._id }, '*');
-		if (!admin) admin = await AdminModel.getOne({ ADMIN_TOKEN_USER: openid }, '*');
+		const bound = await AdminModel.getAll({ ADMIN_USER_ID: user._id }, '*', {}, 20);
+		let admin = bound.find(row => row.ADMIN_WECHAT === true) || null;
+
+		// 解绑历史上被误认领或重复关联的记录；除当前操作人外一律清掉会话令牌。
+		for (const row of bound) {
+			if (admin && row._id === admin._id) continue;
+			const unbind = { ADMIN_USER_ID: '', ADMIN_EDIT_TIME: timeUtil.time(), ADMIN_EDIT_IP: this._ip || '' };
+			if (row._id !== keepAdminId) {
+				unbind.ADMIN_TOKEN = '';
+				unbind.ADMIN_TOKEN_TIME = 0;
+			}
+			await AdminModel.edit({ _id: row._id }, unbind);
+		}
+
 		const now = timeUtil.time();
 		const data = {
 			ADMIN_NAME: admin && admin.ADMIN_NAME || user.USER_NAME || ('user' + String(user.USER_ID || '').slice(-8)),
 			ADMIN_DESC: user.USER_NAME || '微信用户',
 			ADMIN_PHONE: user.USER_MOBILE || '',
 			ADMIN_USER_ID: user._id,
+			ADMIN_WECHAT: true,
 			ADMIN_TOKEN_USER: openid,
 			ADMIN_ROLE: role || '',
 			ADMIN_TYPE: role === 'super' ? 1 : 0,
@@ -112,17 +129,21 @@ class AdminMgrService extends BaseProjectAdminService {
 
 	/** 用户角色变化后同步后台账号与日志。 */
 	async syncUserRole(user, role, myAdmin) {
-		await this._syncAdmin(user, role);
+		await this._syncAdmin(user, role, myAdmin && myAdmin._id);
 		this.insertLog((role ? '授予了后台角色【' + Roles.label(role) + '】' : '取消了后台角色') + '，用户【' + (user.USER_NAME || user.USER_ID || '') + '】', myAdmin, LogModel.TYPE.SYS);
 	}
 
 	/** 用户停用/恢复时同步后台会话；角色保留，恢复后可重新登录。 */
 	async setUserAdminActive(user, active) {
-		const admin = await AdminModel.getOne({ ADMIN_USER_ID: user._id }, '*');
-		if (!admin) return;
-		const data = { ADMIN_STATUS: active ? 1 : 0, ADMIN_EDIT_TIME: timeUtil.time(), ADMIN_EDIT_IP: this._ip || '' };
-		if (!active) { data.ADMIN_TOKEN = ''; data.ADMIN_TOKEN_TIME = 0; }
-		await AdminModel.edit({ _id: admin._id }, data);
+		const rows = await AdminModel.getAll({ ADMIN_USER_ID: user._id }, '*', {}, 20);
+		const now = timeUtil.time();
+		for (const row of rows) {
+			const data = { ADMIN_EDIT_TIME: now, ADMIN_EDIT_IP: this._ip || '' };
+			// 账号密码管理员不随微信用户停用而停用，只清掉它代该用户持有的会话。
+			if (row.ADMIN_WECHAT === true) data.ADMIN_STATUS = active ? 1 : 0;
+			if (!active) { data.ADMIN_TOKEN = ''; data.ADMIN_TOKEN_TIME = 0; }
+			await AdminModel.edit({ _id: row._id }, data);
+		}
 	}
 
 	//**管理员登录  */

@@ -155,16 +155,15 @@ test('SDK transactions retry only definite conflicts, with rollback-aware SDK re
 });
 
 test('chat messages and administrator replies keep one record when their responses are lost or requests race', async () => {
-  const f = fixture(), metrics = concurrentTransactions(f), Chat = f.load('campus_service_service.js'), service = new Chat();
-  f.table('campus_service').set('service', { _id: 'service', _pid: 'crun', CS_STATUS: 1 });
-  const responses = await Promise.all(Array.from({ length: 50 }, () => service.sendCampusMessage('guest', 'service', '请问如何取件', f.req('message'))));
+  const f = fixture(), metrics = concurrentTransactions(f), Chat = f.load('customer_service_service.js'), service = new Chat();
+  const responses = await Promise.all(Array.from({ length: 50 }, () => service.sendMessage('poster', '请问如何取件', f.req('message'))));
   assert.equal(new Set(responses.map(result => result.id)).size, 1); assert.equal(f.table('campus_service_message').size, 1);
   const session = responses[0].sessionId;
-  await Promise.all(Array.from({ length: 30 }, () => service.replyCampusMessage(session, '请提供订单编号', f.req('reply'), 'admin')));
+  await Promise.all(Array.from({ length: 30 }, () => service.reply(session, '请提供订单编号', f.req('reply'), 'admin')));
   assert.equal(f.table('campus_service_message').size, 2); assert.ok(metrics.maxActive > 1);
-  await assert.rejects(service.sendCampusMessage('guest', 'service', '不同的内容', f.req('message')), /不同消息/);
+  await assert.rejects(service.sendMessage('poster', '不同的内容', f.req('message')), /不同消息/);
   f.table('admin').get('admin').ADMIN_STATUS = 0;
-  await assert.rejects(service.replyCampusMessage(session, '已停用', f.req('revoked'), 'admin'), /权限/);
+  await assert.rejects(service.reply(session, '已停用', f.req('revoked'), 'admin'), /权限/);
   assert.equal(f.table('campus_service_message').size, 2);
 });
 

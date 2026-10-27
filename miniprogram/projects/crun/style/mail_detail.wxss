@@ -166,5 +166,5 @@ page { background: #f3f6fb; }
 .delivery-page .od-video-player { width: 100%; height: 340rpx; border-radius: 16rpx; background: #0d1622; }
 .delivery-page .od-video-item { position: relative; margin-top: 20rpx; }
 .delivery-page .od-video-remove { position: absolute; top: 12rpx; right: 12rpx; z-index: 2; display: flex; align-items: center; justify-content: center; width: 46rpx; height: 46rpx; border-radius: 50%; background: rgba(20,32,48,.7); color: #fff; font-size: 26rpx; }
-.delivery-page .od-upload-video { display: flex; align-items: center; justify-content: center; gap: 10rpx; width: 100%; margin-top: 18rpx; padding: 22rpx; border: 2rpx dashed #d5e1f0; border-radius: 18rpx; background: #f8faff; color: #6d84a2; font-size: 24rpx; }
+.delivery-page .od-upload-tip { margin-top: 4rpx; color: #9aa9bb; font-size: 22rpx; line-height: 1.7; }
 @media (max-width: 360px) { .delivery-page .od-status-title { font-size: 40rpx; } .delivery-page .od-footer { gap: 12rpx; } .delivery-page .od-primary { font-size: 28rpx; } }

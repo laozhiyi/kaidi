@@ -20,7 +20,7 @@ Page({
     if (!UI.authorize(this) || !this.data.isSuperAdmin || this.data.busy) return;
     this.setData({ busy: true });
     try {
-      if (!await UI.confirm('执行系统维护', '将关闭已过期的待接单订单，并处理超时提醒与待发送通知。')) return;
+      if (!await UI.confirm('执行系统维护', '将关闭已过期的待接单订单，处理超时提醒与待发送通知，并把已过期的客服邀请码标记为过期。')) return;
       if (!this._visible) return;
       const result = await Ops.get('admin/operations_maintain');
       if (this._visible) { this.setData({ result, ranAt: UI.time(Date.now()) }); await this.load(); }

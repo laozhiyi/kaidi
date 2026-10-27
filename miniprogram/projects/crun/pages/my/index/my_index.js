@@ -1,4 +1,5 @@
 const pageHelper = require('../../../../../helper/page_helper.js');
+const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 const AdminBiz = require('../../../../../comm/biz/admin_biz.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
@@ -8,7 +9,7 @@ const Notifications = require('../../../biz/notification_biz.js');
 const accountActions = require('../account_actions.js');
 
 Page(Object.assign({
-  data: { user: null, hasSession: false, loggingOut: false, cancellingAccount: false, loading: false, userError: '', settingsVisible: false, unreadCount: 0, messageBadge: '' },
+  data: { user: null, hasSession: false, loggingOut: false, cancellingAccount: false, loading: false, userError: '', settingsVisible: false, unreadCount: 0, messageBadge: '', serviceBadge: '' },
   onLoad() {
     ProjectBiz.initPage(this);
     this.setData({ hasSession: !!PassportBiz.getToken() });
@@ -25,6 +26,7 @@ Page(Object.assign({
     if (tabBar) tabBar.setData({ selected: 2 });
     await PassportBiz.loginSilenceMust(this);
     if (!this._unloaded) this.setData({ hasSession: !!PassportBiz.getToken() });
+    this._loadServiceBadge();
     if (this._visible && PassportBiz.isLogin()) Notifications.refresh(true);
     if (!this._unloaded) await this._loadUser();
   },
@@ -49,7 +51,20 @@ Page(Object.assign({
     return this._userRequest;
   },
   async onPullDownRefresh() {
-    try { await Promise.all([this._loadUser(), Notifications.refresh(true)]); } finally { wx.stopPullDownRefresh(); }
+    try { await Promise.all([this._loadUser(), Notifications.refresh(true), this._loadServiceBadge()]); } finally { wx.stopPullDownRefresh(); }
+  },
+  // 客服回复的红点：只取未读数，不拉消息体，失败静默。
+  async _loadServiceBadge() {
+    const token = PassportBiz.getToken();
+    if (!token || !token.id || token.status === 9) {
+      if (!this._unloaded) this.setData({ serviceBadge: '' });
+      return;
+    }
+    try {
+      const res = await cloudHelper.callCloud('customer_service/badge', {}, { hint: false });
+      const unread = Number(res && res.data && res.data.unread) || 0;
+      if (!this._unloaded && this._visible) this.setData({ serviceBadge: unread > 99 ? '99+' : unread ? String(unread) : '' });
+    } catch (_) { }
   },
   async _openUserPage(url) {
     if (this._openingPage) return;
@@ -73,7 +88,7 @@ Page(Object.assign({
   bindInviteTap() { return this._openUserPage('/projects/crun/pages/invite/index/invite_index'); },
   bindWalletTap() { return this._openUserPage('/projects/crun/pages/my/wallet/wallet'); },
   bindAboutTap() { wx.navigateTo({ url: '/projects/crun/pages/about/index/about_index' }); },
-  bindCampusServiceTap() { wx.navigateTo({ url: '/projects/crun/pages/campus_service/list/campus_service_list' }); },
+  bindCampusServiceTap() { wx.navigateTo({ url: '/projects/crun/pages/customer_service/chat/customer_service_chat' }); },
   bindMyAcceptTap() {
     wx.setStorageSync('crun-order-tab', 1);
     wx.switchTab({ url: '/projects/crun/pages/order/index/order_index' });

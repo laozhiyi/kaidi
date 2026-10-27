@@ -117,6 +117,42 @@
 	margin-top: 24rpx;
 }
 
+/* 专属小程序码 */
+.qr-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.qr-body {
+	width: 360rpx;
+	height: 360rpx;
+	margin: 8rpx 0 16rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: #f5f7fa;
+	border-radius: 16rpx;
+	overflow: hidden;
+}
+
+.qr-image {
+	width: 340rpx;
+	height: 340rpx;
+}
+
+.qr-placeholder {
+	padding: 0 24rpx;
+	font-size: 24rpx;
+	color: #94a3b8;
+	line-height: 36rpx;
+	text-align: center;
+}
+
+.qr-card .code-btn-row {
+	width: 100%;
+}
+
 .btn {
 	flex: 1;
 	height: 80rpx;

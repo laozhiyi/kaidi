@@ -21,7 +21,7 @@
      </view>
     </view>
     <view wx:if="{{packageItems.length}}" class="pub-package-details pub-view">
-     <view class="pub-detail-title pub-view">每件包裹信息 <text class="pub-text">{{serviceType === 'send' ? '价格独立设置，请填写取件位置和物品说明' : '价格独立设置，取件码和截图二选一'}}</text></view>
+     <view class="pub-detail-title pub-view">每件包裹信息 <text class="pub-text">{{serviceType === 'send' ? '价格独立设置，请填写取件位置和物品说明' : '价格独立设置，取件码和截图二选一，点截图可查看或删除'}}</text></view>
      <view wx:for="{{packageItems}}" wx:key="id" class="pub-package-detail pub-view">
       <view class="pub-package-detail-head pub-view"><text class="pub-text">{{index + 1}}. {{item.label}}</text><text class="pub-package-reference pub-text">参考 ¥{{item.referencePrice || item.price}}</text></view>
       <view class="pub-package-options-row pub-view">
@@ -30,8 +30,8 @@
       </view>
       <view wx:if="{{serviceType === 'take'}}" class="pub-package-proof-row pub-view">
        <input class="pub-package-proof-input pub-input" value="{{item.code}}" data-index="{{index}}" data-mark="code" bindinput="bindPackageItemInput" placeholder="取件码"/>
-       <view class="pub-package-upload pub-view" bindtap="bindPackageImageTap" data-index="{{index}}">
-        <block wx:if="{{item.images && item.images.length}}"><image class="pub-package-thumb pub-image" src="{{item.images[0]}}" mode="aspectFill" catchtap="bindPackagePreviewImage" data-index="{{index}}"/></block>
+       <view class="pub-package-upload pub-view" bindtap="bindPackageImageTap" data-index="{{index}}" role="button" aria-label="{{item.images && item.images.length ? '第' + (index + 1) + '件包裹的取件码截图，点击可查看、更换或删除' : '上传第' + (index + 1) + '件包裹的取件码截图'}}">
+        <block wx:if="{{item.images && item.images.length}}"><image class="pub-package-thumb pub-image" src="{{item.imagePreviews && item.imagePreviews.length ? item.imagePreviews[0] : item.images[0]}}" mode="aspectFill"/></block>
         <block wx:else><text class="icon-camera pub-text"></text><text class="pub-text">上传截图</text></block>
        </view>
       </view>

@@ -210,7 +210,7 @@ test('cancelling restores the saved proof on reopening, and an incomplete correc
  assert.equal(p.data.panel, ''); assert.deepEqual(f.mail(), before); p.bindUpdateProofTap();
  assert.equal(p.data.note, before.MAIL_DELIVERY_PROOF.note); assert.deepEqual(Array.from(p.data.images), originalImages);
  p.setData({ note: '   ' }); await p.bindSubmitPanel(); p.setData({ note: '正确位置', images: [] }); await p.bindSubmitPanel();
- assert.deepEqual(h.errors, ['请填写送达位置与物品情况', '请至少上传1张凭证照片，或改为当面交付']);
+ assert.deepEqual(h.errors, ['请填写送达位置与物品情况', '请至少上传1张凭证照片或1段视频，或改为当面交付']);
  assert.equal(h.uploads.length, 0); assert.equal(h.commands.length, 0); p.onHide();
 });
 

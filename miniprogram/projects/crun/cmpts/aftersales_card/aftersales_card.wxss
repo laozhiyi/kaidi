@@ -10,3 +10,4 @@
 .as-qr-wrap { display: flex; flex-direction: column; align-items: center; padding: 14rpx 0; }
 .as-qr { width: 360rpx; border-radius: 12rpx; background: #f0f4f9; }
 .as-save { margin-top: 14rpx; }
+.as-qr-tip { margin-top: 6rpx; color: #9aa9bb; font-size: 22rpx; line-height: 1.6; text-align: center; }

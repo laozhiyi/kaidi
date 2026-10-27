@@ -118,7 +118,24 @@ class MaintenanceService extends Base {
   // Only transient rate-limit buckets are pruned. Orders, audit and idempotency records are retained.
   const buckets=await db.collection(store.collection('operation_limit')).where({_pid:pid,expiresAt:cmd.lt(now)}).limit(100).get();
   const cleanupFailed=await this._batch(buckets.data,row=>db.collection(store.collection('operation_limit')).doc(row._id).remove());
-  return {expired:expired.data.length-expiredFailed,overdue:overdue.data.length-overdueFailed,autoConfirm:autoConfirm.data.length-autoConfirmFailed,notifications:pending.data.length-notificationFailed,cleaned:buckets.data.length-cleanupFailed,failed:expiredFailed+overdueFailed+autoConfirmFailed+notificationFailed+cleanupFailed};
+  // 客服邀请码：过期未用的码标记为已过期，避免后台一直显示「待使用」。
+  const expiredInvites=await db.collection(store.collection('staff_invite')).where({_pid:pid,INVITE_STATUS:1,INVITE_EXPIRES_AT:cmd.lte(now)}).orderBy('INVITE_EXPIRES_AT','asc').limit(50).get();
+  const inviteFailed=await this._batch(expiredInvites.data,item=>store.transaction(async tx=>{const row=await store.get(tx,'staff_invite',item._id);if(!row||row._pid!==pid||row.INVITE_STATUS!==1||row.INVITE_EXPIRES_AT>Date.now())return;await store.set(tx,'staff_invite',item._id,{...row,INVITE_STATUS:2});}));
+  const inviteDuplicates=await this._inviteDuplicates(pid);
+  return {expired:expired.data.length-expiredFailed,overdue:overdue.data.length-overdueFailed,autoConfirm:autoConfirm.data.length-autoConfirmFailed,notifications:pending.data.length-notificationFailed,cleaned:buckets.data.length-cleanupFailed,invites:expiredInvites.data.length-inviteFailed,inviteDuplicates,failed:expiredFailed+overdueFailed+autoConfirmFailed+notificationFailed+cleanupFailed+inviteFailed};
+ }
+ /**
+  * 邀请码写入时用确定性文档 ID 保证同码只有一条；这里巡检的是绕过代码直接写库
+  * 或人工导入造成的重复。发现重复只报告，不自动删除，由管理员确认保留哪一条。
+  */
+ async _inviteDuplicates(pid){
+  const db=store.database(),seen=new Map();
+  for(let page=0;page<5;page++){
+   const rows=(await db.collection(store.collection('staff_invite')).where({_pid:pid}).orderBy('_id','asc').skip(page*500).limit(500).get()).data;
+   for(const row of rows){if(!row.INVITE_CODE)continue;const item=seen.get(row.INVITE_CODE)||{code:row.INVITE_CODE,count:0};item.count++;seen.set(row.INVITE_CODE,item);}
+   if(rows.length<500)break;
+  }
+  return [...seen.values()].filter(item=>item.count>1).sort((a,b)=>b.count-a.count).slice(0,10);
  }
  async dispatch(id) {
   const claim=store.key(id,Date.now(),Math.random());
@@ -140,6 +157,19 @@ class MaintenanceService extends Base {
      +(scope?'&schoolId='+encodeURIComponent(scope.schoolId)+'&campusId='+encodeURIComponent(scope.campusId):'')
      +'&notificationId='+encodeURIComponent(id);
     const result=await cloudBase.getCloud().openapi.subscribeMessage.send({touser:row.userId.split('^^^').pop(),templateId,page,data:values});
+    if(result&&result.errCode)throw Object.assign(new Error('SEND_FAILED'),{errCode:result.errCode}); state='sent';
+   }
+   // 客服回复走独立模板：订阅授权由微信侧校验（一次性订阅），这里不再依赖订单订阅开关。
+   const chatTemplateId=process.env.CHAT_SUBSCRIBE_TEMPLATE_ID;
+   if(chatTemplateId&&row.chat){
+    const mapping=JSON.parse(process.env.CHAT_SUBSCRIBE_FIELDS || '{}');
+    if(!mapping.title || !mapping.content || !mapping.time)throw new Error('TEMPLATE_FIELDS_NOT_CONFIGURED');
+    const values={ [mapping.title]:{value:String(row.title||'在线客服').slice(0,20)},[mapping.content]:{value:String(row.content||'').slice(0,20)},[mapping.time]:{value:new Date(row.createdAt+8*3600000).toISOString().slice(0,16).replace('T',' ')} };
+    const scope=store.scope();
+    const page='projects/crun/pages/customer_service/chat/customer_service_chat'
+     +(scope?'?schoolId='+encodeURIComponent(scope.schoolId)+'&campusId='+encodeURIComponent(scope.campusId)+'&':'?')
+     +'notificationId='+encodeURIComponent(id);
+    const result=await cloudBase.getCloud().openapi.subscribeMessage.send({touser:row.userId.split('^^^').pop(),templateId:chatTemplateId,page,data:values});
     if(result&&result.errCode)throw Object.assign(new Error('SEND_FAILED'),{errCode:result.errCode}); state='sent';
    }
   }catch(e){error=String(e.errCode||e.code||'SEND_FAILED');state=Number(e.errCode)===43101?'skipped':row.attempts>=3?'failed':'retry';}

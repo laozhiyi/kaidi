@@ -1,6 +1,0 @@
-<view wx:if="{{isAdmin}}" class="ac-page">
-  <view class="ac-breadcrumb"><text class="ac-link" bindtap="url" data-type="back">‹ 校区客服配置</text><text>/</text><text>编辑客服</text></view>
-  <view class="ac-heading"><view><view class="ac-title">编辑校区客服</view><view class="ac-subtitle">完善负责人资料，方便用户联系与咨询</view></view></view>
-  <view wx:if="{{!isLoad}}" class="ac-card ac-state"><view class="ac-muted">{{loadError || '正在读取客服信息…'}}</view><button wx:if="{{loadError}}" bindtap="_loadDetail" class="ac-secondary ac-small">重新加载</button></view>
-  <block wx:if="{{isLoad}}"><include src="../service_form.wxml" /></block>
-</view>

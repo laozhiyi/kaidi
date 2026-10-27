@@ -1,41 +1,41 @@
 /**
- * Notes: 校区客服对话消息实体
+ * Notes: 客服对话消息实体（全校共享客服池，一个用户一条会话）
  */
 
 const BaseProjectModel = require('./base_project_model.js');
 const cloudBase = require('../../../framework/cloud/cloud_base.js');
-const CampusServiceModel = require('./campus_service_model.js');
 
 class CampusServiceMessageModel extends BaseProjectModel {
 
-	/** 在数据库内按会话分组，避免截取最近1000条消息导致旧会话消失。 */
-	static async getSessionList(pid, search, page, size) {
+	/**
+	 * 在数据库内按用户分组，避免截取最近若干条消息导致旧会话消失。
+	 * 共享客服池没有「客服席位」维度，会话唯一键就是用户 openid。
+	 */
+	static async getSessionList(pid, filter = {}, page = 1, size = 20) {
 		const db = cloudBase.getCloud().database();
 		const $ = db.command.aggregate;
+		const match = {};
+		if (Array.isArray(filter.userIds)) {
+			if (!filter.userIds.length) return { page, size, total: 0, count: 0, list: [] };
+			match.CSM_USER_ID = db.command.in(filter.userIds);
+		} else if (filter.openidPattern) {
+			match.CSM_USER_ID = db.RegExp({ regexp: filter.openidPattern, options: 'i' });
+		}
 		const pipeline = () => {
 			let query = db.collection(this.CL).aggregate()
 				.match({ _pid: pid })
 				.sort({ CSM_ADD_TIME: -1, CSM_ID: -1 })
 				.group({
-					_id: '$CSM_SESSION_ID',
-					CSM_SERVICE_ID: $.first('$CSM_SERVICE_ID'),
+					_id: '$CSM_USER_ID',
 					CSM_USER_ID: $.first('$CSM_USER_ID'),
 					lastContent: $.first('$CSM_CONTENT'),
 					lastSender: $.first('$CSM_SENDER'),
 					lastTime: $.first('$CSM_ADD_TIME'),
+					lastSessionId: $.first('$CSM_SESSION_ID'),
+					lastStaffName: $.first('$CSM_STAFF_NAME'),
 					unread: $.sum($.cond({ if: $.and([$.eq(['$CSM_SENDER', 'user']), $.eq(['$CSM_READ', 0])]), then: 1, else: 0 }))
-				})
-				.lookup({ from: CampusServiceModel.CL, localField: 'CSM_SERVICE_ID', foreignField: '_id', as: 'service' })
-				.unwind('$service')
-				.match({ 'service._pid': pid });
-			if (search) {
-				let pattern = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-				query = query.match(db.command.or([
-					{ 'service.CS_CAMPUS': db.RegExp({ regexp: pattern, options: 'i' }) },
-					{ 'service.CS_NAME': db.RegExp({ regexp: pattern, options: 'i' }) },
-					{ CSM_USER_ID: db.RegExp({ regexp: pattern, options: 'i' }) }
-				]));
-			}
+				});
+			if (Object.keys(match).length) query = query.match(match);
 			return query;
 		};
 		const [count, result] = await Promise.all([
@@ -53,11 +53,13 @@ CampusServiceMessageModel.DB_STRUCTURE = {
 	_pid: 'string|true',
 	CSM_ID: 'string|true',
 	CSM_SESSION_ID: 'string|true|comment=会话ID',
-	CSM_SERVICE_ID: 'string|true|comment=客服记录ID',
-	CSM_USER_ID: 'string|true|comment=用户openid',
+	CSM_SERVICE_ID: 'string|false|comment=历史客服席位ID（旧数据）',
+	CSM_USER_ID: 'string|true|comment=咨询用户openid',
 	CSM_SENDER: 'string|true|comment=发送方 user=用户,admin=客服',
+	CSM_STAFF_ID: 'string|false|comment=回复客服的后台账号ID',
+	CSM_STAFF_NAME: 'string|false|comment=回复客服显示名',
 	CSM_CONTENT: 'string|true|comment=消息内容',
-	CSM_READ: 'int|true|default=0|comment=读取状态 0=未读,1=已读',
+	CSM_READ: 'int|true|default=0|comment=接收方读取状态 0=未读,1=已读',
 	CSM_ADD_TIME: 'int|true',
 	CSM_EDIT_TIME: 'int|true',
 };

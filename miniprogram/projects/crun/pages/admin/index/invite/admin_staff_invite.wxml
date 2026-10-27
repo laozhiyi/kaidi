@@ -1,0 +1,12 @@
+<view class="ac-page ac-invite-page">
+  <view class="ac-login-brand"><view class="ac-login-icon"><text class="icon-service"></text></view><view class="ac-eyebrow">GXNU随手取</view><view class="ac-title">客服邀请码激活</view><view class="ac-subtitle">客服是工作人员，不需要填写学号、学生证等学生资料</view></view>
+  <view class="ac-card">
+    <view class="ac-form-field"><view class="ac-label">客服称呼（可选）</view><input class="ac-input" placeholder="回复用户时显示的名字" maxlength="20" placeholder-class="ac-placeholder" value="{{name}}" bindinput="bindNameInput" disabled="{{busy}}" /></view>
+    <view class="ac-form-field"><view class="ac-label">邀请码</view><input class="ac-input ac-invite-input" placeholder="输入管理员提供的 8 位邀请码" maxlength="12" placeholder-class="ac-placeholder" value="{{code}}" bindinput="bindInput" disabled="{{busy}}" confirm-type="done" bindconfirm="bindActivate" /></view>
+    <view wx:if="{{error}}" class="ac-notice ac-invite-error">{{error}}</view>
+    <button class="ac-primary ac-login-submit" bindtap="bindActivate" loading="{{busy}}" disabled="{{busy}}">{{busy ? '正在激活…' : '激活并进入客服工作台'}}</button>
+    <view class="ac-login-note">邀请码一次性使用、24 小时内有效；激活后即获得客服权限，可查看并回复所有用户咨询。</view>
+  </view>
+  <view class="ac-footnote">没有邀请码？联系超级管理员在「管理中心 → 客服邀请码」生成</view>
+  <button class="ac-ghost" bindtap="bindBack">返回</button>
+</view>

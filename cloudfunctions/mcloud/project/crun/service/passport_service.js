@@ -92,7 +92,17 @@ class PassportService extends BaseProjectService {
    await store.set(tx, 'user', id, data);
   });
  }
- async register(userId,input){await this._saveProfile(userId,input,true);return this.login(userId);}
+ async register(userId,input){
+  await this._saveProfile(userId,input,true);
+  // 邀请关系在注册这一刻就在服务端落库：不再依赖注册成功后客户端再调一次，
+  // 也不依赖被邀请人之后是否点开「我的」。审核通过时再由后台把状态转成已注册。
+  const inviteCode = String(input && input.inviteCode || '').trim();
+  if (inviteCode) {
+   try { await new (require('./invite_service.js'))().acceptInvite(userId, inviteCode); }
+   catch (error) { console.warn('[invite] bind failed', { code: error.code || 'INVITE_BIND_ERROR' }); }
+  }
+  return this.login(userId);
+ }
 
  /** Avatar/nickname updates do not complete contact details or change review status. */
  async saveWechatProfile(userId, input) {
@@ -206,12 +216,18 @@ class PassportService extends BaseProjectService {
 		let where = {
 			USER_MINI_OPENID: userId
 		}
-		let fields = 'USER_PIC,USER_MOBILE,USER_MOBILE_VERIFIED,USER_PROFILE_COMPLETE,USER_NAME,USER_FORMS,USER_OBJ,USER_STATUS,USER_CHECK_REASON,USER_PAY_PIC'
+		let fields = 'USER_PIC,USER_MOBILE,USER_MOBILE_VERIFIED,USER_PROFILE_COMPLETE,USER_NAME,USER_FORMS,USER_OBJ,USER_STATUS,USER_CHECK_REASON,USER_PAY_PIC,USER_ROLE'
 		const user = await UserModel.getOne(where, fields);
   return user ? { ...user, USER_MOBILE_VERIFIED: user.USER_MOBILE_VERIFIED === true, USER_PROFILE_COMPLETE: profileRules.isComplete(user), allowManualRegistration: profileRules.allowsManualRegistration(), phoneLoginEnabled: profileRules.isPhoneLoginEnabled() } : null;
 	}
 
  async editBase(userId,input){await this._saveProfile(userId,input,false);return {ok:true,...await this.login(userId)};}
+
+	/** 激活客服邀请码：工作人员直接获得后台权限，不写学生注册资料 */
+	async redeemStaffInvite(userId, code, name) {
+		const result = await new (require('./admin/staff_invite_service.js'))().redeem(userId, code, name);
+		return { ...result, ...await this.login(userId) };
+	}
 
 	/** 登录 */
 	async login(userId) {
@@ -219,7 +235,7 @@ class PassportService extends BaseProjectService {
 		let where = {
 			'USER_MINI_OPENID': userId
 		};
-		let fields = 'USER_ID,USER_MINI_OPENID,USER_NAME,USER_PIC,USER_STATUS,USER_MOBILE,USER_MOBILE_VERIFIED,USER_PROFILE_COMPLETE,USER_FORMS';
+		let fields = 'USER_ID,USER_MINI_OPENID,USER_NAME,USER_PIC,USER_STATUS,USER_MOBILE,USER_MOBILE_VERIFIED,USER_PROFILE_COMPLETE,USER_FORMS,USER_ROLE';
 		let user = await UserModel.getOne(where, fields);
 		let token = {};
 		if (user) {
@@ -234,6 +250,10 @@ class PassportService extends BaseProjectService {
    token.profileComplete = profileRules.isComplete(user);
    token.allowManualRegistration = profileRules.allowsManualRegistration();
    token.phoneLoginEnabled = profileRules.isPhoneLoginEnabled();
+   // 后台角色随登录下发：工作人员（客服等）不需要完成学生注册资料，
+   // 前端据此跳过「完善资料」并引导到对应的后台入口。
+   token.role = require('./admin/admin_roles.js').normalize(user.USER_ROLE);
+   token.staff = !!token.role;
    const credential = AccountService.credential();
    if (credential) token.sessionToken = credential;
    const mediaGeneration = AccountService.mediaGeneration();

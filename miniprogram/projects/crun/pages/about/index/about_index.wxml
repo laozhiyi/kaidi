@@ -11,9 +11,14 @@
         <view wx:if="{{item.type==='text'}}" class="about-content"><text user-select>{{item.val}}</text></view>
         <image wx:elif="{{item.type==='img'}}" class="about-image" mode="widthFix" src="{{item.val}}" data-url="{{item.val}}" bindtap="bindImage" show-menu-by-longpress />
       </block>
-      <view wx:if="{{!about.length}}" class="op-muted">{{emptyText}}</view>
+      <view wx:if="{{!about.length && !(key==='SETUP_CONTENT_AFTERSALES' && !hasImage)}}" class="op-muted">{{emptyText}}</view>
+      <!-- 后台未配置售后群图片时用内置二维码兜底 -->
+      <block wx:if="{{key==='SETUP_CONTENT_AFTERSALES' && !hasImage && !loading && !error}}">
+        <image class="about-image" mode="widthFix" src="{{fallbackQr}}" data-url="{{fallbackQr}}" bindtap="bindImage" show-menu-by-longpress />
+        <view class="op-muted">长按识别，或保存到相册后用微信「扫一扫 → 相册」加入。</view>
+      </block>
     </block>
   </view>
   <button wx:if="{{key==='SETUP_CONTENT_ABOUT'}}" class="op-button-secondary" bindtap="bindContact">联系我们</button>
-  <button class="op-button-primary" bindtap="bindService">联系校区客服</button>
+  <button class="op-button-primary" bindtap="bindService">联系在线客服</button>
 </view>

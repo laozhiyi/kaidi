@@ -13,8 +13,11 @@ class BaseProjectController extends BaseController {
 	async initSetup() {
 		let service = new BaseProjectService();
 		await service.initSetup();
-  const publicRoutes = ['passport/login','passport/wechat_identity_login','passport/wechat_login','passport/register','passport/phone','passport/my_detail','passport/edit_base','home/setup_get','home/list','news/list','news/view','news/featured','mail/view','mail/list','fav/order_stats','operations/config','campus_service/list','campus_service/detail','check/img'];
-  const accountRoutes = ['passport/wechat_profile', 'passport/logout', 'passport/cancel'];
+  const publicRoutes = ['passport/login','passport/wechat_identity_login','passport/wechat_login','passport/register','passport/phone','passport/my_detail','passport/edit_base','home/setup_get','home/list','news/list','news/view','news/featured','mail/view','mail/list','fav/order_stats','operations/config','check/img'];
+  // 在线客服是「遇到问题的人」的兜底通道：只要求微信登录，不要求补全学生资料或通过审核，
+  // 因此绕过 mail_service._user，由 customer_service_service 自行做停用校验。
+  const accountRoutes = ['passport/wechat_profile', 'passport/logout', 'passport/cancel', 'passport/staff_invite_redeem',
+   'customer_service/chat', 'customer_service/send', 'customer_service/badge'];
   if(this._route !== 'tenant/catalog' && !publicRoutes.includes(this._route) && !accountRoutes.includes(this._route)) await new (require('../service/mail_service.js'))()._user(this._userId);
 	}
 }

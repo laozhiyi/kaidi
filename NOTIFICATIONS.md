@@ -30,6 +30,15 @@
 
 发送失败遵守有限重试；不具备用户授权或模板条件时跳过并保留站内通知。发送成功但回执丢失可能造成再次发送，外部服务投递无法承诺严格一次。监控发送失败、正在发送的租约和最早待派发时间，而不只检查定时器是否运行。
 
+## 客服回复通知
+
+客服回复与被回复的消息在同一个事务里写入 `bx_notification`：`chat: true`、标题“客服回复了你”、内容取回复前 40 字，`delivery` 从 `pending` 开始。与订单通知不同，客服会话没有校区维度，用户端读取只按 `_pid` 和本人 openid 过滤。
+
+- 消息中心按 `chat` 标记显示“客服回复”，点击直达 `projects/crun/pages/customer_service/chat/customer_service_chat`；用户进入会话页后按通知编号标记已读，不影响微信投递状态。
+- 配置 `CHAT_SUBSCRIBE_TEMPLATE_ID` 与 `CHAT_SUBSCRIBE_FIELDS` 后，`dispatch()` 走单独的 `chat` 分支发送微信订阅消息；该分支不依赖 `subscription.enabled`，因为客服订阅由用户进入会话页时单独授权（`operations_biz.subscribeChat()`，24 小时节流）。
+- 没有配置模板或用户未授权时跳过微信投递，站内通知与红点照常保留。`operations/config` 下发的 `chatTemplateId` 为空即表示未配置，客户端不会请求授权。
+- 会话页、`/my` 红点与客服工作台徽标分别读 `customer_service/chat`、`customer_service/badge`、`admin/customer_service_badge` 的未读数，不要用消息条数代替。
+
 ## 权限、索引与部署
 
 所有相关集合均关闭客户端数据库读写，包括刷新信号集合。合法读写由云函数校验身份和校区范围后执行。使用 [索引候选清单](deployment/database-indexes.json)，公告/个人通知/阅读记录索引加 `_pid, schoolId, campusId` 前缀；通知 worker 的全局队列扫描使用单独索引。

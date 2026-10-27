@@ -17,7 +17,7 @@ async function harness(pickedUp = false) {
  await f.service.acceptMail('rider', id, { requestId: f.req('accept') });
  if (pickedUp) await f.service.pickupMail('rider', id, { requestId: f.req('pickup'), images: ['cloud://bucket/private-evidence/rider/pickup.png'] });
  let sequence = 0, actor = 'rider';
- const modals = [], navigation = [], commands = [], uploads = [], errors = [];
+ const modals = [], navigation = [], commands = [], uploads = [], errors = [], actionSheets = [], media = [];
  const ops = {
   get: async (route, params) => route === 'operations/config' ? f.config : f.service.viewMail(actor, params.id),
   async command(route, params) {
@@ -32,6 +32,7 @@ async function harness(pickedUp = false) {
  };
  const wx = {
   showModal: options => modals.push(options), navigateTo: options => navigation.push(options),
+  showActionSheet: options => actionSheets.push(options), chooseMedia: options => media.push(options),
   getStorageSync() {}, removeStorageSync() {}, showToast() {},
  };
  function mount(file, options) {
@@ -64,7 +65,7 @@ async function harness(pickedUp = false) {
   page.onLoad(options);
   return page;
  }
- return { f, id, ops, mount, modals, navigation, commands, uploads, errors,
+ return { f, id, ops, mount, modals, navigation, commands, uploads, errors, actionSheets, media,
   setActor(value) { actor = value; }, confirm(value = true) { modals.at(-1).success({ confirm: value }); },
   stored: () => f.table('mail').get(id),
  };
@@ -218,4 +219,44 @@ test('all card sections and detail roles use the full order address, including a
   assert.deepEqual(ui.steps.filter(item => item.current).map(item => item.label), [labels[step]]);
  }
  list.onHide();
+});
+
+test('proof entry is a single control and photo or video are mutually exclusive in the sheet and on the server', async () => {
+ const h = await harness(), page = h.mount('mail/my_detail/mail_my_detail', { id: h.id, panel: 'pickup' }); await page.onShow();
+ assert.equal(page.data.panel, 'pickup');
+
+ // 一个入口：拍照 / 相册照片 / 录视频 / 相册视频，不再有第二个相机按钮。
+ page.bindAddProof();
+ assert.deepEqual(Array.from(h.actionSheets.at(-1).itemList), ['拍照', '从相册选择照片', '录制 15 秒视频', '从相册选择视频']);
+ h.actionSheets.at(-1).success({ tapIndex: 1 });
+ assert.equal(h.media.at(-1).mediaType[0], 'image'); assert.equal(h.media.at(-1).count, 10);
+ h.media.at(-1).success({ tempFiles: [{ tempFilePath: 'photo-a.jpg' }] });
+ assert.deepEqual(Array.from(page.data.images), ['photo-a.jpg']);
+
+ // 已有照片时改选视频要确认，确认后清空照片。
+ page.bindAddProof(); h.actionSheets.at(-1).success({ tapIndex: 2 });
+ assert.match(h.modals.at(-1).title, /改用视频/); h.modals.at(-1).success({ confirm: true });
+ assert.equal(page.data.images.length, 0);
+ assert.equal(h.media.at(-1).mediaType[0], 'video'); assert.equal(h.media.at(-1).maxDuration, 15);
+ h.media.at(-1).success({ tempFiles: [{ tempFilePath: 'clip.mp4', duration: 8, size: 1024 * 1024 }] });
+ assert.equal(page.data.video, 'clip.mp4');
+ assert.equal(page.data.images.length, 0);
+
+ // 已有视频时再点入口只提示删除视频，不会偷偷改回照片。
+ page.bindAddProof();
+ assert.match(h.modals.at(-1).title, /已添加视频/); h.modals.at(-1).success({ confirm: false });
+ assert.equal(page.data.video, 'clip.mp4');
+
+ // 只有视频也能提交取件凭证，服务端同样接受。
+ await page.bindSubmitPanel();
+ assert.equal(h.stored().MAIL_STATUS, 4);
+ assert.equal(h.stored().MAIL_PICKUP_PROOF.images.length, 0);
+ assert.equal(h.stored().MAIL_PICKUP_PROOF.video, 'cloud://delivery/video-0');
+ assert.deepEqual(h.commands.map(command => command.route), ['mail/pickup']);
+ page.onHide();
+
+ // 照片与视频都为空的取件凭证会被服务端拒绝。
+ const empty = await harness();
+ await assert.rejects(empty.f.service.pickupMail('rider', empty.id, { requestId: empty.f.req('pickup-empty') }), /凭证照片或1段视频/);
+ assert.equal(empty.stored().MAIL_STATUS, 1);
 });

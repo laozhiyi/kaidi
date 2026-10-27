@@ -10,6 +10,14 @@ async function urls(ids) {
  if (files.some(id => !map.get(id))) throw new AppError('图片暂时无法读取，请刷新重试');
  return ids.map(id => map.get(id)).filter(Boolean);
 }
+// Tolerant variant for admin review screens: one broken file must not hide the
+// rest, so callers get a id -> url map and decide what to show.
+async function urlMap(ids) {
+ const files = [...new Set((ids || []).filter(x => typeof x === 'string' && x.startsWith('cloud://')))];
+ if (!files.length) return new Map();
+ const result = await cloudBase.getCloud().getTempFileURL({fileList:files.map(fileID => ({fileID,maxAge:300}))});
+ return new Map((result.fileList || []).map(x => [x.fileID,x.tempFileURL]).filter(([,url]) => url));
+}
 async function order(dto) {
  if (!dto || !dto.MAIL_FORMS) return dto;
  const obj = dto.MAIL_OBJ || {};
@@ -38,4 +46,4 @@ async function order(dto) {
  return dto;
 }
 async function feedback(dto) { dto.FB_IMG_PREVIEW = await urls(dto.FB_IMG || []); return dto; }
-module.exports = {urls,order,feedback};
+module.exports = {urls,urlMap,order,feedback};

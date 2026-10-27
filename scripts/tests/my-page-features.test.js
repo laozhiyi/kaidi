@@ -26,6 +26,7 @@ function harness(options = {}) {
     'passport/my_detail': user, 'passport/edit_base': { ok: true }, 'passport/logout': { ok: true },
     'passport/register': { token: { id: 'poster', sessionToken: 'b'.repeat(64), name: '小周', status: 1, phoneVerified: true, profileComplete: true } },
     'invite/accept': { accepted: true }, 'invite/my_code': { code: 'ABCDEF' },
+    'invite/my_qrcode': { code: 'ABCDEF', fileID: 'cloud://qr/ABCDEF.png', url: 'https://cdn.example/qr.png', envVersion: 'release' },
     'invite/my_stat': { total: 0, accepted: 0, pending: 0, reward: 0 },
     'invite/my_list': { list: [], hasMore: false },
     'fav/my_list': { list: [], total: 0, hasMore: false }, 'fav/del': { effect: 1 },
@@ -515,7 +516,7 @@ test('every personal-center entry reaches its intended destination and private e
   };
   const h = harness(), page = h.page('my/index/my_index.js');
   for (const [handler, route] of Object.entries(routes)) { await page[handler](); assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/' + route); }
-  page.bindCampusServiceTap(); assert.match(h.navigation.at(-1).url, /campus_service_list$/);
+  page.bindCampusServiceTap(); assert.match(h.navigation.at(-1).url, /customer_service_chat$/);
   page.bindAboutTap(); assert.match(h.navigation.at(-1).url, /about_index$/);
   const denied = harness({ allowed: false }), guest = denied.page('my/index/my_index.js');
   for (const handler of Object.keys(routes)) await guest[handler]();
@@ -906,8 +907,14 @@ test('feedback detail can retry a failed request and formats returned timestamps
 test('invitation links survive a warm app launch and network failure, then clear after a successful bind', async () => {
   const h = harness(); h.load('miniprogram/app.js'); h.app.onShow({ query: { inviteCode: 'abcdef' } });
   const invites = h.load('miniprogram/projects/crun/biz/invite_biz.js'); assert.equal(invites.getPendingCode(), 'ABCDEF');
+  // 小程序码的 scene 可能被编码成参数串，也可能就是码本身；两种都要认。
+  assert.equal(invites.parseScene(encodeURIComponent('code=ghijkl')), 'GHIJKL');
+  assert.equal(invites.parseScene('mnopqr'), 'MNOPQR');
+  assert.equal(invites.parseScene('not-a-code'), '');
+  h.storage.delete('crun-pending-invite');
+  h.app.onShow({ query: { scene: encodeURIComponent('code=ghijkl') } }); assert.equal(invites.getPendingCode(), 'GHIJKL');
   h.responses['invite/accept'] = () => { throw new Error('offline'); };
-  await assert.rejects(invites.acceptPending(), /offline/); assert.equal(invites.getPendingCode(), 'ABCDEF');
+  await assert.rejects(invites.acceptPending(), /offline/); assert.equal(invites.getPendingCode(), 'GHIJKL');
   h.responses['invite/accept'] = { accepted: true }; await invites.acceptPending(); assert.equal(invites.getPendingCode(), '');
 });
 
@@ -919,6 +926,12 @@ test('invite records paginate without recreating codes and sharing carries the c
   assert.equal(h.calls.filter(call => call.route === 'invite/my_code').length, 1);
   assert.equal(h.calls.filter(call => call.route === 'invite/my_list').length, 2);
   assert.match(page.onShareAppMessage().path, /inviteCode=ABCDEF$/); page.bindCopyCode(); assert.equal(h.storage.get('clipboard'), 'ABCDEF');
+
+  // 小程序码是独立加载的：成功时给保存按钮用，失败时只降级这块卡片。
+  await tick(); assert.equal(page.data.qr, 'https://cdn.example/qr.png'); assert.equal(page.data.qrError, '');
+  h.responses['invite/my_qrcode'] = () => { throw new Error('qr offline'); };
+  page._qrCode = ''; await page.loadQr('ABCDEF');
+  assert.equal(page.data.qr, ''); assert.equal(page.data.qrLoading, false); assert.match(page.data.qrError, /暂时无法生成/);
 });
 
 test('favorites can search, open and remove records, and retain data on a failed removal', async () => {

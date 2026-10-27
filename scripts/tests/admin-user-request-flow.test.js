@@ -14,12 +14,18 @@ const tap = dataset => ({ currentTarget: { dataset } });
 function requestFixture() {
   const f = fixture(), backendRoot = path.join(root, 'cloudfunctions/mcloud');
   const requests = [], writes = [], redirects = [], cache = new Map();
+  let mediaDown = false;
   const database = f.store.database();
   const rows = (collection, where) => database.collection(collection).where(where).limit(1000).get();
   const project = (row, fields) => !row || !fields || fields === '*' ? copy(row) :
     Object.fromEntries(['_id', ...fields.split(',')].filter(key => Object.hasOwn(row, key)).map(key => [key, copy(row[key])]));
   const db = {
     async getOne(collection, where, fields) { return project((await rows(collection, where)).data[0] || null, fields); },
+    async getAll(collection, where, fields, orderBy, size = 100) {
+      const query = database.collection(collection).where(where);
+      for (const [field, direction] of Object.entries(orderBy || {})) query.orderBy(field, direction);
+      return (await query.limit(size).get()).data.map(row => project(row, fields));
+    },
     async getList(collection, where, fields, orderBy, page = 1, size = 20) {
       const query = database.collection(collection).where(where);
       for (const [field, direction] of Object.entries(orderBy || {})) query.orderBy(field, direction);
@@ -43,6 +49,12 @@ function requestFixture() {
     'framework/database/db_util.js': db,
     'framework/cloud/cloud_base.js': { getCloud: () => ({
       getWXContext: () => ({ OPENID: 'admin-openid', APPID: 'wx3d8dc6fb0e764ec7', CLIENTIP: '127.0.0.1' }),
+      // User media lives in owner-only storage; the console can only show it
+      // through a server-issued temp link, exactly like orders and feedback.
+      async getTempFileURL({ fileList = [] } = {}) {
+        if (mediaDown) throw Error('TEMP_URL_UNAVAILABLE');
+        return { fileList: fileList.map(item => ({ fileID: item.fileID, tempFileURL: 'https://tmp.local/' + encodeURIComponent(item.fileID) })) };
+      },
       openapi: { phonenumber: { async getPhoneNumber({ code }) {
         assert.equal(code, 'sample-phone-code');
         return { errCode: 0, phoneInfo: { purePhoneNumber: '13900000001', countryCode: '86', watermark: { appid: 'wx3d8dc6fb0e764ec7' } } };
@@ -111,6 +123,8 @@ function requestFixture() {
   const Passport = backend('project/crun/service/passport_service.js');
   f.config.registrationReview = false;
   return { ...f, admin, requests, writes, redirects, Ops, passport: new Passport(),
+    failMedia: value => { mediaDown = value === true; },
+    service: name => backend('project/crun/service/' + name + '.js'),
     page: relative => harness(relative, (route, params) => Ops.get(route, params)) };
 }
 
@@ -144,6 +158,9 @@ test('registered login reaches user details through the real request and model l
   assert.equal(detail.page.data.loading, false);
   assert.equal(detail.page.data.user.USER_NAME, '同学[1]');
   assert.notEqual(detail.page.data.user.USER_LOGIN_TIME, '未登录');
+  // 学生证是 owner-only 私有文件，详情必须拿到服务端签发的临时链接，而不是 cloud://。
+  assert.match(detail.page.data.profile.studentCard[0], /^https:\/\/tmp\.local\//);
+  assert.equal(detail.page.data.profile.studentCardNote, '');
   for (const status of [9, 1]) {
     await detail.page.bindStatus(tap({ status }));
     assert.equal(detail.page.data.user.USER_STATUS, status);
@@ -165,8 +182,19 @@ test('registered login reaches user details through the real request and model l
   assert.equal(foreign.page.data.notFound, true);
 });
 
-async function settles(promise) {
-  let timer;
+test('user detail shows a readable hint instead of a raw cloud file id when preview links cannot be issued', async () => {
+  const f = requestFixture(), { id } = await registered(f);
+  f.failMedia(true);
+  const detail = f.page('user/detail/admin_user_detail.js');
+  await detail.page.onLoad({ id });
+  assert.equal(detail.page.data.profile.studentCard.length, 0);
+  assert.match(detail.page.data.profile.studentCardNote, /无法读取/);
+  const profile = detail.page.data.profile;
+  const rendered = [...profile.studentCard, ...profile.others.flatMap(item => item.images), ...profile.others.map(item => item.displayValue)].join('|');
+  assert.ok(!rendered.includes('cloud://'), 'raw file ids must never be rendered as image sources');
+});
+
+async function settles(promise) {  let timer;
   try { return await Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(Error('Request did not settle after the login redirect')), 1000); })]); }
   finally { clearTimeout(timer); }
 }
@@ -189,4 +217,43 @@ test('an expired administrator session ends user reads and mutations, preserves 
   assert.equal(unread.page.data.user, null);
   assert.equal(f.redirects.length, 2);
   assert.ok(f.redirects.every(url => url.endsWith('/admin/index/login/admin_login')));
+});
+
+test('registration binds the invite immediately and every later review decision rewrites the invite status', async () => {
+  const f = requestFixture();
+  f.table('user').set('inviter-doc', { _id: 'inviter-doc', _pid: 'crun', USER_MINI_OPENID: 'inviter-openid', USER_NAME: '邀请人',
+    USER_STATUS: 1, USER_MOBILE: '13900000002', USER_FORMS: [] });
+  f.store.set(null, 'invite', f.store.key('crun', 'invite-code', 'inviter-openid'), { _pid: 'crun', INV_ID: 'inviter-doc',
+    INV_KIND: 'code', INV_USER_ID: 'inviter-openid', INV_USER_NAME: '邀请人', INV_CODE: 'ABC234', INV_STATUS: 0,
+    INV_ACCEPT_USER_ID: '', INV_ADD_TIME: Date.now() });
+  const invites = new (f.service('invite_service'))();
+
+  await f.passport.wechatIdentityLogin('sample-user-openid');
+  await f.passport.register('sample-user-openid', { name: '被邀请人', mobile: '13900000003', pic: 'cloud://test/avatar.png',
+    inviteCode: 'abc234',
+    forms: [{ mark: 'sex', val: '男' }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' },
+      { mark: 'studentId', val: '20240002' }, { mark: 'studentCard', val: ['cloud://test/card.png'] },
+      { mark: 'disclaimer', val: true }, { mark: 'campus', title: '校区', val: '育才校区' }] });
+
+  const acceptId = f.store.key('crun', 'invite-accept', 'sample-user-openid');
+  const accept = f.table('invite').get(acceptId);
+  assert.ok(accept, '注册时就必须把邀请关系写下来，而不是等客户端事后补');
+  assert.equal(accept.INV_USER_ID, 'inviter-openid');
+  assert.equal(accept.INV_STATUS, 1, '示例学校未开审核，注册完成即可算已注册');
+  assert.equal((await invites.getMyInviteStat('inviter-openid')).accepted, 1);
+
+  const userId = f.store.key('crun', 'user', 'sample-user-openid');
+  // 待审核：绑定关系先记 0，不计入已注册。
+  f.table('user').get(userId).USER_STATUS = 0;
+  await invites.syncAcceptedStatus('sample-user-openid', 0);
+  assert.equal(f.table('invite').get(acceptId).INV_STATUS, 0);
+  assert.equal(JSON.stringify(await invites.getMyInviteStat('inviter-openid')), JSON.stringify({ total: 1, accepted: 0, reward: 0, pending: 1 }));
+
+  const detail = f.page('user/detail/admin_user_detail.js');
+  await detail.page.onLoad({ id: userId });
+  await detail.page.bindStatus(tap({ status: 1 }));
+  assert.equal(f.table('invite').get(acceptId).INV_STATUS, 1, '审核通过即为邀请成功');
+  detail.page.bindReason({ detail: { value: '学生证不清晰' } });
+  await detail.page.bindStatus(tap({ status: 8 }));
+  assert.equal(f.table('invite').get(acceptId).INV_STATUS, 2, '审核不通过不再计入邀请');
 });

@@ -34,6 +34,8 @@
 
 使用 [候选索引清单](deployment/database-indexes.json)。校区查询以 `_pid, schoolId, campusId` 开头，学校账号以 `_pid, schoolId` 开头；只有受控目录、全局身份、迁移和定时扫描使用全局索引。时间游标同时包含 `_id`。
 
+在线客服是全校共享池，`bx_campus_service_message` 没有校区维度：会话翻页与未读计数索引以 `_pid` + `CSM_USER_ID` 开头，会话池聚合排序另用 `_pid` + `CSM_ADD_TIME/CSM_ID`。客服邀请码不依赖唯一索引：文档 ID 是确定性的 `store.key(pid,'staff_invite',code)`，`create()` 在事务内查 ID 后写入，撞码只会换码或覆盖同一条记录。详见 [部署手册](deployment/MULTI_TENANT_ROLLOUT.md) 第 2 节。
+
 ```powershell
 node scripts/check-architecture-deployment.cjs
 ```
@@ -46,7 +48,7 @@ node scripts/check-architecture-deployment.cjs
 
 1. 明确独立测试环境 ID，备份数据并演练恢复。显式设置 `CLOUD_ENV_ID`，不要默认使用仓库中的原环境配置。
 2. 暂停旧写流量和旧定时任务，按冻结计划完成全量 plan/apply/verify 和逐校区 finalize。保持历史 ID、请求和审计记录，不清库。
-3. 配套部署 API、小程序、权限和索引。新初始化标记是 `bx_setup_crun_20260921_tenants`；不要手工提前创建。
+3. 配套部署 API、小程序、权限和索引。新初始化标记是 `bx_setup_crun_20261027_customer_service`；不要手工提前创建。
 4. 删除 API 上旧的 `operations-minute` 触发器。新 `ordersWorker/orders-minute` 与 `notificationsWorker/notifications-minute` 分开部署，API 不接收 Timer。
 5. 验证真实运行时、微信订阅模板/权限、冷启动、数据库与审核配额。校区默认暂停，完成配置和验收后再逐步开放。
 6. 关闭/删除临时迁移函数，保留备份与日志，并监控错误、冲突、任务积压和资源用量。
@@ -55,7 +57,7 @@ node scripts/check-architecture-deployment.cjs
 
 ## 核验边界
 
-本地回归覆盖真实重叠的乐观事务模拟、多账号争抢、相同请求竞争、提交核对、弱网重试、分页、旧响应、图片失败、客服、租户隔离、迁移与后台授权。实际安装 SDK 的底层请求被拦截验证，没有连接真实数据库。微信编译器验证模板与样式。
+本地回归覆盖真实重叠的乐观事务模拟、多账号争抢、相同请求竞争、提交核对、弱网重试、分页、旧响应、图片失败、在线客服（共享池会话、邀请码单次与过期、客服接口白名单）、租户隔离、迁移与后台授权。实际安装 SDK 的底层请求被拦截验证，没有连接真实数据库。微信编译器验证模板与样式。
 
 ```powershell
 node --test --test-reporter=tap --test-timeout=10000 scripts/tests/*.test.js

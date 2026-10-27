@@ -352,7 +352,7 @@ Page({
 		this._orderActionBusy = true;
 		this.setData({ actionBusyId: id });
 		try {
-			const message = action === 'pickup' ? '确认已经取齐或购齐本单所有物品吗？接下来将进入订单详情拍照留证，提交后进入配送中。' : '确认已将本单所有包裹送到收件地址吗？接下来将进入订单详情，选择放置指定位置或当面交付并提交凭证。';
+			const message = action === 'pickup' ? '确认已经取齐或购齐本单所有物品吗？接下来将进入订单详情上传凭证（照片或视频），提交后进入配送中。' : '确认已将本单所有包裹送到收件地址吗？接下来将进入订单详情，选择放置指定位置或当面交付并提交凭证。';
 			if (!await pageHelper.showConfirm(message) || !this._visible || this.data.tabIndex !== 1) return;
 			const current = (this.data.dataList && this.data.dataList.list || []).find(row => row._id === id);
 			if (!current || !current.myaccept || Number(current.MAIL_STATUS) !== expectedStatus) return;

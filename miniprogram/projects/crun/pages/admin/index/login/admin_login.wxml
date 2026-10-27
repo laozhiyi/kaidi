@@ -3,6 +3,7 @@
   <view class="ac-card">
     <button class="ac-primary ac-login-submit" bindtap="bindWechatLogin" loading="{{loggingIn}}" disabled="{{loggingIn}}">{{loggingIn ? '正在登录…' : '微信登录'}}</button>
     <view class="ac-login-note">只有已被授权的超级管理员、管理员或客服可以使用微信登录后台</view>
+    <view class="ac-login-switch" bindtap="url" data-url="../invite/admin_staff_invite">我是客服，用邀请码激活 ›</view>
     <view class="ac-login-switch" bindtap="bindTogglePassword">{{passwordLogin ? '收起账号密码登录' : '初始管理员账号密码登录'}}</view>
     <block wx:if="{{passwordLogin}}">
       <view class="ac-form-field"><view class="ac-label">管理员账号</view><input class="ac-input" placeholder="输入管理员账号" maxlength="30" placeholder-class="ac-placeholder" model:value="{{name}}" disabled="{{loggingIn}}" /></view>

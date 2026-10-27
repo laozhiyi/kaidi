@@ -6,6 +6,7 @@
 
 const BaseProjectAdminController = require('./base_project_admin_controller.js');
 const FeedbackService = require('../../service/feedback_service.js');
+const Roles = require('../../service/admin/admin_roles.js');
 const contentCheck = require('../../../../framework/validate/content_check.js');
 
 class AdminFeedbackController extends BaseProjectAdminController {
@@ -54,7 +55,12 @@ class AdminFeedbackController extends BaseProjectAdminController {
 		await contentCheck.checkTextMultiAdmin(input);
 
 		let service = new FeedbackService();
-		return await service.replyFeedback(input.id, input.reply, this._adminId, input.version, input.requestId, input.status, { ratingAction: input.ratingAction, reviewScore: input.reviewScore });
+		// 客服可以核实并结案投诉，但信誉分评分（给星／撤销）属于管理员判断。
+		return await service.replyFeedback(input.id, input.reply, this._adminId, input.version, input.requestId, input.status, {
+			ratingAction: input.ratingAction,
+			reviewScore: input.reviewScore,
+			allowRating: Roles.ofAdmin(this._admin) !== 'service'
+		});
 	}
 
 	/** 修改状态 */

@@ -20,8 +20,7 @@ const ROUTES = {
   rules: '/projects/crun/pages/admin/settings/rules/admin_rules_settings',
   monitor: '/projects/crun/pages/admin/monitor/admin_monitor',
   news: '/projects/crun/pages/admin/news/list/admin_news_list',
-  chats: '/projects/crun/pages/admin/campus_service/chat_list/admin_campus_chat_list',
-  services: '/projects/crun/pages/admin/campus_service/list/admin_campus_service_list',
+  chats: '/projects/crun/pages/admin/customer_service/chat_list/admin_customer_chat_list',
   about: '/projects/crun/pages/admin/setup/about_list/admin_setup_about_list',
   qr: '/projects/crun/pages/admin/setup/qr/admin_setup_qr',
   managers: '/projects/crun/pages/admin/mgr/list/admin_mgr_list',
@@ -129,8 +128,13 @@ function userProfile(row) {
   const forms = base.USER_FORMS.filter(item => typeof item.mark === 'string' && item.mark);
   const map = {};
   forms.forEach(item => { if (!map[item.mark]) map[item.mark] = item; });
+  // 资料图片存在 owner-only 的云存储目录，只有服务端换好临时链接的地址能显示；
+  // 这里绝不再把 cloud:// 原始 fileID 当图片地址，否则后台只会看到裂图。
+  const preview = row && row.USER_FORM_MEDIA && typeof row.USER_FORM_MEDIA === 'object' ? row.USER_FORM_MEDIA : {};
+  const previewError = row && row.USER_FORM_MEDIA_ERROR || '图片暂时无法读取，请稍后刷新重试';
   const text = mark => plainText(map[mark] && map[mark].val);
-  const images = mark => imageList(map[mark] && map[mark].val);
+  const raw = mark => imageList(map[mark] && map[mark].val);
+  const images = mark => imageList(preview[mark]);
   const contacts = [];
   if (Array.isArray(map.contacts && map.contacts.val)) {
     map.contacts.val.forEach(item => {
@@ -153,16 +157,23 @@ function userProfile(row) {
   }
   if (!addresses.length && text('address')) addresses.push({ key: 0, label: '无', detail: text('address'), note: '无', isDefault: true });
   const known = new Set([...REGISTER_FIELDS.map(item => item[0]), 'studentCard', 'disclaimer', ...COLLECTION_MARKS]);
-  const others = forms.filter(item => !known.has(item.mark)).map(item => ({
-    key: item.mark, label: item.title || item.mark,
-    displayValue: plainText(item.val) || '无', images: item.type === 'image' ? imageList(item.val) : []
-  }));
+  const others = forms.filter(item => !known.has(item.mark)).map(item => {
+    const rawList = imageList(item.val);
+    const urls = imageList(preview[item.mark]);
+    // 老记录可能没有 type 字段，值全是 cloud:// 就当图片处理，避免把文件路径当文字显示。
+    const isImage = item.type === 'image' || (rawList.length > 0 && rawList.every(value => value.startsWith('cloud://')));
+    return {
+      key: item.mark, label: item.title || item.mark, images: isImage ? urls : [],
+      displayValue: isImage ? (urls.length ? '' : previewError) : (plainText(item.val) || '无')
+    };
+  });
   const role = ['super', 'admin', 'service'].includes(base.USER_ROLE) ? base.USER_ROLE : '';
   return {
     ...base, role, roleLabel: ROLE_LABELS[role] || '无',
     roleTime: role ? time(base.USER_ROLE_TIME) : '—',
     registers: REGISTER_FIELDS.map(([mark, label]) => ({ key: mark, label, value: text(mark) || '无' })),
     studentCard: images('studentCard'),
+    studentCardNote: raw('studentCard').length > 0 && !images('studentCard').length ? previewError : '',
     disclaimer: map.disclaimer ? (map.disclaimer.val === true ? '已同意' : '未同意') : '未同意',
     contacts, addresses, others
   };

@@ -6,7 +6,7 @@ const Catalog = require('./news_catalog_service.js');
 
 const PAGE_SIZE = 20;
 const NEWS_FIELDS = { _id: true, NEWS_TITLE: true, NEWS_DESC: true, NEWS_ADD_TIME: true, NEWS_EDIT_TIME: true, NEWS_ORDER: true };
-const MESSAGE_FIELDS = { _id: true, title: true, content: true, createdAt: true, read: true, orderId: true, feedbackId: true, reputation: true };
+const MESSAGE_FIELDS = { _id: true, title: true, content: true, createdAt: true, read: true, orderId: true, feedbackId: true, reputation: true, chat: true };
 const compare = (a, b) => b.createdAt - a.createdAt || (a.key < b.key ? 1 : a.key > b.key ? -1 : 0);
 
 class NotificationService extends Base {
@@ -38,7 +38,8 @@ class NotificationService extends Base {
   _message(row) {
     return { _id: row._id, key: 'notification:' + row._id, kind: 'notification',
       title: row.title || '系统通知', content: row.content || '', createdAt: Number(row.createdAt) || 0,
-      read: row.read === true, orderId: row.orderId || '', feedbackId: row.feedbackId || '', reputation: row.reputation === true };
+      read: row.read === true, orderId: row.orderId || '', feedbackId: row.feedbackId || '', reputation: row.reputation === true,
+      chat: row.chat === true };
   }
 
   async featured() {

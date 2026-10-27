@@ -29,7 +29,10 @@ AdminModel.DB_STRUCTURE = {
  ADMIN_PLATFORM: 'bool|true|default=false',
  ADMIN_SCOPES: 'array|true|default=[]',
  // 微信登录的后台账号由用户记录授权而来，ADMIN_USER_ID 指向用户文档。
+ // ADMIN_WECHAT 标记该账号由微信身份创建；账号密码管理员的这个标记始终为空，
+ // 用来区分两类账号，避免微信身份接管账号密码管理员。
  ADMIN_USER_ID: 'string|false|comment=关联用户文档',
+ ADMIN_WECHAT: 'bool|true|default=false|comment=由微信用户授权创建',
  ADMIN_ROLE: 'string|false|comment=超级管理员 super/管理员 admin/客服 service',
 
 	ADMIN_TOKEN: 'string|false|comment=当前登录token',

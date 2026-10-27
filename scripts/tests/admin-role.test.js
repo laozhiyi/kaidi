@@ -44,11 +44,84 @@ test('role changes cannot target the operator itself or leave no super administr
   f.user('owner', { USER_STATUS: 1 });
   const users = new (f.load('admin/admin_user_service.js'))();
   await users.setUserRole('owner', 'super', superAdmin);
-  await assert.rejects(users.setUserRole('owner', '', { ...superAdmin, ADMIN_USER_ID: 'owner' }), /自己/);
+  await assert.rejects(users.setUserRole('owner', '', { ...superAdmin, ADMIN_USER_ID: 'owner', ADMIN_WECHAT: true }), /自己/);
   f.user('other', { USER_STATUS: 1 });
   await users.setUserRole('other', 'super', superAdmin);
   await users.setUserRole('owner', 'admin', { _id: 'x', ADMIN_TYPE: 1, ADMIN_ROLE: 'super', ADMIN_USER_ID: 'other' });
   await assert.rejects(users.setUserRole('other', '', { _id: 'x', ADMIN_TYPE: 1, ADMIN_ROLE: 'super', ADMIN_USER_ID: 'owner' }), /保留/);
+});
+
+test('账号密码管理员给自己的微信用户授权，不会被当成微信身份接管', async () => {
+  const f = fixture();
+  f.user('owner', { USER_STATUS: 1, USER_NAME: '小王' });
+  f.user('boss', { USER_STATUS: 1, USER_NAME: '小李' });
+  // 初始平台管理员用账号密码登录：会话令牌绑定操作人 openid，且历史上已被错误关联
+  f.table('admin').set('admin', {
+    _id: 'admin', _pid: 'crun', ADMIN_NAME: 'admin', ADMIN_DESC: '初始管理员', ADMIN_PHONE: '13800000001',
+    ADMIN_PASSWORD: 'hashed', ADMIN_STATUS: 1, ADMIN_TYPE: 1, ADMIN_USER_ID: 'owner',
+    ADMIN_TOKEN: 'session-token', ADMIN_TOKEN_USER: 'owner', ADMIN_TOKEN_TIME: Date.now()
+  });
+  const users = new (f.load('admin/admin_user_service.js'))();
+  await users.setUserRole('boss', 'super', f.table('admin').get('admin'));
+  await users.setUserRole('owner', 'super', f.table('admin').get('admin'));
+
+  const account = f.table('admin').get('admin');
+  assert.equal(account.ADMIN_USER_ID, '');
+  assert.equal(account.ADMIN_NAME, 'admin');
+  assert.equal(account.ADMIN_DESC, '初始管理员');
+  assert.equal(account.ADMIN_PHONE, '13800000001');
+  assert.equal(account.ADMIN_PASSWORD, 'hashed');
+  assert.equal(account.ADMIN_TYPE, 1);
+  assert.equal(account.ADMIN_TOKEN, 'session-token');
+
+  const linked = [...f.table('admin').values()].filter(row => row.ADMIN_USER_ID === 'owner');
+  assert.equal(linked.length, 1);
+  assert.notEqual(linked[0]._id, 'admin');
+  assert.equal(linked[0].ADMIN_WECHAT, true);
+  assert.equal(linked[0].ADMIN_ROLE, 'super');
+
+  // 再次调整这个微信账号的角色不再报“改自己”，也不会重复建号
+  await users.setUserRole('owner', 'admin', f.table('admin').get('admin'));
+  assert.equal(f.table('user').get('owner').USER_ROLE, 'admin');
+  const again = [...f.table('admin').values()].filter(row => row.ADMIN_USER_ID === 'owner');
+  assert.equal(again.length, 1);
+  assert.equal(again[0].ADMIN_ROLE, 'admin');
+  assert.equal(f.table('admin').get('admin').ADMIN_USER_ID, '');
+});
+
+test('遗留的微信后台账号在再次同步时换成带标记的独立账号并清掉旧会话', async () => {
+  const f = fixture();
+  f.user('staff', { USER_STATUS: 1 });
+  f.table('admin').set('legacy', {
+    _id: 'legacy', _pid: 'crun', ADMIN_NAME: 'staff', ADMIN_STATUS: 1, ADMIN_TYPE: 0,
+    ADMIN_ROLE: 'service', ADMIN_USER_ID: 'staff', ADMIN_TOKEN: 'old-token', ADMIN_TOKEN_USER: 'staff'
+  });
+  const users = new (f.load('admin/admin_user_service.js'))();
+  await users.setUserRole('staff', 'admin', superAdmin);
+
+  const old = f.table('admin').get('legacy');
+  assert.equal(old.ADMIN_USER_ID, '');
+  assert.equal(old.ADMIN_TOKEN, '');
+  const rows = [...f.table('admin').values()].filter(row => row.ADMIN_USER_ID === 'staff');
+  assert.equal(rows.length, 1);
+  assert.notEqual(rows[0]._id, 'legacy');
+  assert.equal(rows[0].ADMIN_WECHAT, true);
+  assert.equal(rows[0].ADMIN_ROLE, 'admin');
+});
+
+test('停用微信用户只结束它自己的后台会话，不停用账号密码管理员', async () => {
+  const f = fixture();
+  f.user('owner', { USER_STATUS: 1 });
+  f.table('admin').set('admin', {
+    _id: 'admin', _pid: 'crun', ADMIN_NAME: 'admin', ADMIN_PASSWORD: 'hashed', ADMIN_STATUS: 1,
+    ADMIN_TYPE: 1, ADMIN_USER_ID: 'owner', ADMIN_TOKEN: 'session-token', ADMIN_TOKEN_USER: 'owner'
+  });
+  const users = new (f.load('admin/admin_user_service.js'))();
+  await users.statusUser('owner', 9, '违规');
+
+  const account = f.table('admin').get('admin');
+  assert.equal(account.ADMIN_STATUS, 1);
+  assert.equal(account.ADMIN_TOKEN, '');
 });
 
 test('disabled accounts cannot be granted a role and stopping a user revokes the backend session', async () => {

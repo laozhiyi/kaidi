@@ -207,6 +207,8 @@ class PassportBiz extends BaseBiz {
   const allowed = !!(token && token.id && (token.status === 1 || allowPending && token.status === 0) && PassportBiz.isProfileReady(token));
   if (that && !that._unloaded) that.setData({ isLogin: allowed });
   if (allowed || !mustLogin) return allowed;
+  // 工作人员（客服等）不参与学生注册流程：不弹「完善资料」，从后台入口登录即可。
+  if (token && token.staff) return false;
   if (!allowPending && token && (token.status === 9 || PassportBiz.isProfileReady(token) && [0, 8].includes(token.status))) {
    return PassportBiz.loginStatusHandler(method, token.status);
   }

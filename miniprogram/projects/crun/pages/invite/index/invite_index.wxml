@@ -19,7 +19,7 @@
 			<view class="stat-divider"></view>
 			<view class="stat-cell">
 				<view class="stat-num">{{stat.pending}}</view>
-				<view class="stat-label">待注册</view>
+				<view class="stat-label">待审核</view>
 			</view>
 		</view>
 	</view>
@@ -33,6 +33,20 @@
 		<view class="code-btn-row">
 			<button class="btn btn-default" bindtap="bindCopyCode" disabled="{{!code}}">复制邀请码</button>
 			<button class="btn btn-primary" open-type="share" disabled="{{!code}}">立即邀请</button>
+		</view>
+	</view>
+
+	<!-- 专属小程序码 -->
+	<view class="card qr-card">
+		<view class="code-title">专属小程序码</view>
+		<view class="qr-body">
+			<image wx:if="{{qr}}" class="qr-image" src="{{qr}}" mode="aspectFit" show-menu-by-longpress="{{true}}" />
+			<view wx:elif="{{qrLoading}}" class="qr-placeholder">正在生成…</view>
+			<view wx:else class="qr-placeholder">{{qrError || '暂不可用'}}</view>
+		</view>
+		<view class="code-tip">保存后发到群聊、朋友圈或打印张贴，好友扫码自动带上你的邀请码</view>
+		<view class="code-btn-row">
+			<button class="btn btn-default" bindtap="bindSaveQr" disabled="{{!qr || qrLoading}}">保存到相册</button>
 		</view>
 	</view>
 
@@ -66,7 +80,8 @@
 				<view class="list-time">{{item.INV_ADD_TIME}}</view>
 			</view>
 			<view wx:if="{{item.INV_STATUS==1}}" class="status status-accept">已注册</view>
-			<view wx:else class="status status-pending">待注册</view>
+			<view wx:elif="{{item.INV_STATUS==2}}" class="status status-pending">未通过</view>
+			<view wx:else class="status status-pending">待审核</view>
 		</view>
 	</view>
 

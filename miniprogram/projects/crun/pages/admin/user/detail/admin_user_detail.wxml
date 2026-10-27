@@ -28,6 +28,7 @@
       <view class="ac-field">
         <view class="ac-field-label">学生证照片</view>
         <view class="ac-images"><block wx:for="{{profile.studentCard}}" wx:for-item="src" wx:key="*this"><image class="ac-image" src="{{src}}" mode="aspectFill" data-type="image" data-url="{{src}}" bindtap="url" show-menu-by-longpress="{{true}}" /></block><text wx:if="{{!profile.studentCard.length}}" class="ac-muted">无</text></view>
+        <view wx:if="{{profile.studentCardNote}}" class="ac-muted">{{profile.studentCardNote}}</view>
       </view>
       <view class="ac-row"><text class="ac-muted">免责声明</text><text>{{profile.disclaimer}}</text></view>
     </view>
@@ -65,14 +66,14 @@
 
     <view class="ac-card">
       <view class="ac-section-title">账户审核与状态</view>
-      <view wx:if="{{isServiceAdmin}}" class="ac-notice">客服账号只能查看用户资料，审核与授权由管理员处理。</view>
-      <block wx:else>
+      <view wx:if="{{isServiceAdmin}}" class="ac-muted">客服可审核注册（通过 / 不通过）；停用、恢复与后台授权由管理员处理。</view>
+      <block>
         <view class="ac-field-label">处理说明（审核不通过时必填）</view>
         <textarea value="{{reason}}" bindinput="bindReason" disabled="{{busy}}" maxlength="200" placeholder="记录审核依据或账号状态调整原因" /><view class="ac-counter">{{reason.length}} / 200</view>
         <view class="ac-form-actions">
           <button wx:if="{{profile.USER_STATUS!==1}}" class="ac-primary" data-status="1" bindtap="bindStatus" disabled="{{busy || loading || error}}">{{profile.USER_STATUS===9?'恢复使用':'审核通过'}}</button>
           <button wx:if="{{profile.USER_STATUS===0}}" class="ac-ghost" data-status="8" bindtap="bindStatus" disabled="{{busy || loading || error}}">审核不通过</button>
-          <button wx:if="{{profile.USER_STATUS!==9}}" class="ac-ghost ac-text-red" data-status="9" bindtap="bindStatus" disabled="{{busy || loading || error}}">停用用户</button>
+          <button wx:if="{{profile.USER_STATUS!==9 && !isServiceAdmin}}" class="ac-ghost ac-text-red" data-status="9" bindtap="bindStatus" disabled="{{busy || loading || error}}">停用用户</button>
         </view>
       </block>
     </view>

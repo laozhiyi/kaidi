@@ -1,8 +1,11 @@
 const cloudHelper = require('../../../../helper/cloud_helper.js');
 const KEY = 'SETUP_CONTENT_AFTERSALES';
+// 后台未配置售后群图片时的兜底二维码（微信「扫一扫 → 相册」可识别）。
+// 群二维码有有效期（当前这张 2026-11-03 前有效），过期后替换本图，或在后台「售后群」重新上传。
+const FALLBACK_QR = '/projects/crun/images/aftersales_qr.jpg';
 
 Component({
-  data: { nodes: [], loading: false, error: false },
+  data: { nodes: [], hasImage: false, fallbackQr: FALLBACK_QR, loading: false, error: false },
   lifetimes: {
     attached() { this.load(); },
     detached() { this._detached = true; }
@@ -17,7 +20,7 @@ Component({
         const list = Array.isArray(result.data) ? result.data : [];
         // 只保留有内容的文本和图片节点
         const nodes = list.filter(node => node && (node.type === 'text' || node.type === 'img') && String(node.val || '').trim());
-        if (!this._detached) this.setData({ nodes });
+        if (!this._detached) this.setData({ nodes, hasImage: nodes.some(node => node.type === 'img') });
       } catch (error) {
         if (!this._detached) this.setData({ error: true });
       } finally {
@@ -31,8 +34,10 @@ Component({
     },
     bindPreview(e) {
       const url = e.currentTarget.dataset.url;
+      if (!url) return;
       const urls = this.data.nodes.filter(node => node.type === 'img').map(node => node.val);
-      if (url) wx.previewImage({ current: url, urls });
+      if (!urls.includes(url)) urls.push(url);
+      wx.previewImage({ current: url, urls });
     },
     bindSave(e) {
       const url = e.currentTarget.dataset.url;

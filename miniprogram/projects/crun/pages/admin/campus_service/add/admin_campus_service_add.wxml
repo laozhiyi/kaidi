@@ -1,6 +1,0 @@
-<view wx:if="{{isAdmin}}" class="ac-page">
-  <view class="ac-breadcrumb"><text class="ac-link" bindtap="url" data-type="back">‹ 校区客服配置</text><text>/</text><text>添加客服</text></view>
-  <view class="ac-heading"><view><view class="ac-title">添加校区客服</view><view class="ac-subtitle">完善负责人资料，方便用户联系与咨询</view></view></view>
-  
-  <block wx:if="{{isLoad}}"><include src="../service_form.wxml" /></block>
-</view>

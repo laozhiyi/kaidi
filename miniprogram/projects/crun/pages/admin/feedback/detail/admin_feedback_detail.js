@@ -41,6 +41,8 @@ Page({
     if (!reply) { Ops.error(new Error('请填写回复内容和处理依据')); return; }
     const ratingAction = ['keep', 'rate', 'clear'][this.data.ratingIndex], reviewScore = this.data.reviewScore;
     if (ratingAction === 'rate' && (!detail.FB_CAN_RATE || this.data.actionIndex !== 0 || !Number.isInteger(reviewScore) || reviewScore < 1 || reviewScore > 5)) { Ops.error(new Error('请核实订单对方，并选择1至5星后完成审核')); return; }
+    // 客服没有信誉分权限：已评分的投诉改状态会撤销评分，先在本地拦下，避免提交后才报错。
+    if (this.data.isServiceAdmin && detail.FB_REVIEW_SCORE && this.data.actionIndex !== 0) { Ops.error(new Error('该投诉已有信誉分评分，客服只能回复或保持「处理完成」，调整状态请联系管理员')); return; }
     this.setData({ busy: true });
     try {
       const ratingNotice = ratingAction === 'rate' ? '本次将对' + detail.FB_TARGET_NAME + '评为' + reviewScore + '星，对应' + ((reviewScore - 3) * 2) + '分。评分依据对双方可见。' : ratingAction === 'clear' || this.data.actionIndex !== 0 && detail.FB_REVIEW_SCORE ? '此前的审核评分将不再计入对方信誉分。' : '';

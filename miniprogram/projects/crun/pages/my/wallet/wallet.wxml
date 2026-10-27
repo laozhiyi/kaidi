@@ -25,7 +25,7 @@
     <view class="wallet-title">提现记录</view>
     <view class="wallet-empty">{{isLoad ? '暂无提现记录' : '正在加载…'}}</view>
   </view>
-  <view class="wallet-foot">如对金额有疑问，可通过「校区客服」联系管理员核对。</view>
+  <view class="wallet-foot">如对金额有疑问，可通过「在线客服」联系管理员核对。</view>
 </view>
 
 <view wx:if="{{sheet}}" class="wallet-sheet-mask" catchtouchmove="bindStopTouch" bindtap="bindCloseSheet">

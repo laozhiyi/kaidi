@@ -12,6 +12,12 @@
     <view class="ac-maintenance-task"><view class="ac-task-step">01</view><view class="ac-task-copy"><view class="ac-row-title">关闭过期待接单订单</view><view class="ac-row-desc">处理超过接单截止时间、仍未接取的线下订单。</view></view></view>
     <view class="ac-maintenance-task"><view class="ac-task-step">02</view><view class="ac-task-copy"><view class="ac-row-title">发送履约超时提醒</view><view class="ac-row-desc">提醒相关用户跟进，保留订单与履约记录。</view></view></view>
     <view class="ac-maintenance-task"><view class="ac-task-step">03</view><view class="ac-task-copy"><view class="ac-row-title">处理待发送通知</view><view class="ac-row-desc">发送待发通知并重试；达到重试上限的记录保留失败状态。</view></view></view>
+    <view class="ac-maintenance-task"><view class="ac-task-step">04</view><view class="ac-task-copy"><view class="ac-row-title">过期客服邀请码</view><view class="ac-row-desc">把超过有效期的未用邀请码标记为已过期，并检查是否有重复码。</view></view></view>
+  </view>
+  <view wx:if="{{result && result.inviteDuplicates.length}}" class="ac-card">
+    <view class="ac-section-head"><text class="ac-section-title">客服邀请码重复</text><text class="ac-badge red">需处理</text></view>
+    <view class="ac-muted">以下邀请码存在多条记录，激活时会被拒绝。请到云开发控制台确认保留哪一条并删除其余记录。</view>
+    <view wx:for="{{result.inviteDuplicates}}" wx:key="code" class="ac-maintenance-task"><view class="ac-task-step">{{index + 1}}</view><view class="ac-task-copy"><view class="ac-row-title">{{item.code}}</view><view class="ac-row-desc">{{item.count}} 条记录</view></view></view>
   </view>
   <view class="ac-card ac-maintenance-action">
     <view class="ac-card-title"><view class="ac-icon"><text class="icon-settings"></text></view><view><view class="ac-section-title">手动执行维护</view><view class="ac-card-desc">用于主动检查和处理当前积压任务</view></view></view>
@@ -21,7 +27,7 @@
   </view>
   <view wx:if="{{result}}" class="ac-card ac-result">
     <view class="ac-section-head"><text class="ac-section-title">本次执行结果</text><text class="ac-badge green">已完成</text></view>
-    <view class="ac-result-grid"><view><view class="ac-result-value">{{result.expired || 0}}</view><view class="ac-result-label">关闭过期订单</view></view><view><view class="ac-result-value">{{result.overdue || 0}}</view><view class="ac-result-label">超时提醒</view></view><view><view class="ac-result-value">{{result.notifications || 0}}</view><view class="ac-result-label">处理通知</view></view></view>
+    <view class="ac-result-grid"><view><view class="ac-result-value">{{result.expired || 0}}</view><view class="ac-result-label">关闭过期订单</view></view><view><view class="ac-result-value">{{result.overdue || 0}}</view><view class="ac-result-label">超时提醒</view></view><view><view class="ac-result-value">{{result.notifications || 0}}</view><view class="ac-result-label">处理通知</view></view><view><view class="ac-result-value">{{result.invites || 0}}</view><view class="ac-result-label">过期邀请码</view></view></view>
     <view class="ac-footnote">{{ranAt}} 执行</view>
   </view>
 </view>

@@ -48,6 +48,15 @@ class PassportController extends BaseProjectController {
   return new PassportService().wechatLogin(this._userId, input);
  }
 
+	/** 激活客服邀请码（工作人员免学生注册） */
+	async redeemStaffInvite() {
+		const input = this.validateData({
+			code: 'must|string|min:6|max:12|name=邀请码',
+			name: 'string|min:1|max:20|name=客服称呼'
+		});
+		return new PassportService().redeemStaffInvite(this._userId, input.code, input.name);
+	}
+
 	/** 取得我的用户信息 */
 	async getMyDetail() {
 		let service = new PassportService();
@@ -79,6 +88,7 @@ class PassportController extends BaseProjectController {
 			mobile: 'must|mobile|name=手机',
 			pic: 'must|string|name=头像',
 			forms: 'array|name=表单',
+			inviteCode: 'string|max:6|name=邀请码',
 			status: 'int|default=1'
 		};
 

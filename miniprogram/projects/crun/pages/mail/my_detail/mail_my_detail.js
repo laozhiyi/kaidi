@@ -107,9 +107,9 @@ Page({
  },
  bindReload() { return this.load(); },
  bindBackOrders() { wx.switchTab({ url: '/projects/crun/pages/order/index/order_index' }); },
- bindServiceHelpTap() { wx.navigateTo({ url: '/projects/crun/pages/campus_service/list/campus_service_list' }); },
+ bindServiceHelpTap() { wx.navigateTo({ url: '/projects/crun/pages/customer_service/chat/customer_service_chat' }); },
  bindCopyOrderTap() { const mail = this.data.mail; if (mail) wx.setClipboardData({ data: String(mail.MAIL_ID || mail._id) }); },
- bindNoticeTap() { wx.showModal({ title: this.data.detailUI && this.data.detailUI.legacyPayment ? '结算核对说明' : '线下结算说明', content: this.data.detailUI && this.data.detailUI.legacyPayment ? '本单未标记为线下结算订单，请联系校区客服核对支付与退款记录，勿重复向对方转账。' : this.data.offlineNotice, showCancel: false, confirmText: '我知道了' }); },
+ bindNoticeTap() { wx.showModal({ title: this.data.detailUI && this.data.detailUI.legacyPayment ? '结算核对说明' : '线下结算说明', content: this.data.detailUI && this.data.detailUI.legacyPayment ? '本单未标记为线下结算订单，请联系在线客服核对支付与退款记录，勿重复向对方转账。' : this.data.offlineNotice, showCancel: false, confirmText: '我知道了' }); },
  bindEditTap() { if (this.data.detailUI && this.data.detailUI.primary === 'edit') wx.navigateTo({ url: '../add/mail_add?id=' + this.data.id }); },
  bindCallTap() { const ui = this.data.detailUI; if (ui && ui.participant && ui.phone) wx.makePhoneCall({ phoneNumber: String(ui.phone) }); },
  bindCopyCodeTap(e) { const mail = this.data.mail; if (!mail || !(mail.mypost || mail.myaccept)) return; const index = e && e.currentTarget.dataset.index; const item = index != null && this.data.detailUI && this.data.detailUI.pickupItems[index]; const code = index != null ? item && item.code : mail.MAIL_OBJ && mail.MAIL_OBJ.code; if (code) wx.setClipboardData({ data: String(code) }); },
@@ -190,12 +190,50 @@ Page({
  bindReason(e) { if (!this.data.busy) this.setData({ reasonIndex: Number(e.detail.value) }); },
  // 两种送达方式：放置指定位置需要凭证照片，当面交付由发布人确认收货。
  bindDeliveryMode(e) { if (this.data.busy) return; const mode = e.currentTarget.dataset.mode === 'face' ? 'face' : 'place'; this.setData({ deliveryMode: mode }); },
- bindImages() { if (this.data.busy || this.data.images.length >= 10) return; wx.chooseMedia({ count: 10 - this.data.images.length, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['camera', 'album'], success: r => { if (!this.data.busy && this.data.panel) this.setData({ images: this.data.images.concat((r.tempFiles || []).map(file => file.tempFilePath)).slice(0, 10) }); } }); },
- bindRemoveImage(e) { if (this.data.busy) return; this.setData({ images: this.data.images.filter((_, i) => i !== Number(e.currentTarget.dataset.index)) }); },
- // 每条凭证最多1段视频，时长不超过15秒。
- bindVideo() {
-  if (this.data.busy) return;
-  wx.chooseMedia({ count: 1, mediaType: ['video'], maxDuration: 15, camera: 'back', sourceType: ['camera', 'album'], success: r => {
+ // 凭证：照片与视频二选一，共用同一个「添加凭证」入口，避免两个重复的相机图标打架。
+ bindAddProof() {
+  if (this.data.busy || !this.data.panel) return;
+  if (this.data.video) {
+   wx.showModal({ title: '已添加视频凭证', content: '照片和视频只能选一种。如需改传照片，请先删除视频。', confirmText: '删除视频', cancelText: '保留视频', success: r => {
+    if (!r.confirm || this.data.busy || !this.data.panel) return;
+    this.setData({ video: '', videoPreview: '' }, () => this._openProofSourceSheet());
+   } });
+   return;
+  }
+  this._openProofSourceSheet();
+ },
+ _openProofSourceSheet() {
+  if (this.data.busy || !this.data.panel) return;
+  const choices = this.data.panel === 'exception'
+   ? [{ label: '拍照', source: 'camera', media: 'image' }, { label: '从相册选择照片', source: 'album', media: 'image' }]
+   : [{ label: '拍照', source: 'camera', media: 'image' }, { label: '从相册选择照片', source: 'album', media: 'image' },
+    { label: '录制 15 秒视频', source: 'camera', media: 'video' }, { label: '从相册选择视频', source: 'album', media: 'video' }];
+  wx.showActionSheet({ itemList: choices.map(x => x.label), success: r => {
+   const item = choices[r.tapIndex];
+   if (!item || this.data.busy || !this.data.panel) return;
+   if (item.media === 'image') return this._pickPhotos(item.source);
+   if (this.data.images.length) {
+    wx.showModal({ title: '改用视频凭证', content: '照片和视频只能选一种，添加视频会清空已选的 ' + this.data.images.length + ' 张照片。', confirmText: '改用视频', cancelText: '取消', success: m => {
+     if (!m.confirm || this.data.busy || !this.data.panel) return;
+     this.setData({ images: [], imagePreviews: {} }, () => this._pickVideo(item.source));
+    } });
+    return;
+   }
+   this._pickVideo(item.source);
+  } });
+ },
+ _pickPhotos(source) {
+  if (this.data.busy || !this.data.panel) return;
+  const remain = 10 - this.data.images.length;
+  if (remain <= 0) return;
+  wx.chooseMedia({ count: remain, mediaType: ['image'], sizeType: ['compressed'], sourceType: [source || 'album'], success: r => {
+   if (this.data.busy || !this.data.panel) return;
+   this.setData({ images: this.data.images.concat((r.tempFiles || []).map(file => file.tempFilePath)).slice(0, 10) });
+  } });
+ },
+ _pickVideo(source) {
+  if (this.data.busy || !this.data.panel) return;
+  wx.chooseMedia({ count: 1, mediaType: ['video'], maxDuration: 15, camera: 'back', sourceType: [source || 'album'], success: r => {
    const file = (r.tempFiles || [])[0];
    if (!file || this.data.busy || !this.data.panel) return;
    if (Number(file.duration || 0) > 16) return wx.showToast({ title: '视频不能超过15秒', icon: 'none' });
@@ -203,6 +241,10 @@ Page({
    this.setData({ video: file.tempFilePath, videoPreview: file.tempFilePath });
   } });
  },
+ bindImages(source) { return this._pickPhotos(typeof source === 'string' ? source : ''); },
+ bindRemoveImage(e) { if (this.data.busy) return; this.setData({ images: this.data.images.filter((_, i) => i !== Number(e.currentTarget.dataset.index)) }); },
+ // 每条凭证最多1段视频，时长不超过15秒。
+ bindVideo(source) { return this._pickVideo(typeof source === 'string' ? source : ''); },
  bindRemoveVideo() { if (!this.data.busy) this.setData({ video: '', videoPreview: '' }); },
  bindPreviewVideo() { const src = this.data.videoPreview || this.data.video; if (src) wx.previewMedia({ sources: [{ url: src, type: 'video' }] }); },
  async bindConfirm(e) {
@@ -211,7 +253,7 @@ Page({
   this._confirming = true;
   try {
    const prompts = {
-    pickup: { title: '确认已取件', content: '确认已经取齐或购齐本单所有物品吗？接下来请拍照留证，提交后进入配送中。', confirmText: '拍照留证' },
+    pickup: { title: '确认已取件', content: '确认已经取齐或购齐本单所有物品吗？接下来请上传凭证（照片或视频），提交后进入配送中。', confirmText: '上传凭证' },
     deliver: { title: '确认已送达', content: '确认已将本单所有包裹送到收件地址吗？接下来选择送达方式并提交凭证，提交后通知发布者确认收货。', confirmText: '提交凭证' },
     confirm: { title: '确认收货', content: '请先核对包裹、数量和外观是否无误。确认后订单将从双方的日常订单列表中移除。' },
     cancel: { title: '取消待接单订单', content: '确定取消这个尚未接单的订单吗？' }
@@ -241,13 +283,15 @@ Page({
  },
  async bindSubmitPanel() {
   if (!this.data.panel || this.data.busy) return;
-  const placeProof = this.data.deliveryMode !== 'face';
-  const deliveryPanel = ['deliver', 'update_proof'].includes(this.data.panel);
-  // 放置指定位置必须有说明与照片；当面交付由发布人确认收货，照片与说明都可以留空。
-  const needsPhotos = this.data.panel === 'pickup' || deliveryPanel && placeProof;
-  const needsNote = this.data.panel === 'exception' || deliveryPanel && placeProof;
-  if (needsNote && !this.data.note.trim()) { Ops.error(new Error('请填写送达位置与物品情况')); return; }
-  if (needsPhotos && !this.data.images.length) { Ops.error(new Error(this.data.panel === 'pickup' ? '取件请至少拍摄1张凭证照片' : '请至少上传1张凭证照片，或改为当面交付')); return; }
+ const placeProof = this.data.deliveryMode !== 'face';
+ const deliveryPanel = ['deliver', 'update_proof'].includes(this.data.panel);
+ // 放置指定位置必须有说明与凭证；当面交付由发布人确认收货，凭证与说明都可以留空。
+ // 凭证为照片与视频二选一，二者有其一即可提交。
+ const needsProof = this.data.panel === 'pickup' || deliveryPanel && placeProof;
+ const needsNote = this.data.panel === 'exception' || deliveryPanel && placeProof;
+ const hasProof = this.data.images.length > 0 || !!this.data.video;
+ if (needsNote && !this.data.note.trim()) { Ops.error(new Error('请填写送达位置与物品情况')); return; }
+ if (needsProof && !hasProof) { Ops.error(new Error(this.data.panel === 'pickup' ? '取件请上传至少1张凭证照片或1段视频' : '请至少上传1张凭证照片或1段视频，或改为当面交付')); return; }
   await this.perform(this.data.panel);
  },
  async perform(action) {

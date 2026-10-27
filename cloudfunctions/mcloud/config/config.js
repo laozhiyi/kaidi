@@ -25,6 +25,10 @@ module.exports = {
 	ADMIN_LOGIN_CREDENTIALS_ONLY: process.env.ADMIN_LOGIN_CREDENTIALS_ONLY !== 'false', // 内测仅校验账号密码；false 恢复登录限流与账号状态检查
 	ADMIN_LOGIN_EXPIRE: 86400, //管理员token过期时间 (秒) 
 
+	// ### 邀请小程序码
+	// release：优先正式版，线上版本还没发布该页面时自动退到体验版；trial：直接生成体验版码（内测验证用）。
+	INVITE_QR_ENV: process.env.INVITE_QR_ENV === 'trial' ? 'trial' : 'release',
+
 	// ### 服务者相关
 	WORK_LOGIN_EXPIRE: 86400, //服务者token过期时间 (秒) 
 }

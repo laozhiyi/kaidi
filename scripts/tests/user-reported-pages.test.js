@@ -238,8 +238,8 @@ test('failed collection creation cannot be cached as successful setup; recovery 
  class Base { AppError(msg) { throw Error(msg); } }
  const Service = moduleHarness('cloudfunctions/mcloud/project/crun/service/base_project_service.js', {
   '../../../framework/database/db_util.js': {
-   isExistCollection: async name => name === 'bx_setup_crun_20260923_accounts' ? schemaReady : name !== 'bx_operation_config' || available,
-   createCollection: async name => { if (name === 'bx_setup_crun_20260923_accounts') { schemaReady = true; return true; } creates++; return false; }
+   isExistCollection: async name => name === 'bx_setup_crun_20261027_customer_service' ? schemaReady : name !== 'bx_operation_config' || available,
+   createCollection: async name => { if (name === 'bx_setup_crun_20261027_customer_service') { schemaReady = true; return true; } creates++; return false; }
   }, '../../../framework/utils/util.js': {}, '../../../framework/platform/model/admin_model.js': {}, '../model/news_model.js': {},
   '../../../framework/platform/service/base_service.js': Base
  });
@@ -267,7 +267,7 @@ test('an initialized cold instance performs one schema lookup and shares that re
   '../../../framework/platform/service/base_service.js':class {}
  });
  await Promise.all([new Service().initSetup(),new Service().initSetup()]);
- assert.deepEqual(lookups,['bx_setup_crun_20260923_accounts']);
+ assert.deepEqual(lookups,['bx_setup_crun_20261027_customer_service']);
 });
 
 for(const file of ['mail/add/mail_add.js','mail/add/mail_add_logic.js']) {

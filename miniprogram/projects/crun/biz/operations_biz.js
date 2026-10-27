@@ -176,6 +176,19 @@ async function subscribe(config) { if(!config.templateId || !wx.requestSubscribe
   return 'subscribed';
  } catch(_){return 'failed';}
 }
+// 客服回复提醒：模板未配置时静默跳过；一天内不重复打扰用户授权。
+async function subscribeChat() {
+ if (!wx.requestSubscribeMessage) return 'unavailable';
+ try {
+  const config = await get('operations/config');
+  if (!config || !config.chatTemplateId) return 'unavailable';
+  const key = 'crun-chat-subscribe-at', last = Number(wx.getStorageSync(key) || 0);
+  if (last && Date.now() - last < 24 * 3600000) return 'cached';
+  const result = await new Promise((resolve, reject) => wx.requestSubscribeMessage({ tmplIds: [config.chatTemplateId], success: resolve, fail: reject }));
+  if (wx.setStorageSync) wx.setStorageSync(key, Date.now());
+  return result[config.chatTemplateId] === 'accept' ? 'subscribed' : 'declined';
+ } catch (_) { return 'failed'; }
+}
 function error(e){
  const recover = e && e.recover;
  wx.showModal({title:'操作未完成',content:e && (e.msg || e.message) || '网络异常，请重试',showCancel:!!recover,confirmText:recover?'核对上次':'确定',cancelText:'稍后',success:async res=>{
@@ -185,4 +198,4 @@ function error(e){
   catch (next) { wx.hideLoading(); error(next); }
  }});
 }
-module.exports={get,command,pendingCommand,recoverCommand,upload,uploadVideo,subscribe,requestId,error,scopeKey:()=>cloud.scopeKey ? cloud.scopeKey() : '',clearUploadCache:()=>uploadCache.clear(),onOrderChanged(listener){changeListeners.add(listener);return()=>changeListeners.delete(listener);}};
+module.exports={get,command,pendingCommand,recoverCommand,upload,uploadVideo,subscribe,subscribeChat,requestId,error,scopeKey:()=>cloud.scopeKey ? cloud.scopeKey() : '',clearUploadCache:()=>uploadCache.clear(),onOrderChanged(listener){changeListeners.add(listener);return()=>changeListeners.delete(listener);}};

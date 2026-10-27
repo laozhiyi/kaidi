@@ -51,9 +51,11 @@ Page({
   },
   async bindStatus(e) {
     if (!UI.authorize(this) || this.data.busy || this.data.loading || this.data.error || !this.data.user) return;
-    if (this.data.isServiceAdmin) { Ops.error(new Error('客服账号没有审核用户的权限')); return; }
-    const status = Number(e.currentTarget.dataset.status), reason = this.data.reason.trim();
+    const status = Number(e.currentTarget.dataset.status);
     if (![1, 8, 9].includes(status)) return;
+    // 客服只做注册审核（通过/不通过）；停用与恢复账号仍归管理员。
+    if (this.data.isServiceAdmin && status === 9) { Ops.error(new Error('客服账号没有停用用户的权限')); return; }
+    const reason = this.data.reason.trim();
     if (status === 8 && !reason) { Ops.error(new Error('请填写审核未通过的原因')); return; }
     this.setData({ busy: true });
     try {

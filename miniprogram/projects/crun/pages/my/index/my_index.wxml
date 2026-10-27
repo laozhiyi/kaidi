@@ -5,7 +5,8 @@
     <view class="my-profile-copy">
       <view class="my-name">{{user ? (user.USER_NAME || '微信用户') : '欢迎来到GXNU随手取'}}</view>
       <view class="my-profile-desc">
-        <text wx:if="{{user && user.USER_STATUS==9}}" class="my-status">账号已停用</text>
+        <text wx:if="{{user && user.USER_ROLE}}" class="my-status">工作人员账号 · 请从“设置与后台管理”处理客服咨询</text>
+        <text wx:elif="{{user && user.USER_STATUS==9}}" class="my-status">账号已停用</text>
         <text wx:elif="{{user && !user.USER_PROFILE_COMPLETE}}" class="my-status">已登录，发单或接单前完善联系资料</text>
         <text wx:elif="{{user && user.USER_STATUS==0}}" class="my-status">待审核：可发单，审核通过后才算注册成功并可接单</text>
         <text wx:elif="{{user && user.USER_STATUS==8}}" class="my-status">审核未通过，请修改资料</text>
@@ -35,7 +36,7 @@
   <view class="my-card">
     <view class="my-section-title">服务与帮助</view>
     <view class="my-grid">
-      <view class="my-grid-item" bindtap="bindCampusServiceTap" hover-class="my-tap"><view class="my-grid-icon"><text class="icon-service"></text></view><text class="my-grid-label">校区客服</text></view>
+      <view class="my-grid-item" bindtap="bindCampusServiceTap" hover-class="my-tap" aria-label="在线客服{{serviceBadge?'，'+serviceBadge+'条未读回复':''}}"><view class="my-grid-icon my-service-icon"><text class="icon-service"></text><text wx:if="{{serviceBadge}}" class="my-message-badge">{{serviceBadge}}</text></view><text class="my-grid-label">在线客服</text></view>
       <view class="my-grid-item" bindtap="bindFeedbackTap" hover-class="my-tap"><view class="my-grid-icon"><text class="icon-comment"></text></view><text class="my-grid-label">反馈与投诉</text></view>
       <view class="my-grid-item" bindtap="bindInviteTap" hover-class="my-tap"><view class="my-grid-icon my-icon-warm"><text class="icon-friendadd"></text></view><text class="my-grid-label">邀请好友</text></view>
       <view class="my-grid-item" bindtap="bindAboutTap" hover-class="my-tap"><view class="my-grid-icon my-icon-green"><text class="icon-info"></text></view><text class="my-grid-label">关于我们</text></view>

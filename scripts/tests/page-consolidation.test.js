@@ -62,7 +62,7 @@ test('redundant pages are removed while export and role-specific workflows remai
     assert.ok(!app.pages.includes('projects/crun/pages/' + route));
     for (const ext of ['js', 'json', 'wxml', 'wxss']) assert.ok(!fs.existsSync(path.join(root, mini, route + '.' + ext)));
   }
-  for (const route of ['admin/mail/export/admin_mail_export', 'feedback/index/feedback_index', 'feedback/detail/feedback_detail', 'admin/campus_service/chat_list/admin_campus_chat_list', 'admin/campus_service/list/admin_campus_service_list']) assert.ok(app.pages.includes('projects/crun/pages/' + route));
+  for (const route of ['admin/mail/export/admin_mail_export', 'feedback/index/feedback_index', 'feedback/detail/feedback_detail', 'admin/customer_service/chat_list/admin_customer_chat_list', 'admin/customer_service/chat_detail/admin_customer_chat_detail', 'admin/index/invite/admin_staff_invite']) assert.ok(app.pages.includes('projects/crun/pages/' + route));
   const personal = read(mini + 'my/index/my_index.wxml');
   for (const handler of ['bindCampusServiceTap', 'bindInviteTap', 'bindAboutTap']) assert.equal((personal.match(new RegExp('bindtap="' + handler + '"', 'g')) || []).length, 1);
   assert.ok((personal.match(/bindtap="bindFeedbackTap"/g) || []).length >= 1);

@@ -184,7 +184,7 @@ module.exports = {
    if (picker === 'contact') this.bindChooseProfileContact();
   },
  bindCampusChange(e) { const campusIndex = Number(e.detail.value); this._campusEdited = true; this.setData({ campusIndex, campus: this.data.campuses[campusIndex] }); },
- bindServiceHelpTap() { wx.navigateTo({ url: '/projects/crun/pages/campus_service/list/campus_service_list' }); },
+ bindServiceHelpTap() { wx.navigateTo({ url: '/projects/crun/pages/customer_service/chat/customer_service_chat' }); },
  bindSettlementTap() { wx.showModal({ title: '关于线下结算', content: this.data.config.offlineNotice, showCancel: false, confirmText: '我知道了' }); },
  _packageRows(previous = this.data.packageItems, types = this.data.packageTypes) {
   const rows = [], old = Array.isArray(previous) ? previous : [], used = new Set();
@@ -213,7 +213,7 @@ module.exports = {
   }
  },
  _refreshFee(){const reference=this.data.packageTypes.reduce((sum,x,i)=>sum+x.count*this._prices[i],0);const total=this.data.packageItems.length ? this.data.packageItems.reduce((sum,x)=>sum+(Number(x.price)||0),0) : reference;const referencePrice=reference.toFixed(2);this.setData({totalFee:total.toFixed(2),referencePrice});this._setFormVal('price',total.toFixed(2));},
- bindPackageItemInput(e){const index=Number(e.currentTarget.dataset.index);const mark=e.currentTarget.dataset.mark;let items=this.data.packageItems.map((item,i)=>i===index?{...item,[mark]:e.detail.value}:item); if(mark==='code' && String(e.detail.value || '').trim() && items[index] && items[index].images && items[index].images.length){ items[index]=Object.assign({},items[index],{images:[]}); } this.setData({packageItems:items});this._setFormVal('packages',items);if(mark==='price')this._refreshFee();},
+ bindPackageItemInput(e){const index=Number(e.currentTarget.dataset.index);const mark=e.currentTarget.dataset.mark;let items=this.data.packageItems.map((item,i)=>i===index?{...item,[mark]:e.detail.value}:item); if(mark==='code' && String(e.detail.value || '').trim() && items[index] && items[index].images && items[index].images.length){ items[index]=Object.assign({},items[index],{images:[],imagePreviews:[]}); } this.setData({packageItems:items});this._setFormVal('packages',items);if(mark==='price')this._refreshFee();},
  bindCustomPrice(e){const value=String(e.detail.value||'').replace(/[^0-9.]/g,'');this.setData({customPrice:value});this._setFormVal('price',value);},
 
  /** 编辑模式：拉取原订单数据回填 */
@@ -286,6 +286,9 @@ module.exports = {
 			if (Array.isArray(obj.imgUrls)) proofImages = obj.imgUrls.filter(Boolean);
 			else if (Array.isArray(obj.imgUrl)) proofImages = obj.imgUrl.filter(Boolean);
 			else if (obj.imgUrl) proofImages = [obj.imgUrl];
+			const proofPreview = Object.fromEntries(proofImages.map((id, i) => [id, (mail.MAIL_MEDIA && mail.MAIL_MEDIA.pickup && mail.MAIL_MEDIA.pickup[i]) || '']));
+			// 逐件截图的临时地址由服务端按 packages 顺序下发，索引与 packageItems 一致。
+			const packagePreviews = (mail.MAIL_MEDIA && Array.isArray(mail.MAIL_MEDIA.packages)) ? mail.MAIL_MEDIA.packages : [];
 			const imageForm = formForms.find((item) => item.mark === 'img');
 			if (imageForm && proofImages.length) imageForm.val = proofImages;
 
@@ -312,8 +315,14 @@ module.exports = {
 			// Older orders stored one pickup point for the whole order; migrate it into each parcel when editing.
 			const legacyPickup = String(obj.address1 || findFormVal('address1', ''));
 			const packageItems = this._packageRows(Array.isArray(storedPackages) ? storedPackages : [], packageTypes)
-				.map((item, index) => ({ ...item, pickupPoint: item.pickupPoint || legacyPickup,
-					...(!storedPackages.length && index === 0 ? { code: mailValues.code, images: mailValues.code ? [] : proofImages } : {}) }));
+				.map((item, index) => {
+					const legacy = !storedPackages.length && index === 0;
+					const images = legacy ? (mailValues.code ? [] : proofImages) : (Array.isArray(item.images) ? item.images : []);
+					const previews = (Array.isArray(packagePreviews[index]) && packagePreviews[index].length)
+						? packagePreviews[index]
+						: (legacy ? images.map((id) => proofPreview[id] || id) : []);
+					return { ...item, pickupPoint: item.pickupPoint || legacyPickup, ...(legacy ? { code: mailValues.code } : {}), images, imagePreviews: previews };
+				});
 
 			this.setData({
 				packageTypes,
@@ -321,7 +330,7 @@ module.exports = {
 				mailValues,
 				formForms,
 				proofImages,
-    proofPreview:Object.fromEntries(proofImages.map((id,i)=>[id,mail.MAIL_MEDIA && mail.MAIL_MEDIA.pickup[i] || ''])),
+    proofPreview,
 				formEnd,
 				formCateId,
 				totalCount,
@@ -512,8 +521,77 @@ module.exports = {
    this.bindCloseProfilePicker();
    wx.navigateTo({ url: kind === 'address' ? '/projects/crun/pages/my/address/address' : '/projects/crun/pages/my/contact/contact' });
   },
-  bindPackageImageTap(e) { const index = Number(e.currentTarget.dataset.index); const current=this.data.packageItems[index]; if(current && String(current.code||'').trim()){ wx.showToast({title:'取件码和截图二选一',icon:'none'}); return; } wx.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'], success: res => { const file = res.tempFiles && res.tempFiles[0]; if (!file) return; if(!contentCheckHelper.imgTypeCheck(file.tempFilePath) || !contentCheckHelper.imgSizeCheck(file.size, 1024*1000*10)){ wx.showToast({title:'图片格式或大小不符合要求',icon:'none'}); return; } const items = this.data.packageItems.slice(); items[index] = Object.assign({}, items[index], { images: [file.tempFilePath], code:'' }); this.setData({ packageItems: items }); this._setFormVal('packages', items); } }); },
-  bindPackagePreviewImage(e) { const index = Number(e.currentTarget.dataset.index); const item = this.data.packageItems[index]; if (item && item.images && item.images.length) wx.previewImage({ urls: item.images, current: item.images[0] }); },
+  // 点击截图区域：还没有截图时直接选图；已有截图时弹出「查看 / 更换 / 删除」。
+  bindPackageImageTap(e) {
+   const index = Number(e.currentTarget.dataset.index);
+   const current = this.data.packageItems[index];
+   if (!current) return;
+   if (current.images && current.images.length) return this._openPackageImageActions(index);
+   if (this.data.submitting) return;
+   if (String(current.code || '').trim()) { wx.showToast({ title: '取件码和截图二选一', icon: 'none' }); return; }
+   this._choosePackageImage(index);
+  },
+  _openPackageImageActions(index) {
+   if (this.data.submitting) return;
+   wx.showActionSheet({
+    itemList: ['查看截图', '更换截图', '删除截图'],
+    success: (res) => {
+     if (res.tapIndex === 0) this.bindPackagePreviewImage({ currentTarget: { dataset: { index } } });
+     else if (res.tapIndex === 1) this._choosePackageImage(index);
+     else if (res.tapIndex === 2) this.bindPackageImageRemove({ currentTarget: { dataset: { index } } });
+    },
+    fail: () => {},
+   });
+  },
+  // 只有本地临时文件预览时才直接取 images；编辑回填的是云文件 ID，需用服务端签发的临时地址。
+  _packageImageUrls(item) {
+   if (!item) return [];
+   if (Array.isArray(item.imagePreviews) && item.imagePreviews.length) return item.imagePreviews;
+   return Array.isArray(item.images) ? item.images : [];
+  },
+  _choosePackageImage(index) {
+   if (this.data.submitting) return;
+   wx.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'], success: res => {
+    const file = res.tempFiles && res.tempFiles[0];
+    if (!file) return;
+    if(!contentCheckHelper.imgTypeCheck(file.tempFilePath) || !contentCheckHelper.imgSizeCheck(file.size, 1024*1000*10)){ wx.showToast({title:'图片格式或大小不符合要求',icon:'none'}); return; }
+    const items = this.data.packageItems.slice();
+    items[index] = Object.assign({}, items[index], { images: [file.tempFilePath], imagePreviews: [], code:'' });
+    this.setData({ packageItems: items });
+    this._setFormVal('packages', items);
+   } });
+  },
+  bindPackagePreviewImage(e) {
+   const index = Number(e.currentTarget.dataset.index);
+   const urls = this._packageImageUrls(this.data.packageItems[index]);
+   if (!urls.length) { wx.showToast({ title: '截图还在上传，请稍后查看', icon: 'none' }); return; }
+   const open = (list) => wx.previewImage({ urls: list, current: list[0] });
+   // 编辑回填的历史截图是云文件 ID，预览前先换成临时地址。
+   const cloudIds = urls.filter(url => typeof url === 'string' && url.startsWith('cloud://'));
+   if (!cloudIds.length || !wx.cloud || !wx.cloud.getTempFileURL) return open(urls);
+   wx.cloud.getTempFileURL({ fileList: cloudIds, success: res => {
+    const map = new Map((res.fileList || []).map(x => [x.fileID, x.tempFileURL]));
+    open(urls.map(url => map.get(url) || url).filter(Boolean));
+   }, fail: () => wx.showToast({ title: '截图暂时无法查看，请稍后重试', icon: 'none' }) });
+  },
+  bindPackageImageRemove(e) {
+   const index = Number(e.currentTarget.dataset.index);
+   const item = this.data.packageItems[index];
+   if (!item || !item.images || !item.images.length || this.data.submitting) return;
+   wx.showModal({
+    title: '删除截图',
+    content: '删除后可以重新上传，或改用取件码。确定删除这张截图吗？',
+    confirmText: '删除', confirmColor: '#E34D59',
+    success: res => {
+     if (!res.confirm) return;
+     const items = this.data.packageItems.slice();
+     items[index] = Object.assign({}, items[index], { images: [], imagePreviews: [] });
+     this.setData({ packageItems: items });
+     this._setFormVal('packages', items);
+     wx.showToast({ title: '已删除截图', icon: 'none' });
+    },
+   });
+  },
 
 	// 期待送达时间至少要留出配送时长，否则骑手接到单也赶不及。
 	_expectLead: function (config, urgent) {
@@ -637,7 +715,11 @@ module.exports = {
 
   _uploadPackageImages: async function (items) {
    const rows = Array.isArray(items) ? JSON.parse(JSON.stringify(items)) : [];
-   for (const row of rows) { if (row.images && row.images.length) row.images = await Ops.upload(row.images); else row.images = []; }
+   for (const row of rows) {
+    // imagePreviews 只是本地的预览地址，不写进订单数据。
+    delete row.imagePreviews;
+    if (row.images && row.images.length) row.images = await Ops.upload(row.images); else row.images = [];
+   }
    return rows;
   },
  bindFormSubmit: async function () {

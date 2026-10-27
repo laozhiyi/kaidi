@@ -3,6 +3,8 @@ const store=require('./operation_store.js');
 const tenant=require('../../../framework/tenancy/tenant_context.js');
 const Tenant=require('./tenant_service.js');
 const AppError=require('../../../framework/core/app_error.js');
+// campus_service / campus_service_message 仅用于历史数据：新在线客服已改为全校共享池（会话键=用户openid），
+// 不再写校区客服席位表，但老租户的历史对话仍需按原链路归属后迁移，故保留这两个集合。
 const COLLECTIONS=['mail','user','admin','news','campus_service','campus_service_message','feedback','order_review','order_event','order_request','feedback_request','review_request','notification','news_read','fav','invite','subscription','operation_config','identity_unique','order_quota','order_feed','operation_limit','operation_audit','setup','log'];
 const journal=require('./migration_journal.js');
 const hash=journal.hash;
@@ -27,6 +29,7 @@ class TenantMigration {
    const value=alias(field&&field.val||row.MAIL_OBJ&&row.MAIL_OBJ.campus);
    if(value)return value;
   }
+  // 历史客服席位表的校区别名；新在线客服没有校区维度，此分支只为老数据服务。
   if(collection==='campus_service'){const value=alias(row.CS_CAMPUS);if(value)return value;}
   const links={
    campus_service_message:['campus_service',row.CSM_SERVICE_ID],

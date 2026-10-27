@@ -7,7 +7,7 @@ const store = require('./operation_store.js');
 const SESSION_MS = 86400000;
 const CANCELLATION_MS = 7200000;
 const PUBLIC = new Set(['tenant/catalog', 'home/setup_get', 'home/list', 'news/list', 'news/view', 'news/featured',
-  'mail/view', 'mail/list', 'fav/order_stats', 'operations/config', 'campus_service/list', 'campus_service/detail', 'check/img']);
+  'mail/view', 'mail/list', 'fav/order_stats', 'operations/config', 'check/img']);
 const LOGIN = new Set(['passport/wechat_identity_login', 'passport/wechat_login']);
 const key = userId => store.key('crun', 'account-session', userId);
 const digest = token => crypto.createHash('sha256').update(token).digest('hex');

@@ -103,6 +103,7 @@ async function markAllRead() {
 function messageUrl(item) {
   if (item.newsId || item.kind === 'news') return '/projects/crun/pages/news/detail/news_detail?id=' + encodeURIComponent(item.newsId || item._id);
   const suffix = 'notificationId=' + encodeURIComponent(item._id);
+  if (item.chat) return '/projects/crun/pages/customer_service/chat/customer_service_chat?' + suffix;
   if (item.reputation) return '/projects/crun/pages/my/reputation/my_reputation?' + suffix;
   if (item.feedbackId) return '/projects/crun/pages/feedback/detail/feedback_detail?id=' + encodeURIComponent(item.feedbackId) + '&' + suffix;
   if (item.orderId) return '/projects/crun/pages/mail/my_detail/mail_my_detail?id=' + encodeURIComponent(item.orderId) + '&' + suffix;

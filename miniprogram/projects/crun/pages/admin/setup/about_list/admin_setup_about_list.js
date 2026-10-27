@@ -15,6 +15,5 @@ Page({
       description: (meta[item.key] || {}).description || '小程序介绍、服务范围与使用说明' })) });
   },
   bindBack() { UI.back('settings'); },
-  bindServices() { UI.go('services'); },
   url(e) { pageHelper.url(e, this); }
 });

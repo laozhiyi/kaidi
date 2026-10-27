@@ -187,6 +187,28 @@ test('pending complaints do not change reputation; reviewed stars target the cou
   await assert.rejects(service.replyFeedback(id, '旧版本再次处理', 'admin', 1, f.req('stale'), 1, { ratingAction: 'rate', reviewScore: 2 }), /刷新/);
 });
 
+test('customer service may reply and close a complaint but never touches the reputation score', async () => {
+  const f = fixture(), orderId = await complete(f), { id, service } = await complaint(f, orderId), reputation = new (f.load('reputation_service.js'))();
+  f.table('admin').set('service-admin', { _id: 'service-admin', _pid: 'crun', ADMIN_NAME: '客服', ADMIN_STATUS: 1, ADMIN_TYPE: 0, ADMIN_ROLE: 'service', ADMIN_WECHAT: true });
+  await service.replyFeedback(id, '已核实，正在跟进处理', 'service-admin', 0, f.req('svc-reply'), 1, { allowRating: false });
+  assert.equal(f.table('feedback').get(id).FB_STATUS, 1);
+  assert.equal(f.table('feedback').get(id).FB_REVIEW_SCORE, 0);
+  assert.equal((await reputation.summary('rider')).score, 80);
+
+  await assert.rejects(service.replyFeedback(id, '直接扣分', 'service-admin', 1, f.req('svc-rate'), 1, { ratingAction: 'rate', reviewScore: 1, allowRating: false }), /信誉分/);
+  await assert.rejects(service.replyFeedback(id, '撤销评分', 'service-admin', 1, f.req('svc-clear'), 1, { ratingAction: 'clear', allowRating: false }), /信誉分/);
+  assert.equal(f.table('feedback').get(id).FB_VERSION, 1);
+
+  // 管理员先给三星；客服不能靠改状态顺带把评分撤掉，但可以继续回复。
+  await service.replyFeedback(id, '管理员评定三星', 'admin', 1, f.req('admin-rate'), 1, { ratingAction: 'rate', reviewScore: 3 });
+  assert.equal((await reputation.summary('rider')).score, 80);
+  await assert.rejects(service.replyFeedback(id, '客服改为不予处理', 'service-admin', 2, f.req('svc-reopen'), 2, { allowRating: false }), /信誉分/);
+  assert.equal(f.table('feedback').get(id).FB_STATUS, 1);
+  await service.replyFeedback(id, '客服补充说明', 'service-admin', 2, f.req('svc-followup'), 1, { allowRating: false });
+  assert.equal(f.table('feedback').get(id).FB_VERSION, 3);
+  assert.equal((await reputation.summary('rider')).admin.count, 1);
+});
+
 test('reopening, rejecting or explicitly revoking an adjudication removes its contribution without losing its audit', async () => {
   const f = fixture(), orderId = await complete(f), { id, service } = await complaint(f, orderId), reputation = new (f.load('reputation_service.js'))();
   await service.replyFeedback(id, '首次评分', 'admin', 0, f.req('first'), 1, { ratingAction: 'rate', reviewScore: 2 });

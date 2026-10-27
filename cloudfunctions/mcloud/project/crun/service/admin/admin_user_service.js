@@ -104,6 +104,8 @@ class AdminUserService extends BaseProjectAdminService {
 		if (data.USER_CHECK_REASON.length > 200) this.AppError('处理说明不能超过200字');
 		if (Number(status) === 8 && !data.USER_CHECK_REASON) this.AppError('请填写审核不通过的原因');
 		await UserModel.edit({ _id: user._id }, data);
+		// 审核结果决定邀请关系是否成立：待审核 → 已注册 / 未通过。
+		await this._syncInvite(user, Number(status));
 		// 停用或恢复账号时同步后台会话，避免已登录的后台令牌继续生效。
 		await new AdminMgrService().setUserAdminActive(user, Number(status) !== 9);
 		return { id: user._id, status: Number(status) };
@@ -124,7 +126,11 @@ class AdminUserService extends BaseProjectAdminService {
 		if (!user) this.AppError('用户不存在');
 		if (user.USER_STATUS === 9) this.AppError('账号已停用，请先恢复账号再授权');
 		if (next && user.USER_STATUS !== 1) this.AppError('请先审核通过该用户，再授权后台权限');
-		if (myAdmin && myAdmin.ADMIN_USER_ID && myAdmin.ADMIN_USER_ID === user._id) this.AppError('不能修改自己的后台角色');
+		// 只有微信身份登录的后台账号才代表“自己”。账号密码管理员与微信用户是两套
+		// 身份：初始平台管理员正是用它给自己的微信号授权，若在这里按 ADMIN_USER_ID
+		// 一刀切，管理员会被判定成“在改自己”，既无法授权也无法取消授权。
+		const selfUserId = myAdmin && myAdmin.ADMIN_WECHAT === true ? myAdmin.ADMIN_USER_ID : '';
+		if (selfUserId && String(selfUserId) === String(user._id)) this.AppError('不能修改自己的后台角色');
 		const current = Roles.normalize(user.USER_ROLE);
 		if (current === next) return { id: user._id, role: next, roleLabel: Roles.label(next) };
 
@@ -151,8 +157,16 @@ class AdminUserService extends BaseProjectAdminService {
 		const user = await this.getUser({ userId: id });
 		if (!user) this.AppError('用户不存在');
 		await UserModel.edit({ _id: user._id }, { USER_STATUS:9, USER_CHECK_REASON:'管理员停用（保留履约记录）' });
+		await this._syncInvite(user, 9);
 		await new AdminMgrService().setUserAdminActive(user, false);
 		return { id: user._id };
+	}
+
+	/** 邀请关系统计只认「审核通过」的账号，审核/停用后同步回写，失败不影响主流程 */
+	async _syncInvite(user, status) {
+		if (!user || !user.USER_MINI_OPENID) return;
+		try { await new (require('../invite_service.js'))().syncAcceptedStatus(user.USER_MINI_OPENID, status); }
+		catch (error) { console.warn('[invite] status sync failed', { code: error.code || 'INVITE_SYNC_ERROR' }); }
 	}
 
 	// #####################导出用户数据

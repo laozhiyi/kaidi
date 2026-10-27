@@ -377,13 +377,12 @@ test('cleanup scrubs copied private evidence from every order event in multiple 
 });
 
 test('a delayed administrator reply cannot recreate an erased chat after fresh registration', async () => {
-  const f = await setup(), login = await f.login(), chat = new (f.service('campus_service_service'))();
-  await f.put(A, 'campus_service', 'service', { CS_STATUS: 1 });
-  const message = await tenant.run(A, () => chat.sendCampusMessage('poster', 'service', '旧私密咨询', 'req_old_chat_message'));
+  const f = await setup(), login = await f.login(), chat = new (f.service('customer_service_service'))();
+  const message = await tenant.run(A, () => chat.sendMessage('poster', '旧私密咨询', 'req_old_chat_message'));
   const original = f.store.transaction; let release, entered, blocked = false;
   const gate = new Promise(resolve => { release = resolve; }), reached = new Promise(resolve => { entered = resolve; });
   f.store.transaction = async callback => { if (!blocked) { blocked = true; entered(); await gate; } return original(callback); };
-  const reply = tenant.run(A, () => chat.replyCampusMessage(message.sessionId, '旧账号的私密回复', 'req_old_chat_reply', 'platform'));
+  const reply = tenant.run(A, () => chat.reply(message.sessionId, '旧账号的私密回复', 'req_old_chat_reply', 'platform'));
   const rejected = assert.rejects(reply, /会话|注销/); await reached;
   await f.account().requestCancellation('poster', login.token.sessionToken);
   [...f.table('account_session').values()].find(row => row.userId === 'poster').cancelAt = Date.now() - 1;

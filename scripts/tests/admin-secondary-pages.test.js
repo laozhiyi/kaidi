@@ -108,14 +108,6 @@ test('manager edit supports an unchanged password and password mismatch never su
   assert.equal(pwd.page.data.formPassword, ''); assert.equal(pwd.navigation[0].method, 'reLaunch');
 });
 
-test('campus service saves zero sort order and rejects blank or invalid numeric input', async () => {
-  const h = harness('campus_service/add/admin_campus_service_add.js', route => route==='operations/config' ? {campuses:['育才校区']} : undefined);
-  await h.page.onLoad(); h.page.setData({ formCampus: '育才校区', formName: '示例客服', formMobile: '13800000000', formOrder: '' });
-  await h.page.bindFormSubmit(); assert.equal(h.calls.filter(call=>call.route.endsWith('_insert')).length, 0);
-  h.page.setData({ formOrder: '0' }); await h.page.bindFormSubmit();
-  assert.equal(h.calls.find(call=>call.route.endsWith('_insert')).params.order, 0); assert.equal(h.page.data.isSubmit, false);
-});
-
 test('announcement creation accepts no custom fields and uploads cover and content before returning', async () => {
   const h = harness('news/add/admin_news_add.js', route => route.endsWith('_insert') ? { id: 'news-one' } : undefined);
   await h.page.onLoad({});

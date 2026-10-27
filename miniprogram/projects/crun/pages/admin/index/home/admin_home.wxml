@@ -1,35 +1,46 @@
 <view wx:if="{{isAdmin}}" class="ac-page">
   <view class="ac-eyebrow">GXNU随手取 · 管理后台</view>
   <view class="ac-heading">
-    <view><view class="ac-title">运营工作台</view><view class="ac-subtitle">{{dateText}} · {{admin.name}}，欢迎回来</view></view>
-    <view class="ac-service-status" bindtap="bindNavigate" data-key="service"><view class="ac-service-dot {{configError?'unknown':config && config.enabled?'':'paused'}}"></view><text>{{configError?'状态未获取':config?config.enabled?'服务开放中':'服务已暂停':'读取状态中'}}</text></view>
+    <view><view class="ac-title">{{isServiceAdmin ? '客服工作台' : '运营工作台'}}</view><view class="ac-subtitle">{{dateText}} · {{admin.name}}，欢迎回来</view></view>
+    <view wx:if="{{!isServiceAdmin}}" class="ac-service-status" bindtap="bindNavigate" data-key="service"><view class="ac-service-dot {{configError?'unknown':config && config.enabled?'':'paused'}}"></view><text>{{configError?'状态未获取':config?config.enabled?'服务开放中':'服务已暂停':'读取状态中'}}</text></view>
   </view>
-  <view wx:if="{{error}}" class="ac-card ac-state"><view class="ac-state-title">工作台数据暂未更新</view><view class="ac-muted">{{error}}</view><button class="ac-secondary ac-small" bindtap="load">重新加载</button></view>
-  <view wx:if="{{loading && !overview}}" class="ac-card ac-state ac-muted">正在读取运营数据…</view>
-  <block wx:if="{{overview}}">
-    <view class="ac-stat-grid">
-      <view class="ac-stat blue" bindtap="bindNavigate" data-key="orders"><view class="ac-stat-label">今日新增订单</view><view class="ac-number">{{overview.todayOrders}}</view><view class="ac-stat-note">累计 {{overview.total}} 单 ›</view></view>
-      <view class="ac-stat" bindtap="bindNavigate" data-key="orders" data-status="9"><view class="ac-stat-label">今日完成订单</view><view class="ac-number">{{overview.todayCompleted}}</view><view class="ac-stat-note">累计完成 {{overview.completed}} 单 ›</view></view>
-      <view class="ac-stat" bindtap="bindNavigate" data-key="orders"><view class="ac-stat-label">当前进行中</view><view class="ac-number">{{overview.active}}</view><view class="ac-stat-note">待接单、配送、待收货与异常</view></view>
-      <view class="ac-stat" bindtap="bindNavigate" data-key="users"><view class="ac-stat-label">注册用户</view><view class="ac-number">{{overview.users}}</view><view class="ac-stat-note">待审核 {{overview.pendingUsers}} 人 ›</view></view>
-    </view>
+
+  <block wx:if="{{isServiceAdmin}}">
     <view class="ac-card">
-      <view class="ac-section-head"><text class="ac-section-title">待办事项</text><text class="ac-muted">优先处理</text></view>
-      <view class="ac-row" bindtap="bindNavigate" data-key="orders" data-status="3"><view class="ac-icon ac-icon-red"><text class="icon-warn"></text></view><view><view class="ac-row-title">异常订单</view><view class="ac-row-desc">核实情况并恢复或结束订单</view></view><text class="ac-badge red">{{overview.exceptions}}</text><text class="ac-chevron">›</text></view>
-      <view class="ac-row" bindtap="bindNavigate" data-key="feedback" data-status="0"><view class="ac-icon ac-icon-amber"><text class="icon-message"></text></view><view><view class="ac-row-title">待处理投诉</view><view class="ac-row-desc">查看反馈、凭证与历史回复</view></view><text class="ac-badge amber">{{overview.complaints}}</text><text class="ac-chevron">›</text></view>
-      <view class="ac-row" bindtap="bindNavigate" data-key="orders" data-overdue="true"><view class="ac-icon"><text class="icon-time"></text></view><view><view class="ac-row-title">超时订单</view><view class="ac-row-desc">联系双方，跟进履约进度</view></view><text class="ac-badge">{{overview.overdue}}</text><text class="ac-chevron">›</text></view>
+      <view class="ac-section-head"><text class="ac-section-title">待办</text><text class="ac-muted">咨询、投诉与注册审核</text></view>
+      <view class="ac-row" bindtap="bindNavigate" data-key="chats"><view class="ac-icon"><text class="icon-message"></text></view><view><view class="ac-row-title">客服会话</view><view class="ac-row-desc">所有用户的咨询，谁在线谁接</view></view><text class="ac-badge {{serviceUnread?'red':'muted'}}">{{serviceUnread?serviceUnread:'无'}}</text><text class="ac-chevron">›</text></view>
+      <view class="ac-row" bindtap="bindNavigate" data-key="feedback"><view class="ac-icon"><text class="icon-notice"></text></view><view><view class="ac-row-title">投诉与反馈</view><view class="ac-row-desc">核实问题、回复用户并结案</view></view><text class="ac-badge {{serviceFeedback?'red':'muted'}}">{{serviceFeedback?serviceFeedback:'无'}}</text><text class="ac-chevron">›</text></view>
+      <view class="ac-row" bindtap="bindNavigate" data-key="users" data-status="0"><view class="ac-icon"><text class="icon-group"></text></view><view><view class="ac-row-title">注册审核</view><view class="ac-row-desc">核对资料，通过或驳回用户注册</view></view><text class="ac-badge {{servicePending?'red':'muted'}}">{{servicePending?servicePending:'无'}}</text><text class="ac-chevron">›</text></view>
     </view>
+    <view class="ac-footnote">订单与投诉也可从底部导航进入 · 下拉刷新</view>
   </block>
-  <view class="ac-card">
-    <view class="ac-section-head"><text class="ac-section-title">常用功能</text><text class="ac-link" bindtap="bindNavigate" data-key="settings">全部管理 ›</text></view>
-    <view class="ac-grid">
-      <view class="ac-shortcut" bindtap="bindNavigate" data-key="orders"><view class="ac-icon"><text class="icon-form"></text></view><view><view class="ac-shortcut-title">订单管理</view><view class="ac-shortcut-desc">查询 · 跟进 · 导出</view></view></view>
-      <view class="ac-shortcut" bindtap="bindNavigate" data-key="analytics"><view class="ac-icon"><text class="icon-rank"></text></view><view><view class="ac-shortcut-title">数据统计</view><view class="ac-shortcut-desc">订单分布与待办</view></view></view>
-      <view class="ac-shortcut" bindtap="bindNavigate" data-key="chats"><view class="ac-icon"><text class="icon-service"></text></view><view><view class="ac-shortcut-title">客服会话</view><view class="ac-shortcut-desc">校区在线咨询</view></view></view>
-      <view class="ac-shortcut" bindtap="bindNavigate" data-key="news"><view class="ac-icon"><text class="icon-notice"></text></view><view><view class="ac-shortcut-title">公告内容</view><view class="ac-shortcut-desc">发布与编辑公告</view></view></view>
+
+  <block wx:else>
+    <view wx:if="{{error}}" class="ac-card ac-state"><view class="ac-state-title">工作台数据暂未更新</view><view class="ac-muted">{{error}}</view><button class="ac-secondary ac-small" bindtap="load">重新加载</button></view>
+    <view wx:if="{{loading && !overview}}" class="ac-card ac-state ac-muted">正在读取运营数据…</view>
+    <block wx:if="{{overview}}">
+      <view class="ac-stat-grid">
+        <view class="ac-stat blue" bindtap="bindNavigate" data-key="orders"><view class="ac-stat-label">今日新增订单</view><view class="ac-number">{{overview.todayOrders}}</view><view class="ac-stat-note">累计 {{overview.total}} 单 ›</view></view>
+        <view class="ac-stat" bindtap="bindNavigate" data-key="orders" data-status="9"><view class="ac-stat-label">今日完成订单</view><view class="ac-number">{{overview.todayCompleted}}</view><view class="ac-stat-note">累计完成 {{overview.completed}} 单 ›</view></view>
+        <view class="ac-stat" bindtap="bindNavigate" data-key="orders"><view class="ac-stat-label">当前进行中</view><view class="ac-number">{{overview.active}}</view><view class="ac-stat-note">待接单、配送、待收货与异常</view></view>
+        <view class="ac-stat" bindtap="bindNavigate" data-key="users"><view class="ac-stat-label">注册用户</view><view class="ac-number">{{overview.users}}</view><view class="ac-stat-note">待审核 {{overview.pendingUsers}} 人 ›</view></view>
+      </view>
+      <view class="ac-card">
+        <view class="ac-section-head"><text class="ac-section-title">待办事项</text><text class="ac-muted">优先处理</text></view>
+        <view class="ac-row" bindtap="bindNavigate" data-key="orders" data-status="3"><view class="ac-icon ac-icon-red"><text class="icon-warn"></text></view><view><view class="ac-row-title">异常订单</view><view class="ac-row-desc">核实情况并恢复或结束订单</view></view><text class="ac-badge red">{{overview.exceptions}}</text><text class="ac-chevron">›</text></view>
+        <view class="ac-row" bindtap="bindNavigate" data-key="feedback" data-status="0"><view class="ac-icon ac-icon-amber"><text class="icon-message"></text></view><view><view class="ac-row-title">待处理投诉</view><view class="ac-row-desc">查看反馈、凭证与历史回复</view></view><text class="ac-badge amber">{{overview.complaints}}</text><text class="ac-chevron">›</text></view>
+        <view class="ac-row" bindtap="bindNavigate" data-key="orders" data-overdue="true"><view class="ac-icon"><text class="icon-time"></text></view><view><view class="ac-row-title">超时订单</view><view class="ac-row-desc">联系双方，跟进履约进度</view></view><text class="ac-badge">{{overview.overdue}}</text><text class="ac-chevron">›</text></view>
+      </view>
+    </block>
+    <view class="ac-card">
+      <view class="ac-section-head"><text class="ac-section-title">常用功能</text><text class="ac-link" bindtap="bindNavigate" data-key="settings">全部管理 ›</text></view>
+      <view class="ac-grid">
+        <view class="ac-shortcut" bindtap="bindNavigate" data-key="analytics"><view class="ac-icon"><text class="icon-rank"></text></view><view><view class="ac-shortcut-title">数据统计</view><view class="ac-shortcut-desc">订单分布与待办</view></view></view>
+        <view class="ac-shortcut" bindtap="bindNavigate" data-key="news"><view class="ac-icon"><text class="icon-notice"></text></view><view><view class="ac-shortcut-title">公告内容</view><view class="ac-shortcut-desc">发布与编辑公告</view></view></view>
+      </view>
     </view>
-  </view>
-  <view class="ac-card ac-health" bindtap="bindNavigate" data-key="monitor"><view><view class="ac-row-title">系统维护</view><view class="ac-row-desc">{{overview?'通知失败 '+overview.failedNotifications+' 条':'查看通知与订单维护情况'}}</view></view><text class="ac-chevron">›</text></view>
-  <view wx:if="{{overview}}" class="ac-footnote">更新于 {{overview.updatedText}} · 下拉刷新</view>
+    <view class="ac-card ac-health" bindtap="bindNavigate" data-key="monitor"><view><view class="ac-row-title">系统维护</view><view class="ac-row-desc">{{overview?'通知失败 '+overview.failedNotifications+' 条':'查看通知与订单维护情况'}}</view></view><text class="ac-chevron">›</text></view>
+    <view wx:if="{{overview}}" class="ac-footnote">更新于 {{overview.updatedText}} · 下拉刷新</view>
+  </block>
   <admin-nav active="home" />
 </view>
