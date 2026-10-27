@@ -22,9 +22,9 @@ function normalize(input, obj, config, tools, proof) {
  } else { obj.packages = []; obj.address1 = text(input.address1 || '', '取件点', 100, true); }
  const packageCodes = obj.packages.map(item => item.code).filter(Boolean);
  const packageImages = obj.packages.reduce((all, item) => all.concat(item.images || []), []);
- if (obj.imgUrls.length + packageImages.length > 6) fail('\u56fe\u7247\u5fc5\u987b\u5148\u6210\u529f\u4e0a\u4f20\uff0c\u6700\u591a6\u5f20');
+ if (obj.imgUrls.length + packageImages.length > 10) fail('\u56fe\u7247\u5fc5\u987b\u5148\u6210\u529f\u4e0a\u4f20\uff0c\u6700\u591a10\u5f20');
  if (!obj.code && packageCodes.length) obj.code = packageCodes.join('\n');
- if (!obj.imgUrls.length && packageImages.length) { obj.imgUrls = packageImages.slice(0, 6); obj.imgUrl = obj.imgUrls[0] || ''; }
+ if (!obj.imgUrls.length && packageImages.length) { obj.imgUrls = packageImages.slice(0, 10); obj.imgUrl = obj.imgUrls[0] || ''; }
  if (proof && !obj.code && !obj.imgUrls.length) fail('\u8bf7\u586b\u5199\u53d6\u4ef6\u7801\u6216\u4e0a\u4f20\u53d6\u4ef6\u622a\u56fe');
  const referenceFee = obj.small * Math.round(config.smallPrice * 100) + obj.medium * Math.round(config.mediumPrice * 100) + obj.large * Math.round(config.largePrice * 100);
  let totalFee = obj.packages.length ? Math.round(obj.packages.reduce((sum, item) => sum + item.price * 100, 0)) : referenceFee;

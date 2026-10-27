@@ -78,8 +78,30 @@ page {
 }
 
 .home-message-row { display: flex; align-items: center; justify-content: space-between; min-height: 64rpx; margin-bottom: 10rpx; }
-.home-section-label { color: #536a87; font-size: 24rpx; font-weight: 600; }
-.home-message-entry { display: flex; align-items: center; gap: 12rpx; padding: 8rpx 14rpx 8rpx 20rpx; color: #315f97; font-size: 25rpx; border-radius: 12rpx; }
+.home-section-label { flex-shrink: 0; color: #536a87; font-size: 24rpx; font-weight: 600; }
+.home-message-entry { display: flex; align-items: center; flex-shrink: 0; gap: 12rpx; padding: 8rpx 14rpx 8rpx 20rpx; color: #315f97; font-size: 25rpx; border-radius: 12rpx; }
+/* 学校 · 校区常驻顶部中间：高度跟随消息行，不拉伸原有布局，过长时省略。 */
+.home-campus-pill { display: flex; align-items: center; justify-content: center; flex: 1; min-width: 0; margin: 0 12rpx; padding: 10rpx 20rpx; box-sizing: border-box; border-radius: 999rpx; background: #e9f2ff; border: 1rpx solid #d5e6fb; }
+.home-campus-hover { background: #dfebff; }
+.home-campus-icon { flex-shrink: 0; margin-right: 8rpx; color: #397bc8; font-size: 26rpx; line-height: 1; }
+.home-campus-text { flex-shrink: 1; min-width: 0; color: #2f5a8d; font-size: 25rpx; line-height: 34rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-campus-active { flex-shrink: 0; max-width: 46%; font-weight: 600; color: #1f4d86; }
+.home-campus-dot { flex-shrink: 0; margin: 0 8rpx; color: #5f89b8; font-size: 25rpx; }
+
+.home-sheet-mask { position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 20000; display: flex; align-items: flex-end; background: rgba(23, 38, 60, .45); }
+.home-sheet { width: 100%; padding: 30rpx 28rpx calc(28rpx + env(safe-area-inset-bottom)); box-sizing: border-box; border-radius: 30rpx 30rpx 0 0; background: #fff; }
+.home-sheet-head { display: flex; align-items: center; justify-content: space-between; }
+.home-sheet-title { color: #1f3554; font-size: 32rpx; font-weight: 600; }
+.home-sheet-close { padding: 4rpx 10rpx; color: #96a4b8; font-size: 40rpx; line-height: 1; }
+.home-sheet-label { display: flex; align-items: baseline; gap: 12rpx; margin: 26rpx 0 14rpx; color: #5a6f8b; font-size: 25rpx; font-weight: 600; }
+.home-sheet-hint { color: #9aa8bb; font-size: 21rpx; font-weight: 400; }
+.home-sheet-chips { display: flex; flex-wrap: wrap; gap: 14rpx; }
+.home-chip { padding: 14rpx 26rpx; border-radius: 14rpx; border: 1rpx solid #e4ecf7; background: #f5f8fc; color: #46617f; font-size: 26rpx; }
+.home-chip-active { border-color: #397bc8; background: #eaf3ff; color: #1f4d86; font-weight: 600; }
+.home-chip-hover { opacity: .75; }
+.home-sheet-empty { color: #9aa8bb; font-size: 24rpx; }
+.home-sheet-note { margin-top: 24rpx; color: #9aa8bb; font-size: 21rpx; line-height: 1.6; }
+.home-sheet-cancel { width: 100%; margin-top: 22rpx; color: #46617f; background: #f2f5f9; border-radius: 16rpx; font-size: 28rpx; }
 .home-message-icon { position: relative; font-size: 36rpx; line-height: 40rpx; }
 .home-message-badge { position: absolute; right: -15rpx; top: -9rpx; min-width: 27rpx; padding: 1rpx 6rpx; box-sizing: border-box; border: 2rpx solid #f1f6ff; border-radius: 20rpx; background: #e74b4b; color: #fff; text-align: center; font-size: 18rpx; line-height: 25rpx; }
 .notice-new-dot { display: inline-block; width: 12rpx; height: 12rpx; margin-right: 8rpx; border-radius: 50%; background: #e74b4b; vertical-align: middle; }

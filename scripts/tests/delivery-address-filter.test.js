@@ -129,7 +129,7 @@ test('legacy detail and rider lists use the saved order address without exposing
       for (const value of ['USER_FORMS', 'USER_OBJ', '另一栋301室', '小王', '13800000000', '123-456']) assert.ok(!JSON.stringify(mail).includes(value), value);
     }
     await f.service.acceptMail('rider', id, { requestId: f.req('legacy-take') });
-    await f.service.pickupMail('rider', id, { requestId: f.req('legacy-pickup') });
+    await f.service.pickupMail('rider', id, { requestId: f.req('legacy-pickup'), images: ['cloud://bucket/private-evidence/rider/pickup.png'] });
     assert.equal((await f.service.viewMail('rider', id)).MAIL_OBJ.address2, '五期 宿舍101');
     assert.equal((await f.service.getMailList('rider', { sortType: 'my_accept' })).list[0].MAIL_OBJ.address2, '五期 宿舍101');
     assert.equal(f.table('mail').get(id).MAIL_OBJ.address2, '宿舍101');

@@ -2,7 +2,7 @@ const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
 Page({
-  data: { isLoad: false, loading: false, error: '', code: '', stat: { total: 0, accepted: 0, reward: 0, pending: 0 }, list: [], page: 0, hasMore: false },
+  data: { isLoad: false, loading: false, error: '', code: '', stat: { total: 0, accepted: 0, reward: 0, pending: 0 }, reward: '0.00', canWithdraw: false, minWithdraw: 10, perFriend: 2, list: [], page: 0, hasMore: false },
   onLoad() { ProjectBiz.initPage(this); },
   async onShow() {
     this._visible = true;
@@ -27,8 +27,11 @@ Page({
       ]);
       if (!this._visible || seq !== this._seq) return;
       if (!listRes || !Array.isArray(listRes.list) || !codeRes || !codeRes.code || !statRes) throw new Error('邀请信息加载失败');
-      this.setData({ code: codeRes.code, stat: statRes, list: reset ? listRes.list : this.data.list.concat(listRes.list),
-        page, hasMore: !!listRes.hasMore, isLoad: true });
+      // 每位好友注册成功 2 元，满 10 元可提现且不抽成。
+      const accepted = Number(statRes.accepted) || 0;
+      const reward = (accepted * 2).toFixed(2);
+      this.setData({ code: codeRes.code, stat: statRes, reward, canWithdraw: Number(reward) >= this.data.minWithdraw,
+        list: reset ? listRes.list : this.data.list.concat(listRes.list), page, hasMore: !!listRes.hasMore, isLoad: true });
     } catch (error) {
       if (this._visible && seq === this._seq) this.setData({ error: '邀请信息加载失败，请重试' });
     } finally {
@@ -36,6 +39,10 @@ Page({
     }
   },
   bindMore() { if (this.data.hasMore && !this.data.loading) return this.load(false); },
+  bindWithdrawTap() {
+    if (!this.data.canWithdraw) return wx.showToast({ title: '满 ' + this.data.minWithdraw + ' 元可提现', icon: 'none' });
+    wx.navigateTo({ url: '/projects/crun/pages/my/wallet/wallet?account=invite' });
+  },
   bindCopyCode() {
     if (!this.data.code) return wx.showToast({ title: '请先加载邀请码', icon: 'none' });
     wx.setClipboardData({ data: this.data.code, success: () => wx.showToast({ title: '已复制邀请码', icon: 'success' }),

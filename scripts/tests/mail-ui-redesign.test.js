@@ -45,7 +45,7 @@ test('saved pause continues to block both server publishing and accepting withou
  await assert.rejects(f.service.acceptMail('rider', id, { requestId: f.req('accept') }), /暂停/);
  await assert.rejects(f.publish({ requestId: f.req('second') }), /暂停/);
  assert.equal(f.table('mail').get(id).MAIL_STATUS, 0);
- const g = fixture(), active = await g.publish(); await g.service.acceptMail('rider', active, { requestId: g.req('take') }); await g.service.pickupMail('rider', active, { requestId: g.req('pickup') }); g.config.enabled = false;
+ const g = fixture(), active = await g.publish(); await g.service.acceptMail('rider', active, { requestId: g.req('take') }); await g.service.pickupMail('rider', active, { requestId: g.req('pickup'), images: ['cloud://bucket/private-evidence/rider/pickup.png'] }); g.config.enabled = false;
  await g.service.deliverMail('rider', active, { requestId: g.req('deliver'), note: '已送达', images: ['cloud://proof'] }); assert.equal(g.table('mail').get(active).MAIL_STATUS, 2);
 });
 test('missing or disabled business hours enforcement allows publishing all day on the client and server', () => {
@@ -86,7 +86,7 @@ test('detail presentation calculates fees, package tags and safe Beijing times',
  assert.equal(UI.detail({ ...base, MAIL_PAYMENT_MODE: 'wechat' }, now).legacyPayment, true);
 });
 test('detail primary actions depend on actual order role and status, never on page entry', () => {
- const cases = [[0, 'poster', 'edit'], [1, 'rider', 'pickup'], [4, 'rider', 'deliver'], [4, 'poster', 'contact'], [2, 'poster', 'confirm'], [2, 'rider', 'contact'], [3, 'rider', 'contact'], [9, 'poster', 'contact'], [99, 'public', 'orders']];
+ const cases = [[0, 'poster', 'edit'], [1, 'rider', 'pickup'], [4, 'rider', 'deliver'], [4, 'poster', 'contact'], [2, 'poster', 'confirm'], [2, 'rider', 'remind'], [3, 'rider', 'contact'], [9, 'poster', 'contact'], [99, 'public', 'orders']];
  for (const [status, role, action] of cases) {
   const mail = { ...base, MAIL_STATUS: status, mypost: role === 'poster', myaccept: role === 'rider', acceptUser: { USER_NAME: '小陈', USER_MOBILE: '13900000000' } };
   const ui = UI.detail(mail, now); assert.equal(ui.primary, action); assert.equal(ui.canCancel, role === 'poster' && status === 0); assert.equal(ui.canException, role !== 'public' && [1,2,4].includes(status));
@@ -135,13 +135,15 @@ test('more menu filters mutations by role/state, and cancellation is never perfo
  p.setData({ detailUI: UI.detail({ ...base, myaccept: true, MAIL_STATUS: 1 }, now) }); p.bindMoreTap(); assert.ok(sheet.itemList.includes('配送异常 / 申请取消')); assert.ok(!sheet.itemList.includes('取消订单'));
  p.setData({ detailUI: UI.detail(base, now) }); sheet = null; p.bindMoreTap(); assert.equal(sheet, null);
 });
-test('delivery sheet requires a note and a photo, ignores unsupported actions and caps attachments at six', async () => {
- const errors = [], p = page('my_detail/mail_my_detail.js', { error: e => errors.push(e.message) }, { chooseImage: () => { throw Error('already full'); } });
+test('delivery sheet requires a note and a photo, ignores unsupported actions and caps attachments at ten', async () => {
+ const errors = [], requests = [], p = page('my_detail/mail_my_detail.js', { error: e => errors.push(e.message) }, { chooseMedia: options => requests.push(options) });
  p.setData({ loading: false, detailUI: UI.detail({ ...base, myaccept: true, MAIL_STATUS: 4 }, now) });
  p.bindPanel({ currentTarget: { dataset: { action: 'cancel' } } }); assert.equal(p.data.panel, '');
  p.bindPanel({ currentTarget: { dataset: { action: 'deliver' } } }); assert.equal(p.data.panel, 'deliver');
+ assert.equal(p.data.deliveryMode, 'place');
  await p.bindSubmitPanel(); p.setData({ note: '放在门口' }); await p.bindSubmitPanel(); assert.equal(errors.length, 2); assert.match(errors[1], /照片/);
- p.setData({ images: ['a','b','c','d','e','f'] }); p.bindImages(); assert.equal(p.data.images.length, 6);
+ p.setData({ images: ['a','b','c','d','e','f'] }); p.bindImages(); assert.equal(requests[0].count, 4);
+ p.setData({ images: ['a','b','c','d','e','f','g','h','i','j'] }); p.bindImages(); assert.equal(requests.length, 1);
 });
 test('participant contact uses the other party and image previews stay in the authorized group', () => {
  const calls = [], previews = [];
@@ -179,17 +181,19 @@ test('copying a parcel code uses that parcel and remains unavailable to other vi
  }
 });
 
-test('publish screenshot selection and hidden form both cap attachments at six', () => {
+test('publish screenshot selection and hidden form both cap attachments at ten', () => {
  let request, images;
- const p = page('add/mail_add.js', {}, { chooseMedia: x => request = x });
+ const p = page('add/mail_add.js', {}, { chooseMedia: x => request = x, showToast() {} });
  p.setData({ proofImages: ['a','b','c','d','e'] }); p._setFormVal = (key,value) => { if (key === 'img') images = value; };
- p.bindUploadImageTap(); assert.equal(request.count, 1);
+ p.bindUploadImageTap(); assert.equal(request.count, 5);
  request.success({ tempFiles: [{tempFilePath:'f',size:100},{tempFilePath:'g',size:100}] });
- assert.equal(p.data.proofImages.length, 6); assert.equal(images.length, 6);
+ assert.equal(p.data.proofImages.length, 7); assert.equal(images.length, 7);
+ p.setData({ proofImages: ['a','b','c','d','e','f','g','h','i','j'] }); request = null;
+ p.bindUploadImageTap(); assert.equal(request, null);
 });
 test('order command locks before async login/upload and refuses actions not allowed in the displayed state', async () => {
  let release, commands = 0, uploads = 0;
- const p = page('my_detail/mail_my_detail.js', { upload: async () => { uploads++; await new Promise(r => release = r); return ['cloud://proof']; }, command: async () => commands++ }, { showToast() {} });
+ const p = page('my_detail/mail_my_detail.js', { upload: async () => { uploads++; await new Promise(r => release = r); return ['cloud://proof']; }, uploadVideo: async () => ['cloud://proof-video'], error() {}, command: async () => commands++ }, { showToast() {} });
  p._visible = true; p.load = async () => {};
  p.setData({ loading: false, mail: base, id: 'order', panel: 'deliver', note: '已送达', images: ['local'], detailUI: UI.detail({ ...base, myaccept: true, MAIL_STATUS: 4 }, now) });
  await p.perform('confirm'); assert.equal(commands, 0);

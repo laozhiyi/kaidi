@@ -58,7 +58,7 @@ async function formHarness(entry = 'mail_add.js', options = {}) {
  const f = options.backend || fixture(), calls = [], errors = [], uploads = [];
  const Controller = options.backend ? mailController(f) : null;
  let definition, component;
- const wx = { setNavigationBarTitle() {}, showLoading() {}, hideLoading() {}, hideKeyboard() {}, showModal() {}, showToast() {}, stopPullDownRefresh() {} };
+ const wx = { setNavigationBarTitle() {}, showLoading() {}, hideLoading() {}, hideKeyboard() {}, showModal(options) { if (options && options.success) options.success({ confirm: true }); }, showToast() {}, stopPullDownRefresh() {}, redirectTo() {}, navigateBack() {} };
  runMiniProgram(path.join(root, 'miniprogram/projects/crun/pages/mail/add', entry), { wx, console,
   Page: value => { definition = value; }, Component: value => { component = value; }, require(name) {
    if (name.includes('mail_ui_biz')) return UI;
@@ -71,8 +71,10 @@ async function formHarness(entry = 'mail_add.js', options = {}) {
    if (name.includes('/validate.js')) return { check: data => ({ cateId: data.formCateId, end: data.formEnd }) };
    if (name.includes('cloud_helper')) return { callCloudSumbit: async () => ({ data: options.mail }), callCloudData: async () => options.profile };
    if (name.includes('public_biz')) return { removeCacheList() {} };
+   if (name.includes('page_helper')) return { fmtURLByPID: url => '/projects/crun' + url, showSuccToast() {} };
    if (name.includes('operations_biz')) return { get: async () => f.config, pendingCommand: () => null, error: error => errors.push(error.message),
     upload: async images => { uploads.push(copy(images)); return images.map(image => image.startsWith('cloud://') ? image : 'cloud://fixture/private-evidence/poster/' + image); },
+    uploadVideo: async paths => (paths || []).map(() => 'cloud://fixture/private-evidence/poster/proof.mp4'),
     command: async (route, params) => { calls.push({ route, params: copy(params) }); return Controller ? new Controller({ ...params, requestId: f.req('client-' + route.replace('/', '-') + '-' + calls.length) }, 'poster')[route === 'mail/edit' ? 'editMail' : 'insertMail']() : { _id: 'saved' }; }
    };
    return {};
@@ -142,7 +144,7 @@ for (const service of ['send', 'buy']) {
    assert.equal(edit.page.data.serviceType, service);
    assert.equal(edit.page.data.packageItems[0].pickupPoint, stored.MAIL_OBJ.address1);
    if (service === 'buy') assert.equal(edit.page.data.mailValues.goodsBudget, '18.5');
-   edit.page.setData({ formEnd: Deadline.after() });
+   edit.page.setData({ formEnd: Deadline.rangeText(Deadline.defaultRange()) });
    edit.page.bindPackageItemInput(event({ index: 0, mark: 'price' }, '5.00'));
    await edit.page.bindFormSubmit(); assert.deepEqual(edit.errors, []);
    assert.equal(f.table('mail').get(id).MAIL_TOTAL_FEE, 500);
@@ -153,12 +155,15 @@ for (const service of ['send', 'buy']) {
    await f.service.acceptMail('rider', id, { requestId: f.req('accept') });
    const accepted = await f.service.viewMail('rider', id);
    assert.equal(UI.detail(accepted).primaryLabel, service === 'buy' ? '已购齐' : '已取件');
-   await f.service.pickupMail('rider', id, { requestId: f.req('pickup') });
+   await f.service.pickupMail('rider', id, { requestId: f.req('pickup'), images: ['cloud://bucket/private-evidence/rider/pickup.png'] });
    await f.service.deliverMail('rider', id, { requestId: f.req('deliver'), note: '物品已交付', images: ['cloud://fixture/proof.png'] });
    await f.service.finishMail('poster', id, { requestId: f.req('confirm') });
    assert.equal(f.table('mail').get(id).MAIL_STATUS, 9);
    page.resetAfterPublish();
-   assert.equal(page.data.serviceType, service); assert.equal(page.data.packageItems[0].pickupPoint, '');
+   assert.equal(page.data.serviceType, service);
+   // 代取/代送默认 0 件（用户点选件数才发单），代买固定 1 件。
+   assert.equal(page.data.packageItems.length, service === 'buy' ? 1 : 0);
+   assert.equal(page.data.totalCount, service === 'buy' ? 1 : 0);
    assert.ok(!page.data.mailValues.goods); assert.ok(!page.data.mailValues.goodsBudget);
   });
  }
@@ -346,7 +351,9 @@ test('publishing requires each pickup point before any upload and resets the nex
  page.bindPackagePickupInput(event({}, '   ')); page.bindConfirmPackagePickup();
  assert.match(page.data.packagePickupError, /取件点/); assert.equal(page.data.packageItems[0].pickupPoint, '雅园 · 中通');
  page.resetAfterPublish();
- assert.equal(page.data.packageItems.length, 1); assert.equal(page.data.packageItems[0].pickupPoint, ''); assert.equal(page.data.packagePickupVisible, false);
+ assert.equal(page.data.packageItems.length, 0); assert.equal(page.data.packagePickupVisible, false);
+ page.bindPackageTap(event({ index: 0, step: 1 }));
+ assert.equal(page.data.packageItems.length, 1); assert.equal(page.data.packageItems[0].pickupPoint, '');
 });
 
 test('home submission exposes all pickup points but keeps per-package credentials private until acceptance', async () => {

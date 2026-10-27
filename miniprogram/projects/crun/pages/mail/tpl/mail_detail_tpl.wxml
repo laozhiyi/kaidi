@@ -13,7 +13,7 @@
    <view class="od-route"><view class="od-route-stop"><view class="od-route-marker od-pickup">取</view><view class="od-route-copy"><view class="od-label">{{ui.serviceType === 'buy' ? '购买地点' : '取件地点'}}</view><view class="od-address">{{mail.MAIL_OBJ.address1 || '取件地点待补充'}}</view></view></view><view class="od-route-stop"><view class="od-route-marker od-dropoff">送</view><view class="od-route-copy"><view class="od-label">送达地点</view><view class="od-address">{{ui.deliveryAddress || '送达地点待补充'}}</view><view wx:if="{{!ui.participant}}" class="od-caption"><text class="icon-lock"></text> {{ui.serviceType === 'take' ? '联系人信息、取件码和取件截图仅接单后可见' : '联系人信息仅接单后可见'}}</view></view></view></view>
   </view>
 
-  <view wx:if="{{ui.participant}}" class="od-card od-contact"><view class="od-contact-avatar"><text class="icon-{{mail.mypost ? 'deliver' : 'people'}}"></text></view><view class="od-contact-copy"><view class="od-label">{{ui.contactRole}}</view><view class="od-contact-name">{{ui.contactName}}</view><view class="od-caption">{{ui.phone || (ui.status === 0 ? '接单后可电话联系' : '暂无联系电话')}}</view></view><button wx:if="{{ui.phone}}" class="od-call" bindtap="bindCallTap"><text class="icon-phone"></text> 联系</button></view>
+  <view wx:if="{{ui.participant}}" class="od-card od-contact"><view class="od-contact-avatar"><text class="icon-{{mail.mypost ? 'deliver' : 'people'}}"></text></view><view class="od-contact-copy"><view class="od-label">{{ui.contactRole}}</view><view class="od-contact-name">{{ui.contactName}}</view><view class="od-caption">{{ui.hideContactCall ? '已送达，请通过“提醒发布人收货”通知对方' : (ui.phone || (ui.status === 0 ? '接单后可电话联系' : '暂无联系电话'))}}</view></view><button wx:if="{{ui.phone && !ui.hideContactCall}}" class="od-call" bindtap="bindCallTap"><text class="icon-phone"></text> 联系</button></view>
 
   <view wx:if="{{ui.serviceType === 'buy'}}" class="od-card"><view class="od-section-title">购买要求</view><view class="od-note">{{mail.MAIL_OBJ.goods}}</view><view class="od-note">数量：{{mail.MAIL_OBJ.buyQuantity}} 件</view><view class="od-note">商品总预算：¥{{mail.MAIL_OBJ.goodsBudget}}</view><view class="od-caption">商品款按实际小票线下结算，跑腿费另计；超出预算须先确认。</view></view>
   <view wx:if="{{ui.participant && ui.serviceType !== 'buy'}}" class="od-card">
@@ -36,12 +36,22 @@
    <view wx:if="{{mail.MAIL_OBJ.desc}}" class="od-note"><view class="od-label">配送备注</view><view wx:if="{{mail.MAIL_OBJ.desc}}">{{mail.MAIL_OBJ.desc}}</view></view>
   </view>
 
+  <view wx:if="{{ui.participant && ui.pickupProof}}" class="od-card">
+   <view class="od-heading"><text class="od-section-title">取件凭证</text><text class="od-badge-green">骑手已拍照留证</text></view>
+   <view wx:if="{{ui.pickupProof.note}}" class="od-body-text">{{ui.pickupProof.note}}</view>
+   <view wx:if="{{ui.pickupProof.images.length}}" class="od-media"><image wx:for="{{ui.pickupProof.images}}" wx:key="*this" class="od-photo" src="{{item}}" mode="aspectFill" data-url="{{item}}" data-group="pickupProof" bindtap="bindPreviewImageTap"/></view>
+   <view wx:if="{{ui.pickupProof.video}}" class="od-video"><video class="od-video-player" src="{{ui.pickupProof.video}}" object-fit="cover" show-center-play-btn enable-progress-gesture="{{false}}"/><text class="od-caption">取件视频 · 最长15秒</text></view>
+   <view class="od-caption od-space-top">提交时间 {{ui.pickupProof.at || '时间待确认'}}</view>
+  </view>
+
   <view wx:if="{{ui.participant && mail.MAIL_DELIVERY_PROOF}}" class="od-card">
-   <view class="od-heading"><text class="od-section-title">送达凭证</text><view class="od-proof-actions"><text class="od-badge-green">骑手已提交</text><button wx:if="{{ui.canUpdateProof}}" class="od-proof-update" bindtap="bindUpdateProofTap" disabled="{{actionDisabled}}" aria-label="更新送达凭证">更新</button></view></view>
-   <view class="od-body-text">{{mail.MAIL_DELIVERY_PROOF.note || '请核对物品是否已送达'}}</view>
-   <view class="od-media"><image wx:for="{{mail.MAIL_MEDIA.proof}}" wx:key="*this" class="od-photo" src="{{item}}" mode="aspectFill" data-url="{{item}}" data-group="proof" bindtap="bindPreviewImageTap"/></view>
+   <view class="od-heading"><text class="od-section-title">送达凭证</text><view class="od-proof-actions"><text class="od-badge-green">{{ui.deliveryModeLabel || '骑手已提交'}}</text><button wx:if="{{ui.canUpdateProof}}" class="od-proof-update" bindtap="bindUpdateProofTap" disabled="{{actionDisabled}}" aria-label="更新送达凭证">更新</button></view></view>
+   <view class="od-body-text">{{mail.MAIL_DELIVERY_PROOF.note || (ui.deliveryMode === 'face' ? '已当面交付给收件人' : '请核对物品是否已送达')}}</view>
+   <view wx:if="{{mail.MAIL_MEDIA.proof.length}}" class="od-media"><image wx:for="{{mail.MAIL_MEDIA.proof}}" wx:key="*this" class="od-photo" src="{{item}}" mode="aspectFill" data-url="{{item}}" data-group="proof" bindtap="bindPreviewImageTap"/></view>
+   <view wx:if="{{ui.proofVideo}}" class="od-video"><video class="od-video-player" src="{{ui.proofVideo}}" object-fit="cover" show-center-play-btn enable-progress-gesture="{{false}}"/><text class="od-caption">送达视频 · 最长15秒</text></view>
    <view wx:if="{{ui.proofUpdatedAt}}" class="od-caption od-space-top">更新时间 {{ui.proofUpdatedAt}}</view>
    <view wx:elif="{{ui.deliveredAt}}" class="od-caption od-space-top">提交时间 {{ui.deliveredAt}}</view>
+   <view wx:if="{{ui.autoConfirmAt && ui.status === 2}}" class="od-caption od-space-top">送达满8小时（{{ui.autoConfirmAt}}）未确认将自动确认收货</view>
   </view>
   <view wx:if="{{ui.participant && mail.MAIL_EXCEPTION}}" class="od-card"><view class="od-heading"><text class="od-section-title">异常说明</text><text class="od-badge-amber">{{ui.status === 3 ? '处理中' : '已记录'}}</text></view><view class="od-exception-reason">{{mail.MAIL_EXCEPTION.reason}}</view><view class="od-body-text">{{mail.MAIL_EXCEPTION.note}}</view><view class="od-media"><image wx:for="{{mail.MAIL_MEDIA.exception}}" wx:key="*this" class="od-photo" src="{{item}}" mode="aspectFill" data-url="{{item}}" data-group="exception" bindtap="bindPreviewImageTap"/></view></view>
 

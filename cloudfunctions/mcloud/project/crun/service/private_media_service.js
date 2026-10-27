@@ -16,8 +16,11 @@ async function order(dto) {
  const packages = Array.isArray(obj.packages) ? obj.packages : [];
  const groups = {
   pickup: [...new Set([...(obj.imgUrls || []), ...packages.flatMap(item => Array.isArray(item && item.images) ? item.images : [])])].filter(id => typeof id === 'string' && id.startsWith('cloud://')),
+  pickupProof: dto.MAIL_PICKUP_PROOF && dto.MAIL_PICKUP_PROOF.images || [],
   proof: dto.MAIL_DELIVERY_PROOF && dto.MAIL_DELIVERY_PROOF.images || [],
-  exception: dto.MAIL_EXCEPTION && dto.MAIL_EXCEPTION.images || []
+  exception: dto.MAIL_EXCEPTION && dto.MAIL_EXCEPTION.images || [],
+  pickupVideo: dto.MAIL_PICKUP_PROOF && dto.MAIL_PICKUP_PROOF.video ? [dto.MAIL_PICKUP_PROOF.video] : [],
+  proofVideo: dto.MAIL_DELIVERY_PROOF && dto.MAIL_DELIVERY_PROOF.video ? [dto.MAIL_DELIVERY_PROOF.video] : []
  };
  dto.MAIL_MEDIA = {};
  delete dto.MAIL_MEDIA_ERROR;

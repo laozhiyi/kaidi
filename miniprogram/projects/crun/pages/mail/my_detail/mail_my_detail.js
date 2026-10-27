@@ -17,10 +17,10 @@ function historyTime(value) {
  return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 19).replace('T', ' ') : '时间未知';
 }
 Page({
- data:{id:'',mail:null,detailUI:null,loading:true,error:false,errorMessage:'',notFound:false,configError:false,confirmGate:false,confirmCountdown:0,offlineNotice:'费用由双方线下协商结算，平台不代收、不担保；请勿提前向陌生人转账。',busy:false,panel:'',note:'',images:[],imagePreviews:{},reasons:['取件失败','取件码错误','联系不上','物品损坏','送错地址','申请取消','其他'],reasonIndex:0,config:null},
+ data:{id:'',mail:null,detailUI:null,loading:true,error:false,errorMessage:'',notFound:false,configError:false,confirmGate:false,confirmCountdown:0,offlineNotice:'费用由双方线下协商结算，平台不代收、不担保；请勿提前向陌生人转账。',busy:false,panel:'',note:'',images:[],imagePreviews:{},video:'',videoPreview:'',deliveryMode:'place',reasons:['取件失败','取件码错误','联系不上','物品损坏','送错地址','申请取消','其他'],reasonIndex:0,config:null},
  onLoad(options = {}) {
   ProjectBiz.initPage(this);
-  this._openPanelAfterLoad = ['deliver', 'update_proof'].includes(options.panel) ? options.panel : '';
+  this._openPanelAfterLoad = ['pickup', 'deliver', 'update_proof'].includes(options.panel) ? options.panel : '';
   this._confirmAfterLoad = options.action === 'confirm';
   this._notificationId = options.notificationId || '';
   this._linkScope = options.schoolId || options.campusId ? {schoolId:options.schoolId,campusId:options.campusId} : null;
@@ -94,8 +94,8 @@ Page({
      if (action === 'update_proof') {
       if (detailUI.canUpdateProof) this.bindUpdateProofTap();
       else wx.showModal({ title: '暂不能更新凭证', content: '仅接单骑手可在发布者确认收货前更新送达凭证，请查看当前订单进度。', showCancel: false, confirmText: '我知道了' });
-     } else if (this.data.detailUI.primary === 'deliver') this.bindPanel({ currentTarget: { dataset: { action: 'deliver' } } });
-     else wx.showModal({ title: '请查看当前订单进度', content: this.data.detailUI.primary === 'pickup' ? '请先确认已取齐本单包裹。送达收件地址后，再点击“已送达”提交文字和照片。' : '订单状态已变化，当前无需提交送达凭证。', showCancel: false, confirmText: '我知道了' });
+     } else if (this.data.detailUI.primary === action) this.bindPanel({ currentTarget: { dataset: { action } } });
+     else wx.showModal({ title: '请查看当前订单进度', content: '订单状态已变化，当前无需提交凭证。', showCancel: false, confirmText: '我知道了' });
     }
    });
   } catch (e) {
@@ -135,9 +135,22 @@ Page({
   const action = this.data.detailUI.primary;
   if (action === 'edit') return this.bindEditTap();
   if (action === 'review') return this.bindReviewTap();
+  if (action === 'remind') return this.bindRemindTap();
   if (['pickup', 'deliver', 'confirm'].includes(action)) return this.bindConfirm({ currentTarget: { dataset: { action } } });
   if (action === 'contact') return this.bindCallTap();
   this.bindBackOrders();
+ },
+ // 已送达待确认：只提醒发布人，不暴露发布人联系方式。
+ async bindRemindTap() {
+  const ui = this.data.detailUI;
+  if (!this._visible || !ui || this.data.busy || this.data.loading || this.data.error || this._reminding) return;
+  this._reminding = true; this.setData({ busy: true });
+  try {
+   if (!await PassportBiz.loginMustCancelWin(this)) return;
+   await Ops.command('mail/remind', { id: this.data.id });
+   wx.showToast({ title: '已提醒发布人确认收货', icon: 'none' });
+  } catch (e) { if (this._visible) Ops.error(e); }
+  finally { this._reminding = false; if (this._visible) this.setData({ busy: false }); }
  },
  bindMoreTap() {
   const ui = this.data.detailUI;
@@ -159,33 +172,54 @@ Page({
  bindUpdateProofTap() { if (this._visible) return this.bindPanel({ currentTarget: { dataset: { action: 'update_proof' } } }); },
  bindPanel(e) {
   const action = e.currentTarget.dataset.action, ui = this.data.detailUI;
-  if (!ui || this.data.busy || this.data.loading || this.data.error || !(action === 'deliver' && ui.primary === 'deliver' || action === 'update_proof' && ui.canUpdateProof || action === 'exception' && ui.canException)) return;
+  const allowed = action === 'pickup' && ui && ui.primary === 'pickup'
+   || action === 'deliver' && ui && ui.primary === 'deliver'
+   || action === 'update_proof' && ui && ui.canUpdateProof
+   || action === 'exception' && ui && ui.canException;
+  if (!ui || this.data.busy || this.data.loading || this.data.error || !allowed) return;
   const proof = action === 'update_proof' && this.data.mail && this.data.mail.MAIL_DELIVERY_PROOF;
   const images = proof && Array.isArray(proof.images) ? proof.images.slice() : [];
   const previews = proof && this.data.mail.MAIL_MEDIA && this.data.mail.MAIL_MEDIA.proof || [];
-  this.setData({ panel: action, note: proof && proof.note || '', images, imagePreviews: Object.fromEntries(images.map((id, index) => [id, previews[index] || ''])), reasonIndex: 0 });
+  const proofVideo = proof && this.data.mail.MAIL_MEDIA && this.data.mail.MAIL_MEDIA.proofVideo && this.data.mail.MAIL_MEDIA.proofVideo[0] || '';
+  this.setData({ panel: action, note: proof && proof.note || '', images, imagePreviews: Object.fromEntries(images.map((id, index) => [id, previews[index] || ''])),
+   video: proof && proof.video || '', videoPreview: proofVideo, deliveryMode: proof && proof.mode === 'face' ? 'face' : 'place', reasonIndex: 0 });
  },
  bindStopProp() {},
- bindClosePanel() { if (!this.data.busy) this.setData({ panel: '' }); },
+ bindClosePanel() { if (!this.data.busy) this.setData({ panel: '', video: '', videoPreview: '' }); },
  bindNote(e) { if (!this.data.busy) this.setData({ note: e.detail.value }); },
  bindReason(e) { if (!this.data.busy) this.setData({ reasonIndex: Number(e.detail.value) }); },
- bindImages() { if (this.data.busy || this.data.images.length >= 6) return; wx.chooseImage({ count: 6 - this.data.images.length, sizeType: ['compressed'], success: r => { if (!this.data.busy && this.data.panel) this.setData({ images: this.data.images.concat(r.tempFilePaths).slice(0, 6) }); } }); },
- bindRemoveImage(e) { if (!this.data.busy) this.setData({ images: this.data.images.filter((_, i) => i !== Number(e.currentTarget.dataset.index)) }); },
+ // 两种送达方式：放置指定位置需要凭证照片，当面交付由发布人确认收货。
+ bindDeliveryMode(e) { if (this.data.busy) return; const mode = e.currentTarget.dataset.mode === 'face' ? 'face' : 'place'; this.setData({ deliveryMode: mode }); },
+ bindImages() { if (this.data.busy || this.data.images.length >= 10) return; wx.chooseMedia({ count: 10 - this.data.images.length, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['camera', 'album'], success: r => { if (!this.data.busy && this.data.panel) this.setData({ images: this.data.images.concat((r.tempFiles || []).map(file => file.tempFilePath)).slice(0, 10) }); } }); },
+ bindRemoveImage(e) { if (this.data.busy) return; this.setData({ images: this.data.images.filter((_, i) => i !== Number(e.currentTarget.dataset.index)) }); },
+ // 每条凭证最多1段视频，时长不超过15秒。
+ bindVideo() {
+  if (this.data.busy) return;
+  wx.chooseMedia({ count: 1, mediaType: ['video'], maxDuration: 15, camera: 'back', sourceType: ['camera', 'album'], success: r => {
+   const file = (r.tempFiles || [])[0];
+   if (!file || this.data.busy || !this.data.panel) return;
+   if (Number(file.duration || 0) > 16) return wx.showToast({ title: '视频不能超过15秒', icon: 'none' });
+   if (Number(file.size || 0) > 20 * 1024 * 1024) return wx.showToast({ title: '视频不能超过20MB', icon: 'none' });
+   this.setData({ video: file.tempFilePath, videoPreview: file.tempFilePath });
+  } });
+ },
+ bindRemoveVideo() { if (!this.data.busy) this.setData({ video: '', videoPreview: '' }); },
+ bindPreviewVideo() { const src = this.data.videoPreview || this.data.video; if (src) wx.previewMedia({ sources: [{ url: src, type: 'video' }] }); },
  async bindConfirm(e) {
   const action = e.currentTarget.dataset.action, ui = this.data.detailUI;
   if (!ui || this.data.busy || this.data.loading || this.data.error || this._confirming || !(['pickup', 'deliver', 'confirm'].includes(action) && ui.primary === action || action === 'cancel' && ui.canCancel)) return;
   this._confirming = true;
   try {
    const prompts = {
-    pickup: { title: '确认已取件', content: '确认已经取齐或购齐本单所有物品吗？确认后将进入配送中。', confirmText: '确认取件' },
-    deliver: { title: '确认已送达', content: '确认已将本单所有包裹送到收件地址吗？接下来请填写送达说明并上传至少1张照片，提交后通知发布者确认收货。', confirmText: '填写凭证' },
+    pickup: { title: '确认已取件', content: '确认已经取齐或购齐本单所有物品吗？接下来请拍照留证，提交后进入配送中。', confirmText: '拍照留证' },
+    deliver: { title: '确认已送达', content: '确认已将本单所有包裹送到收件地址吗？接下来选择送达方式并提交凭证，提交后通知发布者确认收货。', confirmText: '提交凭证' },
     confirm: { title: '确认收货', content: '请先核对包裹、数量和外观是否无误。确认后订单将从双方的日常订单列表中移除。' },
     cancel: { title: '取消待接单订单', content: '确定取消这个尚未接单的订单吗？' }
    };
    const result = await new Promise(resolve => wx.showModal({ ...prompts[action], success: resolve, fail: () => resolve({ confirm: false }) }));
    if (!result.confirm || !this._visible) return;
    if (action === 'confirm') return this._startConfirmGate();
-   if (action === 'deliver') return this.bindPanel({ currentTarget: { dataset: { action } } });
+   if (action === 'deliver' || action === 'pickup') return this.bindPanel({ currentTarget: { dataset: { action } } });
    await this.perform(action);
   } finally { if (!this.data.confirmGate) this._confirming = false; }
  },
@@ -207,8 +241,13 @@ Page({
  },
  async bindSubmitPanel() {
   if (!this.data.panel || this.data.busy) return;
-  if (!this.data.note.trim()) { Ops.error(new Error('请填写说明')); return; }
-  if (['deliver', 'update_proof'].includes(this.data.panel) && !this.data.images.length) { Ops.error(new Error('请至少上传1张送达照片')); return; }
+  const placeProof = this.data.deliveryMode !== 'face';
+  const deliveryPanel = ['deliver', 'update_proof'].includes(this.data.panel);
+  // 放置指定位置必须有说明与照片；当面交付由发布人确认收货，照片与说明都可以留空。
+  const needsPhotos = this.data.panel === 'pickup' || deliveryPanel && placeProof;
+  const needsNote = this.data.panel === 'exception' || deliveryPanel && placeProof;
+  if (needsNote && !this.data.note.trim()) { Ops.error(new Error('请填写送达位置与物品情况')); return; }
+  if (needsPhotos && !this.data.images.length) { Ops.error(new Error(this.data.panel === 'pickup' ? '取件请至少拍摄1张凭证照片' : '请至少上传1张凭证照片，或改为当面交付')); return; }
   await this.perform(this.data.panel);
  },
  async perform(action) {
@@ -222,10 +261,19 @@ Page({
   try {
    if (!await PassportBiz.loginMustCancelWin(this)) return;
    const params = { id: this.data.id };
+   if (action === 'pickup') {
+    params.note = this.data.note.trim();
+    params.images = await Ops.upload(this.data.images);
+    params.videos = await Ops.uploadVideo(this.data.video ? [this.data.video] : []);
+   }
    if (['deliver', 'update_proof', 'exception'].includes(action)) {
     params.note = this.data.note.trim();
     params.images = await Ops.upload(this.data.images);
     if (action === 'exception') params.reason = this.data.reasons[this.data.reasonIndex];
+    else {
+     params.mode = this.data.deliveryMode === 'face' ? 'face' : 'place';
+     params.videos = await Ops.uploadVideo(this.data.video ? [this.data.video] : []);
+    }
    }
    const route = { pickup: 'mail/pickup', deliver: 'mail/deliver', update_proof: 'mail/update_proof', exception: 'mail/exception', confirm: 'mail/finish', cancel: 'mail/cancel' }[action];
    await Ops.command(route, params);

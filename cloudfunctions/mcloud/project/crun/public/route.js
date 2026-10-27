@@ -16,6 +16,7 @@ module.exports = {
 'admin/operations_hold':'admin/admin_operations_controller@hold',
 "mail/deliver":"mail_controller@deliverMail",
 "mail/update_proof":"mail_controller@updateDeliveryProof",
+"mail/remind":"mail_controller@remindReceipt",
 "mail/exception":"mail_controller@exceptionMail",
 "operations/config":"operations_controller@getConfig",
 "operations/feed":"operations_controller@feed",

@@ -138,6 +138,21 @@
 	color: #fff;
 }
 
+/* 邀请奖励 */
+.reward-card {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+}
+
+.reward-copy { flex: 1; min-width: 0; }
+.reward-label { font-size: 24rpx; color: #7c8ba0; }
+.reward-amount { margin: 6rpx 0 8rpx; font-size: 48rpx; font-weight: 700; color: #c88934; line-height: 1.2; }
+.reward-note { font-size: 21rpx; color: #98a6b8; line-height: 1.6; }
+.reward-btn { flex: 0 0 190rpx; }
+
 /* 列表 */
 .list-card {
 	padding-bottom: 10rpx;

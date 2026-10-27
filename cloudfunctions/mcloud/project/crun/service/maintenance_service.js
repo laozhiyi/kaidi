@@ -31,17 +31,20 @@ class MaintenanceService extends Base {
     const now=Date.now();
     const queries=kind==='notifications'
      ? [['notification',{delivery:cmd.in(['pending','retry','sending']),nextAttemptAt:cmd.lte(now)},'nextAttemptAt']]
-     : [['mail',{MAIL_STATUS:0,MAIL_PAYMENT_MODE:'offline',MAIL_END_TIME:cmd.lt(now)},'MAIL_END_TIME'],['mail',cmd.and([{MAIL_STATUS:cmd.in([1,2,3,4]),MAIL_DUE_TIME:cmd.lt(now),MAIL_OVERDUE_NOTIFIED:cmd.neq(true)},{MAIL_DUE_TIME:cmd.gt(0)}]),'MAIL_DUE_TIME']];
+     : [['mail',{MAIL_STATUS:0,MAIL_PAYMENT_MODE:'offline',MAIL_END_TIME:cmd.lt(now)},'MAIL_END_TIME','expire'],
+        ['mail',cmd.and([{MAIL_STATUS:cmd.in([1,2,3,4]),MAIL_DUE_TIME:cmd.lt(now),MAIL_OVERDUE_NOTIFIED:cmd.neq(true)},{MAIL_DUE_TIME:cmd.gt(0)}]),'MAIL_DUE_TIME','overdue'],
+        // 送达后 8 小时未确认收货：自动确认，订单双方都收到一次状态更新。
+        ['mail',cmd.and([{MAIL_STATUS:2,MAIL_DELIVERED_TIME:cmd.lt(now-Mail.AUTO_CONFIRM_MS)},{MAIL_DELIVERED_TIME:cmd.gt(0)}]),'MAIL_DELIVERED_TIME','auto_confirm']];
     let count=0;
     let more=false;
-    for(const [collection,where,order] of queries){
+    for(const [collection,where,order,scheduled] of queries){
      if(finished.has(order)||Date.now()>=deadline)continue;
      const cursor=cursors[order];
      const filters=[{_pid:'crun',tenantRetired:cmd.neq(true),...(collection==='mail'?{MAIL_ADMIN_DELETED:cmd.neq(true)}:{}),...(shard===undefined?{}:{workerShard:shard})},where];
      if(cursor)filters.push(cmd.or([{[order]:cmd.gt(cursor.time)},{[order]:cursor.time,_id:cmd.gt(cursor.id)}]));
      const rows=await db.collection(store.collection(collection)).where(cmd.and(filters)).orderBy(order,'asc').orderBy('_id','asc').limit(batchSize).get();
      count+=rows.data.length;result.scanned+=rows.data.length;
-     const work=await this._scheduledBatch(rows.data,row=>runRow(row,item=>kind==='notifications'?this.dispatch(item._id):this._sweep(item._id,order==='MAIL_END_TIME'?'expire':'overdue')),deadline);
+     const work=await this._scheduledBatch(rows.data,row=>runRow(row,item=>kind==='notifications'?this.dispatch(item._id):this._sweep(item._id,scheduled||(order==='MAIL_END_TIME'?'expire':'overdue'))),deadline);
      result.failed+=work.failed;result.processed+=work.started-work.failed;
      const full=rows.data.length===batchSize || work.started<rows.data.length;
      more=more||full;
@@ -77,15 +80,21 @@ class MaintenanceService extends Base {
  async _sweep(id,action){
   return store.transaction(async tx=>{
    const row=await store.get(tx,'mail',id),now=Date.now();if(!row||row.MAIL_ADMIN_DELETED===true)return;
-   const svc=new Mail();row._id=id;
-   if(action==='expire'){
-    if(row.MAIL_STATUS!==0||row.MAIL_PAYMENT_MODE!=='offline'||row.MAIL_END_TIME>=now)return;
-    row.MAIL_STATUS=99;await svc._quota(tx,row.MAIL_USER_ID,'poster',id,false,0);
-   }else{
-    if(![1,2,3,4].includes(row.MAIL_STATUS)||row.MAIL_OVERDUE_NOTIFIED||!(row.MAIL_DUE_TIME>0&&row.MAIL_DUE_TIME<now))return;
-    row.MAIL_OVERDUE_NOTIFIED=true;
-   }
-   await svc._record(tx,row,{userId:row.MAIL_USER_ID},action,store.key(action,id),action==='expire'?'超过接单截止时间，自动关闭':'订单已超过预计履约时限，请联系对方或提交异常');
+  const svc=new Mail();row._id=id;
+  if(action==='expire'){
+   if(row.MAIL_STATUS!==0||row.MAIL_PAYMENT_MODE!=='offline'||row.MAIL_END_TIME>=now)return;
+   row.MAIL_STATUS=99;await svc._quota(tx,row.MAIL_USER_ID,'poster',id,false,0);
+  }else if(action==='auto_confirm'){
+   // 送达满 8 小时仍未确认收货，视为收货，避免订单长期挂在待收货。
+   if(row.MAIL_STATUS!==2||!(row.MAIL_DELIVERED_TIME>0)||row.MAIL_DELIVERED_TIME>now-Mail.AUTO_CONFIRM_MS)return;
+   row.MAIL_STATUS=9;row.MAIL_OVER_TIME=now;row.MAIL_AUTO_CONFIRMED=true;row.MAIL_POSTER_ARCHIVED=true;row.MAIL_RIDER_ARCHIVED=true;
+   await svc._quota(tx,row.MAIL_USER_ID,'poster',id,false,0);
+   if(row.MAIL_ACCEPT_USER_ID)await svc._quota(tx,row.MAIL_ACCEPT_USER_ID,'rider',id,false,0);
+  }else{
+   if(![1,2,3,4].includes(row.MAIL_STATUS)||row.MAIL_OVERDUE_NOTIFIED||!(row.MAIL_DUE_TIME>0&&row.MAIL_DUE_TIME<now))return;
+   row.MAIL_OVERDUE_NOTIFIED=true;
+  }
+  await svc._record(tx,row,{userId:row.MAIL_USER_ID},action,store.key(action,id),action==='expire'?'超过接单截止时间，自动关闭':action==='auto_confirm'?'送达超过8小时未确认，系统已自动确认收货':'订单已超过预计履约时限，请联系对方或提交异常');
   });
  }
  async _batch(rows, work) {
@@ -101,12 +110,15 @@ class MaintenanceService extends Base {
   const expiredFailed=await this._batch(expired.data,item=>store.transaction(async tx=>{const row=await store.get(tx,'mail',item._id);if(!row||row._pid!==pid||row.MAIL_ADMIN_DELETED===true||row.MAIL_STATUS!==0||row.MAIL_END_TIME>=Date.now())return;row._id=item._id;row.MAIL_STATUS=99;const svc=new Mail();await svc._quota(tx,row.MAIL_USER_ID,'poster',row._id,false,0);await svc._record(tx,row,{userId:row.MAIL_USER_ID},'expire',store.key('expire',row._id),'超过接单截止时间，自动关闭');}));
   const overdue=await db.collection(store.collection('mail')).where({_pid:pid,MAIL_ADMIN_DELETED:cmd.neq(true),MAIL_STATUS:cmd.in([1,2,3,4]),MAIL_DUE_TIME:cmd.lt(now),MAIL_OVERDUE_NOTIFIED:cmd.neq(true)}).orderBy('MAIL_DUE_TIME','asc').limit(30).get();
   const overdueFailed=await this._batch(overdue.data,item=>store.transaction(async tx=>{const row=await store.get(tx,'mail',item._id);if(!row||row._pid!==pid||row.MAIL_ADMIN_DELETED===true||![1,2,3,4].includes(row.MAIL_STATUS)||row.MAIL_OVERDUE_NOTIFIED||!(row.MAIL_DUE_TIME>0&&row.MAIL_DUE_TIME<Date.now()))return;row._id=item._id;row.MAIL_OVERDUE_NOTIFIED=true;await new Mail()._record(tx,row,{userId:row.MAIL_USER_ID},'overdue',store.key('overdue',row._id),'订单已超过预计履约时限，请联系对方或提交异常');}));
+  // 手动维护入口与定时任务保持一致：送达满 8 小时也自动确认收货。
+  const autoConfirm=await db.collection(store.collection('mail')).where({_pid:pid,MAIL_ADMIN_DELETED:cmd.neq(true),MAIL_STATUS:2,MAIL_DELIVERED_TIME:cmd.lt(now-Mail.AUTO_CONFIRM_MS)}).orderBy('MAIL_DELIVERED_TIME','asc').limit(30).get();
+  const autoConfirmFailed=await this._batch(autoConfirm.data,item=>this._sweep(item._id,'auto_confirm'));
   const pending=await db.collection(store.collection('notification')).where({_pid:pid,delivery:cmd.in(['pending','retry','sending']),nextAttemptAt:cmd.lte(now)}).orderBy('nextAttemptAt','asc').limit(30).get();
   const notificationFailed=await this._batch(pending.data,message=>this.dispatch(message._id));
   // Only transient rate-limit buckets are pruned. Orders, audit and idempotency records are retained.
   const buckets=await db.collection(store.collection('operation_limit')).where({_pid:pid,expiresAt:cmd.lt(now)}).limit(100).get();
   const cleanupFailed=await this._batch(buckets.data,row=>db.collection(store.collection('operation_limit')).doc(row._id).remove());
-  return {expired:expired.data.length-expiredFailed,overdue:overdue.data.length-overdueFailed,notifications:pending.data.length-notificationFailed,cleaned:buckets.data.length-cleanupFailed,failed:expiredFailed+overdueFailed+notificationFailed+cleanupFailed};
+  return {expired:expired.data.length-expiredFailed,overdue:overdue.data.length-overdueFailed,autoConfirm:autoConfirm.data.length-autoConfirmFailed,notifications:pending.data.length-notificationFailed,cleaned:buckets.data.length-cleanupFailed,failed:expiredFailed+overdueFailed+autoConfirmFailed+notificationFailed+cleanupFailed};
  }
  async dispatch(id) {
   const claim=store.key(id,Date.now(),Math.random());

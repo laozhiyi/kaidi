@@ -38,6 +38,16 @@ class TenantService {
       campuses: campuses.filter(row => schoolIds.has(row.schoolId)).map(row => ({ schoolId: row.schoolId, campusId: row.campusId, name: row.name, enabled: row.enabled === true, version: row.version })),
       version: Math.max(0, ...schools.map(row => row.updatedAt || 0), ...campuses.map(row => row.updatedAt || 0)) };
   }
+  // 同一学校下所有开放校区的名称，按「当前校区优先」排序。
+  // 个人资料、管理端筛选等需要「全校可选」的地方统一读这里，避免与首页目录不一致。
+  async campusNames(schoolId, currentCampusId = '') {
+    const db = store.database();
+    const rows = await db.collection(store.collection('campus')).where({ _pid: 'crun', schoolId })
+      .field({ campusId: true, name: true, enabled: true }).limit(50).get();
+    const list = rows.data.filter(row => row && row.enabled === true && typeof row.name === 'string' && row.name.trim());
+    list.sort((a, b) => (b.campusId === currentCampusId) - (a.campusId === currentCampusId) || String(a._id).localeCompare(String(b._id)));
+    return list.map(row => row.name.trim());
+  }
   async resolve(value, {allowDisabled=false} = {}) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new AppError('请更新小程序并选择学校和校区');
     const schoolId = id(value.schoolId, '学校编号'), campusId = id(value.campusId, '校区编号');

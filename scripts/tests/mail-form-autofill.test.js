@@ -54,9 +54,9 @@ for (const embedded of [false, true]) {
     assert.equal(h.page.data.mailValues.address2, '一期 3栋303室');
     assert.equal(value(h.page.data.formForms, 'desc'), '');
     assert.equal(value(h.engine.getForms(), 'desc'), '');
-    assert.equal(Number(value(h.engine.getForms(), 'small')), 1);
-    assert.equal(h.page.data.packageItems.length, 1);
-    assert.equal(h.page.data.packageItems[0].pickupPoint, '');
+    assert.equal(Number(value(h.engine.getForms(), 'small')), 0);
+    assert.equal(h.page.data.packageItems.length, 0);
+    assert.equal(h.page.data.totalCount, 0);
     assert.deepEqual(copy(value(h.engine.data.fields, 'img')), []);
     assert.deepEqual(h.errors, []);
   });
@@ -112,10 +112,16 @@ test('two consecutive home submissions use fresh parcel data and the refreshed d
   const h = harness({ embedded: true }); await h.start();
   h.page.triggerEvent = name => { if (name === 'published') h.page.resetAfterPublish(); };
   for (const order of [1, 2]) {
+    // Parcel counts start at 0 for take/send: pick one small parcel like the user does.
+    if (!h.page.data.packageItems.length) h.page.bindPackageTap({ currentTarget: { dataset: { index: 0, step: 1 } } });
     h.page.bindPackageItemInput({ currentTarget: { dataset: { index: 0, mark: 'pickupPoint' } }, detail: { value: '一期 · 菜鸟驿站' } });
     h.page.bindPackageItemInput({ currentTarget: { dataset: { index: 0, mark: 'code' } }, detail: { value: 'code-' + order } });
     if (order === 1) h.page.bindMailInput(event('address2', '首单临时地址'));
-    await h.page.bindFormSubmit();
+    const submit = h.page.bindFormSubmit();
+    await flush();
+    assert.equal(h.modals.at(-1).title, '贵重物品提醒');
+    h.modals.at(-1).success({ confirm: true });
+    await submit;
     assert.equal(h.commands.length, order, JSON.stringify(h.errors));
     assert.equal(value(h.commands[order - 1].params.forms, 'address2'), order === 1 ? '首单临时地址' : '一期 下一单地址');
     h.modals.at(-1).success();

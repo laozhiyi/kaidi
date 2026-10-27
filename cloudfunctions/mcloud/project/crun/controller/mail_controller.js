@@ -10,7 +10,7 @@ class MailController extends Base {
  async _action(method, extra = {}, audit = false) {
   const input=this._input(extra), svc=new MailService();
   if(audit) {
-   const action={cancelMail:'cancel',deliverMail:'deliver',updateDeliveryProof:'update_proof',exceptionMail:'exception'}[method];
+   const action={pickupMail:'pickup',cancelMail:'cancel',deliverMail:'deliver',updateDeliveryProof:'update_proof',exceptionMail:'exception'}[method];
    const replay=await svc.replayRequest(this._userId,action,input); if(replay)return replay;
    input._sourceFingerprint=store.key(input);
    const oldProof=method === 'updateDeliveryProof' ? await svc.getDeliveryProofForUpdate(this._userId,input.id) : null;
@@ -20,11 +20,12 @@ class MailController extends Base {
  }
  async _checkImages(images,allowed=[]) { const result=[];for (const id of require('../service/order_rules.js').images(images)) result.push(await check.checkCloudImage(id,allowed));return result; }
  async acceptMail() {return this._action('acceptMail');}
- async pickupMail() {return this._action('pickupMail');}
+ async pickupMail() {return this._action('pickupMail',{note:'string|max:300',images:'array',videos:'array'},true);}
+ async remindReceipt() {return this._action('remindReceipt');}
  async cancelMail() {return this._action('cancelMail',{note:'string|max:300'},true);}
  async finishMail() {return this._action('finishMail');}
- async deliverMail() {return this._action('deliverMail',{note:'string|max:300',images:'array'},true);}
- async updateDeliveryProof() {return this._action('updateDeliveryProof',{note:'must|string|max:300',images:'must|array'},true);}
+ async deliverMail() {return this._action('deliverMail',{note:'string|max:300',mode:'string|max:10',images:'array',videos:'array'},true);}
+ async updateDeliveryProof() {return this._action('updateDeliveryProof',{note:'string|max:300',images:'array',videos:'array'},true);}
  async exceptionMail() {return this._action('exceptionMail',{reason:'must|string|max:30',note:'must|string|max:500',images:'array'},true);}
  async statusMail() {return new MailService().statusMail();}
  async delMail() {return this._action('delMail');}
@@ -82,7 +83,16 @@ class MailController extends Base {
   if (diff === 2) return '后天 ' + hm;
   return part(value, 'md') + ' ' + hm;
  }
- async viewMail() {const p=this.validateData({id:'must|id'});const mail=this._format(await new MailService().viewMail(this._userId,p.id));if(mail)mail.expectLabel=this._expectLabel(mail.MAIL_EXPECT_TIME || mail.MAIL_END_TIME);return mail;}
- async getMailList() {const p=this.validateData({search:'string|max:30',sortType:'string|max:30',sortVal:'string|max:30',orderBy:'object',whereEx:'object',cursor:'object',isTotal:'bool',oldTotal:'int|min:0',page:'int|default=1|min:1|max:500',size:'int|default=20|min:1|max:50'});const result=await new MailService().getMailList(this._userId,p);result.list=result.list.map(m=>{const left=m.MAIL_END_TIME-Date.now(),minutes=left<=0?0:Math.ceil(left/60000),hours=Math.floor(minutes/60),rest=minutes%60;m.MAIL_OBJ=m.MAIL_OBJ||{};m.MAIL_OBJ.leftTimeLabel=left<=0?'已截止':hours>0?hours+'小时'+(rest?rest+'分钟':''):minutes+'分钟';m.MAIL_OBJ.leftSoon=left>0&&left<=7200000;m.MAIL_OBJ.expectLabel=this._expectLabel(m.MAIL_EXPECT_TIME||m.MAIL_END_TIME);return this._format(m);});return result;}
+ /** 「期待送达」区间文案：同一天合并为 “今天 13:30 ~ 15:30”，跨天保留两端完整日期。 */
+ _rangeLabel(startAt, endAt) {
+  const start = Number(startAt) || 0, end = Number(endAt) || 0;
+  if (!end || start <= 0 || start === end) return this._expectLabel(end || start);
+  const from = this._expectLabel(start), to = this._expectLabel(end);
+  const split = value => { const at = value.indexOf(' '); return at < 0 ? [value, ''] : [value.slice(0, at), value.slice(at + 1)]; };
+  const [dayFrom, timeFrom] = split(from), [dayTo, timeTo] = split(to);
+  return dayFrom === dayTo && dayTo ? dayFrom + ' ' + timeFrom + ' ~ ' + timeTo : from + ' ~ ' + to;
+ }
+ async viewMail() {const p=this.validateData({id:'must|id'});const mail=this._format(await new MailService().viewMail(this._userId,p.id));if(mail)mail.expectLabel=this._rangeLabel(mail.MAIL_EXPECT_START, mail.MAIL_EXPECT_TIME || mail.MAIL_END_TIME);return mail;}
+ async getMailList() {const p=this.validateData({search:'string|max:30',sortType:'string|max:30',sortVal:'string|max:30',orderBy:'object',whereEx:'object',cursor:'object',isTotal:'bool',oldTotal:'int|min:0',page:'int|default=1|min:1|max:500',size:'int|default=20|min:1|max:50'});const result=await new MailService().getMailList(this._userId,p);result.list=result.list.map(m=>{const left=m.MAIL_END_TIME-Date.now(),minutes=left<=0?0:Math.ceil(left/60000),hours=Math.floor(minutes/60),rest=minutes%60;m.MAIL_OBJ=m.MAIL_OBJ||{};m.MAIL_OBJ.leftTimeLabel=left<=0?'已截止':hours>0?hours+'小时'+(rest?rest+'分钟':''):minutes+'分钟';m.MAIL_OBJ.leftSoon=left>0&&left<=7200000;m.MAIL_OBJ.expectLabel=this._rangeLabel(m.MAIL_EXPECT_START,m.MAIL_EXPECT_TIME||m.MAIL_END_TIME);return this._format(m);});return result;}
 }
 module.exports=MailController;

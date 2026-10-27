@@ -74,7 +74,10 @@ async function afterWrite(userId) {
   if (active) await refresh(true);
 }
 function markRead(id, kind = 'notification') {
-  const userId = syncIdentity();
+  let userId = '';
+  // Reading the session must never surface as a page error: callers sit inside
+  // their detail-loading try blocks and only guard the returned promise.
+  try { userId = syncIdentity(); } catch (_) { return Promise.resolve(false); }
   if (!userId || !id) return Promise.resolve(false);
   const key = userId + ':' + kind + ':' + id;
   if (acknowledged.has(key)) return Promise.resolve(true);

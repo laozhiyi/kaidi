@@ -15,7 +15,7 @@ async function harness(pickedUp = false) {
  forms.find(field => field.mark === 'address2').val = '五期 3栋201室（东侧楼梯入口）';
  const id = await f.publish({ forms });
  await f.service.acceptMail('rider', id, { requestId: f.req('accept') });
- if (pickedUp) await f.service.pickupMail('rider', id, { requestId: f.req('pickup') });
+ if (pickedUp) await f.service.pickupMail('rider', id, { requestId: f.req('pickup'), images: ['cloud://bucket/private-evidence/rider/pickup.png'] });
  let sequence = 0, actor = 'rider';
  const modals = [], navigation = [], commands = [], uploads = [], errors = [];
  const ops = {
@@ -26,7 +26,8 @@ async function harness(pickedUp = false) {
    assert.ok(method, route);
    return f.service[method](actor, params.id, { ...params, requestId: f.req('ui-' + ++sequence) });
   },
-  async upload(paths) { uploads.push(Array.from(paths)); return paths.map((_, index) => 'cloud://delivery/proof-' + index); },
+  async upload(paths) { const list = Array.from(paths || []); if (!list.length) return []; uploads.push(list); return list.map((_, index) => 'cloud://delivery/proof-' + index); },
+ async uploadVideo(paths) { const list = Array.from(paths || []); if (!list.length) return []; uploads.push(['video:' + list[0]]); return ['cloud://delivery/video-0']; },
   error: error => errors.push(error.message || error.msg),
  };
  const wx = {
@@ -69,31 +70,46 @@ async function harness(pickedUp = false) {
  };
 }
 
-test('card pickup advances to delivery; delivery navigates to details and changes state only after text and photos are submitted', async () => {
+test('card pickup opens details for photo proof, and delivery only advances after proof is submitted', async () => {
  const h = await harness(), list = h.mount('order/index/order_index', { tab: 1 });
  list.onShow(); await list._syncOrders();
  assert.equal(list.data.dataList.list[0].progressStep, 1);
  await list.bindOrderAction(event(h.id, 'deliver'));
  assert.equal(h.modals.length, 0, 'delivery cannot skip pickup');
- const pickup = list.bindOrderAction(event(h.id, 'pickup'));
- await list.bindOrderAction(event(h.id, 'pickup'));
- assert.equal(h.modals.length, 1); h.confirm(); await pickup;
+
+ // 取件同样需要凭证：卡片只负责跳转到详情页填写，自己不推进状态。
+ const pickup = list.bindOrderAction(event(h.id, 'pickup')); await tick();
+ assert.equal(h.modals.length, 1); h.confirm(); await tick();
+ assert.equal(h.navigation.length, 1);
+ assert.match(h.navigation[0].url, /mail_my_detail\?id=.+&panel=pickup$/);
+ h.navigation[0].success({}); await pickup;
+ assert.equal(h.stored().MAIL_STATUS, 1); assert.equal(h.commands.length, 0);
+
+ const pickupOptions = Object.fromEntries(new URL(h.navigation[0].url, 'https://local.test').searchParams);
+ const pickupPage = h.mount('mail/my_detail/mail_my_detail', pickupOptions); await pickupPage.onShow();
+ assert.equal(pickupPage.data.panel, 'pickup'); assert.equal(pickupPage.data.detailUI.primaryLabel, '已取件');
+ await pickupPage.bindSubmitPanel(); assert.equal(h.stored().MAIL_STATUS, 1);
+ pickupPage.setData({ images: ['pickup.jpg'] }); await pickupPage.bindSubmitPanel();
  assert.equal(h.stored().MAIL_STATUS, 4);
+ assert.deepEqual(Array.from(h.stored().MAIL_PICKUP_PROOF.images), ['cloud://delivery/proof-0']);
+ pickupPage.onHide();
+
+ list.onShow(); await list._syncOrders();
  const card = list.data.dataList.list[0];
  assert.equal(card.progressStep, 2); assert.deepEqual(Array.from(card.progressLabels), labels);
  assert.equal(card.deliveryAddress, '育才校区 · 五期 3栋201室（东侧楼梯入口）');
 
- const delivery = list.bindOrderAction(event(h.id, 'deliver'));
- assert.match(h.modals.at(-1).content, /订单详情.*说明.*照片/);
- assert.equal(h.navigation.length, 0); h.confirm(); await tick();
- assert.equal(h.navigation.length, 1);
- assert.match(h.navigation[0].url, /mail_my_detail\?id=.+&panel=deliver$/);
+ const delivery = list.bindOrderAction(event(h.id, 'deliver')); await tick();
+ assert.match(h.modals.at(-1).content, /订单详情.*凭证/);
+ h.confirm(); await tick();
+ assert.equal(h.navigation.length, 2);
+ assert.match(h.navigation[1].url, /mail_my_detail\?id=.+&panel=deliver$/);
  await list.bindOrderAction(event(h.id, 'deliver'));
  assert.equal(h.modals.length, 2, 'navigation remains locked until it completes');
- h.navigation[0].success({}); await delivery; list.onHide();
- assert.equal(h.stored().MAIL_STATUS, 4); assert.equal(h.commands.length, 1); assert.equal(h.uploads.length, 0);
+ h.navigation[1].success({}); await delivery; list.onHide();
+ assert.equal(h.stored().MAIL_STATUS, 4); assert.equal(h.commands.length, 1); assert.equal(h.uploads.length, 1);
 
- const options = Object.fromEntries(new URL(h.navigation[0].url, 'https://local.test').searchParams);
+ const options = Object.fromEntries(new URL(h.navigation[1].url, 'https://local.test').searchParams);
  const detail = h.mount('mail/my_detail/mail_my_detail', options); await detail.onShow();
  assert.equal(detail.data.panel, 'deliver'); assert.equal(detail.data.detailUI.primaryLabel, '已送达');
  assert.equal(detail.data.detailUI.step, card.progressStep);
@@ -101,9 +117,10 @@ test('card pickup advances to delivery; delivery navigates to details and change
  assert.equal(detail.data.detailUI.deliveryAddress, card.deliveryAddress);
  await detail.bindSubmitPanel(); detail.setData({ note: '   ' }); await detail.bindSubmitPanel();
  detail.setData({ note: '已放到201室门口，请及时查收。' }); await detail.bindSubmitPanel();
- assert.equal(h.uploads.length, 0); assert.equal(h.stored().MAIL_STATUS, 4);
+ assert.equal(h.uploads.length, 1); assert.equal(h.stored().MAIL_STATUS, 4);
  detail.setData({ images: ['local-photo.jpg'] }); await detail.bindSubmitPanel();
  assert.equal(h.stored().MAIL_STATUS, 2);
+ assert.equal(h.stored().MAIL_DELIVERY_PROOF.mode, 'place');
  assert.equal(h.stored().MAIL_DELIVERY_PROOF.note, detail.data.note);
  assert.deepEqual(Array.from(h.stored().MAIL_DELIVERY_PROOF.images), ['cloud://delivery/proof-0']);
  assert.deepEqual(h.commands.map(command => command.route), ['mail/pickup', 'mail/deliver']);
@@ -118,12 +135,17 @@ test('detail pickup and delivery use separate confirmations, and cancelling eith
  assert.equal(page.data.detailUI.primaryLabel, '已取件');
  page.bindPanel(event(h.id, 'deliver')); assert.equal(page.data.panel, '');
  const cancelled = page.bindPrimaryAction(); h.confirm(false); await cancelled;
- assert.equal(h.stored().MAIL_STATUS, 1); assert.equal(h.commands.length, 0);
+ assert.equal(h.stored().MAIL_STATUS, 1); assert.equal(h.commands.length, 0); assert.equal(page.data.panel, '');
  const pickup = page.bindPrimaryAction(); await page.bindPrimaryAction();
  assert.equal(h.modals.length, 2); assert.equal(h.modals.at(-1).title, '确认已取件');
  h.confirm(); await pickup;
+ // 取件确认后先进入凭证面板：没有照片不提交，状态停在本页。
+ assert.equal(page.data.panel, 'pickup'); assert.equal(h.commands.length, 0);
+ await page.bindSubmitPanel(); assert.equal(h.stored().MAIL_STATUS, 1); assert.equal(page.data.panel, 'pickup');
+ page.setData({ images: ['local-pickup.jpg'] }); await page.bindSubmitPanel();
  assert.equal(h.stored().MAIL_STATUS, 4); assert.equal(page.data.detailUI.primaryLabel, '已送达');
  assert.equal(page.data.detailUI.showProgress, true); assert.equal(page.data.detailUI.step, 2);
+ assert.equal(h.commands.length, 1); assert.equal(page.data.panel, '');
  const cancelledDelivery = page.bindPrimaryAction();
  assert.equal(h.modals.at(-1).title, '确认已送达'); h.confirm(false); await cancelledDelivery;
  assert.equal(page.data.panel, ''); assert.equal(h.stored().MAIL_STATUS, 4);

@@ -179,44 +179,30 @@ test('unfinished-order rejection leaves the user logged in and reports the serve
   assert.equal(h.navigation.length, 0);
 });
 
-test('confirming the login sheet saves the native nickname and avatar then opens personal details', async () => {
-  const h = harness({ realPassport: true, guest: true, phoneLoginEnabled: false, uploadAvatar: () => 'cloud://test/new-avatar.jpg' });
-  const page = h.page('my/reg/my_reg.js'); await page.onLoad();
-  page.bindOpenWechatProfile();
-  page.bindPicTap({ detail: { avatarUrl: 'wxfile://tmp/avatar.jpg' } });
-  page.setData({ formName: '失焦前缓存' });
+test('the WeChat login button starts a single identity login and continues to personal details', async () => {
+  const h = harness({ realPassport: true, phoneLoginEnabled: false }); h.passport.logout();
   h.responses['passport/wechat_identity_login'] = { token: { id: 'poster', sessionToken: 'b'.repeat(64), status: 0, profileComplete: false, phoneVerified: false, allowManualRegistration: true },
     user: { USER_STATUS: 0, USER_NAME: '', USER_PIC: '', USER_PROFILE_COMPLETE: false, USER_MOBILE_VERIFIED: false, allowManualRegistration: true, phoneLoginEnabled: false } };
-  h.responses['passport/wechat_profile'] = { token: { id: 'poster', sessionToken: 'b'.repeat(64), name: '微信最终昵称', pic: 'cloud://test/new-avatar.jpg', status: 0, profileComplete: false, phoneVerified: false, allowManualRegistration: true } };
-  await page.bindConfirmWechatProfile({ detail: { value: { nickname: '微信最终昵称' } } });
-  const save = h.calls.find(call => call.route === 'passport/wechat_profile');
-  assert.ok(save); assert.equal(save.params.name, '微信最终昵称');
-  assert.equal(save.params.pic, 'cloud://test/new-avatar.jpg');
-  assert.ok(h.navigation.some(item => item.type === 'redirect' && item.url.endsWith('/my/personal/my_personal')));
-  assert.equal(h.calls.filter(call => /passport\/(register|edit_base|wechat_login)$/.test(call.route)).length, 0);
-});
-
-test('the WeChat login button opens one profile sheet; cancelling it makes no login request', async () => {
-  const h = harness({ realPassport: true, phoneLoginEnabled: false }); h.passport.logout();
   const page = h.page('my/reg/my_reg.js'); await page.onLoad(); h.calls.length = 0;
-  page.bindOpenWechatProfile(); page.bindOpenWechatProfile();
-  assert.equal(page.data.wechatProfileVisible, true);
-  page.bindPicTap({ detail: { avatarUrl: 'wxfile://tmp/avatar.jpg' } });
-  assert.equal(page.data.formPic, 'wxfile://tmp/avatar.jpg', 'the native avatar chooser works after an explicit logout');
-  page.bindCloseWechatProfile();
-  assert.equal(page.data.wechatProfileVisible, false); assert.equal(h.calls.length, 0);
-  assert.equal(h.passport.isLoggedOut(), true); assert.equal(h.navigation.length, 0);
+  const first = page.bindOpenWechatProfile();
+  await page.bindOpenWechatProfile();
+  await first;
+  assert.equal(h.calls.filter(call => call.route === 'passport/wechat_identity_login').length, 1);
+  assert.equal(page.data.identityLoggingIn, false);
+  assert.equal(page.data.loginError, '');
+  assert.ok(h.navigation.some(item => item.type === 'redirect' && item.url.endsWith('/my/personal/my_personal')));
+  assert.equal(h.calls.filter(call => /passport\/(register|edit_base|wechat_profile)$/.test(call.route)).length, 0);
 });
 
-test('the login sheet requires both native fields and uses the final submitted nickname', async () => {
-  const h = harness({ realPassport: true, guest: true, phoneLoginEnabled: false }), page = h.page('my/reg/my_reg.js');
-  await page.onLoad(); page.bindOpenWechatProfile(); h.calls.length = 0;
-  await page.bindConfirmWechatProfile(event({}, { nickname: '同学' }));
-  assert.match(page.data.loginError, /头像/);
-  page.bindPicTap({ detail: { avatarUrl: 'wxfile://tmp/avatar.jpg' } });
-  page.setData({ formName: '旧昵称' });
-  await page.bindConfirmWechatProfile(event({}, { nickname: '' }));
-  assert.match(page.data.loginError, /昵称/); assert.equal(h.calls.length, 0); assert.equal(h.navigation.length, 0);
+test('a rejected WeChat login keeps the registration page and reports the failure', async () => {
+  const h = harness({ realPassport: true, phoneLoginEnabled: false }); h.passport.logout();
+  h.responses['passport/wechat_identity_login'] = { token: null, user: null };
+  const page = h.page('my/reg/my_reg.js'); await page.onLoad(); h.calls.length = 0;
+  await page.bindOpenWechatProfile();
+  assert.match(page.data.loginError, /登录未完成/);
+  assert.equal(page.data.identityLoggingIn, false);
+  assert.equal(h.navigation.length, 0);
+  assert.equal(h.passport.isLoggedOut(), true);
 });
 
 test('cancelling personal logout preserves the session and unsaved profile', async () => {
@@ -1182,25 +1168,23 @@ for (const full of [false, true]) test((full ? 'full' : 'avatar') + ' profile up
   assert.equal(page.data.saving, false);
 });
 
-test('the login sheet retries a failed profile save without repeating successful identity login', async () => {
-  const h = harness({ guest: true, realPassport: true, realSessionSignals: true, phoneLoginEnabled: false, uploadAvatar: () => 'cloud://test/profile.jpg' });
-  const page = h.page('my/reg/my_reg.js'); await page.onLoad(); page.bindOpenWechatProfile();
+test('a failed WeChat detail save keeps the selection and retries without repeating identity login', async () => {
+  const { h, page } = await wechatProfilePage({ uploadAvatar: () => 'cloud://test/profile.jpg' });
   page.bindPicTap({ detail: { avatarUrl: 'wxfile://tmp/profile.jpg' } });
-  const token = { id: 'poster', sessionToken: 'b'.repeat(64), status: 0, phoneVerified: false, profileComplete: false, allowManualRegistration: true };
-  h.responses['passport/wechat_identity_login'] = { token, user: { USER_STATUS: 0, USER_NAME: '', USER_PIC: '', USER_FORMS: [], allowManualRegistration: true } };
   let failing = true;
   h.responses['passport/wechat_profile'] = params => {
     if (failing) throw Error('资料保存暂时失败');
-    return { token: { ...token, name: params.name, pic: params.pic } };
+    return { token: { ...h.token, name: params.name, pic: params.pic } };
   };
-  await page.bindConfirmWechatProfile(event({}, { nickname: '微信昵称' }));
-  assert.match(page.data.saveError, /暂时失败/); assert.equal(page.data.formName, '微信昵称');
-  assert.equal(page.data.formPic, 'cloud://test/profile.jpg'); assert.equal(page.data.wechatProfileVisible, true);
-  assert.equal(h.navigation.length, 0);
-  failing = false; await page.bindConfirmWechatProfile(event({}, { nickname: '微信昵称' }));
-  assert.equal(h.calls.filter(call => call.route === 'passport/wechat_identity_login').length, 1);
+  await page.bindProfileFormSubmit(event({}, { nickname: '微信昵称' }));
+  assert.match(page.data.saveError, /暂时失败/);
+  assert.equal(page.data.formName, '微信昵称');
+  assert.equal(page.data.formPic, 'cloud://test/profile.jpg');
+  assert.equal(h.calls.filter(call => call.route === 'passport/wechat_profile').length, 1);
+  failing = false; await page.bindProfileFormSubmit(event({}, { nickname: '微信昵称' }));
+  assert.equal(h.calls.filter(call => call.route === 'passport/wechat_identity_login').length, 0);
   assert.equal(h.calls.filter(call => call.route === 'passport/wechat_profile').length, 2);
-  assert.ok(h.navigation.at(-1).url.endsWith('/my/personal/my_personal'));
+  assert.equal(h.token.name, '微信昵称');
 });
 
 test('opening contact completion preserves the selected nickname and avatar', async () => {

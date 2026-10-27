@@ -49,14 +49,15 @@ function pageHarness(file, get, profile) {
  return { page, calls, patches, errors, navigation, ops };
 }
 
-test('home service tabs activate only the selected form', () => {
+test('home service tabs activate only the supported service and keep the rest closed', () => {
  const h = pageHarness('default/index/default_index.js', () => ({}));
  assert.equal(h.page.data.activeService, 'take');
  h.page.bindExpressTap();
- h.page.bindServiceTap({ currentTarget: { dataset: { key: 'send' } } });
- assert.equal(h.page.data.activeService, 'send');
- h.page.bindServiceTap({ currentTarget: { dataset: { key: 'buy' } } });
- assert.equal(h.page.data.activeService, 'buy');
+ // 代送、代买暂未开放：点击只提示“正在开发中”，不切换表单。
+ for (const key of ['send', 'buy']) {
+  h.page.bindServiceTap({ currentTarget: { dataset: { key } } });
+  assert.equal(h.page.data.activeService, 'take');
+ }
  h.page.bindServiceTap({ currentTarget: { dataset: { key: 'take' } } });
  assert.equal(h.page.data.activeService, 'take');
  assert.equal(h.navigation.length, 0);
@@ -98,12 +99,17 @@ test('saved address and contact choices support cancel, explicit confirmation an
  await page.onShow(); assert.equal(page.data.addressPickerVisible, true);
 });
 
-test('publishing from the home form leaves a fresh editable parcel ready for the next order', async () => {
+test('publishing from the home form waits for the next parcel count instead of pre-filling one', async () => {
  const h = pageHarness('mail/add/mail_add_logic.js', () => config), page = h.page;
  await page.onLoad({ embedded: true });
+ page.bindPackageTap({ currentTarget: { dataset: { index: 0, step: 1 } } });
  page.bindPackageItemInput({ currentTarget: { dataset: { index: 0, mark: 'code' } }, detail: { value: 'old-code' } });
+ assert.equal(page.data.packageItems[0].code, 'old-code');
  page.resetAfterPublish();
- assert.equal(page.data.packageItems.length, 1); assert.equal(page.data.packageItems[0].code, '');
+ assert.equal(page.data.packageItems.length, 0);
+ assert.equal(page.data.totalCount, 0);
+ assert.equal(page.data.totalFee, '0.00');
+ page.bindPackageTap({ currentTarget: { dataset: { index: 0, step: 1 } } });
  page.bindPackageItemInput({ currentTarget: { dataset: { index: 0, mark: 'code' } }, detail: { value: 'new-code' } });
  assert.equal(page.data.packageItems[0].code, 'new-code'); assert.equal(page.data.totalFee, '2.50');
 });
@@ -117,8 +123,9 @@ test('publish config failure exits loading and retries without a modal loop or d
  const count = h.page.data.formForms.length;
  fail = false; await h.page.bindRetryLoad();
  assert.equal(h.page.data.isLoad, true); assert.equal(h.page.data.configError, false); assert.equal(h.page.data.formForms.length, count);
- assert.equal(h.page.data.packageTypes[0].price, '2.50'); assert.equal(h.page.data.totalFee, '2.50');
- assert.equal(h.page.data.formForms.find(x => x.mark === 'price').val, '2.50');
+ assert.equal(h.page.data.packageTypes[0].price, '2.50'); assert.equal(h.page.data.totalFee, '0.00');
+ assert.equal(h.page.data.formForms.find(x => x.mark === 'price').val, '0.00');
+ assert.equal(h.page.data.totalCount, 0);
 });
 
 test('refresh preserves publish drafts and campus, and blocks submission on failed config refresh', async () => {
@@ -134,7 +141,7 @@ test('refresh preserves publish drafts and campus, and blocks submission on fail
  fail = false; await h.page.bindRetryLoad();
  assert.equal(h.page.data.mailValues.address2, '宿舍201'); assert.equal(h.page.data.campus, '西校区');
  assert.equal(h.page.data.formForms.find(x => x.mark === 'address2').val, '宿舍201');
- assert.equal(h.page.data.formEnd, '2026-09-09 12:00'); assert.equal(h.page.data.totalCount, 2); assert.equal(h.page.data.totalFee, '6.50');
+ assert.equal(h.page.data.formEnd, '2026-09-09 12:00'); assert.equal(h.page.data.totalCount, 1); assert.equal(h.page.data.totalFee, '4.00');
 });
 
 test('invalid config fails closed instead of calling toFixed on malformed prices', async () => {

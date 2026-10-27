@@ -74,6 +74,7 @@
     {"collection":"bx_invite","name":"campus_invite_accept","scope":"campus","fields":[["INV_ACCEPT_USER_ID","asc"]],"purpose":"受邀人记录"},
     {"collection":"bx_mail","name":"worker_expiry","scope":"system","fields":[["MAIL_STATUS","asc"],["MAIL_PAYMENT_MODE","asc"],["MAIL_END_TIME","asc"],["_id","asc"]],"purpose":"独立订单任务全校扫描；tenantRetired != true、MAIL_ADMIN_DELETED != true 为额外过滤，须核验实际扫描/返回比"},
     {"collection":"bx_mail","name":"worker_overdue","scope":"system","fields":[["MAIL_STATUS","asc"],["MAIL_DUE_TIME","asc"],["_id","asc"]],"purpose":"独立履约提醒；due > 0、overdue flag、状态 in 和 MAIL_ADMIN_DELETED != true 须核验实际扫描/返回比"},
+    {"collection":"bx_mail","name":"worker_auto_confirm","scope":"system","fields":[["MAIL_STATUS","asc"],["MAIL_DELIVERED_TIME","asc"],["_id","asc"]],"purpose":"送达满 8 小时自动确认收货；deliveredTime > 0、状态 = 2 和 MAIL_ADMIN_DELETED != true 须核验实际扫描/返回比"},
     {"collection":"bx_notification","name":"worker_notifications","scope":"system","fields":[["delivery","asc"],["nextAttemptAt","asc"],["_id","asc"]],"purpose":"独立通知派发及发送租约超时恢复"},
     {"collection":"bx_operation_limit","name":"worker_rate_cleanup","scope":"system","fields":[["expiresAt","asc"]],"purpose":"仅定时任务跨校区清理过期限流桶"},
     {"collection":"bx_admin_limit","name":"admin_rate_cleanup","scope":"system","fields":[["expiresAt","asc"]],"purpose":"清理全局管理员登录限流桶"},
@@ -81,7 +82,7 @@
   ],
   "workerShardAlternatives": {
     "description": "仅启用 WORKER_SHARD 时使用；在相应 system 索引的 _pid 后插入 workerShard asc。全部16个分片须覆盖；勿与全量扫描器同时部署。",
-    "baseIndexes": ["worker_expiry", "worker_overdue", "worker_notifications"]
+    "baseIndexes": ["worker_expiry", "worker_overdue", "worker_auto_confirm", "worker_notifications"]
   },
   "migrationScan": {
     "description": "维护窗口的 system 迁移/核验扫描使用 _pid asc, _id asc；如执行计划需要，按实际迁移集合临时建立。保留历史业务索引，回滚验收前不删除。",

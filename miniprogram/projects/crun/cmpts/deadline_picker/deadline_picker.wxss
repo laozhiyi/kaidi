@@ -10,7 +10,7 @@
 .deadline-title { font-size:32rpx; font-weight:600; }
 .deadline-note { margin-top:6rpx; color:#8190a5; font-size:24rpx; }
 .deadline-sheet .deadline-close { width:76rpx; height:76rpx; flex-shrink:0; margin:-14rpx -10rpx 0 10rpx; color:#8190a5; font-size:44rpx; background:transparent; }
-.deadline-body { flex:1; height:0; min-height:0; }
+.deadline-body { flex:1; height:0; min-height:0; padding-bottom:6rpx; }
 .deadline-quick { display:flex; flex-shrink:0; gap:14rpx; padding:8rpx 0 12rpx; }
 .deadline-quick .deadline-button { display:flex; align-items:center; justify-content:center; flex:1; min-width:0; height:80rpx; min-height:80rpx; color:#53769f; background:#f2f6fb; }
 .deadline-label { display:flex; justify-content:space-between; margin:24rpx 0 16rpx; font-size:27rpx; font-weight:600; }
@@ -23,7 +23,27 @@
 .deadline-sheet .deadline-time { display:flex; align-items:center; justify-content:center; width:calc((100% - 60rpx) / 6); height:68rpx; border-radius:12rpx; background:#f4f7fb; color:#516681; }
 .deadline-sheet .deadline-button.selected { background:#397bc8; color:#fff; font-weight:600; }
 .deadline-sheet .deadline-button.deadline-button-disabled { color:#c5cdd8; background:#f8f9fb; }
-.deadline-foot { flex-shrink:0; padding-top:18rpx; border-top:1rpx solid #edf1f6; }
-.deadline-summary { margin-bottom:16rpx; font-size:25rpx; color:#516681; text-align:center; }
-.deadline-error { margin-bottom:12rpx; color:#b87539; font-size:24rpx; }
+.deadline-foot { flex-shrink:0; padding-top:16rpx; border-top:1rpx solid #edf1f6; background:#fff; }
+.deadline-summary { margin-bottom:14rpx; font-size:25rpx; color:#516681; text-align:center; }
+.deadline-error { margin-bottom:12rpx; padding:8rpx 16rpx; border-radius:12rpx; background:#fdf6ef; color:#b87539; font-size:23rpx; text-align:center; }
 .deadline-sheet .deadline-confirm { width:100%; min-height:88rpx; display:flex; align-items:center; justify-content:center; border-radius:16rpx; color:#fff; background:#397bc8; font-size:29rpx; font-weight:600; }
+
+/* 时间段两端：先选最早，再选最晚，滚轮与手动输入都作用于当前选中端。 */
+.deadline-endpoints { display:flex; align-items:stretch; gap:12rpx; }
+.deadline-endpoint { flex:1; min-width:0; padding:16rpx 18rpx; border:2rpx solid #e6eef8; border-radius:16rpx; background:#f8fafd; }
+.deadline-endpoint.selected { border-color:#397bc8; background:#f1f6fe; }
+.deadline-endpoint-label { color:#8190a5; font-size:22rpx; }
+.deadline-endpoint-value { margin-top:6rpx; color:#2b405c; font-size:26rpx; font-weight:600; }
+.deadline-endpoint-arrow { display:flex; align-items:center; color:#a9b6c6; font-size:28rpx; }
+.deadline-wheel { width:100%; height:240rpx; margin:8rpx 0 4rpx; border-radius:16rpx; background:#f8fafd; }
+.deadline-wheel-item { display:flex; align-items:center; justify-content:center; height:56rpx; color:#42566f; font-size:30rpx; }
+.deadline-wheel-indicator { height:56rpx; }
+.deadline-wheel-indicator::after { border-top:1rpx solid #dbe6f3; border-bottom:1rpx solid #dbe6f3; }
+.deadline-wheel-mask { background:linear-gradient(180deg,rgba(248,250,253,.95),rgba(248,250,253,.1) 30%,rgba(248,250,253,.1) 70%,rgba(248,250,253,.95)); }
+/* 手动输入固定在底部操作区，始终可见：滚轮区域再长也不会把它挤出屏幕。 */
+.deadline-foot .deadline-manual { margin:0 0 12rpx; }
+.deadline-manual { display:flex; align-items:center; gap:12rpx; margin:18rpx 0 8rpx; padding:8rpx 18rpx; border-radius:14rpx; background:#f4f7fb; }
+.deadline-manual-label { flex-shrink:0; color:#60738f; font-size:24rpx; }
+.deadline-manual-input { flex:1; min-width:0; height:56rpx; color:#2b405c; font-size:26rpx; text-align:right; }
+.deadline-manual-placeholder { color:#a7b2c1; }
+.deadline-manual-hint { flex-shrink:0; color:#9aa7ba; font-size:21rpx; }

@@ -1,5 +1,5 @@
 <view class="main">
-  <view class="home-message-row"><text class="home-section-label">校园动态</text><view class="home-message-entry" bindtap="bindMessagesTap" hover-class="notice-hover" role="button" aria-label="消息中心，{{unreadCount}}条未读"><view class="home-message-icon"><text class="icon-notice"></text><text wx:if="{{unreadCount>0}}" class="home-message-badge">{{messageBadge}}</text></view><text>消息</text></view></view>
+  <view class="home-message-row"><text class="home-section-label">校园动态</text><view class="home-campus-pill" bindtap="bindCampusTap" hover-class="home-campus-hover" role="button" aria-label="当前学校与校区，点击切换"><text class="home-campus-icon icon-location"></text><text class="home-campus-text">{{schoolName || '选择学校'}}</text><text wx:if="{{campusName}}" class="home-campus-dot">·</text><text wx:if="{{campusName}}" class="home-campus-text home-campus-active">{{campusName}}</text></view><view class="home-message-entry" bindtap="bindMessagesTap" hover-class="notice-hover" role="button" aria-label="消息中心，{{unreadCount}}条未读"><view class="home-message-icon"><text class="icon-notice"></text><text wx:if="{{unreadCount>0}}" class="home-message-badge">{{messageBadge}}</text></view><text>消息</text></view></view>
   <view class="notice {{featuredNews.important?'notice-important':''}}" bindtap="bindNoticeTap" hover-class="notice-hover" role="button">
     <view class="notice-badge"><text class="notice-icon icon-noticefill"></text></view>
     <view class="notice-content"><view class="notice-label"><text wx:if="{{featuredNews.important}}" class="notice-priority">重要</text><text wx:if="{{featuredNews.read===false}}" class="notice-new-dot"></text><text>{{featuredNews ? featuredNews.title : noticeError ? '公告加载失败，点击重试' : noticeLoaded ? '暂无公告' : '正在加载公告…'}}</text></view><view class="notice-text">{{featuredNews ? (featuredNews.content || '点击查看公告详情') : '校园通知与服务安排会显示在这里'}}</view></view>
@@ -11,4 +11,15 @@
   <mail-publish-form id="home-send-form" wx:elif="{{isLoad && activeService === 'send'}}" embedded="true" service="send" bind:published="bindEmbeddedPublished" />
   <mail-publish-form id="home-buy-form" wx:elif="{{isLoad && activeService === 'buy'}}" embedded="true" service="buy" bind:published="bindEmbeddedPublished" />
   <view class="home-tab-clearance home-tab-clearance-form"></view>
+</view>
+<view wx:if="{{campusSheet}}" class="home-sheet-mask" catchtouchmove="bindStopTouch" bindtap="bindCloseCampusSheet">
+  <view class="home-sheet" catchtap="bindStopTouch">
+    <view class="home-sheet-head"><text class="home-sheet-title">学校与校区</text><text class="home-sheet-close" bindtap="bindCloseCampusSheet" aria-label="关闭">×</text></view>
+    <view class="home-sheet-label">学校</view>
+    <view class="home-sheet-chips"><view wx:for="{{schools}}" wx:key="schoolId" class="home-chip {{activeSchoolId === item.schoolId ? 'home-chip-active' : ''}}" hover-class="home-chip-hover" data-id="{{item.schoolId}}" bindtap="bindPickSchool">{{item.name}}</view><view wx:if="{{!schools.length}}" class="home-sheet-empty">正在读取学校目录…</view></view>
+    <view class="home-sheet-label">校区<text class="home-sheet-hint">直接点击即可切换</text></view>
+    <view class="home-sheet-chips"><view wx:for="{{campusOptions}}" wx:key="campusId" class="home-chip {{campusName === item.name ? 'home-chip-active' : ''}}" hover-class="home-chip-hover" data-id="{{item.campusId}}" bindtap="bindPickCampus">{{item.name}}</view><view wx:if="{{!campusOptions.length}}" class="home-sheet-empty">该学校暂无可服务校区</view></view>
+    <view class="home-sheet-note">切换校区后会重新加载该小区的服务状态、公告与订单。</view>
+    <button class="home-sheet-cancel" bindtap="bindCloseCampusSheet">取消</button>
+  </view>
 </view>

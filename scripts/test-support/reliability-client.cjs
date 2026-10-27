@@ -45,7 +45,8 @@ function client({ unselected = false, admin = false } = {}) {
       clearTimeout: id => timers.delete(id),
       Page: value => definitions.set(filename, value), Component: value => definitions.set(filename, value),
       require(name) {
-        if (name.endsWith('/passport_biz.js')) return { getUserId: () => userId, loginMustCancelWin: async () => true, loginMustBackWin: async () => true };
+        if (name.endsWith('/passport_biz.js')) return { getUserId: () => userId, isLogin: () => !!userId, isLoggedOut: () => !userId,
+          onSessionChange: () => () => {}, loginMustCancelWin: async () => true, loginMustBackWin: async () => true };
         if (name.endsWith('/admin_biz.js')) return { getAdminToken: () => admin ? { name: 'review-admin', token: 'test-session' } : null,
           isAdmin(page) { if (admin) page.setData({ isAdmin: true, isSuperAdmin: true }); return admin; },
           setContentDesc: page => load('comm/biz/admin_biz.js').setContentDesc(page) };

@@ -1,0 +1,48 @@
+<view class="wallet-page">
+  <view class="wallet-tabs">
+    <view class="wallet-tab {{account === 'earn' ? 'wallet-tab-active' : ''}}" data-account="earn" bindtap="bindSwitchAccount">跑腿收益</view>
+    <view class="wallet-tab {{account === 'invite' ? 'wallet-tab-active' : ''}}" data-account="invite" bindtap="bindSwitchAccount">邀请奖励</view>
+  </view>
+
+  <view class="wallet-card">
+    <view class="wallet-card-label">{{accountName}} · 可提现余额（元）</view>
+    <view class="wallet-card-amount">{{balance}}</view>
+    <view class="wallet-card-meta">
+      <text wx:if="{{account === 'invite'}}">已邀请 {{inviteFriends}} 位好友 · 每人 2 元</text>
+      <text wx:else>订单为线下结算，收益到账后可在此提现</text>
+    </view>
+    <button class="wallet-withdraw" bindtap="bindOpenWithdraw">提现</button>
+  </view>
+
+  <view class="wallet-card wallet-rules">
+    <view class="wallet-title">提现规则</view>
+    <view class="wallet-rule"><text class="wallet-dot"></text><text>最低提现金额 ¥{{min}}，低于该金额不可提现</text></view>
+    <view class="wallet-rule"><text class="wallet-dot"></text><text>{{account === 'earn' ? '每笔提现收取 10% 服务费，按提现金额扣除' : '邀请奖励提现不抽成，全额到账'}}</text></view>
+    <view class="wallet-rule"><text class="wallet-dot"></text><text>提现申请将在 1-3 个工作日内处理</text></view>
+  </view>
+
+  <view class="wallet-card">
+    <view class="wallet-title">提现记录</view>
+    <view class="wallet-empty">{{isLoad ? '暂无提现记录' : '正在加载…'}}</view>
+  </view>
+  <view class="wallet-foot">如对金额有疑问，可通过「校区客服」联系管理员核对。</view>
+</view>
+
+<view wx:if="{{sheet}}" class="wallet-sheet-mask" catchtouchmove="bindStopTouch" bindtap="bindCloseSheet">
+  <view class="wallet-sheet" catchtap="bindStopTouch">
+    <view class="wallet-sheet-head"><text class="wallet-sheet-title">提现{{accountName}}</text><text class="wallet-sheet-close" bindtap="bindCloseSheet" aria-label="关闭">×</text></view>
+    <view class="wallet-sheet-balance">可提现余额 ¥{{balance}} · 最低提现 ¥{{min}}</view>
+    <view class="wallet-field">
+      <text class="wallet-field-label">提现金额</text>
+      <input class="wallet-field-input" type="digit" value="{{amount}}" bindinput="bindAmountInput" placeholder="0.00" placeholder-class="wallet-placeholder" />
+      <text class="wallet-field-all" bindtap="bindAllAmount">全部</text>
+    </view>
+    <view class="wallet-summary">
+      <view class="wallet-summary-row"><text>服务费{{account === 'invite' ? '（不抽成）' : '（10%）'}}</text><text>¥{{fee}}</text></view>
+      <view class="wallet-summary-row wallet-summary-strong"><text>预计到账</text><text>¥{{arrive}}</text></view>
+    </view>
+    <view wx:if="{{error}}" class="wallet-error">{{error}}</view>
+    <button class="wallet-submit" bindtap="bindSubmitWithdraw">确认提现</button>
+    <view class="wallet-sheet-note">{{ruleNote}}</view>
+  </view>
+</view>

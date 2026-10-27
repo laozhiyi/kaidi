@@ -14,7 +14,7 @@ const originalImages = ['cloud://bucket/private-evidence/rider/first.png', 'clou
 async function delivered() {
  const f = fixture(), id = await f.publish();
  await f.service.acceptMail('rider', id, { requestId: f.req('accept') });
- await f.service.pickupMail('rider', id, { requestId: f.req('pickup') });
+ await f.service.pickupMail('rider', id, { requestId: f.req('pickup'), images: ['cloud://bucket/private-evidence/rider/pickup.png'] });
  await f.service.deliverMail('rider', id, { requestId: f.req('deliver'), note: '已放到201室门口', images: originalImages });
  return Object.assign(f, { id, mail: () => f.table('mail').get(id) });
 }
@@ -70,6 +70,7 @@ async function mount(f, options = {}, actor = 'rider', file = 'my_detail/mail_my
  const ops = {
   get: async (route, params) => route === 'operations/config' ? f.config : f.service.viewMail(actor, params.id),
   async upload(images) { uploads.push(Array.from(images)); return images.map(id => id.startsWith('cloud://') ? id : 'cloud://bucket/private/' + actor + '/replacement.png'); },
+ async uploadVideo(paths) { const list = Array.from(paths || []); return list.map(() => 'cloud://bucket/private/' + actor + '/replacement.mp4'); },
   async command(route, params) {
    assert.equal(route, 'mail/update_proof'); commands.push({ route, params });
    const c = controller(f, { ...params, requestId: f.req('client-' + ++sequence) }, actor); audits.push(c.state);
@@ -78,7 +79,7 @@ async function mount(f, options = {}, actor = 'rider', file = 'my_detail/mail_my
   error: error => errors.push(error.message || error.msg)
  };
  const wx = { removeStorageSync() {}, showToast() {}, showModal: options => modals.push(options),
-  chooseImage: options => choices.push(options), navigateTo: options => navigation.push(options) };
+  chooseImage: options => choices.push(options), chooseMedia: options => choices.push(options), navigateTo: options => navigation.push(options) };
  runMiniProgram(path.join(root, 'miniprogram/projects/crun/pages/mail/' + file + '.js'), {
   Page: definition => { page = definition; }, wx, console: { error() {} },
   require(name) {
@@ -105,7 +106,7 @@ test('rider replaces a wrong photo from the proof card while retaining the other
  assert.deepEqual(Array.from(p.data.images), originalImages);
  assert.match(p.data.imagePreviews[originalImages[0]], /^https:\/\/signed\.invalid\//);
  p.bindRemoveImage(event(0)); p.bindImages();
- assert.equal(h.choices[0].count, 5); h.choices[0].success({ tempFilePaths: ['new-photo.png'] });
+ assert.equal(h.choices[0].count, 9); h.choices[0].success({ tempFiles: [{ tempFilePath: 'new-photo.png' }] });
  p.bindNote({ detail: { value: '  已放到正确的201室门口，请查收  ' } });
  assert.deepEqual(f.mail(), before, 'draft editing must not change the stored proof');
  await p.bindSubmitPanel();
@@ -143,7 +144,7 @@ test('only the assigned rider can update an existing proof on a pending receipt 
 test('proof corrections validate text, photo count and ownership without replacing the saved evidence on failure', async () => {
  const f = await delivered(), before = structuredClone(f.mail());
  const invalid = [{ note: '' }, { note: ' '.repeat(3) }, { note: '字'.repeat(301) }, { images: [] },
-  { images: Array(7).fill(originalImages[0]) }, { images: ['https://foreign.invalid/photo.png'] },
+  { images: Array(11).fill(originalImages[0]) }, { images: ['https://foreign.invalid/photo.png'] },
   { images: ['cloud://bucket/private/other/photo.png'] },
   { images: ['cloud://bucket/private-evidence/other/photo.png'] },
   { images: ['cloud://bucket/private-evidence/rider/another-orders-photo.png'] }];
@@ -209,7 +210,7 @@ test('cancelling restores the saved proof on reopening, and an incomplete correc
  assert.equal(p.data.panel, ''); assert.deepEqual(f.mail(), before); p.bindUpdateProofTap();
  assert.equal(p.data.note, before.MAIL_DELIVERY_PROOF.note); assert.deepEqual(Array.from(p.data.images), originalImages);
  p.setData({ note: '   ' }); await p.bindSubmitPanel(); p.setData({ note: '正确位置', images: [] }); await p.bindSubmitPanel();
- assert.deepEqual(h.errors, ['请填写说明', '请至少上传1张送达照片']);
+ assert.deepEqual(h.errors, ['请填写送达位置与物品情况', '请至少上传1张凭证照片，或改为当面交付']);
  assert.equal(h.uploads.length, 0); assert.equal(h.commands.length, 0); p.onHide();
 });
 

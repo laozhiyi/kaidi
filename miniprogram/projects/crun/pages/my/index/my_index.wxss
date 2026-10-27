@@ -26,6 +26,9 @@ page { background: #f3f6fb; }
 .my-page .my-link-title { font-size: 28rpx; font-weight: 500; }
 .my-page .my-link-desc { margin-top: 6rpx; font-size: 23rpx; color: #7c8ba0; }
 .my-page .my-arrow { flex-shrink: 0; margin-left: 12rpx; color: #a5b2c2; font-size: 28rpx; }
+.my-page .my-wallet { display: flex; align-items: center; padding: 26rpx 28rpx; }
+.my-page .my-wallet-icon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 78rpx; height: 78rpx; margin-right: 20rpx; border-radius: 24rpx; background: #fff2e0; color: #c88934; font-size: 40rpx; }
+.my-page .my-wallet-copy { flex: 1; min-width: 0; }
 .my-page .my-icon-warm { color: #bd8334; background: #fff6e7; }
 .my-page .my-icon-green { color: #32927c; background: #eaf7f2; }
 .my-page .my-tap { opacity: .75; }

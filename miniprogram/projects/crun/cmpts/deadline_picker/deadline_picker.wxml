@@ -1,16 +1,25 @@
-<view class="deadline-trigger {{disabled ? 'deadline-disabled' : ''}}" bindtap="open"><text class="deadline-text">{{value || '请选择送达时间'}}</text><text class="deadline-arrow deadline-text">›</text></view>
+<view class="deadline-trigger {{disabled ? 'deadline-disabled' : ''}}" bindtap="open"><text class="deadline-text">{{display || '请选择送达时间段'}}</text><text class="deadline-arrow deadline-text">›</text></view>
 <view wx:if="{{visible}}" class="deadline-mask" catchtouchmove="stop" bindtap="close">
   <view class="deadline-sheet" catchtap="stop">
-    <view class="deadline-head"><view><view class="deadline-title">期待送达时间</view><view class="deadline-note">请选择未来 7 天内的时间</view></view><button class="deadline-close deadline-button" bindtap="close" aria-label="关闭时间选择">×</button></view>
-    <view class="deadline-quick"><button class="deadline-button" data-minutes="30" bindtap="selectQuick">30 分钟后</button><button class="deadline-button" data-minutes="60" bindtap="selectQuick">1 小时后</button><button class="deadline-button" data-minutes="180" bindtap="selectQuick">3 小时后</button></view>
+    <view class="deadline-head"><view><view class="deadline-title">期待送达时间</view><view class="deadline-note">选择未来 7 天内的送达时间段，区间内送达不算超时</view></view><button class="deadline-close deadline-button" bindtap="close" aria-label="关闭时间选择">×</button></view>
+    <view class="deadline-quick"><button wx:for="{{quicks}}" wx:key="minutes" class="deadline-button" data-minutes="{{item.minutes}}" bindtap="selectQuick">{{item.label}}</button></view>
     <scroll-view scroll-y class="deadline-body">
-      <view class="deadline-label">日期</view>
-      <scroll-view scroll-x class="deadline-dates" scroll-into-view="day-{{selectedDate}}" show-scrollbar="{{false}}"><view class="deadline-date-row"><button wx:for="{{days}}" wx:key="value" id="day-{{item.value}}" class="deadline-date {{selectedDate === item.value ? 'selected' : ''}} deadline-button" data-value="{{item.value}}" bindtap="selectDate"><view>{{item.label}}</view><view class="deadline-date-text">{{item.date}}</view></button></view></scroll-view>
-      <view class="deadline-label">小时 <text class="deadline-text">{{selectedHour}} 时</text></view>
-      <view class="deadline-grid"><button wx:for="{{hours}}" wx:key="value" class="deadline-time {{selectedHour === item.value ? 'selected' : ''}} deadline-button {{(item.disabled) ? 'deadline-button-disabled' : ''}}" disabled="{{item.disabled}}" data-value="{{item.value}}" bindtap="selectHour">{{item.value}}</button></view>
-      <view class="deadline-label">分钟 <text class="deadline-text">{{selectedMinute}} 分</text></view>
-      <view class="deadline-grid"><button wx:for="{{minutes}}" wx:key="value" class="deadline-time {{selectedMinute === item.value ? 'selected' : ''}} deadline-button {{(item.disabled) ? 'deadline-button-disabled' : ''}}" disabled="{{item.disabled}}" data-value="{{item.value}}" bindtap="selectMinute">{{item.value}}</button></view>
+      <view class="deadline-label">日期 <text class="deadline-text">正在编辑：{{active === 'start' ? '最早送达' : '最晚送达'}}</text></view>
+      <scroll-view scroll-x class="deadline-dates" scroll-into-view="day-{{active === 'start' ? start.date : end.date}}" show-scrollbar="{{false}}"><view class="deadline-date-row"><button wx:for="{{days}}" wx:key="value" id="day-{{item.value}}" class="deadline-date {{(active === 'start' ? start.date : end.date) === item.value ? 'selected' : ''}} deadline-button" data-value="{{item.value}}" bindtap="selectDate"><view>{{item.label}}</view><view class="deadline-date-text">{{item.date}}</view></button></view></scroll-view>
+      <view class="deadline-label">时间段 <text class="deadline-text">点击切换要调整的一端</text></view>
+      <view class="deadline-endpoints">
+        <view class="deadline-endpoint {{active === 'start' ? 'selected' : ''}}" data-field="start" bindtap="selectEndpoint"><view class="deadline-endpoint-label">最早送达</view><view class="deadline-endpoint-value">{{start.date}} {{start.hour}}:{{start.minute}}</view></view>
+        <view class="deadline-endpoint-arrow">→</view>
+        <view class="deadline-endpoint {{active === 'end' ? 'selected' : ''}}" data-field="end" bindtap="selectEndpoint"><view class="deadline-endpoint-label">最晚送达</view><view class="deadline-endpoint-value">{{end.date}} {{end.hour}}:{{end.minute}}</view></view>
+      </view>
+      <view class="deadline-label">滚轮选择 <text class="deadline-text">{{active === 'start' ? '最早' : '最晚'}}送达</text></view>
+      <picker-view class="deadline-wheel" indicator-class="deadline-wheel-indicator" mask-class="deadline-wheel-mask" value="{{wheel}}" bindchange="wheelChange"><picker-view-column><view class="deadline-wheel-item" wx:for="{{hours}}" wx:key="*this">{{item}} 时</view></picker-view-column><picker-view-column><view class="deadline-wheel-item" wx:for="{{minutes}}" wx:key="*this">{{item}} 分</view></picker-view-column></picker-view>
     </scroll-view>
-    <view class="deadline-foot"><view wx:if="{{error}}" class="deadline-error">{{error}}</view><view class="deadline-summary">已选：{{draft}}</view><button class="deadline-confirm deadline-button" bindtap="confirm">确认送达时间</button></view>
+    <view class="deadline-foot">
+      <view class="deadline-manual"><text class="deadline-manual-label">手动输入</text><input class="deadline-manual-input" value="{{manual}}" bindinput="manualInput" placeholder="{{active === 'start' ? '最早' : '最晚'}} 13:30" maxlength="16" placeholder-class="deadline-manual-placeholder" /><text class="deadline-manual-hint">时:分</text></view>
+      <view wx:if="{{error}}" class="deadline-error">{{error}}</view>
+      <view wx:else class="deadline-summary">{{summary}}</view>
+      <button class="deadline-confirm deadline-button" bindtap="confirm">确认送达时间段</button>
+    </view>
   </view>
 </view>

@@ -97,7 +97,7 @@ test('accept versus cancel serializes and accept versus edit never mutates an ac
 
 test('only rider can submit required proof; only poster can confirm; quotas released once',async()=>{
  const f=fixture(),id=await f.publish();await f.service.acceptMail('rider',id,{requestId:f.req('accept')});
- await f.service.pickupMail('rider',id,{requestId:f.req('pickup')});
+ await f.service.pickupMail('rider',id,{requestId:f.req('pickup'), images: ['cloud://bucket/private-evidence/rider/pickup.png'] });
  await assert.rejects(f.service.finishMail('poster',id,{requestId:f.req('early')}),/已送达/);
  await assert.rejects(f.service.deliverMail('poster',id,{note:'送达',images:['cloud://proof'],requestId:f.req('wrong')}),/接单人/);
  await assert.rejects(f.service.deliverMail('rider',id,{note:'送达',images:[],requestId:f.req('empty')}),/凭证/);
@@ -137,7 +137,7 @@ test('feedback is participant scoped and optimistic replies are idempotent and n
 test('maintenance expires only waiting offline orders, not delivered orders, and is repeat safe',async()=>{
  const f=fixture(),id=await f.publish();f.table('mail').get(id).MAIL_END_TIME=1;
  const svc=new (f.load('maintenance_service.js'))();await svc.run();await svc.run();assert.equal(f.table('mail').get(id).MAIL_STATUS,99);assert.equal(f.table('order_event').size,2);
- const second=await f.publish({requestId:f.req('second')});await f.service.acceptMail('rider',second,{requestId:f.req('accept')});await f.service.pickupMail('rider',second,{requestId:f.req('pickup')});await f.service.deliverMail('rider',second,{note:'送达',images:['cloud://proof'],requestId:f.req('deliver')});f.table('mail').get(second).MAIL_DUE_TIME=1;await svc.run();await svc.run();assert.equal(f.table('mail').get(second).MAIL_STATUS,2);assert.equal(f.table('mail').get(second).MAIL_HISTORY.filter(x=>x.action==='overdue').length,1);
+ const second=await f.publish({requestId:f.req('second')});await f.service.acceptMail('rider',second,{requestId:f.req('accept')});await f.service.pickupMail('rider',second,{requestId:f.req('pickup'), images: ['cloud://bucket/private-evidence/rider/pickup.png'] });await f.service.deliverMail('rider',second,{note:'送达',images:['cloud://proof'],requestId:f.req('deliver')});f.table('mail').get(second).MAIL_DUE_TIME=1;await svc.run();await svc.run();assert.equal(f.table('mail').get(second).MAIL_STATUS,2);assert.equal(f.table('mail').get(second).MAIL_HISTORY.filter(x=>x.action==='overdue').length,1);
 });
 
 test('notification claim prevents double dispatch and retry budget terminates failures',async()=>{

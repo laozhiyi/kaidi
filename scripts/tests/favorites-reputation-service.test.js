@@ -6,7 +6,7 @@ const { fixture } = require('../test-support/operations-fixture.cjs');
 async function complete(f, label = 'one', poster = 'poster', rider = 'rider') {
   const id = await f.publish({ requestId: f.req('publish-' + label) }, poster);
   await f.service.acceptMail(rider, id, { requestId: f.req('accept-' + label) });
-  await f.service.pickupMail(rider, id, { requestId: f.req('pickup-' + label) });
+  await f.service.pickupMail(rider, id, { requestId: f.req('pickup-' + label), images: ['cloud://bucket/private-evidence/rider/pickup.png'] });
   await f.service.deliverMail(rider, id, { requestId: f.req('deliver-' + label), note: '放在门口', images: ['cloud://delivery-proof'] });
   await f.service.finishMail(poster, id, { requestId: f.req('finish-' + label) });
   return id;

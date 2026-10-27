@@ -6,8 +6,23 @@ const ACTIVE = [1, 2, 3, 4];
 const LABELS = { 0: '待接单', 1: '已接单', 2: '待收货', 3: '异常处理中', 4: '已取件', 9: '已完成', 99: '已取消' };
 const plugins = require('./order_plugins/index.js');
 const SERVICES = plugins.services;
+// All evidence uploads share one ceiling: up to 10 photos and one short video.
+const MAX_IMAGES = 10;
+const MAX_VIDEOS = 1;
 function text(value, name, max, required = false) { if (typeof value !== 'string' || value.trim().length > max || required && !value.trim()) fail(name + '格式不正确'); return value.trim(); }
-function images(value) { if (!Array.isArray(value) || value.length > 6 || value.some(x => typeof x !== 'string' || !x.startsWith('cloud://') || x.length > 500)) fail('图片必须先成功上传，最多6张'); return [...new Set(value)]; }
+// Wall-clock minute text (UTC+8) -> timestamp, rejecting impossible calendar days.
+function wallTime(value) {
+ if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(value)) return NaN;
+ const at = Date.parse(value.replace(' ', 'T') + ':00+08:00');
+ if (!Number.isFinite(at) || new Date(at + 8 * 3600000).toISOString().slice(0, 16).replace('T', ' ') !== value) return NaN;
+ return at;
+}
+function images(value) { if (!Array.isArray(value) || value.length > MAX_IMAGES || value.some(x => typeof x !== 'string' || !x.startsWith('cloud://') || x.length > 500)) fail('图片必须先成功上传，最多' + MAX_IMAGES + '张'); return [...new Set(value)]; }
+function videos(value) {
+ if (value === undefined || value === null) return [];
+ if (!Array.isArray(value) || value.length > MAX_VIDEOS || value.some(x => typeof x !== 'string' || !x.startsWith('cloud://') || x.length > 500)) fail('视频必须先成功上传，最多' + MAX_VIDEOS + '段');
+ return [...new Set(value)];
+}
 function validateForms(forms, config, now) {
  if (!Array.isArray(forms) || forms.length > 30) fail('表单数据无效');
  const input = Object.create(null);
@@ -39,14 +54,27 @@ function validateForms(forms, config, now) {
  const deliveryMinutes = obj.urgent ? config.urgentMinutes : config.deliveryMinutes;
  const deliveryMs = (Number.isFinite(deliveryMinutes) && deliveryMinutes > 0 ? deliveryMinutes : 60) * 60000;
  const windowText = deliveryMs >= 3600000 ? Math.round(deliveryMs / 3600000 * 10) / 10 + ' 小时' : Math.round(deliveryMs / 60000) + ' 分钟';
- let endTime = now + 3 * 86400000, expectTime = endTime + deliveryMs;
- if (input.formEnd) { const value = text(input.formEnd,'期待送达时间',20,true); if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(value)) fail('期待送达时间格式无效'); const at = Date.parse(value.replace(' ','T') + '+08:00'); const expected = value.length === 16 ? value + ':00' : value; if (!Number.isFinite(at) || new Date(at + 8 * 3600000).toISOString().slice(0,19).replace('T',' ') !== expected) fail('期待送达时间不是有效日期'); if (at <= now + deliveryMs) fail('期待送达时间至少要留出 ' + windowText + ' 的配送时间'); if (at > now + 7 * 86400000) fail('期待送达时间须在未来7天内'); expectTime = at; endTime = at - deliveryMs; }
+ let endTime = now + 3 * 86400000, expectTime = endTime + deliveryMs, expectStart = expectTime;
+ if (input.formEnd) {
+  // 「期待送达时间」是一个时间段：最早 ~ 最晚，精确到分钟。
+  // 也接受旧客户端的单个时间点，此时区间起止相同。
+  const raw = text(input.formEnd, '期待送达时间', 60, true);
+  const [from, to] = raw.split(/\s*~\s*/);
+  const startAt = wallTime(from), endAt = to === undefined ? startAt : wallTime(to);
+  if (!Number.isFinite(startAt) || !Number.isFinite(endAt)) fail('期待送达时间不是有效日期与时间');
+  if (endAt < startAt) fail('最晚送达时间须晚于最早送达时间');
+  if (startAt <= now + deliveryMs) fail('最早送达时间至少要留出 ' + windowText + ' 的配送时间');
+  if (endAt > now + 7 * 86400000) fail('期待送达时间须在未来7天内');
+  expectStart = startAt; expectTime = endAt; endTime = startAt - deliveryMs;
+ }
  if (!Number.isFinite(expectTime) || expectTime <= now || expectTime > now + 7 * 86400000) fail('期待送达时间须在未来7天内');
+ if (!Number.isFinite(expectStart) || expectStart <= now) fail('期待送达时间须在未来7天内');
  const normalized = Object.keys(obj).filter(k => !['imgUrl','imgUrls'].includes(k)).map(mark => ({ mark, title:mark, type:typeof obj[mark] === 'number' ? 'digit' : typeof obj[mark] === 'boolean' ? 'switch' : 'text', val:obj[mark] })); normalized.push({mark:'img',title:'相关图片',type:'image',val:obj.imgUrls}); if (input.formEnd) normalized.push({mark:'formEnd',title:'期待送达时间',type:'date',val:input.formEnd});
- return { obj, forms:normalized, totalFee, endTime, expectTime, schemaVersion:2,
+ return { obj, forms:normalized, totalFee, endTime, expectTime, expectStart, schemaVersion:2,
   ruleSnapshot:{serviceType:obj.serviceType,pluginVersion:plugins.get(obj.serviceType).version,configVersion:config.version || 0,
    currency:'CNY',paymentMode:'offline',referenceFee:quote.referenceFee,totalFee,
    smallPrice:config.smallPrice,mediumPrice:config.mediumPrice,largePrice:config.largePrice,
+   expectStart,expectEnd:expectTime,
    deliveryMinutes:obj.urgent ? config.urgentMinutes : config.deliveryMinutes,quotedAt:now} };
 }
 function requireOpen(config, now = Date.now()) {
@@ -61,8 +89,8 @@ function project(mail, userId, admin = false) {
  const mypost = !!userId && mail.MAIL_USER_ID === userId;
  const myaccept = !!userId && mail.MAIL_ACCEPT_USER_ID === userId;
  const privateAccess = admin || mypost || myaccept;
- const keys = ['_id','MAIL_ID','MAIL_STATUS','MAIL_END_TIME','MAIL_EXPECT_TIME','MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_PICKUP_TIME','MAIL_OVER_TIME','MAIL_TOTAL_FEE','MAIL_PAYMENT_MODE','MAIL_CATE_ID','MAIL_CATE_NAME','MAIL_DUE_TIME','MAIL_DELIVERED_TIME','MAIL_VERSION','MAIL_SCHEMA_VERSION','schoolId','campusId'];
- if (privateAccess) keys.push('MAIL_RULE_SNAPSHOT','MAIL_FORMS','MAIL_EXCEPTION','MAIL_DELIVERY_PROOF','MAIL_PAY_STATUS','MAIL_CAN_REVIEW','MAIL_REVIEWED');
+ const keys = ['_id','MAIL_ID','MAIL_STATUS','MAIL_END_TIME','MAIL_EXPECT_TIME','MAIL_EXPECT_START','MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_PICKUP_TIME','MAIL_OVER_TIME','MAIL_TOTAL_FEE','MAIL_PAYMENT_MODE','MAIL_CATE_ID','MAIL_CATE_NAME','MAIL_DUE_TIME','MAIL_DELIVERED_TIME','MAIL_AUTO_CONFIRM_AT','MAIL_AUTO_CONFIRMED','MAIL_VERSION','MAIL_SCHEMA_VERSION','schoolId','campusId'];
+ if (privateAccess) keys.push('MAIL_RULE_SNAPSHOT','MAIL_FORMS','MAIL_EXCEPTION','MAIL_DELIVERY_PROOF','MAIL_PICKUP_PROOF','MAIL_PAY_STATUS','MAIL_CAN_REVIEW','MAIL_REVIEWED');
  if (admin || mypost) keys.push('MAIL_HISTORY');
  const out = {}; keys.forEach(k => { if (mail[k] !== undefined) out[k] = mail[k]; });
  // Preserve safe milestone times before private history is removed. Projection
@@ -107,4 +135,4 @@ function project(mail, userId, admin = false) {
  out.progressLabels = ['已发布', '已接单', obj.serviceType === 'buy' ? '已购齐' : '已取件', '已送达', '已完成'];
  return out;
 }
-module.exports = { ACTIVE, LABELS, SERVICES, text, images, validateForms, requireOpen, project, fail };
+module.exports = { ACTIVE, LABELS, SERVICES, MAX_IMAGES, MAX_VIDEOS, text, images, videos, wallTime, validateForms, requireOpen, project, fail };

@@ -18,7 +18,7 @@ let phoneLoginEnabled = false;
 const REQUEST_TIMEOUT = 12000;
 const PROFILE_CACHE_TTL = 30000;
 const DISK_CACHE_TTL = 6 * 60 * 60 * 1000;
-const CAMPUS_CACHE_KEY = 'crun-profile-campuses-v1';
+const CAMPUS_CACHE_KEY = 'crun-profile-campuses-v2';
 const PROFILE_CACHE_KEY = 'crun-profile-user-v1';
 const scopeKey = () => Ops.scopeKey ? Ops.scopeKey() : '';
 const sessionEpoch = () => cloudHelper.getSessionEpoch ? cloudHelper.getSessionEpoch() : PassportBiz.logoutEpoch ? PassportBiz.logoutEpoch() : 0;

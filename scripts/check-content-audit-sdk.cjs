@@ -40,7 +40,9 @@ async function registerThroughSDK() {
   f.load('framework/validate/data_check.js').check = require('../cloudfunctions/mcloud/framework/validate/data_check.js').check;
   const params = { name: '新同学', mobile: '13912345678', pic: 'cloud://test/avatar.png', forms: [
     { mark: 'sex', val: '女' }, { mark: 'college', val: '计算机学院' },
-    { mark: 'sub', val: '软件工程' }, { mark: 'campus', val: A.campusName }
+    { mark: 'sub', val: '软件工程' }, { mark: 'campus', val: A.campusName },
+    { mark: 'studentId', val: '202301001' }, { mark: 'studentCard', val: ['cloud://test/private/trusted-sdk-openid/student-card.png'] },
+    { mark: 'disclaimer', val: true }
   ] };
   const app = f.load('framework/core/application.js');
   const login = await app.app({ route: 'passport/wechat_identity_login', PID: 'crun', scope: A, params: {} }, {});

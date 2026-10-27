@@ -180,7 +180,7 @@ test('favorite refresh uses a bounded number of database queries as the displaye
 test('maintenance isolates a failing item, repairs legacy history and reminds orders already picked up', async () => {
   const f=fixture(), bad=await f.publish(), good=await f.publish({requestId:f.req('good')}), picked=await f.publish({requestId:f.req('picked')});
   await f.service.acceptMail('rider',picked,{requestId:f.req('take')});
-  await f.service.pickupMail('rider',picked,{requestId:f.req('pickup')});
+  await f.service.pickupMail('rider',picked,{requestId:f.req('pickup'), images: ['cloud://bucket/private-evidence/rider/pickup.png'] });
   f.table('mail').get(bad).MAIL_END_TIME=1;f.table('mail').get(good).MAIL_END_TIME=1;
   f.table('mail').get(good).MAIL_HISTORY={legacy:true};f.table('mail').get(picked).MAIL_DUE_TIME=1;
   const set=f.store.set;

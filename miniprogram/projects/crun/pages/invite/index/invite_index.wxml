@@ -36,6 +36,16 @@
 		</view>
 	</view>
 
+	<!-- 邀请奖励 -->
+	<view class="card reward-card">
+		<view class="reward-copy">
+			<view class="reward-label">邀请奖励（元）</view>
+			<view class="reward-amount">¥{{reward}}</view>
+			<view class="reward-note">每位好友注册成功 {{perFriend}} 元，满 {{minWithdraw}} 元可提现，提现不抽成</view>
+		</view>
+		<button class="btn {{canWithdraw ? 'btn-primary' : 'btn-default'}} reward-btn" bindtap="bindWithdrawTap">{{canWithdraw ? '去提现' : '满' + minWithdraw + '元可提'}}</button>
+	</view>
+
 	<!-- 邀请记录 -->
 	<view wx:if="{{error}}" class="card invite-state"><view>{{error}}</view><button class="btn btn-default invite-retry" bindtap="_loadAll">重新加载</button></view>
 	<view wx:if="{{loading}}" class="invite-state">正在加载邀请信息…</view>
@@ -65,8 +75,9 @@
 		<view class="rules-title">活动规则</view>
 		<view class="rules-item">1. 分享邀请码或小程序给好友</view>
 		<view class="rules-item">2. 好友通过你分享的链接进入并完成注册</view>
-		<view class="rules-item">3. 注册完成后自动记录邀请关系，可在本页查看</view>
-		<view class="rules-item">4. 每位好友仅记录一次邀请关系</view>
+		<view class="rules-item">3. 每成功邀请 1 位好友注册，可获得 2 元奖励</view>
+		<view class="rules-item">4. 奖励累计满 10 元可提现，邀请奖励提现不抽成</view>
+		<view class="rules-item">5. 每位好友仅记录一次邀请关系</view>
 	</view>
 
 </view>

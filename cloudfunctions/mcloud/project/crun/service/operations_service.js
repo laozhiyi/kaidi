@@ -32,7 +32,14 @@ class OperationsService extends Base {
  }
  async config(userId) {
   const generation = require('./account_service.js').mediaGeneration();
-  return {...await new Config().getConfig(),allowManualRegistration:profileRules.allowsManualRegistration(),phoneLoginEnabled:profileRules.isPhoneLoginEnabled(),templateId:process.env.ORDER_SUBSCRIBE_TEMPLATE_ID || '',
+  const config = await new Config().getConfig(), scope = store.scope();
+  // 校区别名/名录统一以学校目录为准：经营范围仍是当前校区，但「可选的校区」
+  // 必须是全校开放的校区，否则个人资料只剩当前一个校区可选。
+  if (scope) {
+   const names = await new (require('./tenant_service.js'))().campusNames(scope.schoolId, scope.campusId);
+   config.campuses = names.length ? names : [scope.campusName];
+  }
+  return {...config,allowManualRegistration:profileRules.allowsManualRegistration(),phoneLoginEnabled:profileRules.isPhoneLoginEnabled(),templateId:process.env.ORDER_SUBSCRIBE_TEMPLATE_ID || '',
    uploadPrefix:userId ? 'private/'+userId.split('^^^').pop()+'/'+(generation ? generation+'/' : '') : ''};
  }
  async notifications(userId,page,options={}) {return new (require('./notification_service.js'))().list(userId,{...options,page});}

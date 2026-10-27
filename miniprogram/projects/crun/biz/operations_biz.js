@@ -131,7 +131,7 @@ function orderChanged(route, result) {
  }
 }
 async function upload(paths) {
- if(!Array.isArray(paths)||paths.length>6)throw new Error('最多上传6张图片');
+ if(!Array.isArray(paths)||paths.length>10)throw new Error('最多上传10张图片');
  if (!paths.length) return [];
  const generation = sessionGeneration;
  const isCurrent = () => { if (generation !== sessionGeneration) throw new Error('登录状态已变化，请重新选择图片'); };
@@ -149,8 +149,26 @@ async function upload(paths) {
  }
  return result;
 }
-async function subscribe(config) {
- if(!config.templateId || !wx.requestSubscribeMessage)return 'unavailable';
+// 凭证视频：每条凭证最多1段、15秒内，直接上传原始文件（不压缩）。
+async function uploadVideo(paths) {
+ if (!Array.isArray(paths)) throw new Error('视频参数无效');
+ if (paths.length > 1) throw new Error('每条凭证最多上传1段视频');
+ if (!paths.length) return [];
+ const generation = sessionGeneration;
+ const isCurrent = () => { if (generation !== sessionGeneration) throw new Error('登录状态已变化，请重新选择视频'); };
+ const config = await get('operations/config'), result = [];
+ for (const original of paths) {
+  if (String(original).startsWith('cloud://')) { result.push(original); continue; }
+  const info = await new Promise((resolve, reject) => wx.getFileInfo({ filePath: original, success: resolve, fail: reject }));
+  if (info.size > 20 * 1024 * 1024) throw new Error('视频不能超过20MB，请重新拍摄');
+  isCurrent();
+  const file = await wx.cloud.uploadFile({ cloudPath: config.uploadPrefix + 'video/' + requestId() + '.mp4', filePath: original });
+  isCurrent();
+  result.push(file.fileID);
+ }
+ return result;
+}
+async function subscribe(config) { if(!config.templateId || !wx.requestSubscribeMessage)return 'unavailable';
  try {
   const result=await new Promise((resolve,reject)=>wx.requestSubscribeMessage({tmplIds:[config.templateId],success:resolve,fail:reject}));
   if(result[config.templateId]!=='accept')return 'declined';
@@ -167,4 +185,4 @@ function error(e){
   catch (next) { wx.hideLoading(); error(next); }
  }});
 }
-module.exports={get,command,pendingCommand,recoverCommand,upload,subscribe,requestId,error,scopeKey:()=>cloud.scopeKey ? cloud.scopeKey() : '',clearUploadCache:()=>uploadCache.clear(),onOrderChanged(listener){changeListeners.add(listener);return()=>changeListeners.delete(listener);}};
+module.exports={get,command,pendingCommand,recoverCommand,upload,uploadVideo,subscribe,requestId,error,scopeKey:()=>cloud.scopeKey ? cloud.scopeKey() : '',clearUploadCache:()=>uploadCache.clear(),onOrderChanged(listener){changeListeners.add(listener);return()=>changeListeners.delete(listener);}};

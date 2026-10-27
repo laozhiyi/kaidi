@@ -73,7 +73,7 @@ module.exports = {
 		formData.fields = formData.fields.map((field) => {
 			const copy = Object.assign({}, field, { ext: Object.assign({}, field.ext || {}) });
 			if (copy.mark === 'code') copy.must = false;
-            if (copy.mark === 'img') copy.max = 6;
+            if (copy.mark === 'img') copy.max = 10;
             if (copy.mark === 'price') copy.title = '跑腿费用(元)';
 			return copy;
 		});
@@ -103,7 +103,7 @@ module.exports = {
 
 		this.setData(Object.assign(formData, {
 			isLoad: false,
-			formEnd: Deadline.after(),
+			formEnd: Deadline.rangeText(Deadline.defaultRange()),
 		}));
 
 		// 动态设置导航栏标题
@@ -412,9 +412,9 @@ module.exports = {
 	},
 
 	bindUploadImageTap: function () {
-		const left = 6 - this.data.proofImages.length;
+		const left = 10 - this.data.proofImages.length;
 		if (left <= 0) {
-			wx.showToast({ title: '最多上传6张截图', icon: 'none' });
+			wx.showToast({ title: '最多上传10张截图', icon: 'none' });
 			return;
 		}
 		wx.chooseMedia({
@@ -436,7 +436,7 @@ module.exports = {
 					}
 					selected.push(file.tempFilePath);
 				}
-				const images = this.data.proofImages.concat(selected).slice(0, 6);
+				const images = this.data.proofImages.concat(selected).slice(0, 10);
 				this.setData({ proofImages: images });
 				this._setFormVal('img', images);
 			},
@@ -528,6 +528,7 @@ module.exports = {
 	},
 
 	bindEndSelect: function (e) {
+		this._endEdited = true;
 		this.setData({ formEnd: e.detail, formEndFocus: '' });
 	},
 
@@ -545,7 +546,12 @@ module.exports = {
  bindSelectPackagePickup(e) {
   if (!this.data.packagePickupVisible || this.data.submitting) return;
   const { phase, name } = e.currentTarget.dataset;
-  if (!Address.PICKUP_STATIONS.some(group => group.name === phase && group.list.includes(name))) return;
+  // 用当前渲染出来的取件点校验：配置里的取件点与内置默认表不一致时，
+  // 旧实现只放行两边都存在的项（例如只剩「京东」能点）。
+  const groups = Array.isArray(this.data.pickupStations) && this.data.pickupStations.length
+   ? this.data.pickupStations : Address.PICKUP_STATIONS;
+  const group = groups.find(item => item && item.name === phase);
+  if (!group || !Array.isArray(group.list) || !group.list.includes(name)) return;
   this.setData({ packagePickupDraft: phase + ' · ' + name, packagePickupError: '' });
  },
  bindPackagePickupInput(e) { this.setData({ packagePickupDraft: e.detail.value, packagePickupError: '' }); },
@@ -581,7 +587,9 @@ module.exports = {
 	},
 
 	resetAfterPublish: function () {
-		const end = Deadline.after();
+		const end = Deadline.rangeText(Deadline.defaultRange(Date.now(), this.data.expectLead));
+		this._valuableAck = false;
+		this._endEdited = false;
 		const old = this.data.mailValues || {};
 		const campus = this.data.campus || '';
 		const mailValues = { code: '', address2: old.address2 || '', poster: old.poster || '', tel: old.tel || '', tel2: '', desc: '' };
@@ -638,6 +646,20 @@ module.exports = {
   if (!this.data.editId && this.data.config && this.data.config.enabled === true && !serviceState.canPublish) { Ops.error(new Error(serviceState.description)); return; }
   if (!this.data.config || this.data.configError || this.data.pageLoading || (this.data.config.enabled !== true && !this.data.editId)) { Ops.error(new Error('请先加载有效运营配置，并确认服务已开放')); return; }
   if(this._submitting || !this.data.config)return;
+  // 发单前明确告知贵重物品风险：已经看过提醒，后续只能协助配合调查。
+  if (!this.data.editId && !this._valuableAck) {
+   if (this._valuableAsking) return;
+   this._valuableAsking = true;
+   const agreed = await new Promise(resolve => wx.showModal({
+    title: '贵重物品提醒',
+    content: '请勿在包裹中夹带现金、首饰、证件、数码产品等贵重物品。你已知晓该提醒，若因贵重物品产生丢失、损坏或纠纷，平台仅协助配合调查，不承担赔付责任。',
+    confirmText: '我已知晓', cancelText: '再想想',
+    success: res => resolve(!!res.confirm), fail: () => resolve(false)
+   }));
+   this._valuableAsking = false;
+   if (!agreed) return;
+   this._valuableAck = true;
+  }
   this._submitting=true;this.setData({submitting:true});
   try {
    if(!await PassportBiz.loginMustCancelWin(this))return;
@@ -647,6 +669,11 @@ module.exports = {
    if (missingPickup >= 0) throw new Error(this.data.serviceType === 'buy' ? '请填写购买地点' : '请填写第' + (missingPickup + 1) + '件包裹的取件点');
    if (packages.some(item => !/^\d+(?:\.\d{1,2})?$/.test(String(item.price)) || Number(item.price) < 0.01 || Number(item.price) > 10000)) throw new Error('跑腿费须在0.01至10000元之间，最多保留两位小数');
    const plugin=Plugins.get(this.data.serviceType); plugin.validate(this.data.mailValues || {});
+   // 默认送达时间段是进页面时算的：停留久了会过期，用户没动过就按当前时间重算一次。
+   if (!this.data.editId && !this._endEdited) {
+    const fresh = Deadline.rangeText(Deadline.defaultRange(Date.now(), this.data.expectLead));
+    if (fresh !== this.data.formEnd) this.setData({ formEnd: fresh });
+   }
    let data=validate.check(this.data,MailBiz.CHECK_FORM,this);if(!data)return;
    const form=this.selectComponent('#cmpt-form');if(!form)return;
    // Sync the complete visible address before validating the hidden form snapshot.

@@ -73,13 +73,20 @@ function service(config, now = Date.now()) {
   description: '当前不在本校区营业时间，可以先填写信息，营业后再发布。', canPublish: false };
  return { kind: 'open', title: '正常接单', description: '填写取送信息，发布后等待骑手接单', hours, canPublish: true };
 }
-function receipt(mail, now = Date.now()) {
- const status = mail.MAIL_STATUS == null ? -1 : Number(mail.MAIL_STATUS), poster = !!mail.mypost;
+// 期待送达是一个时间段：同一天显示 "10-30 13:00 ~ 15:00"，跨天两端都带日期。
+function expectSpan(mail) {
+ const start = time(mail.MAIL_EXPECT_START) || time(mail.expectStart) || '', end = time(mail.MAIL_EXPECT_TIME) || time(mail.expect2) || time(mail.MAIL_END_TIME) || time(mail.end2);
+ if (!start) return end;
+ if (!end || start === end) return end || start;
+ const from = start.slice(5), to = end.slice(5);
+ return from.slice(0, 5) === to.slice(0, 5) ? from + ' ~ ' + to.slice(6) : from + ' ~ ' + to;
+}
+function receipt(mail, now = Date.now()) { const status = mail.MAIL_STATUS == null ? -1 : Number(mail.MAIL_STATUS), poster = !!mail.mypost;
  const expired = status === 0 && Number(mail.MAIL_END_TIME) > 0 && Number(mail.MAIL_END_TIME) <= now;
  const hints = {
   0: '等待骑手接单，送达后可确认收货',
   1: '骑手已接单，取件送达后可确认收货',
-  2: '请核对包裹、数量和外观后确认收货',
+  2: '骑手已送达，请核对包裹、数量和外观后确认收货；送达满8小时将自动确认收货',
   3: '订单异常处理中，处理完成并送达后可确认收货',
   4: '骑手正在配送，送达后可确认收货',
   9: '订单已完成，无需重复确认收货',
@@ -111,6 +118,7 @@ function detail(mail, now = Date.now()) {
  if (participant && mail.mypost && status === 0 && !expired && !legacyPayment) { primary = 'edit'; primaryLabel = '编辑订单'; }
  else if (participant && mail.myaccept && status === 1) { primary = 'pickup'; primaryLabel = serviceType === 'buy' ? '已购齐' : '已取件'; }
  else if (participant && mail.myaccept && status === 4) { primary = 'deliver'; primaryLabel = '已送达'; }
+ else if (participant && mail.myaccept && status === 2) { primary = 'remind'; primaryLabel = '提醒发布人收货'; }
  else if (participant && mail.mypost && status === 2) { primary = 'confirm'; primaryLabel = '确认收货'; }
  else if (participant && status === 9 && (mail.MAIL_CAN_REVIEW || mail.MAIL_REVIEWED)) { primary = 'review'; primaryLabel = mail.MAIL_REVIEWED ? '查看我的评价' : '评价对方'; }
  else if (phone) { primary = 'contact'; primaryLabel = mail.mypost ? '联系骑手' : '联系发布者'; }
@@ -120,7 +128,7 @@ function detail(mail, now = Date.now()) {
   actor: x.actor === 'admin' ? '管理员' : x.actor === 'poster' ? '发布者' : x.actor === 'rider' ? '骑手' : '系统', time: time(x.at) || '时间待确认'
  })).reverse() : [];
  let title = mail.myaccept && status === 1 ? '请前往快递点取件' : mail.myaccept && status === 4 ? '配送进行中' : mail.myaccept && status === 2 ? '等待发布者确认' : state.title;
- let note = !participant && status === 0 && !expired ? '接单后可查看联系人信息、取件码和截图' : mail.myaccept && status === 1 ? '取齐本单包裹后，点击“已取件”开始配送' : mail.myaccept && status === 4 ? '送到收件地址后，点击“已送达”填写说明并上传照片' : mail.myaccept && status === 2 ? '已通知发布者核对，请等待对方确认收货' : state.note;
+ let note = !participant && status === 0 && !expired ? '接单后可查看联系人信息、取件码和截图' : mail.myaccept && status === 1 ? '取齐本单包裹后，拍照留证并点击“已取件”开始配送' : mail.myaccept && status === 4 ? '送到收件地址后，选择放置指定位置或当面交付，并提交凭证' : mail.myaccept && status === 2 ? '已通知发布者核对，可提醒对方确认收货；送达满8小时自动确认' : state.note;
  if (orderProgress.adminCompleted) { title = '管理员已完结订单'; note = '本单由管理员处理完结，具体情况请查看处理记录'; }
  if (serviceType !== 'take') {
   if (status === 1) { title = serviceType === 'buy' ? (mail.myaccept ? '请前往购买商品' : '等待骑手购买') : (mail.myaccept ? '请前往取件地址' : '等待骑手取件'); note = serviceType === 'buy' ? '请按要求购买，超出预算先联系发布者；购齐后开始配送' : '请按填写的取件位置交接物品，取齐后开始配送'; }
@@ -132,7 +140,13 @@ function detail(mail, now = Date.now()) {
   role: mail.mypost ? '我的发布' : mail.myaccept ? '我的接单' : '订单详情',
   step: orderProgress.step, showProgress: orderProgress.visible, steps: orderProgress.steps, deliveryAddress: Address.formatOrderAddress(mail),
   phone: phone || '', contactName: contactName || (mail.mypost ? (status === 0 && !expired ? '等待骑手接单' : '暂无骑手信息') : '发布者'), contactRole: mail.mypost ? '接单骑手' : '订单发布者',
-  createdAt: time(mail.MAIL_ADD_TIME), endAt: time(mail.MAIL_END_TIME) || time(mail.end2), expectAt: time(mail.MAIL_EXPECT_TIME) || time(mail.expect2) || time(mail.MAIL_END_TIME) || time(mail.end2), dueAt: time(mail.MAIL_DUE_TIME), deliveredAt: time(mail.MAIL_DELIVERED_TIME),
+  createdAt: time(mail.MAIL_ADD_TIME), endAt: time(mail.MAIL_END_TIME) || time(mail.end2), expectAt: expectSpan(mail), dueAt: time(mail.MAIL_DUE_TIME), deliveredAt: time(mail.MAIL_DELIVERED_TIME),
+  autoConfirmAt: time(mail.MAIL_AUTO_CONFIRM_AT), autoConfirmed: mail.MAIL_AUTO_CONFIRMED === true,
+  deliveryMode: mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.mode || '', deliveryModeLabel: mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.mode === 'face' ? '当面交付' : mail.MAIL_DELIVERY_PROOF ? '放置指定位置' : '',
+  proofVideo: mail.MAIL_MEDIA && mail.MAIL_MEDIA.proofVideo && mail.MAIL_MEDIA.proofVideo[0] || '',
+  pickupProof: mail.MAIL_PICKUP_PROOF ? { note: mail.MAIL_PICKUP_PROOF.note || '', at: time(mail.MAIL_PICKUP_PROOF.at), images: mail.MAIL_MEDIA && mail.MAIL_MEDIA.pickupProof || [], video: mail.MAIL_MEDIA && mail.MAIL_MEDIA.pickupVideo && mail.MAIL_MEDIA.pickupVideo[0] || '' } : null,
+  // 已送达待确认时不再暴露发布人电话，改为站内提醒。
+  hideContactCall: !!(mail.myaccept && status === 2),
   canUpdateProof: !!mail.myaccept && status === 2 && !!mail.MAIL_DELIVERY_PROOF, proofUpdatedAt: time(mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.updatedAt),
   primary, primaryLabel, receipt: receipt(mail, now), history, canException: participant && [1, 2, 4].includes(status), canCancel: !!mail.mypost && status === 0
  };

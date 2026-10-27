@@ -7,7 +7,11 @@ const store = require('./operation_store.js');
 const rules = require('./order_rules.js');
 const profileRules = require('./profile_rules.js');
 const media = require('./private_media_service.js');
-const REQUEST_ROUTES = {publish:'mail/insert',edit:'mail/edit',accept:'mail/accept',pickup:'mail/pickup',cancel:'mail/cancel',deliver:'mail/deliver',update_proof:'mail/update_proof',confirm:'mail/finish',exception:'mail/exception',archive:'mail/del',hold:'admin/operations_hold',resolve:'admin/operations_resolve',admin_delete:'admin/operations_delete_order'};
+const REQUEST_ROUTES = {publish:'mail/insert',edit:'mail/edit',accept:'mail/accept',pickup:'mail/pickup',cancel:'mail/cancel',deliver:'mail/deliver',update_proof:'mail/update_proof',confirm:'mail/finish',exception:'mail/exception',remind:'mail/remind',auto_confirm:'mail/auto_confirm',archive:'mail/del',hold:'admin/operations_hold',resolve:'admin/operations_resolve',admin_delete:'admin/operations_delete_order'};
+// 送达后 8 小时内未确认收货，由订单维护任务自动确认。
+const AUTO_CONFIRM_MS = 8 * 3600000;
+// 「提醒发布人收货」的冷却：同一订单 5 分钟内只允许提醒一次，避免刷消息。
+const REMIND_COOLDOWN_MS = 5 * 60000;
 class MailService extends Base {
  getStatusDesc(mail) { return rules.project(mail, '').status; }
  getFormObj(forms) { return Object.fromEntries((forms || []).map(x => [x.mark,x.val])); }
@@ -62,7 +66,7 @@ class MailService extends Base {
   if (add) { if (active.length >= maximum) this.AppError('当前进行中的订单已达上限'); active.push(orderId); }
   await store.set(tx,'order_quota',id,{ _pid:this.getProjectId(), userId, role, active, updatedAt:Date.now() });
  }
- async _record(tx, mail, actor, action, requestId, note = '', fingerprint = '', sourceFingerprint = '') {
+ async _record(tx, mail, actor, action, requestId, note = '', fingerprint = '', sourceFingerprint = '', message = null) {
   await store.assertRequestScope(tx,this.getProjectId(),actor.adminId || actor.userId,REQUEST_ROUTES[action] || action,requestId);
   const now = Date.now(); const version = Number(mail.MAIL_VERSION || 0) + 1;
   const event = { id:store.key(mail._id,version), action, status:mail.MAIL_STATUS, at:now, actor:actor.adminId ? 'admin' : actor.userId === mail.MAIL_USER_ID ? 'poster' : 'rider', note };
@@ -79,8 +83,11 @@ class MailService extends Base {
   await store.set(tx, 'order_feed', scope ? store.scopeKey(this.getProjectId(), 'feed', shard) : this.getProjectId() + '_' + shard, {
    _pid: this.getProjectId(), shard, revision: event.id, updatedAt: now
   });
-  for (const userId of new Set([mail.MAIL_USER_ID,mail.MAIL_ACCEPT_USER_ID].filter(Boolean))) {
-   await store.set(tx,'notification',store.key(event.id,userId),{ _pid:this.getProjectId(), userId, orderId:mail._id, title:action === 'update_proof' ? '送达凭证已更新' : '订单状态更新', content:action === 'update_proof' ? '骑手已更新送达说明或照片，请核对后确认收货' : rules.LABELS[mail.MAIL_STATUS], action, createdAt:now, read:false, delivery:'pending', attempts:0, nextAttemptAt:now });
+  const title = message && message.title || (action === 'update_proof' ? '送达凭证已更新' : '订单状态更新');
+  const content = message && message.content || (action === 'update_proof' ? '骑手已更新送达说明或照片，请核对后确认收货' : rules.LABELS[mail.MAIL_STATUS]);
+  const recipients = message && message.only === 'poster' ? [mail.MAIL_USER_ID] : [mail.MAIL_USER_ID, mail.MAIL_ACCEPT_USER_ID];
+  for (const userId of new Set(recipients.filter(Boolean))) {
+   await store.set(tx,'notification',store.key(event.id,userId),{ _pid:this.getProjectId(), userId, orderId:mail._id, title, content, action, createdAt:now, read:false, delivery:'pending', attempts:0, nextAttemptAt:now });
   }
  }
  async insertMail(userId, input) {
@@ -96,7 +103,7 @@ class MailService extends Base {
    const config = await new ConfigService().getConfig(tx);
    const normalized=rules.validateForms(input.forms,config,Date.now());rules.requireOpen(config,Date.now());
    await this._quota(tx,userId,'poster',id,true,config.maxOpenOrders,seed);
-   const mail = { _id:id,_pid:this.getProjectId(),MAIL_ID:'MAIL'+id.slice(0,28),MAIL_PUBLISH_FINGERPRINT:fingerprint,MAIL_STATUS:0,MAIL_USER_ID:userId,MAIL_USER_NAME:user.USER_NAME,MAIL_ACCEPT_USER_ID:'',MAIL_ORDER:9999,MAIL_CATE_ID:rules.SERVICES[normalized.obj.serviceType].id,MAIL_CATE_NAME:rules.SERVICES[normalized.obj.serviceType].name,MAIL_OBJ:normalized.obj,MAIL_FORMS:normalized.forms,MAIL_END_TIME:normalized.endTime,MAIL_EXPECT_TIME:normalized.expectTime || normalized.endTime,MAIL_TOTAL_FEE:normalized.totalFee,MAIL_PAYMENT_MODE:'offline',MAIL_PAY_STATUS:0,MAIL_ADD_TIME:now,MAIL_ACCEPT_TIME:0,MAIL_OVER_TIME:0,MAIL_DELIVERY_MINUTES:normalized.obj.urgent ? config.urgentMinutes : config.deliveryMinutes };
+   const mail = { _id:id,_pid:this.getProjectId(),MAIL_ID:'MAIL'+id.slice(0,28),MAIL_PUBLISH_FINGERPRINT:fingerprint,MAIL_STATUS:0,MAIL_USER_ID:userId,MAIL_USER_NAME:user.USER_NAME,MAIL_ACCEPT_USER_ID:'',MAIL_ORDER:9999,MAIL_CATE_ID:rules.SERVICES[normalized.obj.serviceType].id,MAIL_CATE_NAME:rules.SERVICES[normalized.obj.serviceType].name,MAIL_OBJ:normalized.obj,MAIL_FORMS:normalized.forms,MAIL_END_TIME:normalized.endTime,MAIL_EXPECT_START:normalized.expectStart,MAIL_EXPECT_TIME:normalized.expectTime || normalized.endTime,MAIL_TOTAL_FEE:normalized.totalFee,MAIL_PAYMENT_MODE:'offline',MAIL_PAY_STATUS:0,MAIL_ADD_TIME:now,MAIL_ACCEPT_TIME:0,MAIL_OVER_TIME:0,MAIL_DELIVERY_MINUTES:normalized.obj.urgent ? config.urgentMinutes : config.deliveryMinutes };
    mail.MAIL_SCHEMA_VERSION=normalized.schemaVersion; mail.MAIL_RULE_SNAPSHOT=normalized.ruleSnapshot;
    await this._record(tx,mail,{userId},'publish',input.requestId,'发布订单；线下结算',fingerprint,input._sourceFingerprint || '');
    return {id:mail.MAIL_ID,_id:id,fee:normalized.totalFee/100,paymentMode:'offline'};
@@ -115,7 +122,7 @@ class MailService extends Base {
    await store.limitInTransaction(tx,this.getProjectId(),adminId || userId,'order_action',30,60000);
    const config = await new ConfigService().getConfig(tx);
    const poster = mail.MAIL_USER_ID === userId, rider = mail.MAIL_ACCEPT_USER_ID === userId, oldRider = mail.MAIL_ACCEPT_USER_ID;
-   const state = mail.MAIL_STATUS, now = Date.now(); let note = '';
+   const state = mail.MAIL_STATUS, now = Date.now(); let note = '', message = null;
    if (action !== 'accept' && !adminId && !poster && !rider) this.AppError('无权限操作该订单');
    if (action === 'accept') {
     rules.requireOpen(config,now);
@@ -126,21 +133,35 @@ class MailService extends Base {
     if (!store.scope() && !config.campuses.includes(mail.MAIL_OBJ.campus)) this.AppError('该订单校区暂不在服务范围');
     await this._quota(tx,userId,'rider',id,true,config.maxActiveOrders,seed);
     mail.MAIL_STATUS = 1; mail.MAIL_ACCEPT_USER_ID = userId; mail.MAIL_ACCEPT_USER_NAME = currentUser.USER_NAME; mail.MAIL_ACCEPT_TIME = now;
-    mail.MAIL_DUE_TIME = now + (mail.MAIL_DELIVERY_MINUTES || config.deliveryMinutes) * 60000;
+    // 期待送达时间是「最早 ~ 最晚」区间：在区间最晚时间内送达都不算超时。
+    const expectEnd = Number(mail.MAIL_EXPECT_TIME) || 0;
+    mail.MAIL_DUE_TIME = expectEnd > now ? expectEnd : now + (mail.MAIL_DELIVERY_MINUTES || config.deliveryMinutes) * 60000;
    } else if (action === 'pickup') {
     if (!rider || state !== 1) this.AppError('仅已接单订单可确认取件');
+    // 取件须拍照留证：至少1张，最多10张，可附1段15秒视频。
+    const proof = rules.images(input.images || []);
+    if (!proof.length) this.AppError('取件请先拍摄并上传至少1张凭证照片');
+    mail.MAIL_PICKUP_PROOF = {images:proof, video:rules.videos(input.videos || [])[0] || '', note:rules.text(input.note || '','取件说明',300,false), at:now};
     mail.MAIL_STATUS = 4; mail.MAIL_PICKUP_TIME = now;
    } else if (action === 'cancel') {
     if (!poster || state !== 0) this.AppError('只有发布者可取消待接单订单；已接单请提交异常申请'); mail.MAIL_STATUS = 99; note = rules.text(input.note || '发布者取消','取消原因',300,true);
    } else if (action === 'deliver') {
     if (!rider || state !== 4) this.AppError('仅配送中的接单人可提交送达');
-    const proof = rules.images(input.images || []); note = rules.text(input.note || '','送达说明',300,true);
-    if (!proof.length) this.AppError('请上传送达凭证'); mail.MAIL_DELIVERY_PROOF = {images:proof,note,at:now}; mail.MAIL_DELIVERED_TIME = now; mail.MAIL_STATUS = 2;
+    // 两种送达方式：放置指定位置（须凭证）/ 当面交付（由发布人确认收货）。
+    const mode = input.mode === 'face' ? 'face' : 'place';
+    const proof = rules.images(input.images || []); note = rules.text(input.note || '','送达说明',300,mode !== 'face');
+    if (mode === 'place' && !proof.length) this.AppError('放置指定位置请至少上传1张凭证照片');
+    mail.MAIL_DELIVERY_PROOF = {images:proof, video:rules.videos(input.videos || [])[0] || '', note, mode, at:now};
+    mail.MAIL_DELIVERED_TIME = now; mail.MAIL_STATUS = 2;
+    mail.MAIL_AUTO_CONFIRM_AT = now + AUTO_CONFIRM_MS;
+    message = { title: mode === 'face' ? '骑手已当面交付' : '骑手已放置包裹',
+     content: mode === 'face' ? '骑手已当面交付，请核对后确认收货；送达满8小时将自动确认收货' : '骑手已放置包裹并上传凭证，请核对后确认收货；送达满8小时将自动确认收货' };
    } else if (action === 'update_proof') {
     if (!rider || state !== 2 || !mail.MAIL_DELIVERY_PROOF) this.AppError('仅待收货订单的接单骑手可更新送达凭证');
-    const proof = rules.images(input.images || []); note = rules.text(input.note || '','送达说明',300,true);
-    if (!proof.length) this.AppError('请至少保留1张送达照片');
-    mail.MAIL_DELIVERY_PROOF = {...mail.MAIL_DELIVERY_PROOF,images:proof,note,updatedAt:now};
+    const proof = rules.images(input.images || []); note = rules.text(input.note || '','送达说明',300,mail.MAIL_DELIVERY_PROOF.mode !== 'face');
+    const mode = mail.MAIL_DELIVERY_PROOF.mode === 'face' ? 'face' : 'place';
+    if (mode === 'place' && !proof.length) this.AppError('请至少保留1张送达照片');
+    mail.MAIL_DELIVERY_PROOF = {...mail.MAIL_DELIVERY_PROOF,images:proof,video:rules.videos(input.videos === undefined ? (mail.MAIL_DELIVERY_PROOF.video ? [mail.MAIL_DELIVERY_PROOF.video] : []) : input.videos)[0] || '',note,updatedAt:now};
    } else if (action === 'confirm') {
     if (!poster || state !== 2) this.AppError('仅发布者可确认已送达订单'); mail.MAIL_STATUS = 9; mail.MAIL_OVER_TIME = now; mail.MAIL_POSTER_ARCHIVED = true; mail.MAIL_RIDER_ARCHIVED = true;
    } else if (action === 'exception') {
@@ -160,7 +181,7 @@ class MailService extends Base {
     if (!poster || state !== 0) this.AppError('仅可编辑尚未被接取的订单'); const normalized = rules.validateForms(input.forms,config,now);
     if (normalized.obj.serviceType !== (mail.MAIL_OBJ.serviceType || 'take')) this.AppError('不能修改订单服务类型');
     if (mail.MAIL_PAYMENT_MODE !== 'offline') this.AppError('旧支付订单不可编辑，请联系管理员核对');
-    Object.assign(mail,{MAIL_CATE_ID:rules.SERVICES[normalized.obj.serviceType].id,MAIL_CATE_NAME:rules.SERVICES[normalized.obj.serviceType].name,MAIL_OBJ:normalized.obj,MAIL_FORMS:normalized.forms,MAIL_END_TIME:normalized.endTime,MAIL_EXPECT_TIME:normalized.expectTime || normalized.endTime,MAIL_TOTAL_FEE:normalized.totalFee,MAIL_DELIVERY_MINUTES:normalized.obj.urgent ? config.urgentMinutes : config.deliveryMinutes});
+    Object.assign(mail,{MAIL_CATE_ID:rules.SERVICES[normalized.obj.serviceType].id,MAIL_CATE_NAME:rules.SERVICES[normalized.obj.serviceType].name,MAIL_OBJ:normalized.obj,MAIL_FORMS:normalized.forms,MAIL_END_TIME:normalized.endTime,MAIL_EXPECT_START:normalized.expectStart,MAIL_EXPECT_TIME:normalized.expectTime || normalized.endTime,MAIL_TOTAL_FEE:normalized.totalFee,MAIL_DELIVERY_MINUTES:normalized.obj.urgent ? config.urgentMinutes : config.deliveryMinutes});
     mail.MAIL_SCHEMA_VERSION=normalized.schemaVersion; mail.MAIL_RULE_SNAPSHOT=normalized.ruleSnapshot;
    } else if (action === 'archive') {
     if (!poster || ![9,99].includes(state)) this.AppError('仅可隐藏已结束的本人订单'); mail.MAIL_POSTER_ARCHIVED = true;
@@ -169,12 +190,43 @@ class MailService extends Base {
     await this._quota(tx,mail.MAIL_USER_ID,'poster',id,false,config.maxOpenOrders);
     if (oldRider) await this._quota(tx,oldRider,'rider',id,false,config.maxActiveOrders);
    }
-   await this._record(tx,mail,actor,action,input.requestId,note,store.key(input),input._sourceFingerprint || '');
+   await this._record(tx,mail,actor,action,input.requestId,note,store.key(input),input._sourceFingerprint || '',message);
    return {id,statusDesc:this.getStatusDesc(mail)};
   });
  }
+ // 送达后 8 小时未确认收货，系统自动确认（见 maintenance_service）。
+ static get AUTO_CONFIRM_MS() { return AUTO_CONFIRM_MS; }
+ static get REMIND_COOLDOWN_MS() { return REMIND_COOLDOWN_MS; }
  async acceptMail(userId,id,input) { return this._change(userId,id,'accept',input); }
  async pickupMail(userId,id,input) { return this._change(userId,id,'pickup',input); }
+ async remindReceipt(userId,id,input = {}) {
+  this._request(input.requestId);
+  if (typeof id !== 'string' || !id || id.length > 100) this.AppError('订单标识无效');
+  const user = await this._user(userId);
+  return store.transaction(async tx => {
+   await this._actor(tx,{userId,user});
+   const mail = await store.get(tx,'mail',id);
+   if (!mail || mail._pid !== this.getProjectId() || mail.MAIL_ADMIN_DELETED === true) this.AppError('订单不存在');
+   mail._id = id;
+   if (mail.MAIL_ACCEPT_USER_ID !== userId) this.AppError('仅接单骑手可提醒发布人收货');
+   if (mail.MAIL_STATUS !== 2) this.AppError('当前订单无需提醒收货');
+   const now = Date.now(), last = Number(mail.MAIL_REMIND_AT) || 0;
+   // 冷却期内不再推送，避免骑手连续点击把发布人的消息刷满。
+   if (last > 0 && now - last < REMIND_COOLDOWN_MS) {
+    const wait = Math.max(1, Math.ceil((REMIND_COOLDOWN_MS - (now - last)) / 60000));
+    this.AppError('已经提醒过发布人，请 ' + wait + ' 分钟后再试');
+   }
+   await store.assertRequestOpen(tx,this.getProjectId(),userId,'mail/remind',input.requestId);
+   await store.limitInTransaction(tx,this.getProjectId(),userId,'order_action',30,60000);
+   // 不暴露发布人联系方式：只推送一条站内提醒，由发布人自行确认收货。
+   const eventId = store.key(id,'remind',now);
+   mail.MAIL_REMIND_AT = now;
+   await store.set(tx,'mail',id,mail);
+   await store.set(tx,'notification',store.key(eventId,mail.MAIL_USER_ID),{ _pid:this.getProjectId(), userId:mail.MAIL_USER_ID, orderId:id, title:'骑手提醒你确认收货', content:'骑手已送达，请核对后及时确认收货；送达满8小时将自动确认收货', action:'remind', createdAt:now, read:false, delivery:'pending', attempts:0, nextAttemptAt:now });
+   await store.set(tx,'order_request',store.key(this.getProjectId(),userId,input.requestId),{ _pid:this.getProjectId(), orderId:id, action:'remind', fingerprint:store.key(input), sourceFingerprint:input._sourceFingerprint || '', createdAt:now });
+   return {id,reminded:true,nextRemindAt:now + REMIND_COOLDOWN_MS};
+  });
+ }
  async cancelMail(userId,id,input) { return this._change(userId,id,'cancel',input); }
  async finishMail(userId,id,input) { return this._change(userId,id,'confirm',input); }
  async deliverMail(userId,id,input) { return this._change(userId,id,'deliver',input); }

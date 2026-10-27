@@ -352,20 +352,16 @@ Page({
 		this._orderActionBusy = true;
 		this.setData({ actionBusyId: id });
 		try {
-			const message = action === 'pickup' ? '确认已经取齐或购齐本单所有物品吗？确认后将进入配送中。' : '确认已将本单所有包裹送到收件地址吗？接下来将进入订单详情，请填写送达说明并上传至少1张照片，提交后通知发布者确认收货。';
+			const message = action === 'pickup' ? '确认已经取齐或购齐本单所有物品吗？接下来将进入订单详情拍照留证，提交后进入配送中。' : '确认已将本单所有包裹送到收件地址吗？接下来将进入订单详情，选择放置指定位置或当面交付并提交凭证。';
 			if (!await pageHelper.showConfirm(message) || !this._visible || this.data.tabIndex !== 1) return;
 			const current = (this.data.dataList && this.data.dataList.list || []).find(row => row._id === id);
 			if (!current || !current.myaccept || Number(current.MAIL_STATUS) !== expectedStatus) return;
-			if (action === 'deliver') {
-				await new Promise((resolve, reject) => wx.navigateTo({
-					url: pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id=' + encodeURIComponent(id) + '&panel=deliver'),
-					success: resolve, fail: reject,
-				}));
-				return;
-			}
-			await Ops.command('mail/pickup', { id });
-			PublicBiz.removeCacheList('order-mail-mine');
-			if (this._visible) { pageHelper.showSuccToast('已更新为已取件'); await this._syncOrders(); }
+			// 取件与送达都需要凭证，统一进入订单详情填写。
+			await new Promise((resolve, reject) => wx.navigateTo({
+				url: pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id=' + encodeURIComponent(id) + '&panel=' + action),
+				success: resolve, fail: reject,
+			}));
+			return;
 		} catch (err) { if (this._visible) { Ops.error(err); await this._syncOrders(); } }
 		finally { this._orderActionBusy = false; if (!this._unloaded) this.setData({ actionBusyId: '' }); }
 	},

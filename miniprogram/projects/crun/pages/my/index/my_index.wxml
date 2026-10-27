@@ -15,6 +15,12 @@
     <text class="my-profile-arrow icon-right"></text>
   </view>
 
+  <view class="my-card my-wallet" bindtap="bindWalletTap" hover-class="my-tap">
+    <view class="my-wallet-icon"><text class="icon-moneybag"></text></view>
+    <view class="my-wallet-copy"><view class="my-link-title">我的钱包</view><view class="my-link-desc">跑腿收益 · 邀请奖励 · 提现</view></view>
+    <text class="my-arrow icon-right"></text>
+  </view>
+
   <view class="my-card">
     <view class="my-section-title">我的服务</view>
     <view class="my-grid">

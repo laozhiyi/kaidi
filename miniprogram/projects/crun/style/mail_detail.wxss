@@ -153,4 +153,18 @@ page { background: #f3f6fb; }
 .delivery-page .od-upload-add { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 158rpx; height: 158rpx; border: 2rpx dashed #d5e1f0; border-radius: 18rpx; background: #f8faff; color: #859cba; font-size: 23rpx; }
 .delivery-page .od-upload-add text:first-child { margin-bottom: 10rpx; font-size: 43rpx; }
 .delivery-page .od-sheet-submit { margin-top: 24rpx; }
+/* 送达方式：放置指定位置需凭证；当面交付由发布人确认收货。 */
+.delivery-page .od-mode-list { display: flex; flex-direction: column; gap: 16rpx; margin-top: 24rpx; }
+.delivery-page .od-mode { display: flex; align-items: flex-start; gap: 16rpx; padding: 22rpx; border: 2rpx solid #e6edf7; border-radius: 18rpx; background: #f8fafd; }
+.delivery-page .od-mode-active { border-color: #397bc8; background: #f1f7ff; }
+.delivery-page .od-mode-radio { flex-shrink: 0; width: 32rpx; height: 32rpx; margin-top: 4rpx; border-radius: 50%; border: 2rpx solid #c3d2e4; background: #fff; }
+.delivery-page .od-mode-active .od-mode-radio { border-color: #397bc8; background: #397bc8; box-shadow: inset 0 0 0 6rpx #fff; }
+.delivery-page .od-mode-copy { flex: 1; min-width: 0; }
+.delivery-page .od-mode-title { color: #26374f; font-size: 27rpx; font-weight: 600; }
+.delivery-page .od-mode-desc { margin-top: 6rpx; color: #8c9bb0; font-size: 22rpx; line-height: 1.6; }
+.delivery-page .od-video { margin-top: 20rpx; }
+.delivery-page .od-video-player { width: 100%; height: 340rpx; border-radius: 16rpx; background: #0d1622; }
+.delivery-page .od-video-item { position: relative; margin-top: 20rpx; }
+.delivery-page .od-video-remove { position: absolute; top: 12rpx; right: 12rpx; z-index: 2; display: flex; align-items: center; justify-content: center; width: 46rpx; height: 46rpx; border-radius: 50%; background: rgba(20,32,48,.7); color: #fff; font-size: 26rpx; }
+.delivery-page .od-upload-video { display: flex; align-items: center; justify-content: center; gap: 10rpx; width: 100%; margin-top: 18rpx; padding: 22rpx; border: 2rpx dashed #d5e1f0; border-radius: 18rpx; background: #f8faff; color: #6d84a2; font-size: 24rpx; }
 @media (max-width: 360px) { .delivery-page .od-status-title { font-size: 40rpx; } .delivery-page .od-footer { gap: 12rpx; } .delivery-page .od-primary { font-size: 28rpx; } }

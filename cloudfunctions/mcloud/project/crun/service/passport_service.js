@@ -54,7 +54,11 @@ class PassportService extends BaseProjectService {
   }
   const cfg = await new (require('./operation_config_service.js'))().getConfig();
   const campus = profileRules.formValue(forms, 'campus');
-  if (!cfg.campuses.includes(campus) && campus !== profileRules.formValue(previous && previous.USER_FORMS, 'campus')) this.AppError('请选择有效的所在校区');
+  // 所在校区取全校开放校区，不再局限当前服务校区。
+  const campusScope = store.scope();
+  const allowedCampuses = campusScope ? await new (require('./tenant_service.js'))().campusNames(campusScope.schoolId, campusScope.campusId) : [];
+  const campusList = allowedCampuses.length ? allowedCampuses : cfg.campuses;
+  if (!campusList.includes(campus) && campus !== profileRules.formValue(previous && previous.USER_FORMS, 'campus')) this.AppError('请选择有效的所在校区');
   const conflict = await UserModel.getOne({ USER_MOBILE: mobile, USER_MINI_OPENID: ['<>', userId] }, '_id');
   if (conflict) this.AppError('该联系电话已登记，请联系客服核实');
   await store.limit(this.getProjectId(), userId, 'profile', 10, 3600000);

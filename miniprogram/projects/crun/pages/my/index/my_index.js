@@ -71,6 +71,7 @@ Page(Object.assign({
   bindProfileContactTap() { return this._openUserPage('/projects/crun/pages/my/contact/contact'); },
   bindProfileAddressTap() { return this._openUserPage('/projects/crun/pages/my/address/address'); },
   bindInviteTap() { return this._openUserPage('/projects/crun/pages/invite/index/invite_index'); },
+  bindWalletTap() { return this._openUserPage('/projects/crun/pages/my/wallet/wallet'); },
   bindAboutTap() { wx.navigateTo({ url: '/projects/crun/pages/about/index/about_index' }); },
   bindCampusServiceTap() { wx.navigateTo({ url: '/projects/crun/pages/campus_service/list/campus_service_list' }); },
   bindMyAcceptTap() {

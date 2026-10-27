@@ -17,10 +17,9 @@
    <view class="pub-hero-symbol pub-view"><text class="icon-deliver pub-text"></text></view>
   </view>
   <view class="pub-content pub-view">
-   <view class="pub-card pub-service pub-view">
-    <view class="pub-campus-row pub-view"><view class="pub-campus-copy pub-view"><view class="pub-caption pub-view">当前服务校区</view><view class="pub-campus-name pub-view">{{config.schoolName}} · {{campus}}</view></view></view>
+   <view wx:if="{{!serviceState.canPublish}}" class="pub-card pub-service pub-view">
     <view class="pub-service-row pub-service-{{serviceState.kind}} pub-view"><view class="pub-status-label pub-view"><view class="pub-status-dot pub-view"></view><text class="pub-text">{{serviceState.title}}</text></view><text wx:if="{{serviceState.hours}}" class="pub-hours pub-text">{{serviceState.hours}}</text></view>
-    <view wx:if="{{!serviceState.canPublish}}" class="pub-service-detail pub-view"><view class="pub-view">{{serviceState.description}}</view><view class="pub-service-actions pub-view"><text class="pub-text" bindtap="bindServiceHelpTap">联系校区客服 <text class="icon-right pub-text"></text></text><text class="pub-text" bindtap="bindRetryLoad">刷新状态</text></view></view>
+    <view class="pub-service-detail pub-view"><view class="pub-view">{{serviceState.description}}</view><view class="pub-service-actions pub-view"><text class="pub-text" bindtap="bindServiceHelpTap">联系校区客服 <text class="icon-right pub-text"></text></text><text class="pub-text" bindtap="bindRetryLoad">刷新状态</text></view></view>
    </view>
    <view wx:if="{{configError}}" class="pub-inline-error pub-view"><text class="pub-text">{{loadError}}，已保留所填内容。</text><text class="pub-text" bindtap="bindRetryLoad">重试</text></view>
 
@@ -61,7 +60,6 @@
 <view wx:if="{{config.urgentEnabled}}" class="pub-card pub-options pub-view">
     <view class="pub-option-row pub-view"><view class="pub-view"><view class="pub-option-label pub-view">加急 <text class="pub-urgent-tag pub-text">可选</text></view><view class="pub-caption pub-view">优先处理，预计 {{config.urgentMinutes}} 分钟内完成</view></view><switch class="pub-switch" checked="{{urgent}}" color="#397bc8" bindchange="bindUrgentChange"/></view>
    </view>
-   <view class="pub-settlement pub-view" bindtap="bindSettlementTap"><text class="icon-info pub-text"></text><view class="pub-view"><text class="pub-text">费用线下结算，请勿提前转账</text><view class="pub-view">平台不代收、不担保 · 查看结算说明</view></view><text class="icon-right pub-text"></text></view>
   </view>
 
   <view class="pub-submit-bar pub-view"><view class="pub-total pub-view"><view class="pub-total-label pub-view">{{serviceType === 'buy' ? '跑腿费 · 不含商品款' : '共 ' + totalCount + ' 件 · 线下费用'}}</view><view class="pub-total-price pub-view"><text class="pub-text">¥</text>{{totalFee}}</view></view><button class="pub-submit pub-button-base {{(submitting || pageLoading || configError || (!serviceState.canPublish && !editId) || (serviceType !== 'buy' && totalCount < 1)) ? 'pub-disabled' : ''}}" hover-class="pub-submit-hover" bindtap="bindFormSubmit" loading="{{submitting}}" disabled="{{submitting || pageLoading || configError || (!serviceState.canPublish && !editId) || (serviceType !== 'buy' && totalCount < 1)}}">{{(serviceType !== 'buy' && totalCount < 1) ? '请先选择包裹' : editId ? '保存修改' : serviceState.kind==='paused' ? '暂时停止接单' : serviceState.kind==='closed' ? '营业后可发布' : serviceType === 'buy' ? '发布代买订单' : serviceType === 'send' ? '发布代送订单' : '发布代取订单'}}<text wx:if="{{!submitting && serviceState.canPublish}}" class="icon-right pub-text"></text></button></view>

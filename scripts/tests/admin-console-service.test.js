@@ -56,7 +56,7 @@ test('saved business hours switch controls late publishing and accepting without
   await svc.saveConfig({ enforceBusinessHours: true }, 'admin', 'service');
   await assert.rejects(f.publish({ requestId: f.req('outside') }), /营业时间/);
   await assert.rejects(f.service.acceptMail('rider2', waiting, { requestId: f.req('closed-accept') }), /营业时间/);
-  await f.service.pickupMail('rider', active, { requestId: f.req('pickup') });
+  await f.service.pickupMail('rider', active, { requestId: f.req('pickup'), images: ['cloud://bucket/private-evidence/rider/pickup.png'] });
   await f.service.deliverMail('rider', active, { requestId: f.req('deliver'), note: '已送达', images: ['cloud://proof'] });
   assert.equal(f.table('mail').get(active).MAIL_STATUS, 2);
   await svc.saveConfig({ enforceBusinessHours: false }, 'admin', 'service');
@@ -80,7 +80,7 @@ test('business hours enforcement rejects invalid settings and cannot bypass serv
 test('admin details include both contacts and picked-up orders can enter and resume exception processing', async () => {
   const f = fixture(), id = await f.publish(), svc = new (f.load('operations_service.js'))();
   await f.service.acceptMail('rider', id, { requestId: f.req('accept') });
-  await f.service.pickupMail('rider', id, { requestId: f.req('pickup') });
+  await f.service.pickupMail('rider', id, { requestId: f.req('pickup'), images: ['cloud://bucket/private-evidence/rider/pickup.png'] });
   await f.service.holdMail('admin', id, { requestId: f.req('hold'), note: '核实取件问题' });
   assert.equal(f.table('mail').get(id).MAIL_STATUS, 3);
   await f.service.resolveMail('admin', id, { requestId: f.req('resume'), note: '问题已核实', resolution: 'resume' });
