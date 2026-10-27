@@ -71,6 +71,27 @@ class AdminBiz extends BaseBiz {
 
 
 	/**
+	 * 微信登录后台：只允许已授权超级管理员/管理员/客服的用户进入
+	 */
+	static async wechatLogin(that) {
+		try {
+			const res = await cloudHelper.callCloudSumbit('admin/wechat_login', {}, { title: '微信登录中', hint: false });
+			const data = res && res.data;
+			if (!data || !data.name || typeof data.token !== 'string' || !data.token) {
+				wx.showToast({ title: '微信登录未完成，请重试', icon: 'none' });
+				return false;
+			}
+			cacheHelper.set(constants.CACHE_ADMIN, data, constants.ADMIN_TOKEN_EXPIRE);
+			that && !that._unloaded && that.setData({ loggingIn: false });
+			wx.reLaunch({ url: pageHelper.fmtURLByPID('/pages/admin/index/home/admin_home') });
+			return true;
+		} catch (e) {
+			wx.showToast({ title: (e && (e.msg || e.message)) || '微信登录失败，请稍后重试', icon: 'none', duration: 3000 });
+			return false;
+		}
+	}
+
+	/**
 	 * 清空管理员登录
 	 */
 	static clearAdminToken() {
@@ -97,9 +118,36 @@ class AdminBiz extends BaseBiz {
 	 * 是否超级管理员
 	 */
 	static isSuperAdmin() {
+		return this.getAdminRole() === 'super';
+	}
+
+	/**
+	 * 当前后台角色：super / admin / service / ''
+	 */
+	static getAdminRole() {
 		let admin = cacheHelper.get(constants.CACHE_ADMIN);
-		if (!admin) return false;
-		return (admin.type == 1);
+		if (!admin) return '';
+		if (admin.role === 'super' || admin.role === 'admin' || admin.role === 'service') return admin.role;
+		return admin.type == 1 ? 'super' : 'admin';
+	}
+
+	static getAdminRoleLabel() {
+		return ({ super: '超级管理员', admin: '管理员', service: '客服' })[this.getAdminRole()] || '';
+	}
+
+	/** 客服：不能授权角色、不能审核用户、不能删除订单 */
+	static isServiceAdmin() {
+		return this.getAdminRole() === 'service';
+	}
+
+	/** 只有超级管理员可以授予/取消管理员（含超级管理员）权限 */
+	static canGrantAdmin() {
+		return this.getAdminRole() === 'super';
+	}
+
+	/** 超级管理员与管理员可以授予/取消客服权限 */
+	static canGrantService() {
+		return ['super', 'admin'].includes(this.getAdminRole());
 	}
 
 	//  登录状态判定
@@ -146,6 +194,10 @@ class AdminBiz extends BaseBiz {
 		that.setData({
 			isAdmin: true,
 			isSuperAdmin: this.isSuperAdmin(),
+			isServiceAdmin: this.isServiceAdmin(),
+			canGrantAdmin: this.canGrantAdmin(),
+			canGrantService: this.canGrantService(),
+			adminRoleLabel: this.getAdminRoleLabel(),
 			isSchoolAdmin: this.isSchoolAdmin(),
 			admin
 		});

@@ -18,6 +18,9 @@ UserModel.DB_STRUCTURE = {
 	USER_MINI_OPENID: 'string|true|comment=小程序openid',
 	USER_STATUS: 'int|true|default=1|comment=状态 0=待审核,1=正常,8=审核未过,9=禁用',
 	USER_CHECK_REASON: 'string|false|comment=审核未过的理由',
+	USER_ROLE: 'string|false|default=|comment=后台角色 super=超级管理员,admin=管理员,service=客服,空=无',
+	USER_ROLE_TIME: 'int|false|default=0|comment=角色授权时间',
+	USER_ROLE_BY: 'string|false|comment=授权操作人',
 
 	USER_NAME: 'string|false|comment=姓名',
 	USER_MOBILE: 'string|false|comment=联系电话',

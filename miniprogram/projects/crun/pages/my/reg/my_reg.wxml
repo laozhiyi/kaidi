@@ -11,7 +11,7 @@
       <view class="login-card-title">微信登录</view>
       <view class="login-card-desc">登录后同步个人资料、订单进度与消息</view>
       <button class="login-submit" bindtap="bindOpenWechatProfile" loading="{{identityLoggingIn}}" disabled="{{identityLoggingIn || saving}}">{{identityLoggingIn ? '微信登录中' : '点击微信登录'}}</button>
-      <view class="login-tip">登录后进入个人资料页，按提示填写资料</view>
+      <view class="login-tip">已有资料的账号登录后直接进入“我的”，新账号才需要填写资料</view>
       <view wx:if="{{loginError}}" class="profile-save-error login-error">{{loginError}}</view>
     </view>
     <view class="login-services">

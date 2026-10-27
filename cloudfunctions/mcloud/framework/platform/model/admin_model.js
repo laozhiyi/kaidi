@@ -28,6 +28,9 @@ AdminModel.DB_STRUCTURE = {
 	ADMIN_TYPE: 'int|true|default=0|comment=类型 0=普通管理员 1=超级管理员',
  ADMIN_PLATFORM: 'bool|true|default=false',
  ADMIN_SCOPES: 'array|true|default=[]',
+ // 微信登录的后台账号由用户记录授权而来，ADMIN_USER_ID 指向用户文档。
+ ADMIN_USER_ID: 'string|false|comment=关联用户文档',
+ ADMIN_ROLE: 'string|false|comment=超级管理员 super/管理员 admin/客服 service',
 
 	ADMIN_TOKEN: 'string|false|comment=当前登录token',
 	ADMIN_TOKEN_USER: 'string|false',

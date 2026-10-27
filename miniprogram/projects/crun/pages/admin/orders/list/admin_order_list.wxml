@@ -1,6 +1,6 @@
 <view wx:if="{{isAdmin}}" class="ac-page">
   <view class="ac-eyebrow">业务管理 / 订单</view>
-  <view class="ac-heading"><view><view class="ac-title">订单管理</view><view class="ac-subtitle">查询订单，跟进配送与处理异常</view></view><button class="ac-secondary ac-small" bindtap="bindExport">导出订单</button></view>
+  <view class="ac-heading"><view><view class="ac-title">订单管理</view><view class="ac-subtitle">查询订单，跟进配送与处理异常</view></view><button wx:if="{{!isServiceAdmin}}" class="ac-secondary ac-small" bindtap="bindExport">导出订单</button></view>
   <view class="ac-search"><text class="icon-search ac-search-icon"></text><input value="{{searchDraft}}" bindinput="bindInput" bindconfirm="bindSearch" confirm-type="search" maxlength="50" placeholder="搜索订单编号或任务名称" /><button class="ac-secondary ac-small" bindtap="bindSearch">搜索</button></view>
   <scroll-view scroll-x class="ac-tabs"><view wx:for="{{statuses}}" wx:key="value" class="ac-tab {{status===item.value?'active':''}}" bindtap="bindStatus" data-value="{{item.value}}">{{item.label}}</view></scroll-view>
   <view class="ac-filter-row"><picker class="ac-filter" range="{{campuses}}" value="{{campusIndex}}" bindchange="bindCampus"><view class="ac-filter-value"><text>{{campuses[campusIndex]}}</text><text>⌄</text></view></picker><picker class="ac-filter" range="{{sortLabels}}" value="{{sortIndex}}" bindchange="bindSort"><view class="ac-filter-value"><text>{{sortLabels[sortIndex]}}</text><text>⌄</text></view></picker></view>

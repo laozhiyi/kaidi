@@ -193,10 +193,16 @@ test('user service resolves document, OpenID and legacy ids, preserves project i
     { _id: 'foreign', _pid: 'elsewhere', USER_MINI_OPENID: 'foreign-open', USER_STATUS: 0 }
   ];
   const writes = [], reads = [];
-  const svc = service('admin/admin_user_service.js', request => request.endsWith('/user_model.js') ? {
-    getOne: async where => { reads.push(where); return rows.find(row => row._pid === 'crun' && Object.entries(where).every(([key, val]) => row[key] === val)) || null; },
-    edit: async (where, data) => { writes.push({ where, data }); Object.assign(rows.find(row => row._id === where._id), data); }
-  } : {});
+  const svc = service('admin/admin_user_service.js', request => {
+    if (request.includes('admin_mgr_service')) return class { async setUserAdminActive() {} async syncUserRole() {} };
+    if (request.includes('admin_roles')) return { normalize: value => value, label: () => '', ofAdmin: () => 'admin', grantError: () => '', ROLES: {} };
+    if (request.endsWith('/user_model.js')) return {
+      getOne: async where => { reads.push(where); return rows.find(row => row._pid === 'crun' && Object.entries(where).every(([key, val]) => row[key] === val)) || null; },
+      edit: async (where, data) => { writes.push({ where, data }); Object.assign(rows.find(row => row._id === where._id), data); },
+      count: async () => 1
+    };
+    return {};
+  });
   for (const id of ['doc', 'openid', 'legacy']) assert.equal((await svc.getUser({ userId: id }))._id, 'doc');
   await svc.statusUser('openid', 1, '通过'); await svc.statusUser('legacy', 8, '缺少信息'); await svc.delUser('doc');
   assert.ok(writes.every(write => write.where._id === 'doc' && Object.keys(write.where).length === 1));

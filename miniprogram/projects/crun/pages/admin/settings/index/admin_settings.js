@@ -10,7 +10,7 @@ Page({
     ] },
     { title: '内容与客服', items: [
       { key: 'news', title: '公告管理', desc: '发布公告、编辑内容、调整展示', icon: 'icon-notice' },
-      { key: 'chats', title: '客服会话', desc: '查看咨询并回复用户', icon: 'icon-message' },
+      { key: 'chats', title: '客服会话', desc: '查看咨询并回复用户', icon: 'icon-message', serviceAllowed: true },
       { key: 'services', title: '校区客服配置', desc: '客服人员、服务入口与联系方式', icon: 'icon-service' },
       { key: 'about', title: '关于与联系', desc: '小程序介绍与联系信息', icon: 'icon-info' },
       { key: 'qr', title: '小程序码', desc: '获取小程序推广入口', icon: 'icon-qr_code' }
@@ -21,9 +21,9 @@ Page({
       { key: 'monitor', title: '系统维护', desc: '过期订单、超时提醒与通知处理', icon: 'icon-repair' }
     ] },
     { title: '账号与权限', items: [
-      { key: 'managers', title: '管理员账号', desc: '创建账号、设置角色与停用账号', icon: 'icon-group', platformOnly: true },
+      { key: 'managers', title: '管理员账号', desc: '初始账号密码登录与停用', icon: 'icon-group', platformOnly: true, passwordOnly: true },
       { key: 'logs', title: '操作日志', desc: '查询管理操作记录', icon: 'icon-footprint' },
-      { key: 'password', title: '修改我的密码', desc: '更新当前管理员登录密码', icon: 'icon-lock' }
+      { key: 'password', title: '修改我的密码', desc: '更新当前管理员登录密码', icon: 'icon-lock', passwordOnly: true }
     ] }
   ] },
   onLoad() { UI.start(this); },

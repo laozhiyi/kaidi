@@ -5,3 +5,6 @@
 .ac-page .ac-login-submit { width: 100%; margin-top: 32rpx; }
 .ac-page .ac-login-brand .ac-eyebrow { margin-bottom: 14rpx; }
 .ac-login-page > button { width: 100%; margin-top: 26rpx; }
+.ac-page .ac-login-note { margin-top: 18rpx; font-size: 24rpx; line-height: 1.6; color: #7a8aa6; text-align: center; }
+.ac-page .ac-login-switch { margin-top: 26rpx; padding-top: 22rpx; border-top: 1rpx solid #eef1f6; text-align: center; font-size: 25rpx; color: #2863db; }
+.ac-page .ac-login-switch + .ac-form-field { margin-top: 22rpx; }

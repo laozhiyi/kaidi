@@ -30,7 +30,7 @@ function pageHarness(file, get, profile) {
   if (request.includes('operations_biz')) return ops;
   if (request.includes('notification_biz')) return notificationStub(ops.get);
   if (request.includes('project_biz')) return { initPage() {} };
-  if (request.includes('passport_biz')) return { isLogin: () => !!profile, loginMustBackWin: async () => true, loginMustCancelWin: async () => true };
+  if (request.includes('passport_biz')) return { isLogin: () => !!profile, getToken: () => ({ id: 'poster', status: 1, profileComplete: true, phoneVerified: true, sessionToken: 'session' }), loginMustBackWin: async () => true, loginMustCancelWin: async () => true, loginForPublish: async () => true };
   if (request.includes('mail_biz')) return { initFormData: () => ({ formCateId: 1, fields: [{ mark: 'code', must: true }] }) };
   if (request.includes('cloud_helper')) return { callCloudSumbit: async (route, params) => ({ data: await ops.get(route, params) }), callCloudData: async () => profile };
   if (request.includes('page_helper')) return { fmtURLByPID: url => '/projects/crun' + url };

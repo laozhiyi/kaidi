@@ -28,6 +28,12 @@ class AdminMgrController extends BaseProjectAdminController {
 		return await service.adminLogin(input.name, input.pwd, this._userId);
 	}
 
+	/** 微信登录后台：身份取自云调用上下文，只允许已授权角色的用户 */
+	async wechatLogin() {
+		let service = new AdminMgrService();
+		return await service.wechatLogin(this._userId);
+	}
+
 	/** 删除管理员 */
 	async delMgr() {
 		await this.isSuperAdmin();

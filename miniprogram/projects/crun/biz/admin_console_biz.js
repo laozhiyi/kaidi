@@ -107,6 +107,66 @@ function user(row) {
     USER_ADD_TIME: time(row.USER_ADD_TIME), USER_LOGIN_TIME: time(row.USER_LOGIN_TIME) === '—' ? '未登录' : time(row.USER_LOGIN_TIME),
     statusLabel: ({ 0: '待审核', 1: '正常', 8: '审核未过', 9: '已停用' })[status] || '状态未知', tone: ({ 0: 'amber', 1: 'green', 8: 'red', 9: 'muted' })[status] || 'muted' };
 }
+
+const ROLE_LABELS = { super: '超级管理员', admin: '管理员', service: '客服' };
+// 注册资料按固定顺序展示，缺失也占一行写“无”，保证每位用户的详情结构一致。
+const REGISTER_FIELDS = [['sex', '性别'], ['college', '学院'], ['sub', '专业'], ['studentId', '学号'], ['campus', '所在校区']];
+const COLLECTION_MARKS = ['contacts', 'addresses', 'address', 'commonContact', 'commonContactMobile'];
+
+function plainText(value) {
+  if (value === undefined || value === null) return '';
+  if (Array.isArray(value)) return value.filter(item => typeof item === 'string' && item).join('、');
+  if (typeof value === 'boolean') return value ? '是' : '否';
+  if (typeof value === 'object') return '';
+  return String(value).trim();
+}
+function imageList(value) {
+  return (Array.isArray(value) ? value : value ? [value] : []).filter(item => typeof item === 'string' && item);
+}
+/** 详情页专用：固定字段顺序、合并重复的常用联系人，缺失显示“无”。 */
+function userProfile(row) {
+  const base = user(row || {});
+  const forms = base.USER_FORMS.filter(item => typeof item.mark === 'string' && item.mark);
+  const map = {};
+  forms.forEach(item => { if (!map[item.mark]) map[item.mark] = item; });
+  const text = mark => plainText(map[mark] && map[mark].val);
+  const images = mark => imageList(map[mark] && map[mark].val);
+  const contacts = [];
+  if (Array.isArray(map.contacts && map.contacts.val)) {
+    map.contacts.val.forEach(item => {
+      if (!item || typeof item !== 'object') return;
+      const name = plainText(item.name), phone = plainText(item.phone);
+      if (name || phone) contacts.push({ key: contacts.length, name: name || '无', phone: phone || '无', isDefault: item.isDefault === true });
+    });
+  }
+  if (!contacts.length) {
+    const name = text('commonContact'), phone = text('commonContactMobile');
+    if (name || phone) contacts.push({ key: 0, name: name || '无', phone: phone || '无', isDefault: true });
+  }
+  const addresses = [];
+  if (Array.isArray(map.addresses && map.addresses.val)) {
+    map.addresses.val.forEach(item => {
+      if (!item || typeof item !== 'object') return;
+      const detail = plainText(item.detail), label = plainText(item.label), note = plainText(item.note);
+      if (detail || label) addresses.push({ key: addresses.length, label: label || '无', detail: detail || '无', note: note || '无', isDefault: item.isDefault === true });
+    });
+  }
+  if (!addresses.length && text('address')) addresses.push({ key: 0, label: '无', detail: text('address'), note: '无', isDefault: true });
+  const known = new Set([...REGISTER_FIELDS.map(item => item[0]), 'studentCard', 'disclaimer', ...COLLECTION_MARKS]);
+  const others = forms.filter(item => !known.has(item.mark)).map(item => ({
+    key: item.mark, label: item.title || item.mark,
+    displayValue: plainText(item.val) || '无', images: item.type === 'image' ? imageList(item.val) : []
+  }));
+  const role = ['super', 'admin', 'service'].includes(base.USER_ROLE) ? base.USER_ROLE : '';
+  return {
+    ...base, role, roleLabel: ROLE_LABELS[role] || '无',
+    roleTime: role ? time(base.USER_ROLE_TIME) : '—',
+    registers: REGISTER_FIELDS.map(([mark, label]) => ({ key: mark, label, value: text(mark) || '无' })),
+    studentCard: images('studentCard'),
+    disclaimer: map.disclaimer ? (map.disclaimer.val === true ? '已同意' : '未同意') : '未同意',
+    contacts, addresses, others
+  };
+}
 function message(error) { return error && (error.msg || error.message) || '网络连接失败，请稍后重试'; }
 function unique(rows) {
   const seen = new Set();
@@ -163,4 +223,4 @@ function summary(data) {
   const rows = states.map(([label, key, status, tone]) => ({ label, key, status, tone, value: Number(data[key] || 0), percent: total ? Math.round(Number(data[key] || 0) / total * 1000) / 10 : 0 }));
   return { ...data, rows, active: Number(data.waiting || 0) + Number(data.delivering || 0) + Number(data.confirming || 0) + Number(data.exceptions || 0), completionRate: total ? (Number(data.completed || 0) / total * 100).toFixed(1) : '0.0', updatedText: time(Date.now()) };
 }
-module.exports = { ROUTES, url, go, back, authorize, start, hide, showList, time, order, feedback, user, message, loadList, openDetail, changed, confirm, summary };
+module.exports = { ROUTES, url, go, back, authorize, start, hide, showList, time, order, feedback, user, userProfile, message, loadList, openDetail, changed, confirm, summary };

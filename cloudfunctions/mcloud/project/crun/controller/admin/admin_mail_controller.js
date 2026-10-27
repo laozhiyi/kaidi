@@ -121,7 +121,7 @@ class AdminMailController extends BaseProjectAdminController {
 	/************** 用户数据导出 BEGIN ********************* */
 	/** 当前是否有导出文件生成 */
 	async mailDataGet() {
-		await this.isAdmin();
+		await this.isManager();
 
 		// 数据校验
 		let rules = {
@@ -141,7 +141,7 @@ class AdminMailController extends BaseProjectAdminController {
 
 	/** 导出数据 */
 	async mailDataExport() {
-		await this.isAdmin();
+		await this.isManager();
 
 		// 数据校验
 		let rules = {
@@ -160,7 +160,7 @@ class AdminMailController extends BaseProjectAdminController {
 
 	/** 删除导出的用户数据 */
 	async mailDataDel() {
-		await this.isAdmin();
+		await this.isManager();
 
 		// 数据校验
 		let rules = {};

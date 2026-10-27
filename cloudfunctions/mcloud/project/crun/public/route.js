@@ -61,6 +61,7 @@ module.exports = {
 	'admin/clear_vouch': 'admin/admin_home_controller@clearVouchData',
 
 	'admin/login': 'admin/admin_mgr_controller@adminLogin',
+	'admin/wechat_login': 'admin/admin_mgr_controller@wechatLogin',
 	'admin/mgr_list': 'admin/admin_mgr_controller@getMgrList',
 	'admin/mgr_insert': 'admin/admin_mgr_controller@insertMgr#demo',
 	'admin/mgr_del': 'admin/admin_mgr_controller@delMgr#demo',
@@ -80,6 +81,7 @@ module.exports = {
 	'admin/user_detail': 'admin/admin_user_controller@getUserDetail',
 	'admin/user_del': 'admin/admin_user_controller@delUser#demo',
 	'admin/user_status': 'admin/admin_user_controller@statusUser#demo',
+	'admin/user_role': 'admin/admin_user_controller@userRole#demo',
 
 	'admin/user_data_get': 'admin/admin_user_controller@userDataGet',
 	'admin/user_data_export': 'admin/admin_user_controller@userDataExport',

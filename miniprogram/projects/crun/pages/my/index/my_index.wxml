@@ -7,7 +7,7 @@
       <view class="my-profile-desc">
         <text wx:if="{{user && user.USER_STATUS==9}}" class="my-status">账号已停用</text>
         <text wx:elif="{{user && !user.USER_PROFILE_COMPLETE}}" class="my-status">已登录，发单或接单前完善联系资料</text>
-        <text wx:elif="{{user && user.USER_STATUS==0}}" class="my-status">已注册，待审核</text>
+        <text wx:elif="{{user && user.USER_STATUS==0}}" class="my-status">待审核：可发单，审核通过后才算注册成功并可接单</text>
         <text wx:elif="{{user && user.USER_STATUS==8}}" class="my-status">审核未通过，请修改资料</text>
         <text wx:else>{{user || hasSession ? '查看或修改个人资料' : '点击微信登录'}}</text>
       </view>
@@ -59,7 +59,7 @@
     <view class="my-settings-sheet">
       <view class="my-settings-head"><view class="my-settings-title">设置与后台管理</view><button class="my-settings-close" bindtap="bindCloseSettings" aria-label="关闭设置"><text class="icon-close"></text></button></view>
       <view class="my-link" bindtap="bindClearCacheTap" hover-class="my-tap"><view class="my-link-icon"><text class="icon-delete"></text></view><view class="my-link-copy"><view class="my-link-title">清除缓存</view><view class="my-link-desc">清理临时数据，保留登录和未提交的内容</view></view><text class="my-arrow icon-right"></text></view>
-      <view class="my-link" bindtap="bindAdminTap" hover-class="my-tap"><view class="my-link-icon"><text class="icon-settings"></text></view><view class="my-link-copy"><view class="my-link-title">后台管理</view><view class="my-link-desc">使用管理员账号登录管理后台</view></view><text class="my-arrow icon-right"></text></view>
+      <view class="my-link" bindtap="bindAdminTap" hover-class="my-tap"><view class="my-link-icon"><text class="icon-settings"></text></view><view class="my-link-copy"><view class="my-link-title">后台管理</view><view class="my-link-desc">已授权的工作人员可微信登录后台</view></view><text class="my-arrow icon-right"></text></view>
       <button class="my-settings-cancel" bindtap="bindCloseSettings">关闭</button>
     </view>
   </view>

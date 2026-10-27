@@ -32,6 +32,7 @@ Page({
   bindImage(e) { const url = e.currentTarget.dataset.url; if (url) wx.previewImage({ urls: [url], current: url }); },
   async bindDelete() {
     if (this.data.busy || this.data.loading || this.data.error || !this.data.detail || !UI.authorize(this)) return;
+    if (this.data.isServiceAdmin) { Ops.error(new Error('客服账号没有删除订单的权限')); return; }
     if (!await UI.confirm('删除订单', '删除后订单将不再显示，订单历史记录会保留。确定继续吗？')) return;
     this.setData({ busy: true });
     try {

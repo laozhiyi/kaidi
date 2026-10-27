@@ -40,9 +40,12 @@ Page(Object.assign({
       profileMethods.applyUser(this, user || { USER_NAME: '', USER_MOBILE: '', USER_PIC: '', USER_FORMS: [] });
       this.setData({ isLoad: true, hasSession: !!PassportBiz.getUserId() });
       if (this.data.phoneLoginEnabled !== true && this.data.hasSession) {
-        if (profileMethods.isProfileReady(user)) await PassportBiz.loginSilenceMust();
-        if (isCurrent()) return this._openPersonal();
-        return;
+        // 已经填好资料的用户直接回到“我的”，只有资料未完成的才进入个人资料页。
+        const ready = profileMethods.isProfileReady(user);
+        if (ready) await PassportBiz.loginSilenceMust();
+        if (!isCurrent()) return;
+        if (ready && PassportBiz.isProfileReady(PassportBiz.getToken())) return profileMethods.finishProfile(this);
+        return this._openPersonal();
       }
       if (profileMethods.isProfileReady(user)) {
         // A previous save may have committed even if its response was lost.
@@ -86,6 +89,12 @@ Page(Object.assign({
       this._profileDirty = false;
       profileMethods.applyUser(this, result.user);
       if (result.cancellationCancelled) wx.showToast({ title: '已取消账户注销', icon: 'none' });
+      // 已填好资料的账号登录成功即进入“我的”；资料未完成的才去个人资料页补全。
+      if (profileMethods.isProfileReady(result.user)) {
+        await PassportBiz.loginSilenceMust();
+        if (!isCurrent() || PassportBiz.isLoggedOut()) return;
+        if (PassportBiz.isProfileReady(PassportBiz.getToken())) return profileMethods.finishProfile(this);
+      }
       return this._openPersonal();
     } catch (error) {
       if (isCurrent()) {

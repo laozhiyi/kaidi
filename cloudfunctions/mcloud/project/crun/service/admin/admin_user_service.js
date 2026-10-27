@@ -12,6 +12,8 @@ const timeUtil = require('../../../../framework/utils/time_util.js');
 const dataUtil = require('../../../../framework/utils/data_util.js');
 const UserModel = require('../../model/user_model.js');
 const AdminHomeService = require('./admin_home_service.js');
+const Roles = require('./admin_roles.js');
+const AdminMgrService = require('./admin_mgr_service.js');
 
 // 导出用户数据KEY
 const EXPORT_USER_DATA_KEY = 'EXPORT_USER_DATA';
@@ -102,7 +104,45 @@ class AdminUserService extends BaseProjectAdminService {
 		if (data.USER_CHECK_REASON.length > 200) this.AppError('处理说明不能超过200字');
 		if (Number(status) === 8 && !data.USER_CHECK_REASON) this.AppError('请填写审核不通过的原因');
 		await UserModel.edit({ _id: user._id }, data);
+		// 停用或恢复账号时同步后台会话，避免已登录的后台令牌继续生效。
+		await new AdminMgrService().setUserAdminActive(user, Number(status) !== 9);
 		return { id: user._id, status: Number(status) };
+	}
+
+	/**
+	 * 授权 / 取消授权后台角色。
+	 * - 超级管理员：可授予或取消超级管理员、管理员、客服
+	 * - 管理员：只能授予或取消客服
+	 * - 客服：没有授权权限
+	 */
+	async setUserRole(id, role, myAdmin) {
+		if (!id) this.AppError('id不能为空');
+		const raw = role === undefined || role === null ? '' : String(role).trim();
+		const next = raw ? Roles.normalize(raw) : '';
+		if (raw && !next) this.AppError('后台角色无效');
+		const user = await this.getUser({ userId: id });
+		if (!user) this.AppError('用户不存在');
+		if (user.USER_STATUS === 9) this.AppError('账号已停用，请先恢复账号再授权');
+		if (next && user.USER_STATUS !== 1) this.AppError('请先审核通过该用户，再授权后台权限');
+		if (myAdmin && myAdmin.ADMIN_USER_ID && myAdmin.ADMIN_USER_ID === user._id) this.AppError('不能修改自己的后台角色');
+		const current = Roles.normalize(user.USER_ROLE);
+		if (current === next) return { id: user._id, role: next, roleLabel: Roles.label(next) };
+
+		const operatorRole = Roles.ofAdmin(myAdmin);
+		const guard = Roles.grantError(operatorRole, next || current);
+		if (guard) this.AppError(guard);
+		if (current === 'super' && next !== 'super') {
+			const supers = await UserModel.count({ USER_ROLE: 'super' });
+			if (supers <= 1) this.AppError('至少需要保留一位超级管理员，请先授权其他账号');
+		}
+
+		await UserModel.edit({ _id: user._id }, {
+			USER_ROLE: next,
+			USER_ROLE_TIME: next ? this._timestamp : 0,
+			USER_ROLE_BY: next ? (myAdmin && myAdmin.ADMIN_NAME || '') : ''
+		});
+		await new AdminMgrService().syncUserRole({ ...user, USER_ROLE: next }, next, myAdmin);
+		return { id: user._id, role: next, roleLabel: Roles.label(next) };
 	}
 
 	/**删除用户 */
@@ -111,6 +151,7 @@ class AdminUserService extends BaseProjectAdminService {
 		const user = await this.getUser({ userId: id });
 		if (!user) this.AppError('用户不存在');
 		await UserModel.edit({ _id: user._id }, { USER_STATUS:9, USER_CHECK_REASON:'管理员停用（保留履约记录）' });
+		await new AdminMgrService().setUserAdminActive(user, false);
 		return { id: user._id };
 	}
 

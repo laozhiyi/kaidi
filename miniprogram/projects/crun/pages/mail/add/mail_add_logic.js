@@ -55,7 +55,7 @@ module.exports = {
 
 	onLoad: async function (options) {
 		ProjectBiz.initPage(this);
-		if (!options || !options.embedded) { if (!await PassportBiz.loginMustBackWin(this)) return; }
+		if (!options || !options.embedded) { if (!await PassportBiz.loginForPublish(this, 'back')) return; }
 
 		// 编辑模式：带上 id 参数时，从云端拉取原订单回填表单
 		const editId = (options && options.id) || '';
@@ -116,7 +116,7 @@ module.exports = {
  async _loadProfileDefaults() {
   const version = this._profileLoadVersion = (this._profileLoadVersion || 0) + 1;
   try {
-   if (!PassportBiz.isLogin()) return;
+   if (!PassportBiz.getToken()) return;
    const user = await cloudHelper.callCloudData('passport/my_detail', {}, { hint: false });
    if (!user || version !== this._profileLoadVersion) return;
    const profile = ProfileBiz.readProfile(user);
@@ -574,7 +574,7 @@ module.exports = {
 		if (this._submitting) return;
 		this._submitting = true; this.setData({ submitting: true });
 		try {
-			if (!await PassportBiz.loginMustCancelWin(this)) return;
+			if (!await PassportBiz.loginForPublish(this, 'cancel')) return;
 			const result = await Ops.recoverCommand(this.data.editId ? 'mail/edit' : 'mail/insert', { id: this.data.editId || '' });
 			this._refreshPendingSubmission();
 			if (result.state === 'committed') {
@@ -662,7 +662,7 @@ module.exports = {
   }
   this._submitting=true;this.setData({submitting:true});
   try {
-   if(!await PassportBiz.loginMustCancelWin(this))return;
+   if(!await PassportBiz.loginForPublish(this, 'cancel'))return;
    const packages = Array.isArray(this.data.packageItems) ? this.data.packageItems : [];
    if (!packages.length) throw new Error('请至少选择1件包裹');
    const missingPickup = packages.findIndex(item => !String(item.pickupPoint || '').trim());

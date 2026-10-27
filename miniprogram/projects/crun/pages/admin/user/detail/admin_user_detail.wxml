@@ -1,26 +1,80 @@
 <view wx:if="{{isAdmin}}" class="ac-page">
   <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 用户管理</text><text>/</text><text>用户详情</text></view>
-  <view class="ac-heading"><view><view class="ac-title">用户详情</view><view class="ac-subtitle">资料审核与账号状态管理</view></view></view>
+  <view class="ac-heading"><view><view class="ac-title">用户详情</view><view class="ac-subtitle">注册审核、资料核对与后台权限管理</view></view></view>
   <view wx:if="{{error}}" class="ac-card ac-state"><view>{{error}}</view><button class="ac-secondary" bindtap="load" disabled="{{busy}}">重新读取</button></view>
-  <view wx:if="{{loading && !user}}" class="ac-card ac-state ac-muted">正在读取用户资料…</view>
+  <view wx:if="{{loading && !profile}}" class="ac-card ac-state ac-muted">正在读取用户资料…</view>
   <view wx:if="{{notFound}}" class="ac-card ac-state"><view class="ac-state-title">用户不存在或已不可访问</view><button class="ac-secondary" bindtap="bindBack">返回用户列表</button></view>
-  <block wx:if="{{user}}">
-    <view class="ac-card ac-detail-hero"><view class="ac-account"><view class="ac-avatar"><text class="icon-profile"></text></view><view><view class="ac-detail-status">{{user.USER_NAME || '未填写姓名'}}</view><text class="ac-badge {{user.tone}}">{{user.statusLabel}}</text></view></view>
-      <view class="ac-row"><text class="ac-muted">手机号码</text><text>{{user.USER_MOBILE || '未填写'}}</text><text wx:if="{{user.USER_MOBILE}}" class="ac-link" bindtap="bindPhone">拨打</text></view>
-      <view class="ac-row"><text class="ac-muted">注册时间</text><text>{{user.USER_ADD_TIME}}</text></view>
-      <view class="ac-row"><text class="ac-muted">最近登录</text><text>{{user.USER_LOGIN_TIME || '未登录'}}</text></view>
-      <view wx:if="{{user.USER_CHECK_REASON}}" class="ac-notice amber">最近处理说明：{{user.USER_CHECK_REASON}}</view>
+  <block wx:if="{{profile}}">
+    <view class="ac-card ac-detail-hero">
+      <view class="ac-account"><view class="ac-avatar"><text class="icon-profile"></text></view><view><view class="ac-detail-status">{{profile.name}}</view><text class="ac-badge {{profile.tone}}">{{profile.statusLabel}}</text><text class="ac-badge">{{profile.roleLabel}}</text></view></view>
+      <view wx:if="{{profile.USER_STATUS===0}}" class="ac-notice amber">待审核：该账号尚未完成注册。审核通过前只能发布订单，不能接单。</view>
+      <view wx:if="{{profile.USER_STATUS===8}}" class="ac-notice amber">审核未通过：<text>{{profile.USER_CHECK_REASON || '未填写原因'}}</text></view>
+      <view wx:if="{{profile.USER_STATUS===9}}" class="ac-notice amber">账号已停用：<text>{{profile.USER_CHECK_REASON || '未填写原因'}}</text></view>
     </view>
-    <view wx:if="{{user.USER_FORMS.length}}" class="ac-card"><view class="ac-section-title">注册资料</view>
-      <block wx:for="{{user.USER_FORMS}}" wx:key="mark"><view wx:if="{{item.type!=='line'}}" class="ac-field"><view class="ac-field-label">{{item.title}}</view>
-        <view wx:if="{{item.type==='image'}}" class="ac-images"><image wx:for="{{item.images}}" wx:for-item="src" wx:key="*this" class="ac-image" src="{{src}}" mode="aspectFill" bindtap="url" data-type="image" data-url="{{src}}" show-menu-by-longpress="{{true}}" /><text wx:if="{{!item.images.length}}" class="ac-muted">未上传</text></view>
-        <view wx:elif="{{item.type==='rows'}}" class="ac-field-value"><view wx:for="{{item.val}}" wx:for-item="row" wx:key="title">{{row.title}} {{row.val}}</view></view>
-        <view wx:elif="{{item.type==='switch'}}" class="ac-field-value">{{item.val?'是':'否'}}</view>
-        <view wx:else class="ac-field-value" bindtap="url" data-type="copy" data-url="{{item.displayValue}}">{{item.displayValue}}</view>
-      </view></block>
+
+    <view class="ac-card">
+      <view class="ac-section-title">账号信息</view>
+      <view class="ac-row"><text class="ac-muted">姓名</text><text>{{profile.name}}</text></view>
+      <view class="ac-row"><text class="ac-muted">手机号码</text><text>{{profile.mobile}}</text><text wx:if="{{profile.mobile!=='无'}}" class="ac-link" bindtap="bindPhone">拨打</text></view>
+      <view class="ac-row"><text class="ac-muted">后台角色</text><text>{{profile.roleLabel}}</text></view>
+      <view class="ac-row"><text class="ac-muted">注册时间</text><text>{{profile.USER_ADD_TIME}}</text></view>
+      <view class="ac-row"><text class="ac-muted">最近登录</text><text>{{profile.USER_LOGIN_TIME}}</text></view>
+      <view wx:if="{{profile.USER_CHECK_REASON}}" class="ac-row"><text class="ac-muted">最近处理说明</text><text>{{profile.USER_CHECK_REASON}}</text></view>
     </view>
-    <view class="ac-card"><view class="ac-section-title">账户审核与状态</view><view class="ac-field-label">处理说明（审核不通过时必填）</view><textarea value="{{reason}}" bindinput="bindReason" disabled="{{busy}}" maxlength="200" placeholder="记录审核依据或账号状态调整原因" /><view class="ac-counter">{{reason.length}} / 200</view>
-      <view class="ac-form-actions"><button wx:if="{{user.USER_STATUS!==1}}" class="ac-primary" data-status="1" bindtap="bindStatus" disabled="{{busy || loading || error}}">{{user.USER_STATUS===9?'恢复使用':'审核通过'}}</button><button wx:if="{{user.USER_STATUS===0}}" class="ac-ghost" data-status="8" bindtap="bindStatus" disabled="{{busy || loading || error}}">审核不通过</button><button wx:if="{{user.USER_STATUS!==9}}" class="ac-ghost ac-text-red" data-status="9" bindtap="bindStatus" disabled="{{busy || loading || error}}">停用用户</button></view>
+
+    <view class="ac-card">
+      <view class="ac-section-head"><text class="ac-section-title">注册资料</text><text class="ac-muted">审核注册时填写</text></view>
+      <view wx:for="{{profile.registers}}" wx:key="key" class="ac-row"><text class="ac-muted">{{item.label}}</text><text>{{item.value}}</text></view>
+      <view class="ac-field">
+        <view class="ac-field-label">学生证照片</view>
+        <view class="ac-images"><block wx:for="{{profile.studentCard}}" wx:for-item="src" wx:key="*this"><image class="ac-image" src="{{src}}" mode="aspectFill" data-type="image" data-url="{{src}}" bindtap="url" show-menu-by-longpress="{{true}}" /></block><text wx:if="{{!profile.studentCard.length}}" class="ac-muted">无</text></view>
+      </view>
+      <view class="ac-row"><text class="ac-muted">免责声明</text><text>{{profile.disclaimer}}</text></view>
+    </view>
+
+    <view class="ac-card">
+      <view class="ac-section-title">常用联系人</view>
+      <view wx:if="{{!profile.contacts.length}}" class="ac-muted">无</view>
+      <view wx:for="{{profile.contacts}}" wx:key="key" class="ac-row"><text>{{item.name}}</text><text>{{item.phone}}</text><text wx:if="{{item.isDefault}}" class="ac-badge">默认</text><text wx:if="{{item.phone!=='无'}}" class="ac-link" data-phone="{{item.phone}}" bindtap="bindCall">拨打</text></view>
+    </view>
+
+    <view class="ac-card">
+      <view class="ac-section-title">常用地址</view>
+      <view wx:if="{{!profile.addresses.length}}" class="ac-muted">无</view>
+      <view wx:for="{{profile.addresses}}" wx:key="key" class="ac-field"><view class="ac-field-value">{{item.label}} · {{item.detail}}<text wx:if="{{item.isDefault}}" class="ac-badge">默认</text></view><view wx:if="{{item.note!=='无'}}" class="ac-muted">{{item.note}}</view></view>
+    </view>
+
+    <view wx:if="{{profile.others.length}}" class="ac-card">
+      <view class="ac-section-title">其他资料</view>
+      <view wx:for="{{profile.others}}" wx:key="key" class="ac-field"><view class="ac-field-label">{{item.label}}</view>
+        <view wx:if="{{item.images.length}}" class="ac-images"><image wx:for="{{item.images}}" wx:for-item="src" wx:key="*this" class="ac-image" src="{{src}}" mode="aspectFill" data-type="image" data-url="{{src}}" bindtap="url" show-menu-by-longpress="{{true}}" /></view>
+        <view wx:else class="ac-field-value">{{item.displayValue}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{!isServiceAdmin}}" class="ac-card">
+      <view class="ac-section-head"><text class="ac-section-title">后台权限</text><text class="ac-badge">{{profile.roleLabel}}</text></view>
+      <view class="ac-muted">{{isSuperAdmin?'超级管理员可以授予管理员、客服与超级管理员权限。':'管理员可以授予或取消客服权限。'}}授权后该用户用微信登录即可进入管理后台。</view>
+      <view class="ac-form-actions">
+        <button wx:if="{{canGrantAdmin && profile.role!=='super'}}" class="ac-secondary" data-role="super" bindtap="bindRole" disabled="{{busy || loading || error}}">授予超级管理员</button>
+        <button wx:if="{{canGrantAdmin && profile.role!=='admin'}}" class="ac-secondary" data-role="admin" bindtap="bindRole" disabled="{{busy || loading || error}}">授予管理员</button>
+        <button wx:if="{{canGrantService && profile.role!=='service'}}" class="ac-secondary" data-role="service" bindtap="bindRole" disabled="{{busy || loading || error}}">授予客服</button>
+        <button wx:if="{{profile.role && (profile.role==='service' ? canGrantService : canGrantAdmin)}}" class="ac-ghost ac-text-red" data-role="" bindtap="bindRole" disabled="{{busy || loading || error}}">取消后台权限</button>
+      </view>
+    </view>
+
+    <view class="ac-card">
+      <view class="ac-section-title">账户审核与状态</view>
+      <view wx:if="{{isServiceAdmin}}" class="ac-notice">客服账号只能查看用户资料，审核与授权由管理员处理。</view>
+      <block wx:else>
+        <view class="ac-field-label">处理说明（审核不通过时必填）</view>
+        <textarea value="{{reason}}" bindinput="bindReason" disabled="{{busy}}" maxlength="200" placeholder="记录审核依据或账号状态调整原因" /><view class="ac-counter">{{reason.length}} / 200</view>
+        <view class="ac-form-actions">
+          <button wx:if="{{profile.USER_STATUS!==1}}" class="ac-primary" data-status="1" bindtap="bindStatus" disabled="{{busy || loading || error}}">{{profile.USER_STATUS===9?'恢复使用':'审核通过'}}</button>
+          <button wx:if="{{profile.USER_STATUS===0}}" class="ac-ghost" data-status="8" bindtap="bindStatus" disabled="{{busy || loading || error}}">审核不通过</button>
+          <button wx:if="{{profile.USER_STATUS!==9}}" class="ac-ghost ac-text-red" data-status="9" bindtap="bindStatus" disabled="{{busy || loading || error}}">停用用户</button>
+        </view>
+      </block>
     </view>
   </block>
 </view>

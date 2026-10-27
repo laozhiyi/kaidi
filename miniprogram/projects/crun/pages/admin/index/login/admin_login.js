@@ -8,10 +8,11 @@ Page({
 	 * 页面的初始数据
 	 */
 	data: {
-		name: 'admin',
-		pwd: '123456',
+		name: '',
+		pwd: '',
 		remember: false,
-		loggingIn: false
+		loggingIn: false,
+		passwordLogin: false
 	},
 
 	/**
@@ -45,7 +46,7 @@ Page({
 	 * 生命周期函数--监听页面卸载
 	 */
 	onUnload: function () {
-
+		this._unloaded = true;
 	},
 
 	url: function (e) {
@@ -56,6 +57,20 @@ Page({
 		wx.reLaunch({
 			url: pageHelper.fmtURLByPID('/pages/my/index/my_index'),
 		});
+	},
+
+	/** 微信登录：后台权限由超级管理员在用户管理中授权 */
+	bindWechatLogin: async function (e) {
+		if (this._loggingIn) return;
+		this._loggingIn = true;
+		this.setData({ loggingIn: true });
+		try { return await AdminBiz.wechatLogin(this); }
+		finally { this._loggingIn = false; if (!this._unloaded) this.setData({ loggingIn: false, pwd: '' }); }
+	},
+
+	bindTogglePassword: function (e) {
+		if (this._loggingIn) return;
+		this.setData({ passwordLogin: !this.data.passwordLogin, pwd: '' });
 	},
 
 	bindLoginTap: async function (e) {

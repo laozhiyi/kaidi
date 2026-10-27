@@ -65,7 +65,7 @@ async function formHarness(entry = 'mail_add.js', options = {}) {
    if (name.includes('address_biz')) return Address;
    if (name.includes('profile_biz')) return Profile;
    if (name.includes('deadline_biz')) return Deadline;
-   if (name.includes('passport_biz')) return { isLogin: () => !!options.profile, loginMustBackWin: async () => true, loginMustCancelWin: async () => true };
+   if (name.includes('passport_biz')) return { isLogin: () => !!options.profile, getToken: () => ({ id: 'poster', status: 1, profileComplete: true, phoneVerified: true, sessionToken: 'session' }), loginMustBackWin: async () => true, loginMustCancelWin: async () => true, loginForPublish: async () => true };
    if (name.includes('project_biz')) return { initPage() {} };
    if (name.includes('mail_biz')) return { CHECK_FORM: {}, initFormData: () => ({ fields: setting.MAIL_FIELDS, formCateId: '1', formOrder: 9999 }) };
    if (name.includes('/validate.js')) return { check: data => ({ cateId: data.formCateId, end: data.formEnd }) };

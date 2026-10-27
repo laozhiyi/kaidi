@@ -15,17 +15,21 @@ const REMIND_COOLDOWN_MS = 5 * 60000;
 class MailService extends Base {
  getStatusDesc(mail) { return rules.project(mail, '').status; }
  getFormObj(forms) { return Object.fromEntries((forms || []).map(x => [x.mark,x.val])); }
- async _user(userId) {
+ // 待审核（0）即可发单，接单仍需审核通过（1）；审核未过与被停用不可操作。
+ async _user(userId, options = {}) {
   if (!userId) this.AppError('请先登录');
   const user = await UserModel.getOne({ USER_MINI_OPENID:userId });
-  if (!user || user.USER_STATUS !== 1) this.AppError('请先完成注册审核，或联系管理员解除停用');
+  const allowed = user && (options.allowPending ? [0, 1].includes(user.USER_STATUS) : user.USER_STATUS === 1);
+  if (!allowed) this.AppError(options.allowPending ? '请先提交注册资料，或联系管理员解除停用' : '请先完成注册审核，或联系管理员解除停用');
   if (!profileRules.isReady(user)) this.AppError('请先微信登录并补全个人资料');
   return user;
  }
  async _actor(tx, actor) {
   if (actor.adminId) { const admin = await store.get(tx,'admin',actor.adminId); const tenant = require('../../../framework/tenancy/tenant_context.js'); if (!tenant.isAdminEnabled(admin) || admin._pid !== this.getProjectId()) this.AppError('管理员已停用'); return admin; }
   const user = await store.get(tx,'user',actor.user._id);
-  if (!user || user._pid !== this.getProjectId() || user.USER_MINI_OPENID !== actor.userId || user.USER_STATUS !== 1) this.AppError('用户状态已变更');
+  const allowed = user && user._pid === this.getProjectId() && user.USER_MINI_OPENID === actor.userId
+   && (actor.allowPending ? [0, 1].includes(user.USER_STATUS) : user.USER_STATUS === 1);
+  if (!allowed) this.AppError('用户状态已变更');
   if (!profileRules.isReady(user)) this.AppError('请先微信登录并补全个人资料');
   return user;
  }
@@ -34,7 +38,7 @@ class MailService extends Base {
   this._request(input.requestId);
   const seen = await store.get(store.database(), 'order_request', store.key(this.getProjectId(), userId, input.requestId));
   if (!seen || !seen.sourceFingerprint) return null;
-  await this._user(userId);
+  await this._user(userId, { allowPending: ['publish','edit','archive','cancel'].includes(action) });
   if (seen._pid !== this.getProjectId() || seen.action !== action || action !== 'publish' && seen.orderId !== input.id
    || seen.sourceFingerprint !== store.key(input)) this.AppError('相同请求标识不能提交不同内容');
   const mail = await store.get(store.database(), 'mail', seen.orderId);
@@ -91,11 +95,11 @@ class MailService extends Base {
   }
  }
  async insertMail(userId, input) {
-  const user = await this._user(userId), now = Date.now();
+  const user = await this._user(userId, {allowPending:true}), now = Date.now();
   this._request(input.requestId); const fingerprint=store.key(input);
   const id = store.key(this.getProjectId(),userId,input.requestId), seed = await this._seed(userId,'poster');
   return store.transaction(async tx => {
-   await this._actor(tx,{userId,user}); const old = await store.get(tx,'mail',id);
+   await this._actor(tx,{userId,user,allowPending:true}); const old = await store.get(tx,'mail',id);
    if (old) { if (old.MAIL_PUBLISH_FINGERPRINT!==fingerprint) this.AppError('相同请求标识不能提交不同内容'); if (old._pid !== this.getProjectId() || old.MAIL_USER_ID !== userId) this.AppError('订单标识冲突'); return {id:old.MAIL_ID,_id:id,fee:old.MAIL_TOTAL_FEE/100,paymentMode:old.MAIL_PAYMENT_MODE}; }
    if(await store.get(tx,'order_request',store.key(this.getProjectId(),userId,input.requestId)))this.AppError('请求标识已被使用');
    await store.assertRequestOpen(tx,this.getProjectId(),userId,REQUEST_ROUTES.publish,input.requestId);
@@ -111,7 +115,9 @@ class MailService extends Base {
  }
  async _change(userId, id, action, input = {}, adminId = '') {
   this._request(input.requestId); if (typeof id !== 'string' || !id || id.length > 100) this.AppError('订单标识无效');
-  const actor = adminId ? {adminId} : {userId,user:await this._user(userId)};
+  // 发布人改单、撤销、删除自己的待接单订单不要求审核通过；接单与履约仍要求正常账号。
+  const allowPending = ['edit','archive','cancel'].includes(action);
+  const actor = adminId ? {adminId} : {userId,allowPending,user:await this._user(userId,{allowPending})};
   const seed = action === 'accept' ? await this._seed(userId,'rider') : [];
   return store.transaction(async tx => {
    const currentUser = await this._actor(tx,actor);
@@ -277,7 +283,7 @@ class MailService extends Base {
   const mail = await MailModel.getOne(id); if (!mail || mail.MAIL_ADMIN_DELETED === true) return null;
   await new (require('./review_service.js'))().decorateOrders(userId, [mail]);
   const result = rules.project(mail,userId);
-  if (result.mypost || result.myaccept) { await this._user(userId); if (mail.MAIL_ACCEPT_USER_ID) result.acceptUser = await UserModel.getOne({USER_MINI_OPENID:mail.MAIL_ACCEPT_USER_ID},'USER_NAME,USER_MOBILE'); }
+  if (result.mypost || result.myaccept) { await this._user(userId, { allowPending: result.mypost && !result.myaccept }); if (mail.MAIL_ACCEPT_USER_ID) result.acceptUser = await UserModel.getOne({USER_MINI_OPENID:mail.MAIL_ACCEPT_USER_ID},'USER_NAME,USER_MOBILE'); }
   if ((result.mypost || result.myaccept) && mail.MAIL_ACCEPT_USER_ID && mail.MAIL_ACCEPT_USER_ID !== mail.MAIL_USER_ID) result.MAIL_FEEDBACK_TARGET = {
    name: result.mypost ? mail.MAIL_ACCEPT_USER_NAME || '接单人' : mail.MAIL_USER_NAME || (mail.MAIL_OBJ || {}).poster || '发布者', role: result.mypost ? '接单人' : '发布者'
   };
@@ -287,7 +293,7 @@ class MailService extends Base {
  }
  async getMailDetail(userId,id) {
   const mail = await MailModel.getOne(id); if (!mail || mail.MAIL_ADMIN_DELETED === true) return null;
-  if (userId !== null) { await this._user(userId); if (mail.MAIL_USER_ID !== userId) this.AppError('无权限查看该订单'); }
+  if (userId !== null) { await this._user(userId, { allowPending: true }); if (mail.MAIL_USER_ID !== userId) this.AppError('无权限查看该订单'); }
   return media.order(rules.project(mail,userId,userId === null));
  }
  async getMailList(userId,input) {
@@ -298,7 +304,7 @@ class MailService extends Base {
   const completedSince = now - 12 * 60 * 60 * 1000;
   if (search === '我的发布') sortType = 'my_post'; if (search === '我的接单') sortType = 'my_accept';
   if (['my_post','my_accept','my_done','status','timeout'].includes(sortType)) {
-   await this._user(userId);
+   await this._user(userId, { allowPending: sortType !== 'my_accept' });
    if (sortType === 'my_post') { where.and.MAIL_USER_ID = userId; where.and.MAIL_POSTER_ARCHIVED = ['<>',true]; }
    if (sortType === 'my_accept') { where.and.MAIL_ACCEPT_USER_ID = userId; where.and.MAIL_RIDER_ARCHIVED = ['<>',true]; }
    if (['my_post','my_accept'].includes(sortType)) {

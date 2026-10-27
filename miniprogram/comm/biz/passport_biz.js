@@ -95,6 +95,11 @@ class PassportBiz extends BaseBiz {
 		return await PassportBiz.loginCheck(true, 'back', '', that);
 	}
 
+	// 发单专用：待审核（status 0）且资料完整的账号也可以发布订单
+	static async loginForPublish(that, method = 'back') {
+		return await PassportBiz.loginCheck(true, method, '', that, { allowPending: true });
+	}
+
 	// 获取token  
 	static getToken() {
 		if (PassportBiz.isLoggedOut()) return null;
@@ -146,7 +151,7 @@ class PassportBiz extends BaseBiz {
 
 	static loginStatusHandler(method, status) {
 		let content = '';
-		if (status == 0) content = '您的注册正在审核中，暂时无法使用此功能！';
+		if (status == 0) content = '您的注册正在审核中：可以发布订单，审核通过后才能接单！';
 		else if (status == 8) content = '您的注册审核未通过，暂时无法使用此功能；请在个人中心修改资料，再次提交审核！';
 		else if (status == 9) content = '您的账号已经禁用, 无法使用此功能！';
 		if (method == 'cancel') {
@@ -172,24 +177,25 @@ class PassportBiz extends BaseBiz {
 	}
 
 	// 登录判断及处理
-	static async loginCheck(mustLogin = false, method = 'back', title = '', that = null) {
-  if (PassportBiz.isLoggedOut()) return PassportBiz._loginDecision(null, mustLogin, method, that);
+	static async loginCheck(mustLogin = false, method = 'back', title = '', that = null, options = {}) {
+  const allowPending = options.allowPending === true;
+  if (PassportBiz.isLoggedOut()) return PassportBiz._loginDecision(null, mustLogin, method, that, allowPending);
   const token = PassportBiz.getToken();
-  if (!token) return PassportBiz._loginDecision(null, mustLogin, method, that);
+  if (!token) return PassportBiz._loginDecision(null, mustLogin, method, that, allowPending);
   // Manual sessions recheck the temporary server policy on guarded entry.
   if (token && method !== 'must' && !(token.allowManualRegistration === true && token.phoneVerified !== true)
     && typeof token.phoneVerified === 'boolean' && typeof token.profileComplete === 'boolean') {
-   return PassportBiz._loginDecision(token, mustLogin, method, that);
+   return PassportBiz._loginDecision(token, mustLogin, method, that, allowPending);
   }
   const version = sessionVersion;
   try {
    const result = await cloudHelper.callCloudSumbit('passport/login', {}, { title: title || '登录中' });
    // A stale background refresh must not undo a newer authorization or save.
-   if (version !== sessionVersion) return PassportBiz._loginDecision(PassportBiz.getToken(), mustLogin, method, that);
+   if (version !== sessionVersion) return PassportBiz._loginDecision(PassportBiz.getToken(), mustLogin, method, that, allowPending);
    const current = result && result.data && result.data.token || null;
    if (current) PassportBiz.setToken(current);
    else PassportBiz.clearToken();
-   return PassportBiz._loginDecision(current, mustLogin, method, that);
+   return PassportBiz._loginDecision(current, mustLogin, method, that, allowPending);
   } catch (err) {
    if (version === sessionVersion && err && err.code && err.code !== 500 && !err.staleScope) PassportBiz.clearToken();
    if (that && !that._unloaded) that.setData({ isLogin: PassportBiz.isLogin() });
@@ -197,11 +203,11 @@ class PassportBiz extends BaseBiz {
   }
 	}
 
- static _loginDecision(token, mustLogin, method, that) {
-  const allowed = !!(token && token.id && token.status === 1 && PassportBiz.isProfileReady(token));
+ static _loginDecision(token, mustLogin, method, that, allowPending = false) {
+  const allowed = !!(token && token.id && (token.status === 1 || allowPending && token.status === 0) && PassportBiz.isProfileReady(token));
   if (that && !that._unloaded) that.setData({ isLogin: allowed });
   if (allowed || !mustLogin) return allowed;
-  if (token && (token.status === 9 || PassportBiz.isProfileReady(token) && [0, 8].includes(token.status))) {
+  if (!allowPending && token && (token.status === 9 || PassportBiz.isProfileReady(token) && [0, 8].includes(token.status))) {
    return PassportBiz.loginStatusHandler(method, token.status);
   }
   const completing = !!(token && (token.phoneVerified || token.allowManualRegistration));

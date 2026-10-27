@@ -86,7 +86,7 @@ class OperationsService extends Base {
   const [waiting, accepted, picked, confirming, exceptions, completed, cancelled, complaints, failedNotifications, users, pendingUsers, news, todayOrders, todayCompleted, overdue] = await Promise.all([
    ...[0, 1, 4, 2, 3, 9, 99].map(status => count('mail', { MAIL_STATUS: status })),
    count('feedback', { FB_STATUS: 0 }), count('notification', { delivery: 'failed' }),
-   count('user', {}), count('user', { USER_STATUS: 0 }), count('news', {}),
+   count('user', { USER_STATUS: 1 }), count('user', { USER_STATUS: 0 }), count('news', {}),
    count('mail', { MAIL_ADD_TIME: db.command.gte(today) }),
    count('mail', { MAIL_STATUS: 9, MAIL_OVER_TIME: db.command.gte(today) }),
    count('mail', { MAIL_STATUS: db.command.in(rules.ACTIVE) }, [{ MAIL_DUE_TIME: db.command.gt(0) }, { MAIL_DUE_TIME: db.command.lt(now) }])

@@ -8,6 +8,7 @@ const BaseProjectAdminController = require('./base_project_admin_controller.js')
 
 const UserModel = require('../../model/user_model.js');
 const AdminUserService = require('../../service/admin/admin_user_service.js');
+const Roles = require('../../service/admin/admin_roles.js');
 const timeUtil = require('../../../../framework/utils/time_util.js');
 
 class AdminUserController extends BaseProjectAdminController {
@@ -34,6 +35,8 @@ class AdminUserController extends BaseProjectAdminController {
 			// 显示转换  
 			user.USER_ADD_TIME = timeUtil.timestamp2Time(user.USER_ADD_TIME);
 			user.USER_LOGIN_TIME = user.USER_LOGIN_TIME ? timeUtil.timestamp2Time(user.USER_LOGIN_TIME) : '未登录';
+			user.USER_ROLE = Roles.normalize(user.USER_ROLE);
+			user.USER_ROLE_LABEL = Roles.label(user.USER_ROLE);
 		}
 
 		return user;
@@ -67,6 +70,8 @@ class AdminUserController extends BaseProjectAdminController {
 		let list = result.list;
 		for (let k = 0; k < list.length; k++) {
 			list[k].USER_STATUS_DESC = UserModel.getDesc('STATUS', list[k].USER_STATUS);
+			list[k].USER_ROLE = Roles.normalize(list[k].USER_ROLE);
+			list[k].USER_ROLE_LABEL = Roles.label(list[k].USER_ROLE);
 			list[k].USER_ADD_TIME = timeUtil.timestamp2Time(list[k].USER_ADD_TIME);
 			list[k].USER_LOGIN_TIME = list[k].USER_LOGIN_TIME ? timeUtil.timestamp2Time(list[k].USER_LOGIN_TIME) : '未登录';
 
@@ -77,7 +82,7 @@ class AdminUserController extends BaseProjectAdminController {
 
 	/** 删除用户 */
 	async delUser() {
-		await this.isAdmin();
+		await this.isManager();
 
 		// 数据校验
 		let rules = {
@@ -98,7 +103,7 @@ class AdminUserController extends BaseProjectAdminController {
 	}
 
 	async statusUser() {
-		await this.isAdmin();
+		await this.isManager();
 
 		// 数据校验
 		let rules = {
@@ -116,10 +121,28 @@ class AdminUserController extends BaseProjectAdminController {
 		return result;
 	}
 
+	/** 授权 / 取消授权后台角色（超级管理员、管理员、客服） */
+	async userRole() {
+		await this.isAdmin();
+
+		// 数据校验
+		let rules = {
+			id: 'must|id',
+			role: 'string|max:10'
+		};
+
+		// 取得数据
+		let input = this.validateData(rules);
+
+		let service = new AdminUserService();
+		const result = await service.setUserRole(input.id, input.role || '', this._admin);
+		return result;
+	}
+
 	/************** 用户数据导出 BEGIN ********************* */
 	/** 当前是否有导出文件生成 */
 	async userDataGet() {
-		await this.isAdmin();
+		await this.isManager();
 
 		// 数据校验
 		let rules = {
@@ -139,7 +162,7 @@ class AdminUserController extends BaseProjectAdminController {
 
 	/** 导出数据 */
 	async userDataExport() {
-		await this.isAdmin();
+		await this.isManager();
 
 		// 数据校验
 		let rules = {
@@ -156,7 +179,7 @@ class AdminUserController extends BaseProjectAdminController {
 
 	/** 删除导出的用户数据 */
 	async userDataDel() {
-		await this.isAdmin();
+		await this.isManager();
 
 		// 数据校验
 		let rules = {};

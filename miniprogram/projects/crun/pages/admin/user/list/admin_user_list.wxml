@@ -1,13 +1,13 @@
 <view wx:if="{{isAdmin}}" class="ac-page">
   <view class="ac-eyebrow">业务管理 / 用户</view>
-  <view class="ac-heading"><view><view class="ac-title">用户管理</view><view class="ac-subtitle">查看用户资料，审核注册与维护账号状态</view></view><button class="ac-secondary ac-small" bindtap="bindExport" disabled="{{loading || error}}">导出资料</button></view>
+  <view class="ac-heading"><view><view class="ac-title">用户管理</view><view class="ac-subtitle">审核通过才算注册成功；待审核可发单，接单需审核通过</view></view><button wx:if="{{!isServiceAdmin}}" class="ac-secondary ac-small" bindtap="bindExport" disabled="{{loading || error}}">导出资料</button></view>
   <view class="ac-search"><text class="icon-search ac-search-icon"></text><input value="{{searchDraft}}" bindinput="bindInput" bindconfirm="bindSearch" confirm-type="search" maxlength="30" placeholder="搜索姓名或手机号码" /><button class="ac-secondary ac-small" bindtap="bindSearch">搜索</button></view>
   <scroll-view scroll-x class="ac-tabs"><view wx:for="{{statuses}}" wx:key="value" class="ac-tab {{status===item.value?'active':''}}" data-value="{{item.value}}" bindtap="bindStatus">{{item.label}}</view></scroll-view>
   <view class="ac-filter-summary"><text>{{loading?'正在查询…':'共 '+total+' 位用户'}}</text><text class="ac-link" bindtap="bindReset">重置筛选</text></view>
   <view wx:if="{{error}}" class="ac-card ac-state"><view class="ac-state-title">用户资料未能更新</view><view class="ac-muted">{{error}}</view><button class="ac-secondary ac-small" bindtap="bindRetry">重试</button></view>
   <view wx:if="{{!loading && !error && !list.length}}" class="ac-card ac-state"><view class="ac-state-title">暂无符合条件的用户</view><view class="ac-muted">可以更换关键词或调整状态筛选</view></view>
   <view wx:for="{{list}}" wx:key="_id" class="ac-card" data-id="{{item.userId}}" bindtap="bindDetail">
-    <view class="ac-user-head"><view class="ac-avatar"><text class="icon-profile"></text></view><view class="ac-user-name"><view class="ac-order-title">{{item.USER_NAME || '未填写姓名'}}</view><view class="ac-order-meta">{{item.USER_MOBILE || '未填写电话'}}</view></view><text class="ac-badge {{item.tone}}">{{item.statusLabel}}</text></view>
+    <view class="ac-user-head"><view class="ac-avatar"><text class="icon-profile"></text></view><view class="ac-user-name"><view class="ac-order-title">{{item.USER_NAME || '未填写姓名'}}<text wx:if="{{item.USER_ROLE}}" class="ac-badge">{{item.USER_ROLE_LABEL}}</text></view><view class="ac-order-meta">{{item.USER_MOBILE || '未填写电话'}}</view></view><text class="ac-badge {{item.tone}}">{{item.statusLabel}}</text></view>
     <view wx:if="{{item.USER_CHECK_REASON && item.USER_STATUS!==1}}" class="ac-order-warning">{{item.USER_CHECK_REASON}}</view>
     <view class="ac-order-foot"><text>{{item.USER_ADD_TIME}} 注册</text><text class="ac-link">{{item.USER_STATUS===0?'查看并审核':'用户详情'}} ›</text></view>
   </view>

@@ -140,7 +140,9 @@ test('user status changes resolve mini-program user ids instead of confusing the
   const module = { exports: {} };
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../cloudfunctions/mcloud/project/crun/service/admin/admin_user_service.js'), 'utf8'), { module, require(request) {
     if (request.includes('base_project_admin_service')) return Base;
-    if (request.includes('user_model')) return { getOne: async where => where.USER_MINI_OPENID === row.USER_MINI_OPENID ? row : null, edit: async (where, data) => edited.push({ where, data }) };
+    if (request.includes('admin_mgr_service')) return class { async setUserAdminActive() {} };
+    if (request.includes('admin_roles')) return { normalize: value => value, label: () => '', ofAdmin: () => 'admin', grantError: () => '', ROLES: {} };
+    if (request.includes('user_model')) return { getOne: async where => where.USER_MINI_OPENID === row.USER_MINI_OPENID ? row : null, edit: async (where, data) => edited.push({ where, data }), count: async () => 1 };
     return {};
   } });
   const svc = new module.exports(); await svc.statusUser('openid', 1, '已核实');

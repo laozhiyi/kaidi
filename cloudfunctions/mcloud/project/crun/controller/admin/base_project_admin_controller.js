@@ -6,6 +6,7 @@
 
 const BaseAdminController = require('../../../../framework/platform/controller/base_admin_controller.js');
 const BaseProjectService = require('../../service/base_project_service.js');
+const Roles = require('../../service/admin/admin_roles.js');
 
 class BaseProjectAdminController extends BaseAdminController {
  async isAdmin() {
@@ -15,6 +16,11 @@ class BaseProjectAdminController extends BaseAdminController {
  async isSuperAdmin() {
   await super.isSuperAdmin();
   if (/^admin\/mgr_(?!pwd)/.test(this._route) && this._admin.ADMIN_PLATFORM !== true) this.AppError('仅平台管理员可管理管理员账号');
+ }
+ /** 管理员及以上（客服除外）：用于审核、删除订单等客服权限外的操作。 */
+ async isManager() {
+  await this.isAdmin();
+  if (Roles.ofAdmin(this._admin) === 'service') this.AppError('客服账号没有该操作权限');
  }
 	// TODO
 	async initSetup() {

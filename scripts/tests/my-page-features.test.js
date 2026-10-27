@@ -309,7 +309,9 @@ test('opening and refreshing login after logout stays signed out until the expli
   assert.equal(page.data.formMobile, '13800000000');
   assert.equal(page.data.contacts[1].name, '乙');
   assert.equal(page.data.hasSession, true);
-  assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/my/personal/my_personal');
+  // 资料已完整的账号登录成功后直接回到“我的”，不再强制进入个人资料页。
+  assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/my/index/my_index');
+  assert.equal(h.navigation.at(-1).type, 'tab');
   assert.ok(!h.calls.some(call => call.route === 'passport/register'));
 });
 
@@ -405,7 +407,8 @@ test('basic login coalesces taps and does not let refresh or late replies undo t
   response.resolve({ token: { id: 'poster', sessionToken: 'b'.repeat(64), status: 1, phoneVerified: true, profileComplete: true }, user: h.user });
   await first;
   assert.equal(page.data.identityLoggingIn, false);
-  assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/my/personal/my_personal?retUrl=back');
+  // retUrl=back 且资料完整：直接返回上一页，不再进入个人资料页。
+  assert.equal(h.navigation.at(-1).type, 'back');
 });
 
 test('disabled native phone handlers never request the provider from login or personal pages', async () => {
@@ -733,7 +736,8 @@ test('WeChat profile completion recovers a lost save response before returning t
   h.responses['passport/login'] = { token: manualToken };
   await page._loadDetail();
   assert.equal(h.passport.isLogin(), true);
-  assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/my/personal/my_personal?retUrl=' + encodeURIComponent('/projects/crun/pages/mail/add/mail_add'));
+  // 资料已完成时回到登录前的业务页面，而不是再次进入个人资料页。
+  assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/mail/add/mail_add');
 });
 
 test('a phone authorization retry keeps drafts and applies the verified phone', async () => {
