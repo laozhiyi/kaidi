@@ -1,9 +1,6 @@
 'use strict';
-exports.main=async(event)=>{
- const cloud=require('./framework/cloud/cloud_base.js').getCloud();
- if(!event || event.Type!=='Timer' || event.TriggerName!=='orders-minute' || cloud.getWXContext().OPENID)throw new Error('WORKER_TIMER_ONLY');
- global.PID='crun';
- await new (require('./project/crun/service/base_project_service.js'))().initSetup();
- const shard=process.env.WORKER_SHARD===undefined?undefined:Number(process.env.WORKER_SHARD);
- return new (require('./project/crun/service/maintenance_service.js'))().runScheduled('orders',{shard,batchSize:Number(process.env.WORKER_BATCH_SIZE)||50,maxBatches:Number(process.env.WORKER_MAX_BATCHES)||10,budgetMs:40000});
-};
+// 可选：只在需要把定时任务拆成独立函数部署时使用。
+// 平时直接上传 mcloud 即可（触发器 orders-minute 会进入 mcloud/index.js 的 Timer 分支）。
+const timer = require('./timer_entry.js');
+
+exports.main = async (event) => timer.run(event, {expectKind: 'orders', budgetMs: 40000});

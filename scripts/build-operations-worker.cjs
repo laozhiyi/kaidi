@@ -1,11 +1,14 @@
 'use strict';
 // Produce fresh deployment snapshots. No installation, upload or deployment.
 //
+// 定时任务已经在 mcloud 内部执行（config.json 里声明了 orders-minute /
+// notifications-minute 两个触发器，事件由 mcloud/index.js 转给 timer_entry.js），
+// 所以日常只需要在开发者工具里「上传并部署」mcloud 一个函数。
+//
 // 默认输出到 .tmp/deploy/architecture-<hash>/，只做校验用。
-// 加 --out cloudfunctions 则直接生成在云函数根目录下的
-// ordersWorker / notificationsWorker / tenantMigrator，
-// 这样开发者工具里可以直接右键「上传并部署：云端安装依赖」，定时触发器随 config.json 一起创建。
-// 注意：改动 cloudfunctions/mcloud 后必须重新生成一次，否则线上跑的仍是旧代码。
+// 只有在确实要把定时任务拆成独立函数时才加 --out cloudfunctions，
+// 生成 ordersWorker / notificationsWorker / tenantMigrator 三个可右键上传的目录。
+// 拆分版触发器带 worker- 前缀，不会和 mcloud 的同名触发器双跑。
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const root=path.resolve(__dirname,'..'),source=path.join(root,'cloudfunctions/mcloud');
 const argv=process.argv.slice(2);
@@ -16,8 +19,8 @@ if(outRoot&&!outRoot.startsWith(root+path.sep))throw new Error('--out 必须是�
 const base=path.join(root,'.tmp/deploy');fs.mkdirSync(base,{recursive:true});
 const batch=outRoot||fs.mkdtempSync(path.join(base,'architecture-'));
 const specs=[
- {name:'ordersWorker',entry:'order_worker.js',trigger:'orders-minute',openapi:[],timeout:60,memory:256},
- {name:'notificationsWorker',entry:'notification_worker.js',trigger:'notifications-minute',openapi:['subscribeMessage.send'],timeout:60,memory:256},
+ {name:'ordersWorker',entry:'order_worker.js',trigger:'worker-orders-minute',openapi:[],timeout:60,memory:256},
+ {name:'notificationsWorker',entry:'notification_worker.js',trigger:'worker-notifications-minute',openapi:['subscribeMessage.send'],timeout:60,memory:256},
  {name:'tenantMigrator',entry:'migration_worker.js',openapi:[],timeout:60,memory:512}
 ];
 const hash=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');

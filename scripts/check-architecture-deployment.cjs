@@ -27,15 +27,19 @@ const expanded=manifest.indexes.map(index=>{
   return {...index,fields,unique:false};
 });
 for(const name of ['server-only','order-feed'])assert.deepEqual(read(path.join(root,'deployment/database-rules',name+'.json')),{read:false,write:false});
-assert.deepEqual(read(path.join(root,'cloudfunctions/mcloud/config.json')).triggers,[],'API must have no scheduled trigger');
+// 定时任务已并入 mcloud：只上传这一个函数，每分钟触发器就能跑维护任务（含 8 小时自动收货）。
+const apiTriggers=read(path.join(root,'cloudfunctions/mcloud/config.json')).triggers;
+assert.deepEqual(apiTriggers.map(item=>item.name).sort(),['notifications-minute','orders-minute'],'mcloud must own both scheduled triggers');
+for(const item of apiTriggers){assert.equal(item.type,'timer');assert.equal(item.config,'0 * * * * * *');}
 const out=path.join(root,'.tmp/architecture-validation');fs.mkdirSync(out,{recursive:true});
 fs.writeFileSync(path.join(out,'indexes-expanded.json'),JSON.stringify({status:manifest.status,indexes:expanded},null,2)+'\n');
 const directory=process.argv[2];
-const result={candidateIndexes:expanded.length,clientRules:'deny',apiTriggers:0,artifacts:[],networkUsed:false};
+const result={candidateIndexes:expanded.length,clientRules:'deny',apiTriggers:apiTriggers.length,artifacts:[],networkUsed:false};
 if(directory){
   const batch=path.resolve(directory),deployment=read(path.join(batch,'DEPLOYMENT_MANIFEST.json'));
   assert.equal(deployment.uploaded,false);assert.ok(deployment.requiredEnvironment.includes('CLOUD_ENV_ID'));
-  const specs={ordersWorker:['order_worker.js','orders-minute',[]],notificationsWorker:['notification_worker.js','notifications-minute',['subscribeMessage.send']],tenantMigrator:['migration_worker.js',null,[]]};
+  // 备用拆分部署：触发器名加 worker- 前缀，避免和 mcloud 的同名触发器双跑。
+  const specs={ordersWorker:['order_worker.js','worker-orders-minute',[]],notificationsWorker:['notification_worker.js','worker-notifications-minute',['subscribeMessage.send']],tenantMigrator:['migration_worker.js',null,[]]};
   assert.deepEqual(deployment.outputs.map(item=>item.name).sort(),Object.keys(specs).sort());
   for(const output of deployment.outputs){
     const folder=path.join(batch,output.name),source=read(path.join(folder,'SOURCE_MANIFEST.json'));

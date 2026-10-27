@@ -24,7 +24,7 @@
 
 登录默认关闭 `WECHAT_PHONE_LOGIN_ENABLED`。点击“点击微信登录”打开同一头像／昵称弹层，用原生 `chooseAvatar` 和 `nickname` 控件填写；确认后使用可信微信身份建立会话、保存头像昵称，并进入个人资料页。联系资料始终展开，保存时仍执行必填、学校内号码唯一性及审核规则。进入页面或静默刷新不能登录，也不能撤销注销。只有明确恢复旧手机号流程时才设置 `WECHAT_PHONE_LOGIN_ENABLED=true`。详见 [登录与账户说明](WECHAT_LOGIN.md)。
 
-退出会撤销服务端凭证并清空本地个人状态；离线时先退出本机，重启／回到前台后补发原凭证撤销。申请注销时在事务内检查全部学校的未完成发单／接单，成功立即退出；仅主动登录且服务端时间早于截止时间才能撤销注销。等于截止时间已到期。新 `ordersWorker` 每分钟执行到期清理，存储／数据库失败继续重试；处理完成前禁止恢复旧账户。学校／校区停用不阻止退出或注销。
+退出会撤销服务端凭证并清空本地个人状态；离线时先退出本机，重启／回到前台后补发原凭证撤销。申请注销时在事务内检查全部学校的未完成发单／接单，成功立即退出；仅主动登录且服务端时间早于截止时间才能撤销注销。等于截止时间已到期。新 `mcloud` 的每分钟定时维护执行到期清理，存储／数据库失败继续重试；处理完成前禁止恢复旧账户。学校／校区停用不阻止退出或注销。
 
 学校、校区编号为 2–48 位小写字母、数字、下划线或连字符，以字母开头；创建后不要通过改 ID 来重命名。名称可以修改。学校/校区停用会阻止普通业务请求；管理入口仍可选择停用校区，以恢复服务。公开目录只包含名称、编号、状态等元数据，不包含地点、账号、凭证。
 
@@ -60,9 +60,9 @@
 
 | 函数 | 入口/触发方式 | 起始资源建议 |
 | --- | --- | --- |
-| `mcloud` | 小程序 API，无 Timer | 512 MB，超时 30 秒；客户端 20 秒内未确认时进入同请求重试/核对；并发按套餐和数据库容量实测配置 |
-| `ordersWorker` | `orders-minute`，每分钟 | 256 MB，60 秒；扫描时间预算 40 秒，每项最多 4 个并发处理者 |
-| `notificationsWorker` | `notifications-minute`，每分钟 | 256 MB，60 秒；独立于 API 和订单维护，共用通知事务领取机制 |
+| `mcloud` | 小程序 API + 每分钟定时维护（`orders-minute`、`notifications-minute`） | 512 MB，超时 30 秒；定时分支默认扫描预算 20 秒（`WORKER_BUDGET_MS` 可覆盖）；客户端 20 秒内未确认时进入同请求重试/核对；并发按套餐和数据库容量实测配置 |
+| `ordersWorker`（可选） | `worker-orders-minute`，每分钟 | 仅在拆分部署时使用：256 MB，60 秒；扫描时间预算 40 秒，每项最多 4 个并发处理者。与 `mcloud` 的定时触发器二选一，不要同时启用 |
+| `notificationsWorker`（可选） | `worker-notifications-minute`，每分钟 | 仅在拆分部署时使用：256 MB，60 秒；与 `mcloud` 的定时触发器二选一 |
 | `tenantMigrator` | 临时管理调用，无 Timer | 512 MB，60 秒，迁移窗口中串行操作，默认每批 20 条 |
 
 使用控制台仍支持维护、且满足代码能力要求的 Node.js 运行时；代码最低能力下限为 Node 16.13，但这不是推荐使用旧运行时。本地验证使用 Node 24.19.0 与已安装的 `wx-server-sdk 2.6.3`。必须在最终选择的真实云运行时安装锁定依赖并复验。
@@ -83,7 +83,7 @@
 node scripts/build-operations-worker.cjs
 ```
 
-脚本打印本次独立目录 `.tmp/deploy/architecture-<随机标识>/`，内含 `ordersWorker`、`notificationsWorker`、`tenantMigrator`。每个包的 `index.js` 替换为专用入口，`config.json` 仅包含对应触发器/权限；包含锁文件，不包含 `node_modules`。`SOURCE_MANIFEST.json` 记录逐文件 SHA-256；批次另有 `DEPLOYMENT_MANIFEST.json`。
+脚本默认只打印到本次独立目录 `.tmp/deploy/architecture-<随机标识>/`，内含 `ordersWorker`、`notificationsWorker`、`tenantMigrator`，用于校验。每个包的 `index.js` 替换为专用入口，`config.json` 仅包含对应触发器/权限（触发器名带 `worker-` 前缀）；包含锁文件，不包含 `node_modules`。`SOURCE_MANIFEST.json` 记录逐文件 SHA-256；批次另有 `DEPLOYMENT_MANIFEST.json`。加 `--out cloudfunctions` 才会把三个目录生成到云函数根目录，仅供确实要拆分部署时使用。
 
 ```powershell
 node scripts/check-architecture-deployment.cjs '.tmp/deploy/architecture-本次标识'
@@ -93,7 +93,9 @@ node scripts/check-architecture-deployment.cjs '.tmp/deploy/architecture-本次�
 
 订单扫描包含 `MAIL_ADMIN_DELETED != true`，在真实云环境检查 `worker_expiry`／`worker_overdue` 查询的扫描量、返回量和耗时；事务内仍复查删除标记，避免候选读取后被删除的订单继续生成事件。
 
-**删除旧 `mcloud` 上的 `operations-minute` 触发器。** 新 API 的 `config.json` 已是空触发器列表，代码也拒绝 Timer 事件；云端旧触发器未必随代码上传自动删除。确认 `ordersWorker`、`notificationsWorker` 各自的定时触发器实际存在，迁移函数没有公开 HTTP 入口或定时触发器。
+**定时任务直接跑在 `mcloud` 里。** `config.json` 已声明 `orders-minute`、`notifications-minute` 两个每分钟触发器，`index.js` 在检测到 `Type === 'Timer'` 且调用方没有 OPENID 时转给 `timer_entry.js`，执行到期清理、超时提醒、8 小时自动确认收货和通知发送。日常只需要在开发者工具里「上传并部署」`mcloud` 一个函数，触发器随 `config.json` 一起更新；上传后到控制台确认两个触发器实际存在。
+
+如果历史上部署过独立的 `ordersWorker`／`notificationsWorker`，请删除它们的定时触发器或直接删除这两个函数，否则会和 `mcloud` 双跑（事务与幂等键能保证不重复写入，但会白跑一倍扫描）。确实想拆分部署时，改用 `node scripts/build-operations-worker.cjs --out cloudfunctions` 生成备用的三个目录，它们声明的触发器带 `worker-` 前缀，不会与 `mcloud` 同名。同时删除旧 `mcloud` 上遗留的 `operations-minute` 触发器。迁移函数没有公开 HTTP 入口或定时触发器。
 
 ## 4. 历史数据迁移
 

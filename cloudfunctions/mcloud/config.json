@@ -9,5 +9,16 @@
       "phonenumber.getPhoneNumber"
     ]
   },
-  "triggers": []
+  "triggers": [
+    {
+      "name": "orders-minute",
+      "type": "timer",
+      "config": "0 * * * * * *"
+    },
+    {
+      "name": "notifications-minute",
+      "type": "timer",
+      "config": "0 * * * * * *"
+    }
+  ]
 }
