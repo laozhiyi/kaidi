@@ -83,6 +83,7 @@ module.exports = {
 	'admin/user_del': 'admin/admin_user_controller@delUser#demo',
 	'admin/user_status': 'admin/admin_user_controller@statusUser#demo',
 	'admin/user_role': 'admin/admin_user_controller@userRole#demo',
+	'admin/user_leave': 'admin/admin_user_controller@userLeave#demo',
 
 	'admin/user_data_get': 'admin/admin_user_controller@userDataGet',
 	'admin/user_data_export': 'admin/admin_user_controller@userDataExport',

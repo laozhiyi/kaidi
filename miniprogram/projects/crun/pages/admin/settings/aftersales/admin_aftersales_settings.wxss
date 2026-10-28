@@ -1,0 +1,6 @@
+@import '../../../../style/admin_console.wxss';
+
+.ac-page .ac-qr-wrap { display: flex; justify-content: center; padding: 8rpx 0 18rpx; }
+.ac-page .ac-qr-image { width: 380rpx; border-radius: 16rpx; background: #f0f4f9; }
+.ac-page .ac-qr-tip { color: #718099; font-size: 23rpx; line-height: 1.7; text-align: center; }
+.ac-page .ac-qr-reset { width: 100%; margin-top: 16rpx; font-size: 24rpx; padding: 16rpx 14rpx; }

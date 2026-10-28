@@ -13,8 +13,9 @@ Page({
       { key: 'news', title: '公告管理', desc: '发布公告、编辑内容、调整展示', icon: 'icon-notice' },
       { key: 'chats', title: '客服会话', desc: '查看咨询并回复用户', icon: 'icon-message', serviceAllowed: true },
       { key: 'feedback', title: '投诉与反馈', desc: '核实投诉、回复用户并结案', icon: 'icon-notice', serviceAllowed: true },
-      { key: 'invite', title: '客服邀请码', desc: '给工作人员开通客服权限，免学生注册', icon: 'icon-friendadd' },
+      { key: 'invite', title: '客服邀请码', desc: '一次性开通客服权限，2 小时内有效', icon: 'icon-friendadd' },
       { key: 'about', title: '关于与联系', desc: '小程序介绍与联系信息', icon: 'icon-info' },
+      { key: 'aftersales', title: '反馈页售后群码', desc: '群二维码过期随时换，不用重新发版', icon: 'icon-qr_code' },
       { key: 'qr', title: '小程序码', desc: '获取小程序推广入口', icon: 'icon-qr_code' }
     ] },
     { title: '数据与系统', items: [
@@ -39,26 +40,47 @@ Page({
     }
   },
   onShow() { UI.authorize(this); },
-  bindNavigate(e) { return e.currentTarget.dataset.key === 'invite' ? this.bindInvite() : UI.go(e.currentTarget.dataset.key); },
-  // 客服是工作人员：用一次性邀请码开通权限，避免走学生注册资料与审核。
+  bindNavigate(e) {
+    const key = e.currentTarget.dataset.key;
+    if (key === 'invite') return this.bindInvite();
+    return UI.go(key);
+  },
+  // 客服平时也用微信登录，邀请码只在第一次开通时用一次。
   async bindInvite() {
-    if (!await UI.confirm('生成客服邀请码', '邀请码一次性使用、24 小时内有效。把码发给工作人员，让他在「后台登录 → 客服邀请码激活」输入即可获得客服权限，不需要填写学号、学生证等资料。')) return;
+    if (!await UI.confirm('生成客服邀请码', '邀请码一次性使用、2 小时内有效。把码发给客服，让他打开「后台登录 → 客服开通」输入一次，之后就能直接微信登录。')) return;
     wx.showLoading({ title: '生成中', mask: true });
     try {
-      const res = await cloudHelper.callCloudSumbit('admin/customer_service_invite', { hours: 24 }, { hint: false });
-      wx.hideLoading();
+      const res = await cloudHelper.callCloudSumbit('admin/customer_service_invite', { hours: 2 }, { hint: false });
       const data = res && res.data;
       if (!data || !data.code) throw new Error('邀请码生成失败，请稍后重试');
+      // 顺手做一张带码的小程序码：客服扫码直接落到开通页，连这 8 位都不用输
+      const qrUrl = await this._inviteQr(data.code);
+      wx.hideLoading();
       wx.showModal({
         title: '客服邀请码',
-        content: data.code + '\n有效期至 ' + data.expiresAt,
-        confirmText: '复制',
-        showCancel: false,
-        success: result => { if (result.confirm) wx.setClipboardData({ data: data.code }); }
+        content: data.code + '\n有效期至 ' + data.expiresAt
+          + (qrUrl ? '\n点「二维码」可以直接转发给客服，扫码即进开通页' : ''),
+        confirmText: qrUrl ? '二维码' : '复制',
+        cancelText: qrUrl ? '复制邀请码' : '',
+        showCancel: !!qrUrl,
+        success: result => {
+          if (qrUrl && result.confirm) wx.previewImage({ urls: [qrUrl], current: qrUrl });
+          else if ((!qrUrl && result.confirm) || (qrUrl && result.cancel)) wx.setClipboardData({ data: data.code });
+        }
       });
     } catch (error) {
       wx.hideLoading();
       wx.showModal({ title: '生成失败', content: (error && (error.msg || error.message)) || '网络异常，请重试', showCancel: false });
+    }
+  },
+  // 二维码只是锦上添花：没发布、openapi 不可用时退回纯文本邀请码，不挡住开通。
+  async _inviteQr(code) {
+    try {
+      const res = await cloudHelper.callCloudSumbit('admin/setup_qr',
+        { path: 'projects/crun/pages/admin/index/login/admin_login', sc: code }, { hint: false });
+      return (res && res.data) || '';
+    } catch (error) {
+      return '';
     }
   },
   async bindLogout() {

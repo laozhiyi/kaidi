@@ -3,10 +3,10 @@
   <view class="ac-heading"><view><view class="ac-title">服务范围与营业时间</view><view class="ac-subtitle">维护服务开关、校区与营业安排</view></view></view>
   <include src="../settings_state.wxml" />
   <block wx:if="{{config}}">
-    <view class="ac-card"><view class="ac-section-title">服务状态</view><view class="ac-row"><view><view class="ac-row-title">开放发布与接单</view><view class="ac-row-desc">关闭后暂停新订单，已有订单继续履约</view></view><switch color="#2863db" checked="{{config.enabled}}" data-key="enabled" bindchange="bindEdit" disabled="{{!isSuperAdmin || busy}}" /></view></view>
+    <view class="ac-card"><view class="ac-section-title">服务状态</view><view class="ac-row"><view><view class="ac-row-title">开放发布与接单</view><view class="ac-row-desc">关闭后暂停新订单，已有订单继续履约</view></view><switch color="#397bc8" checked="{{config.enabled}}" data-key="enabled" bindchange="bindEdit" disabled="{{!isSuperAdmin || busy}}" /></view></view>
     <view class="ac-card">
       <view class="ac-section-head"><text class="ac-section-title">营业时间</text><text class="ac-muted">北京时间 · 24 小时制</text></view>
-      <view class="ac-row"><view><view class="ac-row-title">按营业时间限制发布与接单</view><view class="ac-row-desc">默认关闭，全天开放；开启后仅在以下营业时段开放</view></view><switch color="#2863db" checked="{{config.enforceBusinessHours}}" data-key="enforceBusinessHours" bindchange="bindEdit" disabled="{{!isSuperAdmin || busy}}" /></view>
+      <view class="ac-row"><view><view class="ac-row-title">按营业时间限制发布与接单</view><view class="ac-row-desc">默认关闭，全天开放；开启后仅在以下营业时段开放</view></view><switch color="#397bc8" checked="{{config.enforceBusinessHours}}" data-key="enforceBusinessHours" bindchange="bindEdit" disabled="{{!isSuperAdmin || busy}}" /></view>
       <view class="ac-row" wx:for="{{fields}}" wx:key="key"><view>{{item.label}}</view><view class="ac-input-unit"><input class="ac-number-input" type="{{item.type}}" value="{{config[item.key]}}" data-key="{{item.key}}" bindinput="bindEdit" disabled="{{!isSuperAdmin || busy}}" /><text>{{item.unit}}</text></view></view>
       <view class="ac-row-desc">服务总开关关闭时仍暂停新订单。已接订单的取件、送达和确认收货不受营业时段影响。</view>
     </view>

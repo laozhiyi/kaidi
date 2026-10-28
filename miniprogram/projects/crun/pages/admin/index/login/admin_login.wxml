@@ -1,16 +1,80 @@
 <view class="ac-page ac-login-page">
-  <view class="ac-login-brand"><view class="ac-login-icon"><text class="icon-settings"></text></view><view class="ac-eyebrow">GXNU随手取</view><view class="ac-title">管理后台</view><view class="ac-subtitle">登录后管理校区服务与日常运营</view></view>
-  <view class="ac-card">
-    <button class="ac-primary ac-login-submit" bindtap="bindWechatLogin" loading="{{loggingIn}}" disabled="{{loggingIn}}">{{loggingIn ? '正在登录…' : '微信登录'}}</button>
-    <view class="ac-login-note">只有已被授权的超级管理员、管理员或客服可以使用微信登录后台</view>
-    <view class="ac-login-switch" bindtap="url" data-url="../invite/admin_staff_invite">我是客服，用邀请码激活 ›</view>
-    <view class="ac-login-switch" bindtap="bindTogglePassword">{{passwordLogin ? '收起账号密码登录' : '初始管理员账号密码登录'}}</view>
-    <block wx:if="{{passwordLogin}}">
-      <view class="ac-form-field"><view class="ac-label">管理员账号</view><input class="ac-input" placeholder="输入管理员账号" maxlength="30" placeholder-class="ac-placeholder" model:value="{{name}}" disabled="{{loggingIn}}" /></view>
-      <view class="ac-form-field"><view class="ac-label">登录密码</view><input class="ac-input" placeholder="输入管理员密码" maxlength="128" type="text" password="{{true}}" placeholder-class="ac-placeholder" model:value="{{pwd}}" disabled="{{loggingIn}}" bindconfirm="bindLoginTap" confirm-type="go" /></view>
-      <button class="ac-ghost ac-login-submit" bindtap="bindLoginTap" loading="{{loggingIn}}" disabled="{{loggingIn}}">{{loggingIn?'正在登录…':'账号密码登录'}}</button>
-    </block>
-  </view>
-  <view class="ac-footnote">后台权限由超级管理员在“用户管理 → 用户详情”中授权</view>
-  <button class="ac-ghost" bindtap="bindBackTap">返回用户端</button>
+
+	<view class="ac-login-hero">
+		<view class="ac-login-id">
+			<view class="ac-login-mark"><text class="icon-settings"></text></view>
+			<view class="ac-login-id-text">
+				<view class="ac-login-brand">GXNU随手取</view>
+				<view class="ac-login-title">管理后台</view>
+			</view>
+		</view>
+		<view class="ac-login-desc">校区服务、订单与人员的日常运营入口</view>
+	</view>
+
+	<view class="ac-login-sheet">
+
+		<!-- 三个入口平铺在同一层，切换时不再回收/展开，位置固定 -->
+		<view class="ac-login-tabs">
+			<view class="ac-login-tab {{mode === 'wechat' ? 'on' : ''}}" data-mode="wechat" bindtap="bindModeTap">
+				<text>微信登录</text>
+				<view class="ac-login-tab-line"></view>
+			</view>
+			<view class="ac-login-tab {{mode === 'password' ? 'on' : ''}}" data-mode="password" bindtap="bindModeTap">
+				<text>账号密码</text>
+				<view class="ac-login-tab-line"></view>
+			</view>
+			<view class="ac-login-tab {{mode === 'invite' ? 'on' : ''}}" data-mode="invite" bindtap="bindModeTap">
+				<text>客服开通</text>
+				<view class="ac-login-tab-line"></view>
+			</view>
+		</view>
+
+		<!-- 主入口：微信登录 -->
+		<view class="ac-login-body" wx:if="{{mode === 'wechat'}}">
+			<view class="ac-login-hint">仅对已授权的超级管理员、管理员和客服开放</view>
+			<button class="ac-primary ac-login-submit" bindtap="bindWechatLogin" loading="{{loggingIn}}" disabled="{{loggingIn}}">{{loggingIn ? '正在登录…' : '微信一键登录'}}</button>
+		</view>
+
+		<!-- 初始账号密码：只用于开通第一位管理员 -->
+		<view class="ac-login-body" wx:elif="{{mode === 'password'}}">
+			<view class="ac-login-hint">仅用于首位管理员开通，登录后请尽快绑定微信</view>
+			<view class="ac-login-fields">
+				<view class="ac-login-field">
+					<text class="icon-people ac-login-field-icon"></text>
+					<input class="ac-login-input" placeholder="管理员账号" maxlength="30" placeholder-class="ac-placeholder" value="{{name}}" bindinput="bindNameInput" disabled="{{loggingIn}}" />
+				</view>
+				<view class="ac-login-field">
+					<text class="icon-lock ac-login-field-icon"></text>
+					<input class="ac-login-input" placeholder="登录密码" maxlength="128" password="{{true}}" placeholder-class="ac-placeholder" value="{{pwd}}" bindinput="bindPwdInput" disabled="{{loggingIn}}" bindconfirm="bindLoginTap" confirm-type="go" />
+				</view>
+			</view>
+			<button class="ac-primary ac-login-submit" bindtap="bindLoginTap" loading="{{loggingIn}}" disabled="{{loggingIn}}">{{loggingIn ? '正在登录…' : '登录管理后台'}}</button>
+		</view>
+
+		<!-- 客服开通：管理员发一次性邀请码，同意后当场建号并静默绑定当前微信 -->
+		<view class="ac-login-body" wx:else>
+			<view class="ac-login-hint">客服是工作人员，不需要学号、学生证等学生资料</view>
+			<view class="ac-login-fields">
+				<view class="ac-login-field">
+					<text class="icon-qrcode ac-login-field-icon"></text>
+					<input class="ac-login-input ac-login-code" placeholder="管理员给你的邀请码" maxlength="12" placeholder-class="ac-placeholder" value="{{inviteCode}}" bindinput="bindInviteCodeInput" disabled="{{activateBusy}}" confirm-type="done" bindconfirm="bindInviteActivate" />
+				</view>
+				<view class="ac-login-field">
+					<text class="icon-people ac-login-field-icon"></text>
+					<input class="ac-login-input" placeholder="客服称呼（选填）" maxlength="20" placeholder-class="ac-placeholder" value="{{staffName}}" bindinput="bindStaffNameInput" disabled="{{activateBusy}}" />
+				</view>
+			</view>
+
+			<view class="ac-login-agree" bindtap="bindAgreeTap" hover-class="ac-login-agree-hover">
+				<view class="ac-login-agree-box {{agreed ? 'on' : ''}}"><text wx:if="{{agreed}}" class="icon-check"></text></view>
+				<view class="ac-login-agree-text">我已阅读并同意<text class="ac-login-agree-link" catchtap="bindViewAgreement">《员工使用须知》</text></view>
+			</view>
+
+			<view wx:if="{{inviteError}}" class="ac-login-error">{{inviteError}}</view>
+			<button class="ac-primary ac-login-submit" bindtap="bindInviteActivate" loading="{{activateBusy}}" disabled="{{activateBusy}}">{{activateBusy ? '正在开通…' : '同意并开通客服'}}</button>
+			<view class="ac-login-note">邀请码一次性使用、2 小时内有效。开通时自动绑定当前微信，之后回本页用「微信登录」即可进入。</view>
+		</view>
+
+	</view>
+
 </view>

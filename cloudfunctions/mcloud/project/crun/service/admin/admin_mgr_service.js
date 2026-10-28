@@ -32,12 +32,14 @@ class AdminMgrService extends BaseProjectAdminService {
 			ADMIN_LOGIN_CNT: cnt + 1
 		});
 		const role = Roles.ofAdmin(admin);
+		const root = Roles.isRoot(admin);
 		const last = (!admin.ADMIN_LOGIN_TIME) ? '尚未登录' : timeUtil.timestamp2Time(admin.ADMIN_LOGIN_TIME);
 		this.insertLog('登录了系统', admin, LogModel.TYPE.SYS);
 		return {
 			token,
 			role,
-			roleLabel: Roles.label(role),
+			root,
+			roleLabel: root ? Roles.ROOT_LABEL : Roles.label(role),
 			name: admin.ADMIN_NAME,
 			type: role === 'super' ? 1 : 0,
 			last,

@@ -1,5 +1,5 @@
 @import '../../../style/admin_console.wxss';
-.ac-page .ac-analytics-hero { color: #fff; border: 0; background: linear-gradient(120deg, #2863db, #4279e5); padding: 32rpx; }
+.ac-page .ac-analytics-hero { color: #fff; border: 0; background: linear-gradient(120deg, #397bc8, #4279e5); padding: 32rpx; }
 .ac-analytics-top { display: flex; align-items: center; justify-content: space-between; color: #e4edff; font-size: 26rpx; }
 .ac-analytics-tag { padding: 5rpx 14rpx; font-size: 21rpx; border: 1rpx solid rgba(255,255,255,.25); border-radius: 8rpx; }
 .ac-analytics-total { display: flex; align-items: baseline; flex-wrap: wrap; gap: 14rpx; margin: 18rpx 0 28rpx; font-size: 66rpx; font-weight: 600; line-height: 1.25; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }

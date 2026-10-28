@@ -76,19 +76,27 @@ class AdminBiz extends BaseBiz {
 	static async wechatLogin(that) {
 		try {
 			const res = await cloudHelper.callCloudSumbit('admin/wechat_login', {}, { title: '微信登录中', hint: false });
-			const data = res && res.data;
-			if (!data || !data.name || typeof data.token !== 'string' || !data.token) {
+			if (!AdminBiz.applySession(res && res.data)) {
 				wx.showToast({ title: '微信登录未完成，请重试', icon: 'none' });
 				return false;
 			}
-			cacheHelper.set(constants.CACHE_ADMIN, data, constants.ADMIN_TOKEN_EXPIRE);
-			that && !that._unloaded && that.setData({ loggingIn: false });
-			wx.reLaunch({ url: pageHelper.fmtURLByPID('/pages/admin/index/home/admin_home') });
 			return true;
 		} catch (e) {
 			wx.showToast({ title: (e && (e.msg || e.message)) || '微信登录失败，请稍后重试', icon: 'none', duration: 3000 });
 			return false;
 		}
+	}
+
+	/**
+	 * 落库后台会话并直接进工作台。
+	 * 微信登录和客服邀请码兑换都返回同样的结构，走同一条落地路径，
+	 * 避免两处各写一遍缓存与跳转、其中一处漏改。
+	 */
+	static applySession(data) {
+		if (!data || !data.name || typeof data.token !== 'string' || !data.token) return false;
+		cacheHelper.set(constants.CACHE_ADMIN, data, constants.ADMIN_TOKEN_EXPIRE);
+		wx.reLaunch({ url: pageHelper.fmtURLByPID('/pages/admin/index/home/admin_home') });
+		return true;
 	}
 
 	/**
@@ -115,24 +123,34 @@ class AdminBiz extends BaseBiz {
 	}
 
 	/**
-	 * 是否超级管理员
+	 * 是否初始管理员（安装时创建的初始号，唯一能调整超管的人）
 	 */
-	static isSuperAdmin() {
-		return this.getAdminRole() === 'super';
+	static isRootAdmin() {
+		return this.getAdminRole() === 'root';
 	}
 
 	/**
-	 * 当前后台角色：super / admin / service / ''
+	 * 是否超级管理员（含初始管理员）
+	 */
+	static isSuperAdmin() {
+		return ['root', 'super'].includes(this.getAdminRole());
+	}
+
+	/**
+	 * 当前后台角色：root / super / admin / service / ''
 	 */
 	static getAdminRole() {
 		let admin = cacheHelper.get(constants.CACHE_ADMIN);
 		if (!admin) return '';
+		if (admin.root === true) return 'root';
+		// 兼容升级前的会话缓存：账号密码登录的平台超管就是初始管理员。
+		if (admin.root === undefined && admin.type == 1 && admin.wechat !== true && admin.platform === true) return 'root';
 		if (admin.role === 'super' || admin.role === 'admin' || admin.role === 'service') return admin.role;
 		return admin.type == 1 ? 'super' : 'admin';
 	}
 
 	static getAdminRoleLabel() {
-		return ({ super: '超级管理员', admin: '管理员', service: '客服' })[this.getAdminRole()] || '';
+		return ({ root: '初始管理员', super: '超级管理员', admin: '管理员', service: '客服' })[this.getAdminRole()] || '';
 	}
 
 	/** 客服：不能授权角色、不能审核用户、不能删除订单 */
@@ -140,14 +158,35 @@ class AdminBiz extends BaseBiz {
 		return this.getAdminRole() === 'service';
 	}
 
-	/** 只有超级管理员可以授予/取消管理员（含超级管理员）权限 */
+	/** 初始管理员与超级管理员可以授予/取消管理员权限 */
 	static canGrantAdmin() {
-		return this.getAdminRole() === 'super';
+		return ['root', 'super'].includes(this.getAdminRole());
 	}
 
-	/** 超级管理员与管理员可以授予/取消客服权限 */
+	/** 初始管理员、超级管理员与管理员可以授予/取消客服权限 */
 	static canGrantService() {
-		return ['super', 'admin'].includes(this.getAdminRole());
+		return ['root', 'super', 'admin'].includes(this.getAdminRole());
+	}
+
+	/**
+	 * 能否调整「当前角色为 role」的账号。与后端 Roles.canManage 完全一致：
+	 * 只有初始管理员能管超管，超管之间互不可改，管理员只能管客服。
+	 */
+	static canManageRole(role) {
+		const me = this.getAdminRole();
+		if (me === 'root') return true;
+		if (me === 'super') return !['root', 'super'].includes(role);
+		if (me !== 'admin') return false;
+		return !['root', 'super', 'admin'].includes(role);
+	}
+
+	/** 能否把账号设成 role（空串表示取消后台权限）。 */
+	static canGrantRole(role) {
+		const me = this.getAdminRole();
+		if (me === 'root') return true;
+		if (me === 'super') return !role || ['admin', 'service'].includes(role);
+		if (me !== 'admin') return false;
+		return !role || role === 'service';
 	}
 
 	//  登录状态判定
@@ -194,6 +233,7 @@ class AdminBiz extends BaseBiz {
 		that.setData({
 			isAdmin: true,
 			isSuperAdmin: this.isSuperAdmin(),
+			isRootAdmin: this.isRootAdmin(),
 			isServiceAdmin: this.isServiceAdmin(),
 			canGrantAdmin: this.canGrantAdmin(),
 			canGrantService: this.canGrantService(),

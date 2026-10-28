@@ -3,7 +3,7 @@
   <view class="ac-heading"><view><view class="ac-title">关于与联系</view><view class="ac-subtitle">维护面向用户的介绍与联系信息</view></view></view>
   <view wx:for="{{list}}" wx:key="key" class="ac-card">
     <view class="ac-card-title"><view class="ac-icon"><text class="icon-{{item.icon}}"></text></view><view><view class="ac-entry-title">{{item.title}}</view><view class="ac-card-desc">{{item.description}}</view></view></view>
-    <view class="ac-card-actions two"><button class="ac-secondary" bindtap="url" data-url="../about/admin_setup_about?key={{item.key}}">编辑内容</button><button class="ac-ghost" bindtap="url" data-url="../../../about/index/about_index?key={{item.key}}">查看页面</button></view>
+    <view class="ac-card-actions {{item.key==='SETUP_CONTENT_AFTERSALES'?'':'two'}}"><button wx:if="{{item.key==='SETUP_CONTENT_AFTERSALES'}}" class="ac-primary" bindtap="url" data-url="../../settings/aftersales/admin_aftersales_settings">更换二维码</button><button class="ac-secondary" bindtap="url" data-url="../about/admin_setup_about?key={{item.key}}">编辑内容</button><button class="ac-ghost" bindtap="url" data-url="../../../about/index/about_index?key={{item.key}}">查看页面</button></view>
   </view>
   <view class="ac-card ac-about-service"><view class="ac-entry-main"><view class="ac-row-title">在线客服</view><view class="ac-row-desc">客服身份由后台「客服邀请码」开通，不再单独维护联系人与电话</view></view></view>
 </view>

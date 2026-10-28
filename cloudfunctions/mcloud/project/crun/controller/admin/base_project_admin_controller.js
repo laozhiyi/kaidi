@@ -28,7 +28,9 @@ const SERVICE_ROUTES = new Set([
  // 用户注册审核：客服可查看用户资料并做通过/不通过审核（停用/恢复、授权、删除仍归管理员）。
  'admin/user_list',
  'admin/user_detail',
- 'admin/user_status'
+ 'admin/user_status',
+ // 任何人（含客服）都可以主动退出自己的后台权限。
+ 'admin/user_leave'
 ]);
 
 class BaseProjectAdminController extends BaseAdminController {

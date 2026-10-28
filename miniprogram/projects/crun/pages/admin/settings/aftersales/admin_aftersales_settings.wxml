@@ -1,0 +1,28 @@
+<view wx:if="{{isAdmin}}" class="ac-page">
+  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 管理中心</text><text>/</text><text>售后群二维码</text></view>
+  <view class="ac-heading"><view><view class="ac-title">反馈页售后群</view><view class="ac-subtitle">用户在「反馈投诉」页看到的加群二维码，过期随时换一张</view></view></view>
+
+  <view wx:if="{{loading && !isLoad}}" class="ac-card ac-state ac-muted">正在读取二维码…</view>
+  <view wx:if="{{error}}" class="ac-card ac-state"><view>{{error}}</view><button class="ac-secondary ac-small" bindtap="load">重新读取</button></view>
+
+  <block wx:if="{{isLoad}}">
+    <view class="ac-card">
+      <view class="ac-section-head"><text class="ac-section-title">当前二维码</text><text class="ac-badge {{qrUrl?'green':'amber'}}">{{qrUrl?'已上传':'内置兜底'}}</text></view>
+      <view class="ac-qr-wrap">
+        <image class="ac-qr-image" src="{{qrUrl || fallbackQr}}" mode="widthFix" bindtap="bindPreview" show-menu-by-longpress />
+      </view>
+      <view class="ac-qr-tip">{{qrUrl ? '这就是用户现在看到的那张，保存后立即生效，不用重新发布小程序。' : '后台还没上传，用户端显示小程序内置的二维码。内置群码同样会过期，建议上传最新的。'}}</view>
+      <view class="ac-card-actions"><button class="ac-primary" bindtap="bindChoose" loading="{{qrBusy}}" disabled="{{busy || qrBusy}}">{{qrUrl?'更换二维码':'上传二维码'}}</button></view>
+      <button wx:if="{{qrUrl}}" class="ac-ghost ac-qr-reset" bindtap="bindReset" disabled="{{busy || qrBusy}}">移除，改用内置二维码</button>
+    </view>
+
+    <view class="ac-card">
+      <view class="ac-section-head"><text class="ac-section-title">群说明与群号</text></view>
+      <view class="ac-row-desc">文字部分（群号、加群说明）仍和「关于与联系 → 售后群」共用同一份内容，在那边编辑。</view>
+      <view class="ac-card-actions two">
+        <button class="ac-secondary" bindtap="bindEditText">编辑群说明</button>
+        <button class="ac-ghost" bindtap="bindViewPage">查看反馈页</button>
+      </view>
+    </view>
+  </block>
+</view>

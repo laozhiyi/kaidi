@@ -76,6 +76,9 @@ class BaseProjectService extends BaseService {
 				data.ADMIN_DESC = '超管';
 				data.ADMIN_TYPE = 1;
     data.ADMIN_PLATFORM = true;
+    // 初始管理员：整套后台权限的根，唯一能调整/授予超管的人。
+    // 它只是账号密码账号，不对应任何用户记录，因此不在 USER_ROLE 里。
+    data.ADMIN_ROOT = true;
     data.ADMIN_SCOPES = [];
 				await AdminModel.insert(data);
 			}

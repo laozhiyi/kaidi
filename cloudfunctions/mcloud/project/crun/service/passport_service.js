@@ -223,10 +223,20 @@ class PassportService extends BaseProjectService {
 
  async editBase(userId,input){await this._saveProfile(userId,input,false);return {ok:true,...await this.login(userId)};}
 
-	/** 激活客服邀请码：工作人员直接获得后台权限，不写学生注册资料 */
+	/**
+	 * 激活客服邀请码：工作人员直接获得后台权限，不写学生注册资料。
+	 * 客服只认微信身份（云调用上下文里的 OpenID），没有用户记录就静默建号，
+	 * 不需要先去用户端点微信登录、补学生资料；兑换成功后同一次请求把后台
+	 * 会话一起发回去，前端一步进工作台，避免“兑换成功但登录失败”的中间态。
+	 */
 	async redeemStaffInvite(userId, code, name) {
+		if (!userId) this.AppError('请重新打开小程序');
+		const existing = await UserModel.getOne({ USER_MINI_OPENID: userId }, '_id');
+		if (!existing) await this.wechatIdentityLogin(userId);
 		const result = await new (require('./admin/staff_invite_service.js'))().redeem(userId, code, name);
-		return { ...result, ...await this.login(userId) };
+		const AdminMgrService = require('./admin/admin_mgr_service.js');
+		const admin = await new AdminMgrService().wechatLogin(userId);
+		return { ...result, ...await this.login(userId), admin };
 	}
 
 	/** 登录 */

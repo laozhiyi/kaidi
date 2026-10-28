@@ -221,3 +221,66 @@ test('QR storage separates article scenes, scopes by project and preserves signe
   assert.equal(new URL(first).searchParams.get('sign'), 'sample'); assert.equal(new URL(first).searchParams.get('rd'), '123');
   await assert.rejects(svc.genMiniQr('/pages/detail?id=one', 'one'), /路径/);
 });
+
+test('授权按钮按操作人层级显示：只有初始管理员能改超管，超管与管理员都看不到上级入口', async () => {
+  // 初始管理员：可以授予超管，也能管所有账号。
+  const asRoot = harness(userPage, () => ({ _id: 's1', USER_STATUS: 1, USER_ROLE: 'service' }), { root: true });
+  await asRoot.page.onLoad({ id: 's1' });
+  assert.equal(asRoot.page.data.canManageTarget, true);
+  assert.equal(asRoot.page.data.grantSuper, true);
+  assert.equal(asRoot.page.data.grantAdmin, true);
+  assert.equal(asRoot.page.data.canRevokeRole, true);
+  assert.match(asRoot.page.data.roleHint, /初始管理员/);
+
+  // 普通超管：能管客服，但不能授予超管，也看不到超管的授权入口。
+  const asSuper = harness(userPage, () => ({ _id: 's1', USER_STATUS: 1, USER_ROLE: 'service' }));
+  await asSuper.page.onLoad({ id: 's1' });
+  assert.equal(asSuper.page.data.canManageTarget, true);
+  assert.equal(asSuper.page.data.grantSuper, false);
+  assert.equal(asSuper.page.data.grantAdmin, true);
+  assert.equal(asSuper.page.data.canRevokeRole, true);
+  const peer = harness(userPage, () => ({ _id: 'b2', USER_STATUS: 1, USER_ROLE: 'super' }));
+  await peer.page.onLoad({ id: 'b2' });
+  assert.equal(peer.page.data.canManageTarget, false);
+  assert.equal(peer.page.data.grantSuper, false);
+  assert.match(peer.page.data.roleNotice, /初始管理员/);
+
+  // 管理员查看超管：一个授权按钮都不给，点也发不出请求。
+  const upward = harness(userPage, () => ({ _id: 'b1', USER_STATUS: 1, USER_ROLE: 'super' }), { superAdmin: false });
+  await upward.page.onLoad({ id: 'b1' });
+  assert.equal(upward.page.data.canManageTarget, false);
+  assert.equal(upward.page.data.grantSuper, false);
+  assert.equal(upward.page.data.grantAdmin, false);
+  assert.equal(upward.page.data.grantService, false);
+  assert.equal(upward.page.data.canRevokeRole, false);
+  assert.match(upward.page.data.roleNotice, /超级管理员/);
+  await upward.page.bindRole(event({ role: 'service' }));
+  assert.equal(upward.calls.filter(call => call.route === 'admin/user_role').length, 0);
+  assert.match(upward.errors.at(-1), /超级管理员/);
+
+  // 管理员查看客服：只能回收，不能升格。
+  const downward = harness(userPage, () => ({ _id: 'h1', USER_STATUS: 1, USER_ROLE: 'service' }), { superAdmin: false });
+  await downward.page.onLoad({ id: 'h1' });
+  assert.equal(downward.page.data.canManageTarget, true);
+  assert.equal(downward.page.data.grantService, false);
+  assert.equal(downward.page.data.grantAdmin, false);
+  assert.equal(downward.page.data.canRevokeRole, true);
+});
+
+test('本人账号只能退出后台，不能给自己改角色或停用', async () => {
+  const asSelf = harness(userPage, () => ({ _id: 'me1', USER_STATUS: 1, USER_ROLE: 'admin' }), { root: true, selfUserId: 'me1' });
+  await asSelf.page.onLoad({ id: 'me1' });
+  assert.equal(asSelf.page.data.isSelfTarget, true);
+  assert.equal(asSelf.page.data.canLeaveRole, true);
+  assert.equal(asSelf.page.data.canManageTarget, false);
+  assert.equal(asSelf.page.data.canRevokeRole, false);
+  assert.match(asSelf.page.data.roleNotice, /自己/);
+  await asSelf.page.bindRole(event({ role: 'service' }));
+  assert.equal(asSelf.calls.filter(call => call.route === 'admin/user_role').length, 0);
+  await asSelf.page.bindStatus(event({ status: 9 }));
+  assert.equal(asSelf.calls.filter(call => call.route === 'admin/user_status').length, 0);
+
+  await asSelf.page.bindLeave();
+  assert.equal(asSelf.calls.filter(call => call.route === 'admin/user_leave').length, 1);
+  assert.ok(asSelf.events.some(item => item.logout));
+});

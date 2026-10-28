@@ -318,7 +318,8 @@ test('customer service pages replace the campus seat pages everywhere', () => {
 	assert.match(pages, /pages\/customer_service\/chat\/customer_service_chat/);
 	assert.match(pages, /pages\/admin\/customer_service\/chat_list\/admin_customer_chat_list/);
 	assert.match(pages, /pages\/admin\/customer_service\/chat_detail\/admin_customer_chat_detail/);
-	assert.match(pages, /pages\/admin\/index\/invite\/admin_staff_invite/);
+	assert.match(pages, /pages\/admin\/index\/login\/admin_login/);
+	assert.doesNotMatch(pages, /admin\/index\/invite/);
 	assert.doesNotMatch(pages, /campus_service/);
 	for (const file of ['service/campus_service_service.js', 'model/campus_service_model.js', 'controller/campus_service_controller.js', 'controller/admin/admin_campus_service_controller.js']) {
 		assert.equal(fs.existsSync(path.join(project, file)), false, file + ' should be removed');

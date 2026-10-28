@@ -148,7 +148,7 @@
 .console-editor { width: 100%; min-width: 0; color: #21304a; }
 .console-editor .editor-tab { position: static; height: auto; margin: 0 0 26rpx; padding: 6rpx; border-radius: 14rpx; background: #f0f4fb; gap: 6rpx; }
 .console-editor .editor-tab button { flex: 1; min-width: 0; margin: 0; padding: 16rpx; height: auto; line-height: 1.4; font-size: 25rpx; border-radius: 10rpx; background: transparent; color: #718099; }
-.console-editor .editor-tab button.bg-blue { background: #fff; color: #2863db; box-shadow: 0 2rpx 8rpx rgba(33,48,74,.05); }
+.console-editor .editor-tab button.bg-blue { background: #fff; color: #397bc8; box-shadow: 0 2rpx 8rpx rgba(33,48,74,.05); }
 .console-editor .editor-tab button::after { border: 0; }
 .console-editor .editor-wrapper { padding: 0; }
 .console-editor .editor-node-wrapper { border: 1rpx solid #e4eaf4; border-radius: 14rpx; overflow: hidden; margin: 0 0 16rpx; }

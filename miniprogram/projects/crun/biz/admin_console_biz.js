@@ -18,6 +18,7 @@ const ROUTES = {
   service: '/projects/crun/pages/admin/settings/service/admin_service_settings',
   pricing: '/projects/crun/pages/admin/settings/pricing/admin_pricing_settings',
   rules: '/projects/crun/pages/admin/settings/rules/admin_rules_settings',
+  aftersales: '/projects/crun/pages/admin/settings/aftersales/admin_aftersales_settings',
   monitor: '/projects/crun/pages/admin/monitor/admin_monitor',
   news: '/projects/crun/pages/admin/news/list/admin_news_list',
   chats: '/projects/crun/pages/admin/customer_service/chat_list/admin_customer_chat_list',
@@ -226,7 +227,7 @@ function changed(page) {
   }
 }
 function confirm(title, content) {
-  return new Promise(resolve => wx.showModal({ title, content, confirmText: '确认提交', confirmColor: '#2863db', success: result => resolve(!!result.confirm), fail: () => resolve(false) }));
+  return new Promise(resolve => wx.showModal({ title, content, confirmText: '确认提交', confirmColor: '#397bc8', success: result => resolve(!!result.confirm), fail: () => resolve(false) }));
 }
 function summary(data) {
   const total = Number(data.total || 0);
@@ -234,4 +235,13 @@ function summary(data) {
   const rows = states.map(([label, key, status, tone]) => ({ label, key, status, tone, value: Number(data[key] || 0), percent: total ? Math.round(Number(data[key] || 0) / total * 1000) / 10 : 0 }));
   return { ...data, rows, active: Number(data.waiting || 0) + Number(data.delivering || 0) + Number(data.confirming || 0) + Number(data.exceptions || 0), completionRate: total ? (Number(data.completed || 0) / total * 100).toFixed(1) : '0.0', updatedText: time(Date.now()) };
 }
-module.exports = { ROUTES, url, go, back, authorize, start, hide, showList, time, order, feedback, user, userProfile, message, loadList, openDetail, changed, confirm, summary };
+/** 当前后台角色：root（初始管理员）/ super / admin / service / '' */
+function adminRole() { return Admin.getAdminRole(); }
+/** 清掉本机后台会话（主动退出后台或会话失效后使用） */
+function clearAdminToken() { Admin.clearAdminToken(); }
+/** 能否调整该角色的账号（与后端 Roles.canManage 一致，仅用于隐藏按钮） */
+function canManageRole(role) { return Admin.canManageRole(String(role || '')); }
+/** 能否把账号设成该角色，空串表示取消后台权限 */
+function canGrantRole(role) { return Admin.canGrantRole(String(role || '')); }
+
+module.exports = { ROUTES, url, go, back, authorize, start, hide, showList, time, order, feedback, user, userProfile, message, loadList, openDetail, changed, confirm, summary, adminRole, clearAdminToken, canManageRole, canGrantRole };

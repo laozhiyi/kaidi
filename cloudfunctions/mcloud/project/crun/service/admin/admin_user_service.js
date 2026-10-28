@@ -95,11 +95,12 @@ class AdminUserService extends BaseProjectAdminService {
 		return result;
 	}
 
-	async statusUser(id, status, reason) {
+	async statusUser(id, status, reason, myAdmin) {
 		if (!id) this.AppError('id不能为空');
 		if (![0,1,8,9].includes(Number(status))) this.AppError('用户状态无效');
 		const user = await this.getUser({ userId: id });
 		if (!user) this.AppError('用户不存在');
+		this._assertManage(user, myAdmin, '停用');
 		let data = { USER_STATUS: Number(status), USER_CHECK_REASON: String(reason || '').trim() };
 		if (data.USER_CHECK_REASON.length > 200) this.AppError('处理说明不能超过200字');
 		if (Number(status) === 8 && !data.USER_CHECK_REASON) this.AppError('请填写审核不通过的原因');
@@ -113,7 +114,8 @@ class AdminUserService extends BaseProjectAdminService {
 
 	/**
 	 * 授权 / 取消授权后台角色。
-	 * - 超级管理员：可授予或取消超级管理员、管理员、客服
+	 * - 初始管理员：可授予或取消超级管理员、管理员、客服
+	 * - 超级管理员：只能授予或取消管理员、客服；同级超管不能互相改
 	 * - 管理员：只能授予或取消客服
 	 * - 客服：没有授权权限
 	 */
@@ -134,8 +136,9 @@ class AdminUserService extends BaseProjectAdminService {
 		const current = Roles.normalize(user.USER_ROLE);
 		if (current === next) return { id: user._id, role: next, roleLabel: Roles.label(next) };
 
-		const operatorRole = Roles.ofAdmin(myAdmin);
-		const guard = Roles.grantError(operatorRole, next || current);
+		// 现状与目标角色都要校验：只校验目标角色的话，管理员把同级或上级
+		// 「降成客服」就能绕过层级限制。
+		const guard = Roles.grantError(myAdmin, current, next);
 		if (guard) this.AppError(guard);
 		if (current === 'super' && next !== 'super') {
 			const supers = await UserModel.count({ USER_ROLE: 'super' });
@@ -151,15 +154,47 @@ class AdminUserService extends BaseProjectAdminService {
 		return { id: user._id, role: next, roleLabel: Roles.label(next) };
 	}
 
+	/**
+	 * 主动退出后台。只允许退自己，且不能是最后一位超管：
+	 * 超管交接要先由初始管理员授权继任者，再由本人退出，避免中途无人可管。
+	 */
+	async leaveAdmin(userId, myAdmin) {
+		if (!userId) this.AppError('请先登录');
+		const user = await this.getUser({ userId });
+		if (!user) this.AppError('用户不存在');
+		const selfUserId = myAdmin && myAdmin.ADMIN_WECHAT === true ? myAdmin.ADMIN_USER_ID : '';
+		if (!selfUserId || String(selfUserId) !== String(user._id)) this.AppError('只能退出自己的后台权限');
+		const current = Roles.normalize(user.USER_ROLE);
+		if (!current) this.AppError('当前账号没有后台权限');
+		if (current === 'super') {
+			const supers = await UserModel.count({ USER_ROLE: 'super' });
+			if (supers <= 1) this.AppError('至少需要保留一位超级管理员，请先请初始管理员授权继任者');
+		}
+		await UserModel.edit({ _id: user._id }, { USER_ROLE: '', USER_ROLE_TIME: 0, USER_ROLE_BY: '' });
+		await new AdminMgrService().syncUserRole({ ...user, USER_ROLE: '' }, '', myAdmin);
+		return { id: user._id, role: '' };
+	}
+
 	/**删除用户 */
-	async delUser(id) {
+	async delUser(id, myAdmin) {
 		if (!id) this.AppError('id不能为空');
 		const user = await this.getUser({ userId: id });
 		if (!user) this.AppError('用户不存在');
+		this._assertManage(user, myAdmin, '停用');
 		await UserModel.edit({ _id: user._id }, { USER_STATUS:9, USER_CHECK_REASON:'管理员停用（保留履约记录）' });
 		await this._syncInvite(user, 9);
 		await new AdminMgrService().setUserAdminActive(user, false);
 		return { id: user._id };
+	}
+
+	/**
+	 * 停用 / 移除后台账号同样是「层级操作」：管理员不能停用超管或同级管理员，
+	 * 否则把上级账号一停，等于间接夺走了对方的权限。超管之间也互不可停。
+	 */
+	_assertManage(user, myAdmin, action) {
+		if (!myAdmin || !Roles.isStaff(user.USER_ROLE)) return;
+		const error = Roles.manageError(myAdmin, user.USER_ROLE, action);
+		if (error) this.AppError(error);
 	}
 
 	/** 邀请关系统计只认「审核通过」的账号，审核/停用后同步回写，失败不影响主流程 */

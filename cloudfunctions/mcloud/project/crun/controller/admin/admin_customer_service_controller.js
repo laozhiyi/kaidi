@@ -48,10 +48,10 @@ class AdminCustomerServiceController extends BaseProjectAdminController {
 		return await new CustomerService().getStaffBadge();
 	}
 
-	/** 生成客服邀请码：仅管理员及以上可发，客服无授权入口 */
+	/** 生成客服邀请码：仅管理员及以上可发，客服无授权入口；有效期固定 2 小时 */
 	async inviteCreate() {
 		await this.isManager();
-		const input = this.validateData({ hours: 'int|min:1|max:72|default=24' });
+		const input = this.validateData({ hours: 'int|min:1|max:2|default=2' });
 		return await require('../../service/admin/staff_invite_service.js').create(this._adminId, input.hours);
 	}
 }

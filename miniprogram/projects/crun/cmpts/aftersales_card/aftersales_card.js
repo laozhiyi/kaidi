@@ -32,18 +32,24 @@ Component({
       if (!text) return;
       wx.setClipboardData({ data: text, success: () => wx.showToast({ title: '已复制', icon: 'none' }) });
     },
-    bindPreview(e) {
+    // 后台换上来的二维码是 cloud:// 文件ID；预览和存相册都要先换临时 https 地址。
+    async tempUrl(url) {
+      if (!/^cloud:\/\//.test(url)) return url;
+      try { return await cloudHelper.getTempFileURLOne(url) || url; } catch (error) { return url; }
+    },
+    async bindPreview(e) {
       const url = e.currentTarget.dataset.url;
       if (!url) return;
-      const urls = this.data.nodes.filter(node => node.type === 'img').map(node => node.val);
-      if (!urls.includes(url)) urls.push(url);
-      wx.previewImage({ current: url, urls });
+      const urls = await Promise.all(this.data.nodes.filter(node => node.type === 'img').map(node => this.tempUrl(node.val)));
+      const current = await this.tempUrl(url);
+      if (!urls.includes(current)) urls.push(current);
+      wx.previewImage({ current, urls });
     },
-    bindSave(e) {
+    async bindSave(e) {
       const url = e.currentTarget.dataset.url;
       if (!url) return;
       wx.getImageInfo({
-        src: url,
+        src: await this.tempUrl(url),
         success: info => wx.saveImageToPhotosAlbum({
           filePath: info.path,
           success: () => wx.showToast({ title: '已保存到相册', icon: 'none' }),

@@ -129,7 +129,7 @@ class AdminUserController extends BaseProjectAdminController {
 		let title = await UserModel.getOneField({ USER_MINI_OPENID: input.id }, 'USER_NAME');
 
 		let service = new AdminUserService();
-		await service.delUser(input.id);
+		await service.delUser(input.id, this._admin);
 
 		if (title)
 			this.logUser('删除了用户「' + title + '」');
@@ -153,7 +153,7 @@ class AdminUserController extends BaseProjectAdminController {
 		if (Roles.ofAdmin(this._admin) === 'service' && ![1, 8].includes(Number(input.status))) this.AppError('客服账号没有该操作权限');
 
 		let service = new AdminUserService();
-		const result = await service.statusUser(input.id, input.status, input.reason);
+		const result = await service.statusUser(input.id, input.status, input.reason, this._admin);
 		this.logUser('更新用户「' + input.id + '」的状态为 ' + input.status);
 		return result;
 	}
@@ -173,6 +173,22 @@ class AdminUserController extends BaseProjectAdminController {
 
 		let service = new AdminUserService();
 		const result = await service.setUserRole(input.id, input.role || '', this._admin);
+		return result;
+	}
+
+	/** 本人主动退出后台（超管交接前先由初始管理员授权继任者） */
+	async userLeave() {
+		await this.isAdmin();
+
+		let rules = {
+			id: 'must|id'
+		};
+
+		let input = this.validateData(rules);
+
+		let service = new AdminUserService();
+		const result = await service.leaveAdmin(input.id, this._admin);
+		this.logUser('退出了后台权限');
 		return result;
 	}
 

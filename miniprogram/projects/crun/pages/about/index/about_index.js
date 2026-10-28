@@ -31,7 +31,14 @@ Page({
     finally { if (!this._unloaded) this.setData({ loading: false }); }
   },
   async onPullDownRefresh() { try { await this.load(); } finally { wx.stopPullDownRefresh(); } },
-  bindImage(e) { const url = e.currentTarget.dataset.url; if (url) wx.previewImage({ current: url, urls: [url] }); },
+  async bindImage(e) {
+    const url = e.currentTarget.dataset.url;
+    if (!url) return;
+    // 后台配置的图片是 cloud:// 文件ID，previewImage 需要 https 临时地址。
+    let target = url;
+    if (/^cloud:\/\//.test(url)) { try { target = await cloudHelper.getTempFileURLOne(url) || url; } catch (error) { /* 预览失败不影响页面 */ } }
+    wx.previewImage({ current: target, urls: [target] });
+  },
   bindContact() { wx.navigateTo({ url: '/projects/crun/pages/about/index/about_index?key=SETUP_CONTENT_CONTACT' }); },
   bindService() { wx.navigateTo({ url: '/projects/crun/pages/customer_service/chat/customer_service_chat' }); }
 });

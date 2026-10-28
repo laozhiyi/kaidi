@@ -49,3 +49,10 @@ cloudfunctions/tenantMigrator/
 
 # Local UI audit artifacts
 .tmp/audit-*
+.tmp/admin-login-*
+.tmp/build-admin-login-preview.cjs
+
+# Local preview scratch: screenshots / generated html / throwaway fixtures
+.tmp/*.png
+.tmp/*.html
+.tmp/*.cjs

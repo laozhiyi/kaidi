@@ -1,19 +1,30 @@
 <view class="page">
 
-	<!-- 顶部蓝色导航条（带返回箭头） -->
-	<view class="header">
-		<view class="header-back" bindtap="bindBackTap">
-			<text class="header-back-arrow">‹</text>
+	<!-- 顶部蓝色导语区：系统导航栏已提供返回，这里只保留标题、说明与历史入口 -->
+	<view class="hero">
+		<view class="hero-bar">
+			<text class="hero-title">反馈投诉</text>
+			<view class="hero-history" bindtap="bindMyListTap" hover-class="hero-hover">
+				<text>我的反馈</text>
+				<text class="hero-history-arrow">›</text>
+			</view>
 		</view>
-		<view class="header-title">反馈投诉</view>
-		<view class="header-desc">您的建议和投诉是我们改进的动力</view>
-		<view class="feedback-history" bindtap="bindMyListTap">查看我的反馈 ›</view>
+		<view class="hero-desc">您的建议和投诉是我们改进的动力</view>
 	</view>
 
 	<view class="form-wrap">
-		<view wx:if="{{orderLoading}}" class="card">正在核实关联订单…</view>
-		<view wx:if="{{orderError}}" class="card"><view>{{orderError}}</view><button bindtap="loadOrder">重新加载订单</button></view>
-		<view wx:if="{{orderTarget}}" class="card"><view class="card-title"><text class="card-title-text">申诉对象</text></view><view>{{orderTarget.name}} · {{orderTarget.role}}</view><view class="tips">来自关联订单的另一位参与者。提交后由管理员核实并评定星级，审核前不影响对方信誉分。</view></view>
+		<view wx:if="{{orderLoading}}" class="card card-state">正在核实关联订单…</view>
+		<view wx:if="{{orderError}}" class="card card-state">
+			<text class="card-state-text">{{orderError}}</text>
+			<text class="retry-link" bindtap="loadOrder">重新加载</text>
+		</view>
+		<view wx:if="{{orderTarget}}" class="card">
+			<view class="card-title">
+				<text class="card-title-text">申诉对象</text>
+			</view>
+			<view class="order-target">{{orderTarget.name}} · {{orderTarget.role}}</view>
+			<view class="card-note">来自关联订单的另一位参与者。提交后由管理员核实并评定星级，审核前不影响对方信誉分。</view>
+		</view>
 
 		<aftersales-card />
 
@@ -58,8 +69,8 @@
 		<!-- 上传凭证 -->
 		<view class="card">
 			<view class="card-title">
-					<text class="card-title-text">上传凭证</text>
-					<text class="card-title-sub">（选填，最多6张，已上传 {{img.length}}/6）</text>
+				<text class="card-title-text">上传凭证</text>
+				<text class="card-title-sub">选填 · 最多 6 张 · 已上传 {{img.length}}/6</text>
 			</view>
 			<view class="img-list">
 				<view wx:for="{{img}}" wx:key="*this" class="img-item">
@@ -76,8 +87,8 @@
 
 		<!-- 温馨提示 -->
 		<view class="tips">
-			<view>· 请文明用语，共同维护良好的反馈环境</view>
-			<view>· 我们会在 1-3 个工作日内处理，请耐心等待</view>
+			<view class="tips-line">请文明用语，共同维护良好的反馈环境</view>
+			<view class="tips-line">我们会在 1–3 个工作日内处理，请耐心等待</view>
 		</view>
 
 	</view>

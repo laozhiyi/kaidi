@@ -15,7 +15,8 @@ const Roles = require('./admin_roles.js');
 // 去掉容易看错的 0/O/1/I，方便口头或截图传达
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE_LEN = 8;
-const MAX_HOURS = 72;
+// 邀请码只管“当场开通”这一下：固定 2 小时、一次性，过期就重新生成。
+const TTL_HOURS = 2;
 
 class StaffInviteService extends BaseProjectService {
 
@@ -34,9 +35,9 @@ class StaffInviteService extends BaseProjectService {
 		return store.key(this.getProjectId(), 'staff_invite', code);
 	}
 
-	/** 管理员生成一次性客服邀请码 */
-	async create(adminId, hours = 24) {
-		hours = Math.min(MAX_HOURS, Math.max(1, Number(hours) || 24));
+	/** 管理员生成一次性客服邀请码：有效期固定 2 小时 */
+	async create(adminId, hours = TTL_HOURS) {
+		hours = Math.min(TTL_HOURS, Math.max(1, Number(hours) || TTL_HOURS));
 		const now = Date.now(), pid = this.getProjectId();
 		return store.transaction(async tx => {
 			let code = '', id = '';
@@ -98,9 +99,13 @@ class StaffInviteService extends BaseProjectService {
 			await store.set(tx, 'staff_invite', inviteId, {
 				...invite, INVITE_STATUS: 0, INVITE_USED_BY: userId, INVITE_USED_AT: now
 			});
+			// 称呼留空时按 USER_ID 后四位给一个能改的默认名，后台各处都靠 USER_NAME 显示。
+			const displayName = String(name || '').trim() || current.USER_NAME
+				|| ('客服' + String(current.USER_ID || user.USER_ID || '').slice(-4));
 			await store.set(tx, 'user', user._id, {
 				...current,
-				USER_NAME: String(name || '').trim() || current.USER_NAME || '',
+				USER_NAME: displayName,
+				USER_STAFF_AGREED_AT: now,
 				USER_ROLE: Roles.normalize(invite.INVITE_ROLE) || 'service',
 				USER_ROLE_TIME: now,
 				USER_ROLE_BY: 'invite',

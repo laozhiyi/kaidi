@@ -1,70 +1,94 @@
 @import "../../../style/skin.wxss";
-.submit-error { margin-bottom:16rpx; color:#b87539; font-size:24rpx; line-height:1.5; text-align:center; word-break:break-all; }
 
 /* ============================================================
-   反馈投诉提交页（左右贴边、宽度撑满屏幕）
+   反馈投诉提交页
+   结构：蓝色导语区（返回 / 标题 / 我的反馈）→ 表单卡片 → 固定提交条
    ============================================================ */
 
 .page {
 	min-height: 100vh;
-	background-color: #f1f6ff;
-	padding: 0 0 200rpx;
+	background-color: #f4f7fc;
+	padding: 0 0 220rpx;
 	box-sizing: border-box;
 	width: 100%;
 }
 
 /* ============================================================
-   顶部蓝色导航条（带返回箭头）
+   顶部导语区
    ============================================================ */
-.header {
-	background: linear-gradient(135deg, #4a8fe0 0%, #397bc8 50%, #2f69b3 100%);
-	width: 100%;
-	padding: 40rpx 32rpx 48rpx;
-	box-sizing: border-box;
-	box-shadow: 0 6rpx 18rpx rgba(57, 123, 200, .25);
+.hero {
 	position: relative;
+	overflow: hidden;
+	padding: 24rpx 32rpx 44rpx;
+	border-radius: 0 0 28rpx 28rpx;
+	background: linear-gradient(160deg, #397bc8 0%, #3577c1 52%, #2f69b3 100%);
 }
 
-.header-back {
+/* 右上角柔光，避免大面积纯色显得死板 */
+.hero::after {
+	content: '';
 	position: absolute;
-	left: 24rpx;
-	top: 36rpx;
-	width: 60rpx;
-	height: 60rpx;
+	right: -160rpx;
+	top: -220rpx;
+	width: 440rpx;
+	height: 440rpx;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, .08);
+}
+
+.hero-bar {
+	position: relative;
+	z-index: 1;
 	display: flex;
 	align-items: center;
-	justify-content: center;
 }
 
-.header-back-arrow {
+.hero-title {
+	flex: 1;
+	min-width: 0;
+	font-size: 38rpx;
+	font-weight: 600;
+	line-height: 56rpx;
 	color: #fff;
-	font-size: 60rpx;
-	font-weight: 300;
-	line-height: 1;
-	margin-top: -8rpx;
+	letter-spacing: 1rpx;
 }
 
-.header-title {
-	font-size: 44rpx;
-	font-weight: bold;
+.hero-history {
+	flex: none;
+	display: flex;
+	align-items: center;
+	height: 56rpx;
+	padding: 0 22rpx;
+	border-radius: 28rpx;
+	background: rgba(255, 255, 255, .18);
+	font-size: 24rpx;
 	color: #fff;
-	line-height: 60rpx;
-	padding-left: 50rpx;
 }
 
-.header-desc {
+.hero-history-arrow {
+	margin-left: 6rpx;
 	font-size: 26rpx;
-	color: rgba(255, 255, 255, .85);
-	margin-top: 10rpx;
-	line-height: 36rpx;
-	padding-left: 50rpx;
+	opacity: .8;
+}
+
+.hero-desc {
+	position: relative;
+	z-index: 1;
+	margin: 12rpx 0 0;
+	font-size: 24rpx;
+	line-height: 34rpx;
+	color: rgba(255, 255, 255, .82);
+}
+
+.hero-hover {
+	opacity: .72;
 }
 
 /* ============================================================
    表单容器
    ============================================================ */
 .form-wrap {
-	padding: 24rpx 24rpx 0;
+	padding: 24rpx;
 }
 
 /* ============================================================
@@ -73,46 +97,76 @@
 .card {
 	width: 100%;
 	background-color: #fff;
-	border-radius: 20rpx;
-	padding: 32rpx 28rpx;
+	border-radius: 24rpx;
+	padding: 28rpx;
 	margin-bottom: 24rpx;
 	box-sizing: border-box;
-	box-shadow: 0 4rpx 12rpx rgba(216, 220, 223, .25);
+	box-shadow: 0 6rpx 20rpx rgba(31, 42, 68, .05);
+}
+
+.card-state {
+	display: flex;
+	align-items: center;
+	font-size: 26rpx;
+	line-height: 40rpx;
+	color: #64748b;
+}
+
+.card-state-text {
+	flex: 1;
+	margin-right: 16rpx;
+}
+
+.retry-link {
+	flex: none;
+	font-size: 26rpx;
+	color: #397bc8;
 }
 
 .card-title {
-	font-size: 32rpx;
-	font-weight: 600;
-	color: #1f2a44;
-	margin-bottom: 28rpx;
 	display: flex;
-	flex-direction: row;
-	align-items: center;
+	align-items: baseline;
 	flex-wrap: wrap;
+	margin-bottom: 24rpx;
 }
 
 .card-title-text {
-	font-size: 32rpx;
+	font-size: 30rpx;
 	font-weight: 600;
+	line-height: 42rpx;
 	color: #1f2a44;
 }
 
 .card-title-required {
-	color: #ff4d4f;
-	font-size: 32rpx;
 	margin-left: 6rpx;
+	font-size: 30rpx;
 	line-height: 1;
+	color: #ff5a5f;
 }
 
 .card-title-sub {
-	font-size: 24rpx;
-	color: #94a3b8;
-	font-weight: normal;
 	margin-left: 12rpx;
+	font-size: 22rpx;
+	font-weight: 400;
+	color: #94a3b8;
+}
+
+.order-target {
+	font-size: 28rpx;
+	font-weight: 600;
+	line-height: 40rpx;
+	color: #1f2a44;
+}
+
+.card-note {
+	margin-top: 12rpx;
+	font-size: 23rpx;
+	line-height: 36rpx;
+	color: #8b9ab1;
 }
 
 /* ============================================================
-   投诉对象标签（一行平铺、可换行）
+   投诉对象标签
    ============================================================ */
 .tag-row {
 	display: flex;
@@ -122,35 +176,26 @@
 }
 
 .tag-item {
-	padding: 14rpx 28rpx;
-	background-color: #f5f8ff;
-	border-radius: 32rpx;
-	border: 2rpx solid transparent;
-	box-sizing: border-box;
-	transition: all .2s;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	padding: 14rpx 28rpx;
+	border-radius: 999rpx;
+	border: 2rpx solid transparent;
+	background-color: #f2f6fd;
+	box-sizing: border-box;
+	transition: all .2s;
 }
 
 .tag-active {
-	background-color: rgba(57, 123, 200, .12);
-	border-color: #397bc8;
-}
-
-.tag-custom {
-	background-color: #f5f8ff;
-}
-
-.tag-active.tag-custom {
-	background-color: rgba(57, 123, 200, .12);
+	background-color: rgba(57, 123, 200, .10);
 	border-color: #397bc8;
 }
 
 .tag-label {
 	font-size: 26rpx;
-	color: #4a5b7c;
 	line-height: 1;
+	color: #4a5b7c;
 }
 
 .tag-active .tag-label {
@@ -165,13 +210,13 @@
 
 .custom-input {
 	width: 100%;
-	background-color: #f5f8ff;
-	border-radius: 12rpx;
 	padding: 22rpx 24rpx;
+	border-radius: 14rpx;
+	border: 2rpx solid transparent;
+	background-color: #f2f6fd;
 	font-size: 28rpx;
 	color: #1f2a44;
 	box-sizing: border-box;
-	border: 2rpx solid transparent;
 }
 
 .custom-input:focus {
@@ -185,14 +230,14 @@
 .textarea {
 	width: 100%;
 	height: 280rpx;
-	background-color: #f5f8ff;
-	border-radius: 12rpx;
 	padding: 24rpx;
+	border-radius: 14rpx;
+	border: 2rpx solid transparent;
+	background-color: #f2f6fd;
 	font-size: 28rpx;
+	line-height: 44rpx;
 	color: #1f2a44;
 	box-sizing: border-box;
-	line-height: 44rpx;
-	border: 2rpx solid transparent;
 }
 
 .textarea:focus {
@@ -201,85 +246,96 @@
 }
 
 .input-counter {
-	text-align: right;
-	color: #94a3b8;
-	font-size: 22rpx;
 	margin-top: 12rpx;
+	text-align: right;
+	font-size: 22rpx;
+	color: #94a3b8;
 }
 
 /* ============================================================
-   图片上传（9 宫格）
+   图片上传（三列）
    ============================================================ */
 .img-list {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: wrap;
-	gap: 20rpx;
+	gap: 16rpx;
 }
 
 .img-item {
-	width: 200rpx;
-	height: 200rpx;
 	position: relative;
+	width: 196rpx;
+	height: 196rpx;
 }
 
 .img {
-	width: 200rpx;
-	height: 200rpx;
-	border-radius: 12rpx;
-	background-color: #f5f8ff;
+	width: 196rpx;
+	height: 196rpx;
+	border-radius: 14rpx;
+	background-color: #f2f6fd;
 }
 
 .img-del {
 	position: absolute;
-	top: -12rpx;
-	right: -12rpx;
+	top: -10rpx;
+	right: -10rpx;
 	width: 44rpx;
 	height: 44rpx;
-	background-color: rgba(0, 0, 0, .65);
-	color: #fff;
 	border-radius: 50%;
+	background-color: rgba(0, 0, 0, .62);
+	color: #fff;
+	font-size: 30rpx;
+	line-height: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 30rpx;
-	line-height: 1;
 }
 
 .img-add {
-	width: 200rpx;
-	height: 200rpx;
+	width: 196rpx;
+	height: 196rpx;
 	border: 2rpx dashed #cbd5e1;
-	border-radius: 12rpx;
+	border-radius: 14rpx;
+	background-color: #f7faff;
+	box-sizing: border-box;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	background-color: #f5f8ff;
-	box-sizing: border-box;
 }
 
 .add-icon {
-	font-size: 56rpx;
-	color: #94a3b8;
-	line-height: 1;
+	font-size: 52rpx;
 	font-weight: 200;
+	line-height: 1;
+	color: #94a3b8;
 }
 
 .add-label {
+	margin-top: 10rpx;
 	font-size: 22rpx;
 	color: #94a3b8;
-	margin-top: 10rpx;
 }
 
 /* ============================================================
    温馨提示
    ============================================================ */
 .tips {
-	padding: 16rpx 12rpx;
-	font-size: 24rpx;
-	color: #94a3b8;
-	line-height: 40rpx;
+	padding: 8rpx 8rpx 0;
+}
+
+.tips-line {
+	position: relative;
+	padding-left: 24rpx;
+	font-size: 22rpx;
+	line-height: 38rpx;
+	color: #98a6bb;
+}
+
+.tips-line::before {
+	content: '·';
+	position: absolute;
+	left: 6rpx;
 }
 
 /* ============================================================
@@ -290,29 +346,36 @@
 	left: 0;
 	right: 0;
 	bottom: 0;
-	padding: 24rpx 24rpx 40rpx;
+	padding: 24rpx 24rpx calc(32rpx + env(safe-area-inset-bottom));
 	background-color: #fff;
 	box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, .06);
 	box-sizing: border-box;
 }
 
+.submit-error {
+	margin-bottom: 16rpx;
+	font-size: 24rpx;
+	line-height: 1.5;
+	color: #b87539;
+	text-align: center;
+	word-break: break-all;
+}
+
 .btn-submit {
 	width: 100%;
 	height: 92rpx;
+	border-radius: 46rpx;
 	background: linear-gradient(135deg, #4a8fe0, #397bc8);
 	color: #fff;
 	font-size: 32rpx;
 	font-weight: 600;
-	border-radius: 46rpx;
-	border: none;
 	display: flex;
 	flex-direction: row;
 	align-items: center;
 	justify-content: center;
-	box-shadow: 0 8rpx 18rpx rgba(57, 123, 200, .35);
+	box-shadow: 0 8rpx 18rpx rgba(57, 123, 200, .32);
 }
 
 .btn-disabled {
 	opacity: .6;
 }
-.feedback-history { margin-top:18rpx; font-size:25rpx; text-decoration:underline; }

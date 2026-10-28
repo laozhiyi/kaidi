@@ -12,6 +12,10 @@ function harness(relative, get = () => ({}), options = {}) {
     enableAlertBeforeUnload() {}, disableAlertBeforeUnload() {}, previewImage() {}, makePhoneCall() {},
     setClipboardData: data => events.push({ copy: data.data }),
     pageScrollTo: data => scrolls.push(data),
+    chooseMedia(data) {
+      if (options.mediaCancelled) { if (data.fail) data.fail({ errMsg: 'chooseMedia:fail cancel' }); return; }
+      if (data.success) data.success({ tempFiles: [{ tempFilePath: 'wxfile://tmp/qr.png' }] });
+    },
     showModal(data) { confirmations.push(data); if (data.success) data.success({ confirm: options.confirm !== false }); },
     showActionSheet(data) { sheets.push(data); },
     navigateTo: data => { navigation.push({ ...data, method: 'navigateTo' }); if (data.complete) data.complete(); },
@@ -24,8 +28,12 @@ function harness(relative, get = () => ({}), options = {}) {
     command: async (route, params) => { calls.push({ route, params, command: true }); return get(route, params); },
     error: error => errors.push(error && (error.msg || error.message) || String(error))
   };
-  const Admin = { isAdmin(page, superOnly) { if (options.denied || (superOnly && options.superAdmin === false)) return false; page.setData({ isAdmin: true, isSuperAdmin: options.superAdmin !== false, admin: { name: 'admin', type: options.superAdmin === false ? 0 : 1 } }); return true; }, clearAdminToken() { events.push({ logout: true }); } };
+  const Admin = { isAdmin(page, superOnly) { if (options.denied || (superOnly && options.superAdmin === false)) return false; page.setData({ isAdmin: true, isSuperAdmin: options.superAdmin !== false, isRootAdmin: options.root === true, admin: { name: 'admin', type: options.superAdmin === false ? 0 : 1, userId: options.selfUserId || '', root: options.root === true } }); return true; }, clearAdminToken() { events.push({ logout: true }); } };
   Admin.getAdminToken = () => ({platform:options.platform !== false});
+  // 与后端 Roles 同规则：root（初始管理员）可管全部；普通超管不能管超管；管理员只能管客服。
+  Admin.getAdminRole = () => options.root === true ? 'root' : (options.superAdmin === false ? 'admin' : 'super');
+  Admin.canManageRole = role => options.root === true ? true : options.superAdmin === false ? !['super', 'admin'].includes(String(role || '')) : !['root', 'super'].includes(String(role || ''));
+  Admin.canGrantRole = role => options.root === true ? true : options.superAdmin === false ? (!role || role === 'service') : (!role || ['admin', 'service'].includes(role));
   // Use the production validation rules and content summary helper.
   const adminModule = { exports: {} };
   vm.runInNewContext(fs.readFileSync(path.join(mini, 'comm/biz/admin_biz.js'), 'utf8'), { module: adminModule, require: request => request.endsWith('/base_biz.js') ? class {} : {} });
@@ -35,6 +43,8 @@ function harness(relative, get = () => ({}), options = {}) {
     callCloudSumbit: async (route, params) => ({ code: 200, data: await Ops.command(route, params) }),
     callCloudData: async (route, params) => Ops.get(route, params),
     transRichEditorTempPics: async (content, folder, id, route) => { await Ops.command(route, { id, content, folder }); return content; },
+    transTempPicOne: async (image, folder) => { events.push({ upload: image, folder }); return options.uploadResult || 'cloud://crun/setup/qr-new.png'; },
+    getTempFileURLOne: async fileID => 'https://example.invalid/temp.png?file=' + encodeURIComponent(fileID),
     transCoverTempPics: async (images, folder, id, route) => Ops.command(route, { id, images, folder }),
     transFormsTempPics: async (forms, folder, id, route) => Ops.command(route, { id, forms, folder })
   };
@@ -62,6 +72,7 @@ function harness(relative, get = () => ({}), options = {}) {
         if (request.endsWith('/cloud_helper.js')) return cloud;
         if (request.endsWith('/page_helper.js')) return pageHelper;
         if (request.endsWith('/cache_helper.js')) return { remove() {}, get() {} };
+        if (request.endsWith('/passport_biz.js')) return { getToken: () => ({ id: 'sample-user-id' }), setToken() {}, loginByUser: async () => ({ id: 'sample-user-id' }) };
         if (request.endsWith('/base_biz.js')) return class {};
         if (request.endsWith('/data_helper.js')) return {};
         if (request.endsWith('/public_biz.js')) return { removeCacheList() {}, getRichEditorDesc: (desc, content) => desc || content.filter(item => item.type === 'text').map(item => item.val).join('').slice(0, 100) };

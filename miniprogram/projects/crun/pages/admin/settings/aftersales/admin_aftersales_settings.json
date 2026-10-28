@@ -1,0 +1,7 @@
+{
+  "usingComponents": {},
+  "navigationBarTitleText": "售后群二维码",
+  "navigationBarBackgroundColor": "#f3f5f9",
+  "navigationBarTextStyle": "black",
+  "enablePullDownRefresh": true
+}

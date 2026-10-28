@@ -1,10 +1,257 @@
 @import '../../../../style/admin_console.wxss';
-.ac-login-page { display: flex; flex-direction: column; justify-content: center; padding-top: 64rpx; padding-bottom: 64rpx; }
-.ac-login-brand { text-align: center; margin-bottom: 42rpx; }
-.ac-login-icon { display: flex; align-items: center; justify-content: center; width: 112rpx; height: 112rpx; margin: 0 auto 26rpx; background: #2863db; color: #fff; border-radius: 30rpx; font-size: 52rpx; }
-.ac-page .ac-login-submit { width: 100%; margin-top: 32rpx; }
-.ac-page .ac-login-brand .ac-eyebrow { margin-bottom: 14rpx; }
-.ac-login-page > button { width: 100%; margin-top: 26rpx; }
-.ac-page .ac-login-note { margin-top: 18rpx; font-size: 24rpx; line-height: 1.6; color: #7a8aa6; text-align: center; }
-.ac-page .ac-login-switch { margin-top: 26rpx; padding-top: 22rpx; border-top: 1rpx solid #eef1f6; text-align: center; font-size: 25rpx; color: #2863db; }
-.ac-page .ac-login-switch + .ac-form-field { margin-top: 22rpx; }
+
+/* 后台登录：主题蓝头部 + 圆角白色面板 + 三入口切换栏
+   配色全部取自小程序主色（--projectColor #397BC8 / 浅色 #5C9BEA），
+   与「我的」页的资料卡同一组渐变，避免登录页和前台像两个产品。 */
+.ac-page.ac-login-page {
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+	padding: 0;
+	background: #fff;
+}
+
+.ac-login-hero {
+	position: relative;
+	padding: 40rpx 44rpx 222rpx;
+	overflow: hidden;
+	color: #fff;
+	background:
+		radial-gradient(140% 92% at 82% 116%, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 62%),
+		linear-gradient(180deg, #397bc8 0%, #4384d2 58%, #5497e2 100%);
+}
+
+/* 左下淡淡的圆，压住面板交界处的空 */
+.ac-login-hero::after {
+	content: '';
+	position: absolute;
+	bottom: -300rpx;
+	left: -180rpx;
+	width: 440rpx;
+	height: 440rpx;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.05);
+}
+
+.ac-login-id {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	gap: 22rpx;
+}
+
+.ac-login-mark {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 76rpx;
+	height: 76rpx;
+	border: 1rpx solid rgba(255, 255, 255, 0.34);
+	border-radius: 22rpx;
+	background: rgba(255, 255, 255, 0.18);
+	font-size: 36rpx;
+	color: #fff;
+}
+
+.ac-login-id-text {
+	min-width: 0;
+}
+
+.ac-login-brand {
+	font-size: 23rpx;
+	font-weight: 500;
+	line-height: 1.05;
+	letter-spacing: 2rpx;
+	color: rgba(255, 255, 255, 0.85);
+}
+
+.ac-login-title {
+	margin-top: 2rpx;
+	font-size: 58rpx;
+	font-weight: 600;
+	line-height: 1.06;
+	letter-spacing: 1rpx;
+}
+
+.ac-login-desc {
+	position: relative;
+	z-index: 1;
+	margin-top: 26rpx;
+	font-size: 25rpx;
+	letter-spacing: 0.5rpx;
+	color: rgba(255, 255, 255, 0.76);
+}
+
+/* 白色面板压住头部一截，直接落到屏幕底部 */
+.ac-login-sheet {
+	position: relative;
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	margin-top: -108rpx;
+	padding: 0 40rpx calc(40rpx + env(safe-area-inset-bottom));
+	border-radius: 40rpx 40rpx 0 0;
+	background: #fff;
+	box-shadow: 0 -12rpx 40rpx rgba(31, 64, 116, 0.14);
+}
+
+/* 三个入口等宽平铺，切换时只挪下划线，位置不动 */
+.ac-login-tabs {
+	display: flex;
+	align-items: flex-start;
+}
+
+.ac-login-tab {
+	position: relative;
+	display: flex;
+	flex: 1;
+	align-items: center;
+	justify-content: center;
+	padding: 44rpx 0 16rpx;
+	font-size: 26rpx;
+	color: #8a97a9;
+}
+
+.ac-login-tab.on {
+	font-weight: 600;
+	color: #24334b;
+}
+
+.ac-login-tab-line {
+	position: absolute;
+	left: 50%;
+	bottom: -2rpx;
+	width: 114rpx;
+	height: 4rpx;
+	margin-left: -57rpx;
+	border-radius: 2rpx;
+	background: #397bc8;
+	opacity: 0;
+}
+
+.ac-login-tab.on .ac-login-tab-line {
+	opacity: 1;
+}
+
+.ac-login-body {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	padding-top: 56rpx;
+}
+
+.ac-login-hint {
+	font-size: 22rpx;
+	line-height: 1.7;
+	color: #93a1b5;
+}
+
+.ac-page .ac-login-submit {
+	width: 100%;
+	height: 96rpx;
+	margin-top: 38rpx;
+	padding: 0;
+	line-height: 96rpx;
+	border-radius: 16rpx;
+	background: #397bc8;
+	font-size: 29rpx;
+	font-weight: 600;
+	letter-spacing: 1rpx;
+	box-shadow: 0 12rpx 28rpx rgba(57, 123, 200, 0.24);
+}
+
+.ac-login-fields {
+	display: flex;
+	flex-direction: column;
+	gap: 20rpx;
+	margin-top: 28rpx;
+}
+
+.ac-login-field {
+	display: flex;
+	align-items: center;
+	gap: 14rpx;
+	height: 100rpx;
+	padding: 0 24rpx;
+	border: 1rpx solid #e3ebf5;
+	border-radius: 14rpx;
+	background: #f7fafd;
+}
+
+.ac-login-field-icon {
+	font-size: 26rpx;
+	color: #a3b1c4;
+}
+
+.ac-page .ac-login-input {
+	flex: 1;
+	min-width: 0;
+	height: 100rpx;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	font-size: 27rpx;
+	color: #24334b;
+}
+
+.ac-login-error {
+	margin-top: 18rpx;
+	font-size: 22rpx;
+	color: #b0453f;
+}
+
+.ac-login-note {
+	margin-top: 20rpx;
+	font-size: 22rpx;
+	line-height: 1.7;
+	color: #93a1b5;
+}
+
+.ac-login-code {
+	font-weight: 500;
+	letter-spacing: 4rpx;
+}
+
+/* 协议勾选：与用户端「免责声明」同一套勾选框样式 */
+.ac-login-agree {
+	display: flex;
+	align-items: center;
+	margin-top: 26rpx;
+	font-size: 23rpx;
+	line-height: 1.6;
+	color: #5c6b80;
+}
+
+.ac-login-agree-hover {
+	opacity: 0.7;
+}
+
+.ac-login-agree-box {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	width: 34rpx;
+	height: 34rpx;
+	margin-right: 12rpx;
+	border: 2rpx solid #c3d1e2;
+	border-radius: 8rpx;
+	background: #fff;
+	font-size: 20rpx;
+	color: #fff;
+}
+
+.ac-login-agree-box.on {
+	border-color: #397bc8;
+	background: #397bc8;
+}
+
+.ac-login-agree-text {
+	flex: 1;
+	min-width: 0;
+}
+
+.ac-login-agree-link {
+	color: #397bc8;
+}

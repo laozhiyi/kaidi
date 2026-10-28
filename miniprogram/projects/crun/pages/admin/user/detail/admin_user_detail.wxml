@@ -55,12 +55,22 @@
 
     <view wx:if="{{!isServiceAdmin}}" class="ac-card">
       <view class="ac-section-head"><text class="ac-section-title">后台权限</text><text class="ac-badge">{{profile.roleLabel}}</text></view>
-      <view class="ac-muted">{{isSuperAdmin?'超级管理员可以授予管理员、客服与超级管理员权限。':'管理员可以授予或取消客服权限。'}}授权后该用户用微信登录即可进入管理后台。</view>
+      <view wx:if="{{!canManageTarget}}" class="ac-notice amber">{{roleNotice}}</view>
+      <view wx:else class="ac-muted">{{roleHint}}授权后该用户用微信登录即可进入管理后台。</view>
+      <view wx:if="{{canManageTarget}}" class="ac-form-actions">
+        <button wx:if="{{grantSuper}}" class="ac-secondary" data-role="super" bindtap="bindRole" disabled="{{busy || loading || error}}">授予超级管理员</button>
+        <button wx:if="{{grantAdmin}}" class="ac-secondary" data-role="admin" bindtap="bindRole" disabled="{{busy || loading || error}}">授予管理员</button>
+        <button wx:if="{{grantService}}" class="ac-secondary" data-role="service" bindtap="bindRole" disabled="{{busy || loading || error}}">授予客服</button>
+        <button wx:if="{{canRevokeRole}}" class="ac-ghost ac-text-red" data-role="" bindtap="bindRole" disabled="{{busy || loading || error}}">取消后台权限</button>
+      </view>
+    </view>
+
+    <!-- 本人账号：只能退出后台，不能改自己的角色，也不能停用自己 -->
+    <view wx:if="{{canLeaveRole}}" class="ac-card">
+      <view class="ac-section-head"><text class="ac-section-title">我的后台账号</text><text class="ac-badge">{{profile.roleLabel}}</text></view>
+      <view class="ac-muted">退出后需要重新获得授权才能进入管理后台，用户端不受影响。超管交接请先由初始管理员授权继任者，再退出。</view>
       <view class="ac-form-actions">
-        <button wx:if="{{canGrantAdmin && profile.role!=='super'}}" class="ac-secondary" data-role="super" bindtap="bindRole" disabled="{{busy || loading || error}}">授予超级管理员</button>
-        <button wx:if="{{canGrantAdmin && profile.role!=='admin'}}" class="ac-secondary" data-role="admin" bindtap="bindRole" disabled="{{busy || loading || error}}">授予管理员</button>
-        <button wx:if="{{canGrantService && profile.role!=='service'}}" class="ac-secondary" data-role="service" bindtap="bindRole" disabled="{{busy || loading || error}}">授予客服</button>
-        <button wx:if="{{profile.role && (profile.role==='service' ? canGrantService : canGrantAdmin)}}" class="ac-ghost ac-text-red" data-role="" bindtap="bindRole" disabled="{{busy || loading || error}}">取消后台权限</button>
+        <button class="ac-ghost ac-text-red" bindtap="bindLeave" disabled="{{busy || loading || error}}">退出后台权限</button>
       </view>
     </view>
 
@@ -71,9 +81,9 @@
         <view class="ac-field-label">处理说明（审核不通过时必填）</view>
         <textarea value="{{reason}}" bindinput="bindReason" disabled="{{busy}}" maxlength="200" placeholder="记录审核依据或账号状态调整原因" /><view class="ac-counter">{{reason.length}} / 200</view>
         <view class="ac-form-actions">
-          <button wx:if="{{profile.USER_STATUS!==1}}" class="ac-primary" data-status="1" bindtap="bindStatus" disabled="{{busy || loading || error}}">{{profile.USER_STATUS===9?'恢复使用':'审核通过'}}</button>
-          <button wx:if="{{profile.USER_STATUS===0}}" class="ac-ghost" data-status="8" bindtap="bindStatus" disabled="{{busy || loading || error}}">审核不通过</button>
-          <button wx:if="{{profile.USER_STATUS!==9 && !isServiceAdmin}}" class="ac-ghost ac-text-red" data-status="9" bindtap="bindStatus" disabled="{{busy || loading || error}}">停用用户</button>
+          <button wx:if="{{profile.USER_STATUS!==1 && (!staffTarget || canManageTarget)}}" class="ac-primary" data-status="1" bindtap="bindStatus" disabled="{{busy || loading || error}}">{{profile.USER_STATUS===9?'恢复使用':'审核通过'}}</button>
+          <button wx:if="{{profile.USER_STATUS===0 && (!staffTarget || canManageTarget)}}" class="ac-ghost" data-status="8" bindtap="bindStatus" disabled="{{busy || loading || error}}">审核不通过</button>
+          <button wx:if="{{profile.USER_STATUS!==9 && !isServiceAdmin && (!staffTarget || canManageTarget)}}" class="ac-ghost ac-text-red" data-status="9" bindtap="bindStatus" disabled="{{busy || loading || error}}">停用用户</button>
         </view>
       </block>
     </view>
