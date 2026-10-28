@@ -82,7 +82,85 @@ test('available-order location filters the delivery phase even when pickup is in
   const legacy = await f.service.getMailList('rider', { sortType: 'wait', whereEx: { 'MAIL_OBJ.address1': ['like', '五期'] } });
   assert.deepEqual(Array.from(legacy.list, row => row._id), [deliveryFive]);
   assert.equal((await f.service.getMailList('rider', { sortType: 'wait' })).list.length, 2);
-  await assert.rejects(f.service.getMailList('rider', { sortType: 'wait', whereEx: { 'MAIL_OBJ.address2': ['like', '.*'] } }), /筛选/);
+});
+
+test('location filters accept several keywords per dimension and stack with each other', async () => {
+  const f = fixture();
+  async function publish(key, pickup, delivery) {
+    const forms = f.forms();
+    forms.find(form => form.mark === 'address1').val = pickup;
+    forms.find(form => form.mark === 'address2').val = Address.formatAddress({ label: delivery, detail: '3栋201室' });
+    return f.publish({ forms, requestId: f.req(key) });
+  }
+  const quiet = await publish('quiet', '雅园 · 中通', '静园');
+  const library = await publish('library', '知园 · 邮政', '图书馆');
+  const samePlace = await publish('same', '雅园 · 圆通', '静园');
+  const ids = result => new Set(Array.from(result.list, row => row._id));
+
+  // 同一维度多选：取并集。
+  const deliver = await f.service.getMailList('rider', { sortType: 'wait', whereEx: { 'MAIL_OBJ.address2': ['like', ['静园', '图书馆']] } });
+  assert.deepEqual(ids(deliver), new Set([quiet, library, samePlace]));
+
+  // 送达地点 + 取件地点：取交集，两个维度叠加生效。
+  const stacked = await f.service.getMailList('rider', { sortType: 'wait', whereEx: {
+    'MAIL_OBJ.address2': ['like', ['静园', '图书馆']],
+    'MAIL_OBJ.pickupPoint': ['like', ['雅园']]
+  } });
+  assert.deepEqual(ids(stacked), new Set([quiet, samePlace]));
+
+  // 关键词按字面量匹配，正则符号不会扩大筛选范围。
+  const literal = await f.service.getMailList('rider', { sortType: 'wait', whereEx: { 'MAIL_OBJ.address2': ['like', '.*'] } });
+  assert.equal(literal.list.length, 0, '地点关键词必须按字面量匹配');
+
+  // 旧客户端仍可传自由关键词，但同样受长度与数量上限约束。
+  await assert.rejects(f.service.getMailList('rider', { sortType: 'wait', whereEx: { 'MAIL_OBJ.address2': ['like', ['静园', '']] } }), /筛选关键词/);
+  await assert.rejects(f.service.getMailList('rider', { sortType: 'wait', whereEx: { 'MAIL_OBJ.address2': ['like', 'x'.repeat(31)] } }), /筛选关键词/);
+  // 取件点成对提交，宿舍区两种写法各占一条，上限放宽到 20 条。
+  await assert.rejects(f.service.getMailList('rider', { sortType: 'wait', whereEx: { 'MAIL_OBJ.pickupPoint': ['like', Array.from({ length: 21 }, (_, i) => '地点' + i)] } }), /筛选/);
+  await assert.rejects(f.service.getMailList('rider', { sortType: 'wait', whereEx: { 'MAIL_TOTAL_FEE': ['>', 1] } }), /不允许的筛选/);
+});
+
+test('the delivery-place filter uses the chosen place and treats orders without one as 其他', async () => {
+  const f = fixture();
+  async function publish(key, phase, pickup) {
+    const forms = f.forms();
+    forms.find(form => form.mark === 'address1').val = pickup;
+    if (phase) {
+      forms.find(form => form.mark === 'address2').val = Address.formatAddress({ label: phase, detail: '3栋201室' });
+      forms.push({ mark: 'addressPhase', val: phase });
+    } else {
+      // 下单时没选「所在地点」，只写详细地址。
+      forms.find(form => form.mark === 'address2').val = '3栋201室';
+    }
+    return f.publish({ forms, requestId: f.req(key) });
+  }
+  const library = await publish('library', '图书馆', '雅园 · 中通');
+  const quiet = await publish('quiet', '静园', '知园 · 邮政');
+  const other = await publish('other', '', '雅园 · 圆通');
+  const ids = result => new Set(Array.from(result.list, row => row._id));
+  const list = whereEx => f.service.getMailList('rider', { sortType: 'wait', whereEx });
+
+  // 单个地点：精确按下单时选的所在地点匹配。
+  assert.deepEqual(ids(await list({ 'MAIL_OBJ.addressPhase': ['in', ['图书馆']] })), new Set([library]));
+  // 多选取并集。
+  assert.deepEqual(ids(await list({ 'MAIL_OBJ.addressPhase': ['in', ['静园', '图书馆']] })), new Set([library, quiet]));
+  // 「其他」= 没选地点的订单。
+  assert.deepEqual(ids(await list({ 'MAIL_OBJ.addressPhaseEmpty': true })), new Set([other]));
+  // 地点 + 其他：合起来是并集，不会漏也不会重复。
+  assert.deepEqual(ids(await list({ 'MAIL_OBJ.addressPhase': ['in', ['静园']], 'MAIL_OBJ.addressPhaseEmpty': true })), new Set([quiet, other]));
+  // 与取件地点叠加：两个维度取交集。
+  assert.deepEqual(ids(await list({ 'MAIL_OBJ.addressPhaseEmpty': true, 'MAIL_OBJ.pickupPoint': ['like', ['雅园']] })), new Set([other]));
+  assert.deepEqual(ids(await list({ 'MAIL_OBJ.addressPhase': ['in', ['图书馆']], 'MAIL_OBJ.pickupPoint': ['like', ['雅园']] })), new Set([library]));
+  // 取件点成对匹配：同一个快递点的其他快递不会被带出来。
+  assert.deepEqual(ids(await list({ 'MAIL_OBJ.pickupPoint': ['like', ['雅园 · 中通']] })), new Set([library]));
+  assert.deepEqual(ids(await list({ 'MAIL_OBJ.pickupPoint': ['like', ['雅园 · 中通', '雅园 · 圆通']] })), new Set([library, other]));
+
+  // 参数上限与格式仍然严格校验。
+  await assert.rejects(list({ 'MAIL_OBJ.addressPhase': ['in', []] }), /送达地点/);
+  await assert.rejects(list({ 'MAIL_OBJ.addressPhase': ['in', Array.from({ length: 21 }, (_, i) => '地点' + i)] }), /送达地点/);
+  await assert.rejects(list({ 'MAIL_OBJ.addressPhase': ['in', [' ']] }), /送达地点/);
+  await assert.rejects(list({ 'MAIL_OBJ.addressPhase': ['like', '静园'] }), /送达地点|不允许/);
+  await assert.rejects(list({ 'MAIL_OBJ.addressPhaseEmpty': 'yes' }), /不允许的筛选条件/);
 });
 
 function saveAddresses(f, addresses, extra = {}) {

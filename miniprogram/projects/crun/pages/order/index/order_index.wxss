@@ -102,7 +102,7 @@ page {
 	line-height: 1;
 }
 
-/* ===== 地点选择弹层 ===== */
+/* ===== 地点筛选弹层 ===== */
 .phase-mask {
 	position: fixed;
 	inset: 0;
@@ -115,66 +115,265 @@ page {
 
 .phase-sheet {
 	width: 100%;
-	max-height: 70vh;
+	max-height: 86vh;
 	background: #fff;
-	border-radius: 24rpx 24rpx 0 0;
-	padding-bottom: env(safe-area-inset-bottom);
+	border-radius: 30rpx 30rpx 0 0;
+	padding: 28rpx 28rpx calc(24rpx + env(safe-area-inset-bottom));
+	box-sizing: border-box;
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
 }
 
+/* 送达地点条目多（宿舍区 + 整个校内地点表），固定面板高度，
+   中间列表滚动，底部「已选／确定」始终露在外面，和「添加地址」的面板一致。 */
+.phase-sheet-tall {
+	height: 86vh;
+}
+
+.phase-head {
+	display: flex;
+	flex-direction: row;
+	align-items: flex-start;
+	flex-shrink: 0;
+}
+
+.phase-head-main {
+	flex: 1;
+	min-width: 0;
+}
+
 .phase-sheet-title {
-	padding: 28rpx 0 16rpx;
-	font-size: 30rpx;
+	font-size: 32rpx;
 	font-weight: 600;
+	line-height: 44rpx;
 	color: #1f2a44;
+}
+
+.phase-sheet-hint {
+	margin-top: 6rpx;
+	font-size: 23rpx;
+	line-height: 32rpx;
+	color: #8190a5;
+}
+
+.phase-close {
+	flex: none;
+	width: 64rpx;
+	height: 64rpx;
+	margin: -8rpx -8rpx 0 8rpx;
+	font-size: 40rpx;
+	line-height: 64rpx;
 	text-align: center;
-	border-bottom: 1rpx solid #f0f1f3;
+	color: #8190a5;
+}
+
+/* 取件地点：说明快递公司跟着快递点走，避免误解成两个独立筛选 */
+.phase-tip {
+	flex-shrink: 0;
+	margin-top: 16rpx;
+	padding: 12rpx 20rpx;
+	border-radius: 12rpx;
+	background: #f4f8fd;
+	color: #6f86a6;
+	font-size: 22rpx;
+	line-height: 32rpx;
 }
 
 .phase-sheet-list {
-	padding: 8rpx 0 24rpx;
-	max-height: 56vh;
-	overflow-y: auto;
+	flex: 0 0 auto;
+	min-height: 0;
+	max-height: 62vh;
+	margin-top: 8rpx;
 }
 
-.phase-sheet-item {
+/* 固定高度的面板里，列表占满剩余空间并内部滚动（scroll-view 需要有确定高度） */
+.phase-sheet-list-tall {
+	flex: 1 1 0;
+	height: 0;
+	max-height: none;
+}
+
+/* 分组：与「添加地址」的地点面板保持一致 */
+.place-group-head {
+	display: flex;
+	flex-direction: row;
+	align-items: baseline;
+	justify-content: space-between;
+	margin: 22rpx 0 14rpx;
+}
+
+.place-group-title {
+	font-size: 27rpx;
+	font-weight: 600;
+	color: #1f2a44;
+}
+
+.place-group-hint {
+	font-size: 22rpx;
+	color: #94a3b8;
+}
+
+.place-grid {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: 12rpx;
+}
+
+.place-chip {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	width: calc((100% - 24rpx) / 3);
+	min-height: 84rpx;
+	padding: 10rpx 8rpx;
+	box-sizing: border-box;
+	border-radius: 14rpx;
+	background: #f4f7fb;
+	color: #516681;
+	font-size: 25rpx;
+	line-height: 1.35;
+	text-align: center;
+	word-break: break-all;
+}
+
+.place-chip-dorm {
+	min-height: 112rpx;
+}
+
+/* 快递公司只在所属快递点下出现，格子矮一点，一眼看出归属关系 */
+.place-grid-courier .place-chip {
+	min-height: 76rpx;
+	background: #f7fafd;
+}
+
+.place-grid-courier .place-chip.selected {
+	background: #397bc8;
+}
+
+.place-chip-label {
+	font-size: 26rpx;
+}
+
+.place-chip-name {
+	margin-top: 4rpx;
+	color: #8d9bb0;
+	font-size: 21rpx;
+}
+
+.place-chip.selected {
+	background: #397bc8;
+	color: #fff;
+	font-weight: 600;
+	box-shadow: 0 6rpx 16rpx rgba(57, 123, 200, .18);
+}
+
+.place-chip.selected .place-chip-name {
+	color: rgba(255, 255, 255, .84);
+}
+
+.place-empty-line {
+	padding: 36rpx 0;
+	font-size: 24rpx;
+	color: #94a3b8;
+	text-align: center;
+}
+
+/* 「其他」：下单时没选地点的订单，固定在标题下方，不进滚动区 */
+.place-other {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	flex-shrink: 0;
+	margin-top: 16rpx;
+	padding: 16rpx 20rpx;
+	border-radius: 14rpx;
+	background: #f7f9fc;
+	border: 1rpx solid #e8eef7;
+}
+
+.place-other.on {
+	background: #eaf1fb;
+	border-color: #bcd6f3;
+}
+
+.place-other-main {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: row;
+	align-items: baseline;
+}
+
+.place-other-title {
+	font-size: 26rpx;
+	font-weight: 600;
+	color: #1f2a44;
+}
+
+.place-other.on .place-other-title {
+	color: #397bc8;
+}
+
+.place-other-sub {
+	margin-left: 12rpx;
+	font-size: 22rpx;
+	line-height: 32rpx;
+	color: #8b9ab1;
+}
+
+.place-other-box {
+	flex: none;
+	width: 36rpx;
+	height: 36rpx;
+	margin-left: 12rpx;
+	border-radius: 8rpx;
+	border: 2rpx solid #cdd9e8;
+	background: #fff;
+	color: #397bc8;
+	font-size: 22rpx;
+	line-height: 36rpx;
+	text-align: center;
+}
+
+.place-other.on .place-other-box {
+	background: #397bc8;
+	border-color: #397bc8;
+	color: #fff;
+}
+
+.phase-foot {
+	flex-shrink: 0;
+	padding-top: 16rpx;
+	border-top: 1rpx solid #edf1f6;
+}
+
+.place-summary {
+	margin-bottom: 14rpx;
+	font-size: 24rpx;
+	line-height: 34rpx;
+	color: #516681;
+	text-align: center;
+}
+
+.place-clear {
+	margin-left: 16rpx;
+	color: #397bc8;
+	font-size: 23rpx;
+}
+
+.phase-confirm {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding: 26rpx 36rpx;
-	font-size: 28rpx;
-	color: #30353d;
-	line-height: 1.4;
-	transition: background .15s ease;
-}
-
-.phase-sheet-item.active {
-	color: #397bc8;
-	font-weight: 600;
-	background: #f4f8ff;
-}
-
-.phase-sheet-label {
-	flex: 1;
-}
-
-.phase-sheet-check {
-	font-size: 30rpx;
-	color: #397bc8;
-	font-weight: 700;
-}
-
-.phase-sheet-cancel {
-	margin: 8rpx 24rpx 24rpx;
-	padding: 22rpx 0;
+	justify-content: center;
+	min-height: 84rpx;
 	border-radius: 16rpx;
-	background: #f1f4f8;
-	color: #51607a;
-	font-size: 28rpx;
-	text-align: center;
-	font-weight: 500;
+	background: #397bc8;
+	color: #fff;
+	font-size: 29rpx;
+	font-weight: 600;
 }
 
 /* ===== 列表容器 ===== */

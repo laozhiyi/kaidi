@@ -17,35 +17,70 @@
 	</view>
 	<view wx:if="{{orderSyncError}}" class="order-fav-error" bindtap="_syncOrders">网络暂不稳定，点击更新订单</view>
 
-	<!-- ===== 可接单 Tab ===== -->
-	<block wx:if="{{tabIndex===0}}">
-		<!-- 筛选条 -->
-		<view class="order-filter">
-			<scroll-view scroll-x="true" class="order-filter-scroll" enhanced show-scrollbar="{{false}}">
-				<view class="filter-chip {{sortVal===''?'active':''}}" bindtap="bindSortTap" data-type="" data-val="">全部</view>
-				<view class="filter-chip {{sortVal==='price_desc'?'active':''}}" bindtap="bindSortTap" data-type="sort" data-val="price_desc">高价优先</view>
-				<view class="filter-chip {{sortVal==='urgent'?'active':''}}" bindtap="bindSortTap" data-type="urgent" data-val="urgent">加急单</view>
-				<view class="filter-chip phase-chip {{phaseVal?'active':''}}" bindtap="bindOpenPhasePicker">
-					<text>送达地点{{phaseVal ? ' · ' + phaseVal : ''}}</text>
-					<text class="phase-caret">▾</text>
-				</view>
-			</scroll-view>
-		</view>
+	<!-- ===== 筛选条（所有 Tab 共用，条件叠加生效） ===== -->
+	<view class="order-filter">
+		<scroll-view scroll-x="true" class="order-filter-scroll" enhanced show-scrollbar="{{false}}">
+			<view class="filter-chip {{filterActive ? '' : 'active'}}" bindtap="bindFilterReset">全部</view>
+			<view class="filter-chip {{filter.price ? 'active' : ''}}" bindtap="bindTogglePrice">高价优先</view>
+			<view class="filter-chip {{filter.urgent ? 'active' : ''}}" bindtap="bindToggleUrgent">加急单</view>
+			<view class="filter-chip phase-chip {{filter.deliver.length || filter.deliverOther ? 'active' : ''}}" bindtap="bindOpenLocSheet" data-dim="deliver">
+				<text>送达地点{{deliverText ? ' · ' + deliverText : ''}}</text>
+				<text class="phase-caret">▾</text>
+			</view>
+			<view class="filter-chip phase-chip {{filter.pickup.length ? 'active' : ''}}" bindtap="bindOpenLocSheet" data-dim="pickup">
+				<text>取件地点{{pickupText ? ' · ' + pickupText : ''}}</text>
+				<text class="phase-caret">▾</text>
+			</view>
+		</scroll-view>
+	</view>
 
-		<view wx:if="{{favoriteSyncError}}" class="order-fav-error" bindtap="bindRefreshFavorites">收藏数量暂未更新，点击重试</view>
-		<!-- 地点选择弹层 -->
-		<view class="phase-mask" wx:if="{{phasePickerVisible}}" bindtap="bindClosePhasePicker" catchtouchmove="bindStopProp">
-			<view class="phase-sheet" catchtap="bindStopProp">
-				<view class="phase-sheet-title">选择送达地点</view>
-				<view class="phase-sheet-list">
-					<view wx:for="{{phaseOptions}}" wx:key="value" class="phase-sheet-item {{phaseVal===item.value?'active':''}}" data-value="{{item.value}}" data-label="{{item.label}}" bindtap="bindPhaseSelect">
-						<text class="phase-sheet-label">{{item.label}}</text>
-						<text wx:if="{{phaseVal===item.value}}" class="phase-sheet-check">✓</text>
-					</view>
+	<!-- ===== 地点筛选弹层：送达地点 / 取件地点共用 ===== -->
+	<view class="phase-mask" wx:if="{{locSheet}}" bindtap="bindCloseLocSheet" catchtouchmove="bindStopProp">
+		<view class="phase-sheet {{locTall ? 'phase-sheet-tall' : ''}}" catchtap="bindStopProp">
+			<view class="phase-head">
+				<view class="phase-head-main">
+					<view class="phase-sheet-title">{{locSheet === 'deliver' ? '送达地点' : '取件地点'}}</view>
+					<view class="phase-sheet-hint">{{locSheet === 'deliver' ? '和填写收件地址时选的是同一套地点' : '和下单时选的是同一套取件点'}}</view>
 				</view>
-				<view class="phase-sheet-cancel" bindtap="bindClosePhasePicker">取消</view>
+				<view class="phase-close" bindtap="bindCloseLocSheet">×</view>
+			</view>
+			<!-- 其他：下单时没选地点、按详细地址送达的订单，始终可见，不用滚到底 -->
+			<view wx:if="{{locSheet === 'deliver'}}" class="place-other {{locOther ? 'on' : ''}}" bindtap="bindLocToggleOther">
+				<view class="place-other-main">
+					<text class="place-other-title">其他</text>
+					<text class="place-other-sub">下单时没选地点，按详细地址送达</text>
+				</view>
+				<view class="place-other-box">{{locOther ? '✓' : ''}}</view>
+			</view>
+			<!-- 快递公司本来就跟着快递点走，所以按快递点分组，只能选这个点自己的快递 -->
+			<view wx:if="{{locSheet === 'pickup'}}" class="phase-tip">每家快递只到固定的快递点，按快递点分组选</view>
+			<scroll-view scroll-y class="phase-sheet-list {{locTall ? 'phase-sheet-list-tall' : ''}}" enhanced show-scrollbar="{{false}}">
+				<block wx:for="{{locGroups}}" wx:key="key" wx:for-item="group" wx:for-index="gi">
+					<view class="place-group-head">
+						<text class="place-group-title">{{group.title}}</text>
+						<text class="place-group-hint">{{group.hint}}</text>
+					</view>
+					<view class="place-grid {{locSheet === 'pickup' ? 'place-grid-courier' : ''}}">
+						<view wx:for="{{group.items}}" wx:key="value" wx:for-item="opt" wx:for-index="oi"
+							class="place-chip {{opt.on ? 'selected' : ''}} {{opt.name ? 'place-chip-dorm' : ''}}"
+							data-g="{{gi}}" data-i="{{oi}}" bindtap="bindLocToggle">
+							<text class="place-chip-label">{{opt.label}}</text>
+							<text wx:if="{{opt.name}}" class="place-chip-name">{{opt.name}}</text>
+						</view>
+					</view>
+				</block>
+				<view wx:if="{{!locGroups.length}}" class="place-empty-line">暂无可选{{locSheet === 'deliver' ? '地点' : '取件点'}}</view>
+			</scroll-view>
+			<view class="phase-foot">
+				<view class="place-summary"><text>已选：{{locSummary || '未选择'}}</text><text wx:if="{{locCount}}" class="place-clear" bindtap="bindLocClear">清空</text></view>
+				<view class="phase-confirm" bindtap="bindLocConfirm">确定{{locCount ? '（' + locCount + '）' : ''}}</view>
 			</view>
 		</view>
+	</view>
+
+	<!-- ===== 可接单 Tab ===== -->
+	<block wx:if="{{tabIndex===0}}">
+		<view wx:if="{{favoriteSyncError}}" class="order-fav-error" bindtap="bindRefreshFavorites">收藏数量暂未更新，点击重试</view>
 
 		<cmpt-comm-list id="cmpt-list-take" source='user' type="order-mail-take" search="{{search||''}}" _dataList="{{dataList}}" _params="{{listParams.take}}" route="mail/list" isTotalMenu="{{false}}" showSearch="{{false}}" topBottom="120" placeholder="搜索取件码/地址" bind:list="bindCommListCmpt">
 

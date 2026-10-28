@@ -61,7 +61,8 @@ function initialPlace(address) {
 }
 
 // 宿舍区之外的地点沿用地点表顺序；宿舍区已由期数承载，不重复出现。
-const otherPlaces = () => PHASES.filter(place => !DORM_NAMES[place]);
+// 旧配置里直接写「一期~五期」的也要排除，否则会在两个分组里各出现一次。
+const otherPlaces = () => PHASES.filter(place => !DORM_NAMES[place] && !DORM_LABELS.includes(place));
 const validPlace = value => DORM_LABELS.includes(clean(value)) || otherPlaces().includes(clean(value));
 const placeGroups = () => [
   { key: 'dorm', title: '宿舍区', hint: '按所属期数选', items: DORM_PHASES.map(item => ({ label: item.label, name: item.name })) },

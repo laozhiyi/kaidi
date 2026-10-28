@@ -1,12 +1,12 @@
 const Ops = require('../../../biz/operations_biz.js');
 const pageHelper = require('../../../../../helper/page_helper.js');
-const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
 const PublicBiz = require('../../../../../comm/biz/public_biz.js');
 const Favorites = require('../../../biz/order_fav_biz.js');
 const OrderSync = require('../../../biz/order_sync_biz.js');
 const MailUI = require('../../../biz/mail_ui_biz.js');
+const OrderFilter = require('../../../biz/order_filter_biz.js');
 
 /**
  * 快递代取 - 接单/订单 Tab 页
@@ -29,12 +29,18 @@ Page({
 			done: { sortType: 'my_done' },
 		},
 
-		// 筛选条 - 附加排序（合并到 takeParams.orderBy，不影响 sortType）
-		sortVal: '',
-
-		phaseOptions: [{ label: '全部', value: '' }],
-		phaseVal: '',
-		phasePickerVisible: false,
+		// 筛选状态：加急、价格排序与两个地点维度互相叠加；同一维度内多选取并集。
+		filter: { price: false, urgent: false, deliver: [], deliverOther: false, pickup: [] },
+		filterActive: false,
+		deliverText: '',
+		pickupText: '',
+		// 地点筛选弹层（送达地点复用「所在地点」面板，取件地点用快递点/快递公司）
+		locSheet: '',
+		locGroups: [],
+		locTall: false,
+		locOther: false,
+		locCount: 0,
+		locSummary: '',
 
 		// 列表数据（cmpt-comm-list 通过 bind:list 回填）
 		dataList: null,
@@ -52,10 +58,19 @@ Page({
 		if (tab === 1 || tab === 2 || tab === 3) wx.removeStorageSync('crun-order-tab');
 
 		this.setData({ isLoad: true });
-  this._filterLoad = Ops.get('operations/config').then(config => {
-   if (!this._unloaded && config.locations) this.setData({phaseOptions:[{label:'全部',value:''},...config.locations.phases.map(value=>({label:value,value}))]});
-  }).catch(() => { /* The order list remains usable without optional area filters. */ });
+		// 送达地点与取件地点的候选都来自校区配置：地点表就是下单/添加地址用的那一套。
+		// 配置到达前先用默认地点表渲染，不阻塞列表。
+		this._refreshFilterSources();
+		this._filterLoad = Ops.get('operations/config').then(config => {
+			if (this._unloaded) return;
+			this._configLocations = config && config.locations || {};
+			this._refreshFilterSources();
+		}).catch(() => { /* The order list remains usable without optional area filters. */ });
 
+	},
+	_refreshFilterSources: function () {
+		if (!OrderFilter || typeof OrderFilter.buildSources !== 'function') return;
+		this._filterSources = OrderFilter.buildSources({ locations: this._configLocations || {} });
 	},
 
 	onShow: function () {
@@ -207,65 +222,123 @@ Page({
 		this._startFavoriteSync();
 	},
 
-	_buildTakeParams: function (sortVal, phaseVal) {
-		const params = Object.assign({}, this.data.listParams.take);
-		delete params.orderBy;
-		delete params.whereEx;
-
-		if (sortVal === 'price_desc') {
-			params.orderBy = { 'MAIL_OBJ.price': 'desc' };
-		} else if (sortVal === 'urgent') {
-			params.whereEx = { 'MAIL_OBJ.urgent': true };
-		}
-
-		if (phaseVal) {
-			params.whereEx = Object.assign({}, params.whereEx, {
-				'MAIL_OBJ.address2': ['like', phaseVal],
-			});
-		}
-		return params;
-	},
-
 	/**
-	 * 筛选条 - 通过 orderBy 注入排序，不影响 tab 的 sortType/sortVal
+	 * 把当前筛选合并进四个 Tab 的参数。筛选只改 orderBy/whereEx，
+	 * 各 Tab 的 sortType 保持不变。
 	 */
-	bindSortTap: function (e) {
-		let val = e.currentTarget.dataset.val || '';
-		if (val === this.data.sortVal) val = '';
-
-		const takeParams = this._buildTakeParams(val, this.data.phaseVal);
-
-		const listParams = Object.assign({}, this.data.listParams, { take: takeParams });
-		this.setData({ sortVal: val, listParams });
-	},
-
-	/**
-	 * 地点筛选弹层
-	 */
-	bindOpenPhasePicker: function () {
-		this.setData({ phasePickerVisible: true });
-	},
-
-	bindClosePhasePicker: function () {
-		this.setData({ phasePickerVisible: false });
-	},
-
-	bindPhaseSelect: function (e) {
-		const value = e.currentTarget.dataset.value || '';
-		const label = e.currentTarget.dataset.label || '全部';
-		if (value === this.data.phaseVal) {
-			this.setData({ phasePickerVisible: false });
-			return;
-		}
-
-		const takeParams = this._buildTakeParams(this.data.sortVal, value);
-		const listParams = Object.assign({}, this.data.listParams, { take: takeParams });
-		this.setData({
-			phaseVal: value,
-			phaseLabel: label,
-			phasePickerVisible: false,
-			listParams,
+	_buildListParams: function (filter) {
+		const listParams = {};
+		['take', 'mine', 'posted', 'done'].forEach(key => {
+			listParams[key] = OrderFilter.buildParams(this.data.listParams[key], filter);
 		});
+		return listParams;
+	},
+
+	_applyFilter: function (next) {
+		const filter = Object.assign(OrderFilter.emptyFilter(), next || {});
+		const summarize = typeof OrderFilter.deliverSummary === 'function' ? OrderFilter.deliverSummary : () => '';
+		const text = typeof OrderFilter.summaryText === 'function' ? OrderFilter.summaryText : () => '';
+		this.setData({
+			filter,
+			listParams: this._buildListParams(filter),
+			filterActive: OrderFilter.count(filter) > 0,
+			deliverText: summarize(filter),
+			pickupText: text(filter.pickup)
+		});
+	},
+
+	/** 「全部」= 清空所有筛选条件（含地点多选）。 */
+	bindFilterReset: function () {
+		if (!this.data.filterActive) return;
+		this._applyFilter(OrderFilter.emptyFilter());
+	},
+
+	bindTogglePrice: function () {
+		this._applyFilter(Object.assign({}, this.data.filter, { price: !this.data.filter.price }));
+	},
+
+	bindToggleUrgent: function () {
+		this._applyFilter(Object.assign({}, this.data.filter, { urgent: !this.data.filter.urgent }));
+	},
+
+	/**
+	 * 地点筛选弹层：送达地点与取件地点共用一套面板。
+	 * 送达地点的选项就是「所在地点」那套（宿舍区 + 校内地点），另加「其他」= 下单时没选地点；
+	 * 取件地点就是下单时「选择常用快递点」那套（快递点之下才是快递公司）。
+	 */
+	bindOpenLocSheet: function (e) {
+		e = e || {};
+		const dim = (e.currentTarget && e.currentTarget.dataset.dim) === 'pickup' ? 'pickup' : 'deliver';
+		const filter = this.data.filter || {};
+		const selected = new Set((filter[dim] || []).map(item => String(item || '').trim()).filter(Boolean));
+		const groups = ((this._filterSources || {})[dim] || []).map(group => ({
+			key: group.key,
+			title: group.title,
+			hint: group.hint || '',
+			items: (group.items || []).map(item => ({ label: item.label, value: item.value, name: item.name || '', on: selected.has(item.value) }))
+		}));
+		// 内容少就让面板贴着内容（不留一大片空白），条目多才固定高度、中间滚动，
+		// 两种情况底部「已选／确定」都露在外面。rpx 估值：组头 60，每行 90。
+		const height = groups.reduce((sum, group) => sum + (group.items.length ? 60 + Math.ceil(group.items.length / 3) * 90 : 0), 0);
+		this.setData({
+			locSheet: dim,
+			locGroups: groups,
+			locTall: dim === 'deliver' || height > 840,
+			locOther: dim === 'deliver' && !!filter.deliverOther
+		});
+		this._syncLocState();
+	},
+
+	/** 同步底部「已选」文案与数量，两个维度共用。 */
+	_syncLocState: function () {
+		const picked = [];
+		(this.data.locGroups || []).forEach(group => (group.items || []).forEach(item => { if (item.on) picked.push(item.value); }));
+		if (this.data.locOther) picked.push('其他');
+		this.setData({ locCount: picked.length, locSummary: picked.length ? picked.join('、') : '未选择' });
+	},
+
+	bindCloseLocSheet: function () {
+		this.setData({ locSheet: '', locGroups: [], locTall: false, locOther: false, locCount: 0, locSummary: '' });
+	},
+
+	bindLocToggle: function (e) {
+		const g = Number(e.currentTarget.dataset.g), i = Number(e.currentTarget.dataset.i);
+		const group = (this.data.locGroups || [])[g];
+		const item = group && group.items && group.items[i];
+		if (!item) return;
+		if (!item.on && this.data.locCount >= OrderFilter.MAX_PLACES) return pageHelper.showNoneToast('最多选择' + OrderFilter.MAX_PLACES + '项');
+		this.setData({ ['locGroups[' + g + '].items[' + i + '].on']: !item.on });
+		this._syncLocState();
+	},
+
+	/** 「其他」只对送达地点有意义：下单时没选地点、按详细地址送达的订单。 */
+	bindLocToggleOther: function () {
+		if (this.data.locSheet !== 'deliver') return;
+		if (!this.data.locOther && this.data.locCount >= OrderFilter.MAX_PLACES) return pageHelper.showNoneToast('最多选择' + OrderFilter.MAX_PLACES + '个地点');
+		this.setData({ locOther: !this.data.locOther });
+		this._syncLocState();
+	},
+
+	bindLocClear: function () {
+		this.setData({
+			locGroups: (this.data.locGroups || []).map(group => Object.assign({}, group, {
+				items: (group.items || []).map(item => Object.assign({}, item, { on: false }))
+			})),
+			locOther: false
+		});
+		this._syncLocState();
+	},
+
+	bindLocConfirm: function () {
+		const dim = this.data.locSheet;
+		if (!dim) return;
+		const picked = [];
+		(this.data.locGroups || []).forEach(group => (group.items || []).forEach(item => { if (item.on) picked.push(item.value); }));
+		const next = Object.assign({}, this.data.filter);
+		next[dim] = picked.slice(0, OrderFilter.MAX_PLACES);
+		if (dim === 'deliver') next.deliverOther = !!this.data.locOther;
+		this.bindCloseLocSheet();
+		this._applyFilter(next);
 	},
 
 	/**

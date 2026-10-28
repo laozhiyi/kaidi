@@ -25,7 +25,7 @@ function fixture({ projectFields = false } = {}) {
   return Object.entries(where || {}).every(([k,v])=>{
    if(k==='and')return Array.isArray(v) ? v.every(part=>matches(row,part)) : matches(row,v);
    if(k==='or')return v.some(part=>matches(row,part));
-   const val=field(row,k); if(v instanceof RegExp)return v.test(String(val || '')); if(Array.isArray(v)){const [op,x]=v;return op==='in'?x.includes(val):op==='<'?val<x:op==='>'?val>x:['lte','<='].includes(op)?val<=x:['gte','>='].includes(op)?val>=x:op==='<>'?val!==x:op==='like'?new RegExp(x).test(val):false;}
+   const val=field(row,k); if(v instanceof RegExp)return v.test(String(val || '')); if(Array.isArray(v)){const [op,x]=v;return op==='in'?x.includes(val):op==='not in'?!x.includes(val):op==='<'?val<x:op==='>'?val>x:['lte','<='].includes(op)?val<=x:['gte','>='].includes(op)?val>=x:op==='<>'?val!==x:op==='like'?new RegExp(x).test(val):false;}
    return val===v;
   });
  }

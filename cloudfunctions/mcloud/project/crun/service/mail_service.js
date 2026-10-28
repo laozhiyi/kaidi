@@ -306,7 +306,7 @@ class MailService extends Base {
   const now = Date.now();
   const completedSince = now - 12 * 60 * 60 * 1000;
   if (search === '我的发布') sortType = 'my_post'; if (search === '我的接单') sortType = 'my_accept';
-  if (['my_post','my_accept','my_done','status','timeout'].includes(sortType)) {
+  if (['my_post','my_accept','my_done','status','timeout','my_all'].includes(sortType)) {
    await this._user(userId, { allowPending: sortType !== 'my_accept' });
    if (sortType === 'my_post') { where.and.MAIL_USER_ID = userId; where.and.MAIL_POSTER_ARCHIVED = ['<>',true]; }
    if (sortType === 'my_accept') { where.and.MAIL_ACCEPT_USER_ID = userId; where.and.MAIL_RIDER_ARCHIVED = ['<>',true]; }
@@ -314,18 +314,64 @@ class MailService extends Base {
     // 已完成订单仅在完成后的 12 小时内显示；其他状态保持原有可见性。
     where.or = [{ MAIL_STATUS: ['in', rules.ACTIVE] }, { MAIL_STATUS: ['in', [0, 99]], MAIL_END_TIME: ['>=', now] }, { MAIL_STATUS: 9, MAIL_OVER_TIME: ['>=', completedSince] }];
    }
+   // 申诉、客服咨询常常发生在订单结束很久之后：这里覆盖本人全部历史订单，不做时间窗裁剪。
+   if (sortType === 'my_all') where.or = [{ MAIL_USER_ID: userId }, { MAIL_ACCEPT_USER_ID: userId }];
    if (['my_done','status','timeout'].includes(sortType)) { where.or = [{MAIL_USER_ID:userId},{MAIL_ACCEPT_USER_ID:userId}]; const state = sortType === 'my_done' ? 9 : sortType === 'timeout' ? 0 : Number(sortVal); if (![0,1,2,3,4,9,99].includes(state)) this.AppError('该订单校区暂不在服务范围'); where.and.MAIL_STATUS = state; if (sortType === 'my_done') where.and.MAIL_OVER_TIME = ['>=', completedSince]; if (sortType === 'timeout') where.and.MAIL_END_TIME = ['<',now]; }
   } else { where.and.MAIL_STATUS = 0; where.and.MAIL_PAYMENT_MODE = 'offline'; where.and.MAIL_END_TIME = ['>',now]; if (sortType === 'wait') where.and.MAIL_USER_ID = ['<>',userId]; }
   if (search && !['我的发布','我的接单'].includes(search)) { const q = rules.text(search,'搜索关键词',30,true); where.and['MAIL_OBJ.title'] = ['like',q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')]; }
+  // 同一维度多选是「或」，不同维度之间继续走 where.and 的「且」，因此多选条件
+  // 不能直接塞进 where.and，要单独收集成 or 分组，最后与基础条件合并。
+  //
+  // 送达地点：按下单时选的「所在地点」精确匹配 MAIL_OBJ.addressPhase；
+  //   addressPhaseEmpty 表示「其他」——下单时没选地点、按详细地址送达的订单。
+  // 取件地点：pickupPoint 是取件点（快递点/快递公司），匹配 address1；
+  //   address2/address1 作为旧客户端的送达地点语义继续兼容。
+  const LOCATION_FIELDS = { 'MAIL_OBJ.address2': 'MAIL_OBJ.address2', 'MAIL_OBJ.address1': 'MAIL_OBJ.address2', 'MAIL_OBJ.pickupPoint': 'MAIL_OBJ.address1' };
+  const likeGroups = [];
+  let deliverPhases = null, deliverEmpty = false;
   if (whereEx) {
    for (const [name,value] of Object.entries(whereEx)) {
     if (name === 'MAIL_OBJ.urgent' && typeof value === 'boolean') where.and[name] = value;
     else if (name === 'MAIL_OBJ.campus' && typeof value === 'string') where.and[name] = rules.text(value,'校区',30,true);
-    // 兼容旧版地点参数，地点筛选统一匹配送达地址。
-    else if (['MAIL_OBJ.address2', 'MAIL_OBJ.address1'].includes(name) && Array.isArray(value) && value.length === 2 && value[0] === 'like' && require('./delivery_address.js').phasesOf(store.scope() && store.scope().campus.locations).includes(value[1])) where.and['MAIL_OBJ.address2'] = ['like', String(value[1]).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')];
+    else if (name === 'MAIL_OBJ.addressPhase' && Array.isArray(value) && value.length === 2 && value[0] === 'in') {
+     const places = (Array.isArray(value[1]) ? value[1] : [value[1]]).map(item => {
+      if (typeof item !== 'string' || !item.trim() || item.trim().length > 30) this.AppError('送达地点须为1至30个字');
+      return item.trim();
+     });
+     const unique = [...new Set(places)];
+     if (!unique.length || unique.length > 20) this.AppError('送达地点筛选条件无效');
+     deliverPhases = unique;
+    }
+    else if (name === 'MAIL_OBJ.addressPhaseEmpty' && typeof value === 'boolean') deliverEmpty = value;
+    // 关键词一律按字面量转义后做模糊匹配，避免被当成正则扩大范围。
+    else if (LOCATION_FIELDS[name] && Array.isArray(value) && value.length === 2 && value[0] === 'like') {
+     const words = (Array.isArray(value[1]) ? value[1] : [value[1]]).map(item => {
+      if (typeof item !== 'string' || !item.trim() || item.trim().length > 30) this.AppError('地点筛选关键词须为1至30个字');
+      return item.trim().replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+     });
+     const unique = [...new Set(words)];
+     // 取件点是「快递点 · 快递公司」成对提交，宿舍区两种写法（二期／雅园）各要一条，
+     // 所以上限放宽到 20 条，与送达地点多选的上限对齐。
+     if (!unique.length || unique.length > 20) this.AppError('地点筛选条件无效');
+     const field = LOCATION_FIELDS[name];
+     likeGroups.push({ or: unique.map(word => ({ [field]: ['like', word] })) });
+    }
     else this.AppError('不允许的筛选条件');
    }
   }
+  if (deliverPhases || deliverEmpty) {
+   const alternatives = [];
+   if (deliverPhases) alternatives.push({ 'MAIL_OBJ.addressPhase': ['in', deliverPhases] });
+   if (deliverEmpty) {
+    // 地点表来自当前校区配置，再并上内置地点表与旧期数，保证历史订单不会被误判成「其他」。
+    const scope = store.scope();
+    const deliveryAddress = require('./delivery_address.js');
+    const known = [...new Set([...deliveryAddress.phasesOf(scope && scope.campus && scope.campus.locations), ...deliveryAddress.PHASES])];
+    alternatives.push({ 'MAIL_OBJ.addressPhase': ['not in', known] });
+   }
+   likeGroups.push(alternatives.length > 1 ? { or: alternatives } : alternatives[0]);
+  }
+  const scoped = likeGroups.length ? { and: [where, ...likeGroups] } : where;
   let order = {MAIL_ADD_TIME:'desc'};
   if (input.orderBy && Object.keys(input.orderBy).length) { if (Object.keys(input.orderBy).length !== 1 || !['MAIL_ADD_TIME','MAIL_OBJ.price'].includes(Object.keys(input.orderBy)[0]) || !['asc','desc'].includes(Object.values(input.orderBy)[0])) this.AppError('排序参数无效'); order = input.orderBy; }
   order = { ...order, _id: 'desc' };
@@ -336,15 +382,15 @@ class MailService extends Base {
   const cursor = input.cursor;
   if (cursor && (typeof cursor !== 'object' || cursor.field !== field || cursor.direction !== direction
    || typeof cursor.id !== 'string' || !/^[\w-]{1,128}$/.test(cursor.id) || !Number.isFinite(cursor.value))) this.AppError('订单分页位置无效，请刷新列表');
-  const query = cursor ? { and: [where, { or: [
+  const query = cursor ? { and: [scoped, { or: [
    { [field]: [direction === 'asc' ? '>' : '<', cursor.value] },
    { [field]: cursor.value, _id: ['<', cursor.id] }
-  ] }] } : where;
+  ] }] } : scoped;
   const countRequired=input.isTotal!==false || !cursor && page>1;
   const [rows, total] = await Promise.all([
    cursor || page === 1 ? MailModel.getAll(JSON.parse(JSON.stringify(query)), fields, order, size + 1)
     : MailModel.getList(JSON.parse(JSON.stringify(query)), fields, order, page, size, false, 0).then(result => result.list),
-   countRequired ? MailModel.count(JSON.parse(JSON.stringify(where))) : Promise.resolve(Number(input.oldTotal)||0)
+   countRequired ? MailModel.count(JSON.parse(JSON.stringify(scoped))) : Promise.resolve(Number(input.oldTotal)||0)
   ]);
   const list = rows.slice(0, size), last = list[list.length - 1];
   const value = last && (field === 'MAIL_ADD_TIME' ? last.MAIL_ADD_TIME : (last.MAIL_OBJ || {}).price);
@@ -352,7 +398,7 @@ class MailService extends Base {
    hasMore: cursor || page === 1 ? rows.length > size : page * size < total,
    nextCursor: last && Number.isFinite(value) ? { field, direction, value, id: last._id } : null };
   await new (require('./review_service.js'))().decorateOrders(userId, result.list);
-  const publicList = !['my_post','my_accept','my_done','status','timeout'].includes(sortType);
+  const publicList = !['my_post','my_accept','my_done','status','timeout','my_all'].includes(sortType);
   const favorites = publicList ? (await new (require('./fav_service.js'))().orderStats(userId, result.list.map(row => row._id), result.list)).list : [];
   const favoriteMap = new Map(favorites.map(row => [row.id, row]));
   result.list = result.list.map(row => {
