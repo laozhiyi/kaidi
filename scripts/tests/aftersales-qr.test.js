@@ -49,6 +49,28 @@ test('上传新二维码只替换图片节点，群说明和管理员刚改的�
 	assert.equal(h.page.data.qrBusy, false);
 });
 
+test('上传二维码不依赖服务市场内容校验，服务没开通也能传上去', async () => {
+	// 真实故障：内容安全服务未订阅时 imgCheck 调用 reject，旧代码把 reject 也当成
+	// 「不合适的图片」，管理员上传正常群码只看到一句误导提示。
+	const h = harness(page, () => [], { uploadResult: 'cloud://new.png' });
+	await h.page.onLoad();
+	await h.page.bindChoose();
+	assert.equal(h.events.find(item => item.upload).check, false, '第 4 个参数必须传 false 跳过服务市场校验');
+	assert.equal(h.errors.length, 0);
+	assert.ok(h.calls.some(call => call.route === 'admin/setup_set_content'));
+});
+
+test('上传拿不到 fileID 时提示重试，不会写库也不会留下假的二维码', async () => {
+	const h = harness(page, () => [{ type: 'text', val: '群号 123456' }], { uploadResult: '' });
+	await h.page.onLoad();
+	const before = h.calls.length;
+	await h.page.bindChoose();
+	assert.equal(h.calls.length, before, '上传失败不应写库');
+	assert.match(h.errors.at(-1), /没有上传成功/);
+	assert.equal(h.page.data.qrUrl, '');
+	assert.equal(h.page.data.qrBusy, false);
+});
+
 test('取消选图不会上传也不会写库', async () => {
 	const h = harness(page, () => [{ type: 'img', val: 'cloud://old.png' }], { mediaCancelled: true });
 	await h.page.onLoad();

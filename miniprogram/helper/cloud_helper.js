@@ -479,11 +479,12 @@ async function transTempPicOne(img, dir, id, isCheck = true) {
 			mask: true
 		});
 		let check = await contentCheckHelper.imgCheck(img);
-		if (!check) {
-			wx.hideLoading();
-			return pageHelper.showModal('不合适的图片, 请重新上传', '温馨提示');
-		}
 		wx.hideLoading();
+		// imgCheck 只在明确命中风险时返回 false；null 表示校验服务不可用，
+		// 不能把它当成违规拦下来，否则服务没开通的账号一张图都传不上去。
+		if (check === false) {
+			return pageHelper.showModal('图片未通过内容安全校验，请更换后再上传', '温馨提示');
+		}
 	}
 
 	let imgList = [img];

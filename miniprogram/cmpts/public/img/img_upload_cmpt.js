@@ -107,8 +107,10 @@ Component({
 						//console.log('imgData size=' + imgData.length);
 
 						if (this.data.isCheck) {
+							// imgCheck 返回 null 表示校验服务不可用（未订阅服务市场 / 网络异常），
+							// 只有明确的 false 才拦截，避免整条上传链路被服务侧故障拖死。
 							let check = await contentCheckHelper.imgCheck(path);
-							if (!check) {
+							if (check === false) {
 								wx.hideLoading();
 								return pageHelper.showNoneToast('存在不合适的图片, 已屏蔽', 3000);
 							}

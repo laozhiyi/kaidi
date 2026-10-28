@@ -14,7 +14,7 @@ function harness(relative, get = () => ({}), options = {}) {
     pageScrollTo: data => scrolls.push(data),
     chooseMedia(data) {
       if (options.mediaCancelled) { if (data.fail) data.fail({ errMsg: 'chooseMedia:fail cancel' }); return; }
-      if (data.success) data.success({ tempFiles: [{ tempFilePath: 'wxfile://tmp/qr.png' }] });
+      if (data.success) data.success({ tempFiles: [{ tempFilePath: 'wxfile://tmp/qr.png', size: 640 * 1024 }] });
     },
     showModal(data) { confirmations.push(data); if (data.success) data.success({ confirm: options.confirm !== false }); },
     showActionSheet(data) { sheets.push(data); },
@@ -43,7 +43,8 @@ function harness(relative, get = () => ({}), options = {}) {
     callCloudSumbit: async (route, params) => ({ code: 200, data: await Ops.command(route, params) }),
     callCloudData: async (route, params) => Ops.get(route, params),
     transRichEditorTempPics: async (content, folder, id, route) => { await Ops.command(route, { id, content, folder }); return content; },
-    transTempPicOne: async (image, folder) => { events.push({ upload: image, folder }); return options.uploadResult || 'cloud://crun/setup/qr-new.png'; },
+    // uploadResult 传空串表示「上传没拿到 fileID」，用于覆盖失败分支。
+    transTempPicOne: async (image, folder, id, check) => { events.push({ upload: image, folder, check }); return options.uploadResult !== undefined ? options.uploadResult : 'cloud://crun/setup/qr-new.png'; },
     getTempFileURLOne: async fileID => 'https://example.invalid/temp.png?file=' + encodeURIComponent(fileID),
     transCoverTempPics: async (images, folder, id, route) => Ops.command(route, { id, images, folder }),
     transFormsTempPics: async (forms, folder, id, route) => Ops.command(route, { id, forms, folder })
@@ -75,6 +76,13 @@ function harness(relative, get = () => ({}), options = {}) {
         if (request.endsWith('/passport_biz.js')) return { getToken: () => ({ id: 'sample-user-id' }), setToken() {}, loginByUser: async () => ({ id: 'sample-user-id' }) };
         if (request.endsWith('/base_biz.js')) return class {};
         if (request.endsWith('/data_helper.js')) return {};
+        // 内容安全校验依赖服务市场，测试里默认「不可用」（返回 null），
+        // 需要模拟命中风险时传 options.imgCheck = false。
+        if (request.endsWith('/content_check_helper.js')) return {
+          imgCheck: async () => (options.imgCheck === undefined ? null : options.imgCheck),
+          imgTypeCheck: image => /\.(png|jpe?g)$/i.test(String(image || '')),
+          imgSizeCheck: (size, max) => size < max
+        };
         if (request.endsWith('/public_biz.js')) return { removeCacheList() {}, getRichEditorDesc: (desc, content) => desc || content.filter(item => item.type === 'text').map(item => item.val).join('').slice(0, 100) };
         if (request.endsWith('/file_helper.js')) return { openDoc: (title, url) => events.push({ open: url, title }) };
         if (/\/(?:admin_(?:console|settings|export|catalog|manager_form|news)_biz|mail_ui_biz|address_biz|news_biz|validate|project_setting|chat_page)\.js$/.test(request)) return evaluate(path.relative(mini, path.resolve(path.dirname(absolute), request)));

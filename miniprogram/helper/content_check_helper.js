@@ -69,39 +69,58 @@ async function imgCheckCloud(path, opt) {
 }
 
 /**
- * 图像校验
- * @param {*} imgData 
+ * 图像校验（服务市场「图片内容安全」）
+ * @param {*} imgData
+ * @returns {boolean|null} true 通过；false 判定为风险内容；null 校验不可用
+ *
+ * 这个接口依赖小程序在服务市场订阅的内容安全服务，未订阅 / 余额不足 / 网络异常时
+ * invokeService 会直接 reject。旧版把 reject 也当作「不合适的图片」，管理员上传
+ * 一张正常的群二维码只会看到一句莫名其妙的拦截提示（二维码上传失败的真正原因）。
+ * 这里把「不可用」和「命中风险」分开：只有明确的 BLOCK 才返回 false，其余不可判定
+ * 的情况返回 null，由上层决定放行并留日志。
  */
-async function imgCheck(imgData) { 
+async function imgCheck(imgData) {
 
-	let result = await wx.serviceMarket.invokeService({
-		service: 'wxee446d7507c68b11',
-		api: 'imgSecCheck',
-		data: {
-			"Action": "ImageModeration",
-			"Scenes": ["PORN", "POLITICS", "TERRORISM"],
-			"ImageUrl":  new wx.serviceMarket.CDN({
-				type: 'filePath',
-				filePath: imgData,
-			}),
-			"ImageBase64": '',
-			"Config": "",
-			"Extra": ""
-		},
-	}).then(res => {
-		if (res && res.data && res.data.Response &&
-			res.data.Response.PornResult && res.data.Response.PornResult.Suggestion === 'PASS' &&
-			res.data.Response.PoliticsResult && res.data.Response.PoliticsResult.Suggestion === 'PASS' &&
-			res.data.Response.TerrorismResult && res.data.Response.TerrorismResult.Suggestion === 'PASS')
-			return true;
-		else
-			return false;
-	}).catch(err => {
-		console.log(err);
-		return false;
-	});
+	if (typeof wx === 'undefined' || !wx.serviceMarket || typeof wx.serviceMarket.invokeService !== 'function') {
+		console.warn('[imgCheck] 当前环境未提供 wx.serviceMarket，跳过图片内容校验');
+		return null;
+	}
 
-	return result;
+	let res = null;
+	try {
+		res = await wx.serviceMarket.invokeService({
+			service: 'wxee446d7507c68b11',
+			api: 'imgSecCheck',
+			data: {
+				"Action": "ImageModeration",
+				"Scenes": ["PORN", "POLITICS", "TERRORISM"],
+				"ImageUrl": new wx.serviceMarket.CDN({
+					type: 'filePath',
+					filePath: imgData,
+				}),
+				"ImageBase64": '',
+				"Config": "",
+				"Extra": ""
+			},
+		});
+	} catch (err) {
+		console.warn('[imgCheck] 内容安全服务不可用，本次跳过校验：', err);
+		return null;
+	}
+
+	const response = res && res.data && res.data.Response;
+	if (!response) {
+		console.warn('[imgCheck] 内容安全服务未返回结果，本次跳过校验：', res);
+		return null;
+	}
+
+	const keys = ['PornResult', 'PoliticsResult', 'TerrorismResult'];
+	if (keys.some(key => response[key] && response[key].Suggestion === 'BLOCK')) return false;
+	if (keys.every(key => response[key] && response[key].Suggestion === 'PASS')) return true;
+
+	// REVIEW（疑似，建议人工复审）不阻塞上传，但要留下记录方便回溯。
+	console.warn('[imgCheck] 内容安全结果为待复审，本次放行：', keys.map(key => (response[key] || {}).Suggestion));
+	return null;
 }
 
 
