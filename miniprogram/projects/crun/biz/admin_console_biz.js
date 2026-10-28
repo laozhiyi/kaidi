@@ -92,6 +92,8 @@ function order(row) {
 }
 function feedback(row) {
   return { ...row, statusLabel: ['待处理', '已处理', '不予处理'][row.FB_STATUS] || '状态未知', tone: ['amber', 'green', 'muted'][row.FB_STATUS] || 'muted',
+    // 列表直接给出可核对的订单号，避免管理员还要点进详情才知道指向哪一单。
+    orderNo: row.FB_ORDER_ID ? String(row.FB_ORDER_ID).slice(-6).toUpperCase() : '',
     ratingStars: row.FB_REVIEW_SCORE >= 1 && row.FB_REVIEW_SCORE <= 5 ? '★'.repeat(row.FB_REVIEW_SCORE) + '☆'.repeat(5 - row.FB_REVIEW_SCORE) : '',
     createdText: time(row.FB_ADD_TIME), repliedText: time(row.FB_REPLY_TIME),
     history: (row.FB_HISTORY || []).filter(Boolean).map((item, index) => ({ ...item, key: String(index), timeText: time(item.at), statusLabel: ['继续跟进', '处理完成', '不予处理'][item.status] || '回复反馈',

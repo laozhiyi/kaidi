@@ -11,4 +11,5 @@ const page = createChatPage({
 });
 page.bindBack = function () { UI.back('chats'); };
 page.bindUserDetail = function () { if (this.data.userId) UI.go('user', { id: this.data.userId }); };
+page.bindOrderTap = function (e) { const id = e.currentTarget.dataset.id; if (id) UI.go('order', { id }); };
 Page(page);

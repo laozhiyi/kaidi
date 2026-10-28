@@ -15,11 +15,15 @@ const store = require('./operation_store.js');
 const timeUtil = require('../../../framework/utils/time_util.js');
 const tenant = require('../../../framework/tenancy/tenant_context.js');
 const UserModel = require('../model/user_model.js');
+const MailModel = require('../model/mail_model.js');
 const MessageModel = require('../model/campus_service_message_model.js');
+const deliveryAddress = require('./delivery_address.js');
 const Roles = require('./admin/admin_roles.js');
 
 const MAX_CONTENT = 500;
 const PUBLIC_SERVICE = { CS_NAME: '在线客服', CS_CAMPUS: '', CS_WORK_TIME: '', CS_PIC: '', CS_STATUS: 1 };
+const SERVICE_NAME = { take: '快递代取', send: '物品代送', buy: '商品代买' };
+const ORDER_STATUS = { 0: '等待接单', 1: '等待取件', 2: '等待确认收货', 3: '异常处理中', 4: '配送中', 9: '已完成', 99: '已取消' };
 
 class CustomerServiceService extends BaseProjectService {
 
@@ -51,7 +55,7 @@ class CustomerServiceService extends BaseProjectService {
 			];
 		}
 		let messages = await MessageModel.getAll(query,
-			'CSM_ID,CSM_SENDER,CSM_STAFF_ID,CSM_STAFF_NAME,CSM_CONTENT,CSM_READ,CSM_ADD_TIME',
+			'CSM_ID,CSM_SENDER,CSM_STAFF_ID,CSM_STAFF_NAME,CSM_CONTENT,CSM_TYPE,CSM_ORDER,CSM_READ,CSM_ADD_TIME',
 			{ CSM_ADD_TIME: 'desc', CSM_ID: 'desc' }, limit + 1);
 		const hasMore = messages.length > limit;
 		messages = messages.slice(0, limit).reverse();
@@ -85,20 +89,46 @@ class CustomerServiceService extends BaseProjectService {
 		return { unread: await this._unread({ CSM_USER_ID: userId, CSM_SENDER: ['<>', 'user'] }) };
 	}
 
-	/** 用户端发送消息 */
-	async sendMessage(userId, content, requestId) {
+	/** 用户端发送消息：可只发一条本人订单的卡片，也可在文字里附带订单。 */
+	async sendMessage(userId, content, requestId, orderId) {
 		await this._requireUser(userId);
-		content = this._content(content, '咨询内容');
+		const card = orderId ? await this._orderCard(userId, orderId) : null;
+		content = String(content || '').trim();
+		if (!content && !card) this.AppError('请输入咨询内容');
+		if (content.length > MAX_CONTENT) this.AppError('咨询内容不能超过' + MAX_CONTENT + '字');
 		return this._saveMessage({
 			_pid: this._pid(),
 			CSM_SESSION_ID: this._sessionId(userId),
 			CSM_USER_ID: userId,
 			CSM_SENDER: 'user',
-			CSM_CONTENT: content,
+			CSM_CONTENT: content || '咨询订单：' + card.no + ' ' + card.serviceName,
+			CSM_TYPE: card ? 'order' : 'text',
+			CSM_ORDER: card || {},
 			CSM_READ: 0,
 			CSM_ADD_TIME: this._timestamp,
 			CSM_EDIT_TIME: this._timestamp
 		}, requestId, userId, userId);
+	}
+
+	/** 发送订单前必须确认是本人参与的订单，卡片只存展示所需的快照。 */
+	async _orderCard(userId, orderId) {
+		const mail = await MailModel.getOne(String(orderId || ''));
+		if (!mail || mail._pid !== this._pid() || mail.MAIL_ADMIN_DELETED === true) this.AppError('订单不存在或已被删除');
+		const poster = mail.MAIL_USER_ID === userId, rider = !!mail.MAIL_ACCEPT_USER_ID && mail.MAIL_ACCEPT_USER_ID === userId;
+		if (!poster && !rider) this.AppError('只能发送本人参与过的订单');
+		const obj = deliveryAddress.complete(mail).MAIL_OBJ || {};
+		const fee = obj.price == null ? Number(mail.MAIL_TOTAL_FEE || 0) / 100 : Number(obj.price);
+		return {
+			id: mail._id,
+			no: String(mail._id).slice(-6).toUpperCase(),
+			serviceName: SERVICE_NAME[obj.serviceType] || '快递代取',
+			statusText: ORDER_STATUS[Number(mail.MAIL_STATUS)] || '订单状态待更新',
+			role: poster ? '我发布的' : '我接的单',
+			from: obj.address1 || '',
+			to: deliveryAddress.resolve(mail) || '',
+			fee: Number.isFinite(fee) && fee >= 0 ? fee.toFixed(2) : '',
+			createdAt: timeUtil.timestamp2Time(mail.MAIL_ADD_TIME, 'Y-M-D h:m')
+		};
 	}
 
 	_sessionId(userId) {
@@ -115,7 +145,8 @@ class CustomerServiceService extends BaseProjectService {
 	async _saveMessage(message, requestId, actorId, targetUserId, sourceId) {
 		if (typeof requestId !== 'string' || !/^[\w-]{16,100}$/.test(requestId)) this.AppError('消息请求标识无效，请重试');
 		const id = store.key(this._pid(), 'chat', message.CSM_SENDER, actorId, requestId);
-		const fingerprint = store.key(message.CSM_USER_ID, message.CSM_CONTENT);
+		// 幂等指纹包含订单标识：同一 requestId 重试时订单状态变化不应被判成「不同消息」。
+		const fingerprint = store.key(message.CSM_USER_ID, message.CSM_CONTENT, message.CSM_TYPE || 'text', (message.CSM_ORDER || {}).id || '');
 		const isStaff = message.CSM_SENDER !== 'user';
 		return store.transaction(async tx => {
 			if (isStaff) {

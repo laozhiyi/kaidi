@@ -379,3 +379,157 @@
 .btn-disabled {
 	opacity: .6;
 }
+
+/* ============================================================
+   关联订单（申诉指向具体订单，便于上游核实）
+   ============================================================ */
+.fb-order {
+	padding: 20rpx 22rpx;
+	border-radius: 16rpx;
+	background: #f7faff;
+	border: 2rpx solid #e6eefb;
+	box-sizing: border-box;
+}
+
+.fb-order-top {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	padding-bottom: 12rpx;
+	border-bottom: 2rpx solid #e9f0fb;
+}
+
+.fb-order-status {
+	flex: none;
+	margin-right: 14rpx;
+	padding: 2rpx 14rpx;
+	border-radius: 8rpx;
+	background: rgba(57, 123, 200, .12);
+	color: #397bc8;
+	font-size: 21rpx;
+	line-height: 32rpx;
+}
+
+.fb-order-no {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 22rpx;
+	color: #94a3b8;
+}
+
+.fb-order-line {
+	display: flex;
+	flex-direction: row;
+	align-items: flex-start;
+	margin-top: 10rpx;
+}
+
+.fb-order-lbl {
+	flex: none;
+	width: 60rpx;
+	font-size: 23rpx;
+	line-height: 34rpx;
+	color: #94a3b8;
+}
+
+.fb-order-val {
+	flex: 1;
+	font-size: 26rpx;
+	line-height: 34rpx;
+	color: #1f2a44;
+	word-break: break-all;
+}
+
+.fb-order-foot {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	margin-top: 14rpx;
+	padding-top: 12rpx;
+	border-top: 2rpx solid #e9f0fb;
+}
+
+.fb-order-meta {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 22rpx;
+	color: #8b9ab1;
+}
+
+.fb-order-ops {
+	flex: none;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+
+.fb-order-op {
+	margin-left: 24rpx;
+	font-size: 24rpx;
+	color: #397bc8;
+}
+
+.fb-order-op-muted {
+	color: #94a3b8;
+}
+
+.fb-order-empty {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	padding: 22rpx 24rpx;
+	border-radius: 16rpx;
+	border: 2rpx dashed #c9dbf2;
+	background: #f9fbff;
+	box-sizing: border-box;
+}
+
+.fb-order-empty-hover {
+	border-color: #397bc8;
+	background: #f1f7ff;
+}
+
+.fb-order-empty-main {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.fb-order-empty-title {
+	font-size: 27rpx;
+	font-weight: 600;
+	line-height: 38rpx;
+	color: #397bc8;
+}
+
+.fb-order-empty-sub {
+	margin-top: 4rpx;
+	font-size: 22rpx;
+	line-height: 32rpx;
+	color: #8b9ab1;
+}
+
+.fb-order-empty-arrow {
+	flex: none;
+	margin-left: 16rpx;
+	font-size: 32rpx;
+	color: #b3c4da;
+}
+
+.fb-order-tip {
+	margin-top: 14rpx;
+	font-size: 23rpx;
+	line-height: 34rpx;
+	color: #8b9ab1;
+}
+
+.fb-order-tip-error {
+	color: #b87539;
+}

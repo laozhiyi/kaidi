@@ -9,7 +9,7 @@
   <view wx:for="{{list}}" wx:key="_id" class="ac-card" bindtap="bindDetail" data-id="{{item._id}}">
     <view class="ac-order-head"><text class="ac-order-meta">{{item.FB_TYPE || '用户反馈'}}</text><text class="ac-badge {{item.tone}}">{{item.statusLabel}}</text></view>
     <view class="ac-order-title">{{item.FB_TITLE}}</view><view class="ac-summary-text ac-clamp ac-feedback-summary">{{item.FB_CONTENT}}</view>
-    <view wx:if="{{item.FB_ORDER_ID}}" class="ac-feedback-order"><text class="icon-form"></text><text>已关联订单</text></view>
+    <view wx:if="{{item.FB_ORDER_ID}}" class="ac-feedback-order"><text class="icon-form"></text><text>关联订单 {{item.orderNo}}</text></view>
     <view class="ac-order-foot"><view>{{item.FB_USER_NAME || '用户'}}<view>{{item.createdText}}</view></view><text class="ac-link">{{item.FB_STATUS===0?'查看并处理':'查看详情'}} ›</text></view>
   </view>
   <view class="ac-list-footer"><button wx:if="{{hasMore}}" class="ac-secondary" bindtap="bindMore" loading="{{loading}}" disabled="{{loading}}">加载更多</button><text wx:if="{{list.length}}">已显示 {{list.length}} / {{total}} 条{{!hasMore && !loading?' · 已到底':''}}</text><text wx:elif="{{loading}}">正在读取反馈…</text></view>

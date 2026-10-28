@@ -62,7 +62,7 @@ function projectRow(row, fields) {
 function model(name, state) {
 	return {
 		async getOne(where, fields, orderBy) {
-			const rows = sortRows(state[name].filter(row => matches(row, where)), orderBy);
+			const rows = sortRows(state[name].filter(row => typeof where === 'string' ? row._id === where : matches(row, where)), orderBy);
 			return projectRow(rows[0], fields);
 		},
 		async getAll(where, fields, orderBy, limit = 100) {
@@ -125,11 +125,14 @@ function loadService(file, state, extra = {}) {
 		'../../../framework/tenancy/tenant_context.js': { isAdminEnabled: admin => !!(admin && admin.ADMIN_STATUS === 1) },
 		'../model/user_model.js': model('user', state),
 		'../../model/user_model.js': model('user', state),
+		'../model/mail_model.js': model('mail', state),
+		'../../model/mail_model.js': model('mail', state),
 		'../model/campus_service_message_model.js': model('campus_service_message', state),
 		'../../model/staff_invite_model.js': model('staff_invite', state),
 		'../model/staff_invite_model.js': model('staff_invite', state),
 		'./admin/admin_roles.js': require(path.join(project, 'service/admin/admin_roles.js')),
 		'./admin_roles.js': require(path.join(project, 'service/admin/admin_roles.js')),
+		'./delivery_address.js': require(path.join(project, 'service/delivery_address.js')),
 		'./account_service.js': { guardRelated: async () => state.guardRelated !== false },
 		...extra
 	};
@@ -154,10 +157,11 @@ function message(userId, sender, extras = {}) {
 	};
 }
 
-function chatFixture({ messages = [], user = {} } = {}) {
+function chatFixture({ messages = [], mail = [], user = {} } = {}) {
 	const state = {
 		user: [{ _id: 'u1', _pid: 'crun', USER_MINI_OPENID: 'poster', USER_NAME: '小张', USER_STATUS: 1, USER_PROFILE_COMPLETE: true, ...user }],
 		campus_service_message: messages,
+		mail,
 		notification: [],
 		admin: [{ _id: 'admin', _pid: 'crun', ADMIN_NAME: '客服A', ADMIN_STATUS: 1, ADMIN_TYPE: 0, ADMIN_ROLE: 'service' }],
 		guardRelated: true
@@ -242,6 +246,46 @@ test('users who have not finished registration can still reach the support chann
 	const stopped = chatFixture({ messages: [], user: { USER_STATUS: 9 } });
 	await assert.rejects(stopped.service.getChat('poster'), /停用/);
 	await assert.rejects(stopped.service.sendMessage('poster', '在吗', 'chat_request_000000005'), /停用/);
+});
+
+function orderRow(id, extras = {}) {
+	return {
+		_id: id, _pid: 'crun', MAIL_STATUS: 4, MAIL_USER_ID: 'poster', MAIL_ACCEPT_USER_ID: 'rider',
+		MAIL_ADD_TIME: 1000, MAIL_TOTAL_FEE: 500,
+		MAIL_OBJ: { serviceType: 'take', address1: '菜鸟驿站', address2: '3栋101', campus: '雁山校区', price: 5 },
+		...extras
+	};
+}
+
+test('sending an order attaches a snapshot card the staff can open', async () => {
+	const { service, state } = chatFixture({
+		mail: [
+			orderRow('mail000001'),
+			orderRow('mail000002', { MAIL_USER_ID: 'someone', MAIL_ACCEPT_USER_ID: 'another' })
+		]
+	});
+	const result = await service.sendMessage('poster', '', 'chat_order_00000000001', 'mail000001');
+	assert.ok(result.id.startsWith('CSM'));
+	const saved = state.campus_service_message.at(-1);
+	assert.equal(saved.CSM_TYPE, 'order');
+	assert.equal(saved.CSM_ORDER.id, 'mail000001');
+	assert.equal(saved.CSM_ORDER.no, '000001');
+	assert.equal(saved.CSM_ORDER.statusText, '配送中');
+	assert.equal(saved.CSM_ORDER.role, '我发布的');
+	assert.equal(saved.CSM_ORDER.fee, '5.00');
+	assert.match(saved.CSM_CONTENT, /订单/);
+
+	// 别人的订单不能借客服会话外发；被拒绝的请求不落消息。
+	await assert.rejects(service.sendMessage('poster', '', 'chat_order_00000000002', 'mail000002'), /本人参与/);
+	assert.equal(state.campus_service_message.length, 1);
+
+	// 文字与订单可以一起发，读回的消息仍带卡片快照。
+	await service.sendMessage('poster', '这一单还没送到', 'chat_order_00000000003', 'mail000001');
+	const page = await service.getChat('poster');
+	const card = page.messages.at(-1);
+	assert.equal(card.CSM_TYPE, 'order');
+	assert.equal(card.CSM_CONTENT, '这一单还没送到');
+	assert.equal(card.CSM_ORDER.no, '000001');
 });
 
 test('a repeated code can never produce two invite records', async () => {

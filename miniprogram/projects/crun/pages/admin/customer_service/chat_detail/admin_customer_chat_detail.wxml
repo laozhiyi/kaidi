@@ -12,9 +12,9 @@
         <view class="history-action" wx:if="{{hasMore}}" bindtap="bindEarlierTap">{{loadingEarlier?'正在加载…':(historyError || '加载更早消息')}}</view>
         <view class="history-end" wx:elif="{{messages.length}}">以上是全部历史消息</view>
         <view wx:if="{{!messages.length}}" class="ac-chat-state"><view class="ac-state-title">暂无对话消息</view><view class="ac-muted">用户的咨询与客服回复会显示在这里</view></view>
-        <view wx:for="{{messages}}" wx:key="CSM_ID" id="msg-{{item.CSM_ID}}" class="message {{item.CSM_SENDER==ownSender?'message-me':'message-service'}}">
+        <view wx:for="{{messages}}" wx:key="CSM_ID" id="msg-{{item.CSM_ID}}" class="message {{item.CSM_SENDER==ownSender?'message-me':'message-service'}} {{item.CSM_TYPE==='order'?'message-order':''}}">
           <view class="message-avatar"><text class="{{item.CSM_SENDER=='admin'?'icon-service':'icon-profile'}}"></text></view>
-          <view class="message-body"><view class="message-name">{{item.CSM_SENDER=='admin'?(item.CSM_STAFF_NAME || '客服'):service.CS_NAME}}</view><view class="bubble"><text user-select>{{item.CSM_CONTENT}}</text></view><view class="message-time">{{item.CSM_ADD_TIME}}</view></view>
+          <view class="message-body"><view class="message-name">{{item.CSM_SENDER=='admin'?(item.CSM_STAFF_NAME || '客服'):service.CS_NAME}}</view><block wx:if="{{item.CSM_TYPE==='order' && item.CSM_ORDER}}"><view class="order-bubble" data-id="{{item.CSM_ORDER.id}}" bindtap="bindOrderTap" hover-class="order-bubble-hover" hover-stay-time="80"><view class="ob-head"><text class="ob-title">{{item.CSM_ORDER.serviceName}}</text><text class="ob-status">{{item.CSM_ORDER.statusText}}</text></view><view class="ob-line"><text class="ob-lbl">取件</text><text class="ob-val">{{item.CSM_ORDER.from || '待补充'}}</text></view><view class="ob-line"><text class="ob-lbl">送达</text><text class="ob-val">{{item.CSM_ORDER.to || '待补充'}}</text></view><view class="ob-foot"><text class="ob-no">订单号 {{item.CSM_ORDER.no}}{{item.CSM_ORDER.role ? ' · ' + item.CSM_ORDER.role : ''}}</text><text class="ob-fee">¥{{item.CSM_ORDER.fee}}</text></view><view class="ob-more">查看订单详情 ›</view></view></block><view wx:else class="bubble"><text user-select>{{item.CSM_CONTENT}}</text></view><view class="message-time">{{item.CSM_ADD_TIME}}</view></view>
         </view>
         <view id="messages-bottom" class="messages-bottom"></view>
       </view>

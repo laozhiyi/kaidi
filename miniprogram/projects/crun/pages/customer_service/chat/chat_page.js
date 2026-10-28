@@ -10,6 +10,8 @@ module.exports = function createChatPage(config) {
 			isLoad: false, isSending: false, loading: false, loadingEarlier: false,
 			hasMore: false, nextBefore: '', errorText: '', historyError: '',
 			scrollIntoView: '', scrollTop: 0, hasNewMessages: false,
+			// 待发送的订单卡片：选单后先挂在输入区，可换单/移除，随消息一起发出。
+			pendingOrder: null, orderPickerShow: false, quickAsks: config.quickAsks || [],
 			ownSender: config.ownSender, isAdminChat: config.ownSender === 'admin'
 		},
 		onLoad: function (options) {
@@ -189,16 +191,46 @@ module.exports = function createChatPage(config) {
 			this._draftVersion++;
 			this.setData({ content: e.detail.value });
 		},
-		_messageRequest: function (content) {
+		/** 快捷问题：点一下直接填入输入框，避免用户自己组织措辞。 */
+		bindQuickAskTap: function (e) {
+			if (this.data.isSending) return;
+			const text = e.currentTarget.dataset.text || '';
+			if (!text) return;
+			this._draftVersion++;
+			this.setData({ content: text });
+		},
+		bindOpenOrderPicker: function () {
+			if (this.data.isSending || !this.data.service) return;
+			this.setData({ orderPickerShow: true });
+		},
+		bindCloseOrderPicker: function () {
+			this.setData({ orderPickerShow: false });
+		},
+		bindOrderPicked: function (e) {
+			const order = e.detail && e.detail.order;
+			this.setData({ orderPickerShow: false, pendingOrder: order || null });
+		},
+		bindRemoveOrder: function () {
+			if (this.data.isSending) return;
+			this.setData({ pendingOrder: null });
+		},
+		/** 消息里的订单卡片：进入订单详情，发布者与接单者都走各自的详情页。 */
+		bindMessageOrderTap: function (e) {
+			const id = e.currentTarget.dataset.id;
+			if (!id) return;
+			if (config.onOpenOrder) return config.onOpenOrder(this, id);
+			wx.navigateTo({ url: pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id=' + encodeURIComponent(id)) });
+		},
+		_messageRequest: function (content, orderId) {
 			const key = 'crun-chat-pending:' + config.ownSender + ':' + this.data.chatId;
 			if (!this._pendingMessages) {
 				const saved = wx.getStorageSync ? wx.getStorageSync(key) : [];
 				this._pendingMessages = Array.isArray(saved) ? saved : [];
 			}
-			let pending = this._pendingMessages.find(item => item.content === content);
+			let pending = this._pendingMessages.find(item => item.content === content && (item.orderId || '') === (orderId || ''));
 			if (!pending) {
 				if (this._pendingMessages.length >= 20) throw new Error('有消息尚未确认发送结果，请先刷新会话并重试');
-				pending = { content, requestId: 'chat_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) };
+				pending = { content, orderId: orderId || '', requestId: 'chat_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) };
 				this._pendingMessages.push(pending);
 			}
 			if (wx.setStorageSync) wx.setStorageSync(key, this._pendingMessages);
@@ -212,19 +244,25 @@ module.exports = function createChatPage(config) {
 			if (this.data.isSending || !this.data.service || !this._visible) return;
 			if (this.data.service.CS_STATUS !== 1) return pageHelper.showModal('客服暂不可用，请稍后再试', '温馨提示');
 			const content = String(this.data.content || '').trim();
-			if (!content) return pageHelper.showModal('请输入消息内容', '温馨提示');
+			const order = this.data.pendingOrder;
+			const orderId = order && order.id || '';
+			if (!content && !orderId) return pageHelper.showModal('请输入消息内容或选择订单', '温馨提示');
 			if (content.length > 500) return pageHelper.showModal('消息不能超过500字', '温馨提示');
 			const draftVersion = this._draftVersion;
 			this.setData({ isSending: true });
 			clearTimeout(this._pollTimer);
 			let requestId;
 			try {
-				requestId = this._messageRequest(content);
-				const response = await cloudHelper.callCloudSumbit(config.sendRoute, { content, requestId }, { hint: false });
+				requestId = this._messageRequest(content, orderId);
+				const params = { content, requestId };
+				if (orderId) params.orderId = orderId;
+				const response = await cloudHelper.callCloudSumbit(config.sendRoute, params, { hint: false });
 				if (!response || !response.data || !response.data.id) throw new Error('消息发送结果尚未确认，请重试');
 				this._clearMessageRequest(requestId);
 				if (this._destroyed) return;
 				if (draftVersion === this._draftVersion) this.setData({ content: '' });
+				// 发送期间用户可能换了单，只清掉本次真正发出去的那一条。
+				if (this.data.pendingOrder && this.data.pendingOrder.id === orderId) this.setData({ pendingOrder: null });
 				// 等待旧刷新完成，再读取发送后的窗口，避免旧响应覆盖新消息。
 				if (this._request) await this._request;
 				if (this._visible) await this._loadMessages({ quiet: true });

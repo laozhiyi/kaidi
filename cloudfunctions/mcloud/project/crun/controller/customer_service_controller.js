@@ -16,13 +16,14 @@ class CustomerServiceController extends BaseProjectController {
 		return await new CustomerService().getChat(this._userId, input);
 	}
 
-	/** 发送咨询 */
+	/** 发送咨询（可附带一条本人参与的订单卡片） */
 	async sendMessage() {
 		const input = this.validateData({
 			requestId: 'must|string|min:16|max:100',
-			content: 'must|string|min:1|max:500|name=咨询内容'
+			content: 'string|max:500|name=咨询内容',
+			orderId: 'string|max:100|name=咨询订单'
 		});
-		return await new CustomerService().sendMessage(this._userId, input.content, input.requestId);
+		return await new CustomerService().sendMessage(this._userId, input.content, input.requestId, input.orderId);
 	}
 
 	/** 未读红点 */

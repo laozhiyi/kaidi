@@ -1,5 +1,8 @@
 {
-	"usingComponents": { "aftersales-card": "/projects/crun/cmpts/aftersales_card/aftersales_card" },
+	"usingComponents": {
+		"aftersales-card": "/projects/crun/cmpts/aftersales_card/aftersales_card",
+		"order-picker": "/projects/crun/cmpts/order_picker/order_picker"
+	},
 	"enablePullDownRefresh": false,
 	"navigationBarTitleText": ""
 }

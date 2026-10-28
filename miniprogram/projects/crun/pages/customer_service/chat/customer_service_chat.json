@@ -1,5 +1,7 @@
 {
-  "usingComponents": {},
+  "usingComponents": {
+    "order-picker": "/projects/crun/cmpts/order_picker/order_picker"
+  },
   "enablePullDownRefresh": true,
   "navigationBarTitleText": "在线客服"
 }

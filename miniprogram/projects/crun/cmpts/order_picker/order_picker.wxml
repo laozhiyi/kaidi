@@ -1,0 +1,41 @@
+<view wx:if="{{show}}" class="op-mask" bindtap="bindMaskTap" catchtouchmove="noop">
+	<view class="op-sheet" catchtap="noop">
+		<view class="op-head">
+			<view class="op-head-main">
+				<text class="op-title">{{title}}</text>
+				<text wx:if="{{hint}}" class="op-hint">{{hint}}</text>
+			</view>
+			<text class="op-close" bindtap="bindClose" role="button" aria-label="关闭">✕</text>
+		</view>
+
+		<scroll-view class="op-list" scroll-y lower-threshold="80" bindscrolltolower="bindScrollLower">
+			<view wx:if="{{!isLoad}}" class="op-state">正在加载订单…</view>
+			<view wx:elif="{{error}}" class="op-state op-state-error" bindtap="bindRetry">{{error}}<text class="op-retry">点击重试</text></view>
+			<view wx:elif="{{!list.length}}" class="op-state">还没有可选的订单</view>
+
+			<view wx:for="{{list}}" wx:key="id" class="op-item" data-idx="{{index}}" bindtap="bindSelect" hover-class="op-item-hover" hover-stay-time="80">
+				<view class="op-item-top">
+					<text class="op-status op-status-{{item.tone}}">{{item.statusText}}</text>
+					<text class="op-no">订单号 {{item.no}}</text>
+				</view>
+				<view class="op-item-mid">
+					<view class="op-line">
+						<text class="op-lbl">取件</text>
+						<text class="op-val">{{item.from}}</text>
+					</view>
+					<view class="op-line">
+						<text class="op-lbl">送达</text>
+						<text class="op-val">{{item.to}}</text>
+					</view>
+				</view>
+				<view class="op-item-bot">
+					<text class="op-meta">{{item.serviceName}}{{item.role ? ' · ' + item.role : ''}}{{item.time ? ' · ' + item.time : ''}}</text>
+					<text class="op-fee">¥{{item.fee}}</text>
+				</view>
+			</view>
+
+			<view wx:if="{{list.length && loading}}" class="op-more">正在加载更多…</view>
+			<view wx:elif="{{list.length && !hasMore}}" class="op-more">共 {{total}} 单，已全部显示</view>
+		</scroll-view>
+	</view>
+</view>

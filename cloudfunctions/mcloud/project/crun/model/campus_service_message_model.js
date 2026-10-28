@@ -59,6 +59,8 @@ CampusServiceMessageModel.DB_STRUCTURE = {
 	CSM_STAFF_ID: 'string|false|comment=回复客服的后台账号ID',
 	CSM_STAFF_NAME: 'string|false|comment=回复客服显示名',
 	CSM_CONTENT: 'string|true|comment=消息内容',
+	CSM_TYPE: 'string|false|default=text|comment=消息类型 text=文本,order=订单卡片',
+	CSM_ORDER: 'object|false|default={}|comment=订单卡片快照（发送时定格，仅本会话可见）',
 	CSM_READ: 'int|true|default=0|comment=接收方读取状态 0=未读,1=已读',
 	CSM_ADD_TIME: 'int|true',
 	CSM_EDIT_TIME: 'int|true',

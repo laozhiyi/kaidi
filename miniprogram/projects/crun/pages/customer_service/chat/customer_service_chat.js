@@ -24,6 +24,8 @@ Page(createChatPage({
 	getRoute: 'customer_service/chat',
 	sendRoute: 'customer_service/send',
 	ownSender: 'user',
+	// 快递代取的高频问题，点一下直接填入输入框，用户再补充细节即可。
+	quickAsks: ['订单没人接单', '取件码失效', '包裹找不到', '费用结算问题', '想取消订单'],
 	init(page) {
 		ProjectBiz.initPage(page);
 		return true;

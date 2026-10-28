@@ -14,13 +14,29 @@
 				<view class="history-end" wx:elif="{{messages.length}}">以上是全部历史消息</view>
 				<view wx:if="{{messages.length==0}}" class="empty-chat">
 					<view class="empty-title">{{isAdminChat?'暂无对话消息':'有什么可以帮您？'}}</view>
-					<view class="empty-text">{{isAdminChat?'用户还没有发来消息':'请描述遇到的问题，客服看到后会尽快回复'}}</view>
+					<view class="empty-text">{{isAdminChat?'用户还没有发来消息':'点下方「发送订单」可直接把订单发给客服，或选择常见问题'}}</view>
 				</view>
-				<view wx:for="{{messages}}" wx:key="CSM_ID" id="msg-{{item.CSM_ID}}" class="message {{item.CSM_SENDER==ownSender?'message-me':'message-service'}}">
+				<view wx:for="{{messages}}" wx:key="CSM_ID" id="msg-{{item.CSM_ID}}" class="message {{item.CSM_SENDER==ownSender?'message-me':'message-service'}} {{item.CSM_TYPE==='order'?'message-order':''}}">
 					<view class="message-avatar">{{item.CSM_SENDER=='admin'?'客':(isAdminChat?'用':'我')}}</view>
 					<view class="message-body">
 						<view class="message-name">{{item.CSM_SENDER=='admin'?(item.CSM_STAFF_NAME || '客服'):(isAdminChat?(service.CS_NAME || '用户'):'我')}}</view>
-						<view class="bubble"><text user-select>{{item.CSM_CONTENT}}</text></view>
+						<!-- 订单卡片消息 -->
+						<block wx:if="{{item.CSM_TYPE==='order' && item.CSM_ORDER}}">
+							<view class="order-bubble" data-id="{{item.CSM_ORDER.id}}" bindtap="bindMessageOrderTap" hover-class="order-bubble-hover" hover-stay-time="80">
+								<view class="ob-head">
+									<text class="ob-title">{{item.CSM_ORDER.serviceName}}</text>
+									<text class="ob-status">{{item.CSM_ORDER.statusText}}</text>
+								</view>
+								<view class="ob-line"><text class="ob-lbl">取件</text><text class="ob-val">{{item.CSM_ORDER.from || '待补充'}}</text></view>
+								<view class="ob-line"><text class="ob-lbl">送达</text><text class="ob-val">{{item.CSM_ORDER.to || '待补充'}}</text></view>
+								<view class="ob-foot">
+									<text class="ob-no">订单号 {{item.CSM_ORDER.no}}{{item.CSM_ORDER.role ? ' · ' + item.CSM_ORDER.role : ''}}</text>
+									<text class="ob-fee">¥{{item.CSM_ORDER.fee}}</text>
+								</view>
+								<view class="ob-more">查看订单详情 ›</view>
+							</view>
+						</block>
+						<view wx:else class="bubble"><text user-select>{{item.CSM_CONTENT}}</text></view>
 						<view class="message-time">{{item.CSM_ADD_TIME}}</view>
 					</view>
 				</view>
@@ -28,13 +44,40 @@
 			</view>
 		</scroll-view>
 		<view wx:if="{{hasNewMessages}}" class="new-messages" bindtap="bindLatestTap">有新消息 · 查看最新</view>
-		<view class="composer">
-			<view class="composer-field">
-				<textarea class="composer-input" maxlength="500" auto-height placeholder="{{isAdminChat?'请输入回复内容':'请输入咨询内容'}}" value="{{content}}" bindinput="bindContentInput" disabled="{{service.CS_STATUS!=1}}" cursor-spacing="20"></textarea>
-				<view class="counter">{{content.length}}/500</view>
+
+		<view class="composer-wrap">
+			<!-- 客服侧工具条：发送订单 + 常见问题（后台客服不显示选单入口） -->
+			<view wx:if="{{!isAdminChat}}" class="chat-tools">
+				<scroll-view class="tools-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+					<view class="tool-chip tool-order" bindtap="bindOpenOrderPicker" role="button" aria-label="发送订单">
+						<text class="tool-plus">＋</text>
+						<text>发送订单</text>
+					</view>
+					<view wx:for="{{quickAsks}}" wx:key="*this" class="tool-chip" bindtap="bindQuickAskTap" data-text="{{item}}">{{item}}</view>
+				</scroll-view>
 			</view>
-			<button class="send-btn" disabled="{{isSending || !content.length || service.CS_STATUS!=1}}" loading="{{isSending}}" bindtap="bindSendTap">{{isSending?'发送中':(isAdminChat?'回复':'发送')}}</button>
+
+			<!-- 待发送的订单：点整条可更换，右侧移除 -->
+			<view wx:if="{{pendingOrder}}" class="pending-order" bindtap="bindOpenOrderPicker">
+				<view class="po-badge">订单</view>
+				<view class="po-main">
+					<text class="po-title">订单号 {{pendingOrder.no}} · {{pendingOrder.statusText}}</text>
+					<text class="po-sub">{{pendingOrder.serviceName}} · ¥{{pendingOrder.fee}} · 点击更换</text>
+				</view>
+				<text class="po-action po-remove" catchtap="bindRemoveOrder">移除</text>
+			</view>
+
+			<view class="composer">
+				<view class="composer-field">
+					<textarea class="composer-input" maxlength="500" auto-height placeholder="{{isAdminChat?'请输入回复内容':(pendingOrder?'补充说明（选填）':'请输入咨询内容')}}" value="{{content}}" bindinput="bindContentInput" disabled="{{service.CS_STATUS!=1}}" cursor-spacing="20"></textarea>
+					<view class="counter">{{content.length}}/500</view>
+				</view>
+				<button class="send-btn" disabled="{{isSending || (!content.length && !pendingOrder) || service.CS_STATUS!=1}}" loading="{{isSending}}" bindtap="bindSendTap">{{isSending?'发送中':(isAdminChat?'回复':'发送')}}</button>
+			</view>
 		</view>
+
+		<order-picker wx:if="{{!isAdminChat}}" show="{{orderPickerShow}}" title="选择要发送的订单"
+			hint="选择后随消息一起发给客服，客服能看到单号与地址" bind:close="bindCloseOrderPicker" bind:select="bindOrderPicked" />
 	</block>
 	<view wx:if="{{isLoad && !service}}" class="empty-page">
 		<view class="empty-title">{{errorText || '会话暂不可用'}}</view>

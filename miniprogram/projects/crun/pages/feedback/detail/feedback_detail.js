@@ -35,6 +35,7 @@ Page({
       let detail = result.data && Object.keys(result.data).length ? result.data : null;
       if (detail) detail = { ...detail, FB_ADD_TIME: displayTime(detail.FB_ADD_TIME), FB_REPLY_TIME: displayTime(detail.FB_REPLY_TIME), _typeDesc: TYPE_DESC[detail.FB_TYPE] || '其他', _statusDesc: STATUS_DESC[detail.FB_STATUS] || STATUS_DESC[0] };
       if (detail) detail._reviewStars = Number.isInteger(detail.FB_REVIEW_SCORE) && detail.FB_REVIEW_SCORE >= 1 && detail.FB_REVIEW_SCORE <= 5 ? '★'.repeat(detail.FB_REVIEW_SCORE) + '☆'.repeat(5 - detail.FB_REVIEW_SCORE) : '';
+      if (detail) detail._orderNo = detail.FB_ORDER_ID ? '订单号 ' + String(detail.FB_ORDER_ID).slice(-6).toUpperCase() : '';
       if (this._visible && seq === this._seq) this.setData({ detail: detail || null, isLoad: true }, () => {
         if (detail && this._notificationId && this._visible && seq === this._seq) Notifications.markRead(this._notificationId).catch(() => {});
       });
@@ -50,5 +51,9 @@ Page({
   bindPreviewImage(e) {
     const url = pageHelper.dataset(e, 'url'), urls = this.data.detail && this.data.detail.FB_IMG_PREVIEW || [];
     if (urls.includes(url)) wx.previewImage({ current: url, urls });
+  },
+  bindOrderTap() {
+    const id = this.data.detail && this.data.detail.FB_ORDER_ID;
+    if (id) wx.navigateTo({ url: pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id=' + encodeURIComponent(id)) });
   }
 });

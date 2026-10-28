@@ -29,6 +29,12 @@
 			<text class="contact-label">联系方式</text>
 			<text class="contact-value">{{detail.FB_CONTACT}}</text>
 		</view>
+
+		<!-- 关联订单：用户可回看本次申诉指向的具体订单 -->
+		<view wx:if="{{detail.FB_ORDER_ID}}" class="contact-row" bindtap="bindOrderTap">
+			<text class="contact-label">关联订单</text>
+			<text class="contact-value order-link">{{detail._orderNo}} ›</text>
+		</view>
 	</view>
 
 	<!-- 回复 -->

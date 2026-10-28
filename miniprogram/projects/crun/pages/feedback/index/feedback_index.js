@@ -3,6 +3,7 @@ const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const pageHelper = require('../../../../../helper/page_helper.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
+const MailUI = require('../../../biz/mail_ui_biz.js');
 
 Page({
 	data: {
@@ -21,25 +22,76 @@ Page({
 		content: '',
 		img: [],
 		isSubmit: false, submitHint: '', submitError: '',
-		orderLinked: false, orderTarget: null, orderLoading: false, orderLoaded: false, orderError: ''
+		orderLinked: false, orderTarget: null, orderLoading: false, orderLoaded: false, orderError: '',
+		orderPickerShow: false, orderBrief: null
 	},
 
 	onLoad: async function (options = {}) {
 		ProjectBiz.initPage(this);
-		this._orderId=options.orderId||'';
+		this._orderId = options.orderId || '';
 		this.setData({ orderLinked: !!this._orderId });
 		if (await PassportBiz.loginMustBackWin(this) && this._orderId) await this.loadOrder();
 	},
 	onUnload() { this._unloaded = true; },
-	async loadOrder() {
-		if (!this._orderId || this.data.orderLoading) return;
+
+	/** 从订单页带单号进入、或在页内选单后统一走这里核实订单归属。 */
+	async loadOrder(id) {
+		const orderId = id || this._orderId;
+		if (!orderId) return;
+		// 连续换单时只认最后一次请求的结果。
+		const seq = this._orderSeq = (this._orderSeq || 0) + 1;
 		this.setData({ orderLoading: true, orderError: '' });
 		try {
-			const order = await Ops.get('mail/view', { id: this._orderId });
+			const order = await Ops.get('mail/view', { id: orderId });
 			if (!order || !(order.mypost || order.myaccept)) throw new Error('只能申诉本人参与的订单');
-			if (!this._unloaded) this.setData({ orderTarget: order.MAIL_FEEDBACK_TARGET || null, orderLoaded: true });
-		} catch (error) { if (!this._unloaded) this.setData({ orderError: error.msg || error.message || '订单信息加载失败，请重试' }); }
-		finally { if (!this._unloaded) this.setData({ orderLoading: false }); }
+			if (this._unloaded || seq !== this._orderSeq) return;
+			const detail = MailUI.detail(order);
+			this._orderId = orderId;
+			this.setData({
+				orderLinked: true,
+				orderTarget: order.MAIL_FEEDBACK_TARGET || null,
+				orderLoaded: true,
+				orderBrief: {
+					id: orderId,
+					no: String(orderId).slice(-6).toUpperCase(),
+					statusText: detail.title || '订单状态待更新',
+					serviceName: detail.serviceName || '快递代取',
+					from: (order.MAIL_OBJ || {}).address1 || '取件点待补充',
+					to: detail.deliveryAddress || '送达地点待补充',
+					fee: detail.fee || '0.00'
+				}
+			});
+		} catch (error) {
+			if (!this._unloaded && seq === this._orderSeq) this.setData({ orderError: error.msg || error.message || '订单信息加载失败，请重试' });
+		}
+		finally { if (!this._unloaded && seq === this._orderSeq) this.setData({ orderLoading: false }); }
+	},
+
+	/** 打开选单面板（需登录：选单走本人订单列表）。 */
+	async bindPickOrderTap() {
+		if (this.data.isSubmit || this._submitted) return;
+		if (!await PassportBiz.loginMustCancelWin(this)) return;
+		this.setData({ orderPickerShow: true });
+	},
+	bindCloseOrderPicker() { this.setData({ orderPickerShow: false }); },
+	bindOrderPicked(e) {
+		const order = e.detail && e.detail.order;
+		const id = e.detail && e.detail.id;
+		if (!id) return;
+		// 先用选中的摘要占位，再向服务端核实归属与申诉对象。
+		this.setData({
+			orderPickerShow: false,
+			orderError: '',
+			orderLoaded: false,
+			orderTarget: null,
+			orderBrief: order || null
+		});
+		return this.loadOrder(id);
+	},
+	bindClearedOrderTap() {
+		if (this.data.isSubmit || this._submitted) return;
+		this._orderId = '';
+		this.setData({ orderLinked: false, orderTarget: null, orderLoaded: false, orderError: '', orderBrief: null });
 	},
 
 	// 返回
@@ -130,7 +182,8 @@ Page({
 		let { content, img, isSubmit } = this.data;
 
 		if (isSubmit || this._submitted) return;
-		if (this.data.orderLoading || this.data.orderError || this._orderId && !this.data.orderLoaded) return pageHelper.showNoneToast('请先加载并核实关联订单');
+		if (this.data.orderLoading) return pageHelper.showNoneToast('正在核实关联订单，请稍候');
+		if (this._orderId && (this.data.orderError || !this.data.orderLoaded)) return pageHelper.showNoneToast('关联订单未核实成功，请重新选择订单或取消关联');
 
 		let targetText = this._getTargetText();
 		if (!targetText) {
