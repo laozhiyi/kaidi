@@ -1,7 +1,7 @@
 module.exports = {
 
 	//### 环境相关 
-	CLOUD_ID: process.env.CLOUD_ENV_ID || process.env.TCB_ENV || 'cloud1-d7g4yk2vu877ecc87', //你的云环境id
+	CLOUD_ID: process.env.CLOUD_ENV_ID || process.env.TCB_ENV || 'yunsuqu-01-d1gtpv5u718dc7996', //你的云环境id
 
 	// ##################################################################   
 	COLLECTION_PRFIX: 'bx_',
