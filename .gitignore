@@ -56,3 +56,6 @@ cloudfunctions/tenantMigrator/
 .tmp/*.png
 .tmp/*.html
 .tmp/*.cjs
+
+# 开发者工具私有配置（含本地调试基础库版本等，各人独立）
+project.private.config.json

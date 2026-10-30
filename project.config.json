@@ -48,7 +48,7 @@
 	},
 	"appid": "wxa19ea5401f038886",
 	"projectname": "GXNU随手取",
-	"libVersion": "3.17.1",
+	"libVersion": "3.17.5",
 	"simulatorType": "wechat",
 	"simulatorPluginLibVersion": {},
 	"cloudfunctionTemplateRoot": "cloudfunctionTemplate/",
