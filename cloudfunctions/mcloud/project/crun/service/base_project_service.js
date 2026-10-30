@@ -6,6 +6,7 @@
 const dbUtil = require('../../../framework/database/db_util.js');
 const util = require('../../../framework/utils/util.js');
 const AdminModel = require('../../../framework/platform/model/admin_model.js');
+const AppError = require('../../../framework/core/app_error.js');
 let setupPromise;
 const BaseService = require('../../../framework/platform/service/base_service.js');
 
@@ -26,20 +27,38 @@ class BaseProjectService extends BaseService {
  }
  async _ensureCollection(name) {
   if (await dbUtil.isExistCollection(name)) return;
-  let created = false;
+  let created = false, failure = null;
   try { created = await dbUtil.createCollection(name); }
-  catch (e) { console.error('[initSetup] create failed', { collection: name, code: e.code || e.errCode }); }
+  catch (e) { failure = e; console.error('[initSetup] create failed', { collection: name, code: e.code || e.errCode, message: e.message }); }
   // The legacy database helper returns false instead of throwing. Also tolerate
   // another cold-start instance creating the same collection concurrently.
   if (!created && !await dbUtil.isExistCollection(name)) {
-   console.error('[initSetup] collection unavailable', { collection: name });
-   this.AppError('数据服务初始化未完成，请联系管理员检查云数据库集合与权限');
+   const reason = failure ? (failure.message || failure.errMsg || failure.code || '') : '';
+   console.error('[initSetup] collection unavailable', { collection: name, reason });
+   this.AppError('数据服务初始化未完成：集合 ' + name + ' 创建失败' + (reason ? '（' + reason + '）' : '') + '，请检查云数据库权限与配额');
   }
  }
+ // 首次安装步骤多、耗时长：逐步记录位置与总耗时，云日志能直接看出卡在哪一步；
+ // 非 AppError 也转成可读业务错误，避免整次调用只剩一个 -504002。
  async _initSetup() {
+  const startedAt = Date.now();
+  let step = 'marker';
+  try {
+   const result = await this._initSetupSteps(next => { step = next; });
+   console.log('[initSetup] done', { elapsed: Date.now() - startedAt });
+   return result;
+  } catch (e) {
+   const reason = e && (e.message || e.errMsg || e.code) || String(e);
+   console.error('[initSetup] failed', { step, elapsed: Date.now() - startedAt, code: e && (e.code || e.errCode), reason });
+   if (e instanceof AppError) throw e;
+   throw new AppError('数据服务初始化失败（' + step + '）：' + reason);
+  }
+ }
+ async _initSetupSteps(setStep) {
 		let F = (c) => 'bx_' + c;
 		const INSTALL_CL = 'setup_crun';
 		const SCHEMA_CL = 'setup_crun_20261027_customer_service';
+		setStep('marker');
 		// A versioned marker is created only after every required collection is
 		// available. Warm-up of a new instance then needs one lookup, not 28.
 		if (await dbUtil.isExistCollection(F(SCHEMA_CL))) return;
@@ -54,17 +73,22 @@ class BaseProjectService extends BaseService {
 
 		if (await dbUtil.isExistCollection(F(INSTALL_CL))) {
 			// 已初始化过，仅补齐可能新增的集合（用于版本升级场景）
-			for (const name of COLLECTIONS) await this._ensureCollection(F(name));
+			setStep('upgrade');
+			for (const name of COLLECTIONS) { setStep('collection:' + name); await this._ensureCollection(F(name)); }
+			setStep('seed');
 			await new (require('./tenant_service.js'))().seed();
+			setStep('install-marker');
 			await this._ensureCollection(F(SCHEMA_CL));
 			return;
 		}
 
 		console.log('### initSetup...');
 
-		for (const name of COLLECTIONS) await this._ensureCollection(F(name));
+		for (const name of COLLECTIONS) { setStep('collection:' + name); await this._ensureCollection(F(name)); }
+  setStep('seed');
   await new (require('./tenant_service.js'))().seed();
 
+		setStep('root-admin');
 		if (await dbUtil.isExistCollection(F('admin'))) {
 			let adminCnt = await AdminModel.count({});
 			if (adminCnt == 0) {
@@ -86,6 +110,7 @@ class BaseProjectService extends BaseService {
 
 
 
+		setStep('install-marker');
 		await this._ensureCollection(F(INSTALL_CL));
 		await this._ensureCollection(F(SCHEMA_CL));
 	}

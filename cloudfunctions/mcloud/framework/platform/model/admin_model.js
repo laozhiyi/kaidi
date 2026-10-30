@@ -27,6 +27,10 @@ AdminModel.DB_STRUCTURE = {
 	ADMIN_LOGIN_TIME: 'int|true|default=0|comment=最后登录时间',
 	ADMIN_TYPE: 'int|true|default=0|comment=类型 0=普通管理员 1=超级管理员',
  ADMIN_PLATFORM: 'bool|true|default=false',
+ // 安装时创建的账号密码账号带此标记，是整套权限的根；老数据无该字段时由
+ // admin_roles.isRoot() 按「账号密码 + 平台 + 超管」兼容识别。必须在此声明，
+ // 否则首次安装 AdminModel.insert 会因字段未定义被判为脏数据。
+ ADMIN_ROOT: 'bool|false|comment=安装根账号',
  ADMIN_SCOPES: 'array|true|default=[]',
  // 微信登录的后台账号由用户记录授权而来，ADMIN_USER_ID 指向用户文档。
  // ADMIN_WECHAT 标记该账号由微信身份创建；账号密码管理员的这个标记始终为空，
