@@ -95,6 +95,10 @@ function receipt(mail, now = Date.now()) { const status = mail.MAIL_STATUS == nu
  return { visible: poster && ![9, 99].includes(status), canConfirm: poster && status === 2,
   hint: !poster ? '仅订单发布人可以确认收货' : expired ? '订单已过期，无法确认收货，请重新发布订单' : hints[status] || '订单状态待更新，请刷新后重试' };
 }
+function maskPhone(value) {
+ const phone = String(value || '');
+ return /^1\d{10}$/.test(phone) ? phone.slice(0, 3) + '****' + phone.slice(-4) : phone;
+}
 function detail(mail, now = Date.now()) {
  const obj = mail.MAIL_OBJ || {}, status = mail.MAIL_STATUS == null ? -1 : Number(mail.MAIL_STATUS);
  const serviceType = obj.serviceType || 'take';
@@ -139,7 +143,7 @@ function detail(mail, now = Date.now()) {
   count: packages.reduce((sum, x) => sum + x.count, 0) || Number(obj.num) || 1,
   role: mail.mypost ? '我的发布' : mail.myaccept ? '我的接单' : '订单详情',
   step: orderProgress.step, showProgress: orderProgress.visible, steps: orderProgress.steps, deliveryAddress: Address.formatOrderAddress(mail),
-  phone: phone || '', contactName: contactName || (mail.mypost ? (status === 0 && !expired ? '等待骑手接单' : '暂无骑手信息') : '发布者'), contactRole: mail.mypost ? '接单骑手' : '订单发布者',
+  phone: phone || '', phoneDisplay: maskPhone(phone), contactName: contactName || (mail.mypost ? (status === 0 && !expired ? '等待骑手接单' : '暂无骑手信息') : '发布者'), contactRole: mail.mypost ? '接单骑手' : '订单发布者',
   createdAt: time(mail.MAIL_ADD_TIME), endAt: time(mail.MAIL_END_TIME) || time(mail.end2), expectAt: expectSpan(mail), dueAt: time(mail.MAIL_DUE_TIME), deliveredAt: time(mail.MAIL_DELIVERED_TIME),
   autoConfirmAt: time(mail.MAIL_AUTO_CONFIRM_AT), autoConfirmed: mail.MAIL_AUTO_CONFIRMED === true,
   deliveryMode: mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.mode || '', deliveryModeLabel: mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.mode === 'face' ? '当面交付' : mail.MAIL_DELIVERY_PROOF ? '放置指定位置' : '',
