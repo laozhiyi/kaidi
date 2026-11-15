@@ -15,10 +15,15 @@
     <view class="pub-price-editor pub-view"><view class="pub-view"><view class="pub-price-title pub-view">参考价格与本单合计</view><view class="pub-price-tip pub-view">参考价会随件型显示；每件费用可在下方单独调整</view></view><view class="pub-price-total pub-view">¥{{totalFee}}</view></view>
     <view class="pub-packages pub-view">
      <view class="pub-package {{item.count > 0 ? 'pub-package-selected' : ''}} pub-view" wx:for="{{packageTypes}}" wx:key="mark">
-      <view class="pub-parcel pub-parcel-{{item.mark}} pub-view"><view class="pub-view"></view></view>
-      <view class="pub-package-name pub-view">{{item.label}}</view><view class="pub-package-price pub-view">¥<text class="pub-text">{{item.price}}</text><text class="pub-per-item pub-text"> /件</text></view>
+      <view wx:if="{{serviceType === 'take'}}" class="pub-parcel-take pub-parcel-take-{{item.mark}} pub-view"></view>
+      <view wx:else class="pub-parcel pub-parcel-{{item.mark}} pub-view"><view class="pub-view"></view></view>
+      <view class="pub-package-name pub-view">{{item.label}}</view>
+      <view wx:if="{{serviceType === 'take'}}" class="pub-package-hint pub-view">{{item.hint}}</view><view class="pub-package-price{{serviceType === 'take' ? ' pub-package-price-take' : ''}} pub-view">¥<text class="pub-text">{{item.price}}</text><text class="pub-per-item pub-text"> /件</text><button wx:if="{{serviceType === 'take'}}" class="pub-package-guide pub-button-base" catchtap="bindOpenSizeGuide" data-mark="{{item.mark}}">参考 ›</button></view>
       <view class="pub-counter pub-view"><button class="pub-counter-button pub-button-base {{item.count===0 ? 'pub-disabled' : ''}}" disabled="{{item.count===0}}" bindtap="bindPackageTap" data-index="{{index}}" data-step="-1">−</button><text class="pub-text">{{item.count}}</text><button class="pub-counter-button pub-counter-add pub-button-base {{(totalCount>=config.maxPackages) ? 'pub-disabled' : ''}}" disabled="{{totalCount>=config.maxPackages}}" bindtap="bindPackageTap" data-index="{{index}}" data-step="1">＋</button></view>
      </view>
+    </view>
+    <view wx:if="{{serviceType === 'take'}}" class="pub-size-guide pub-view">
+     <view class="pub-size-guide-warning pub-view">请如实选择大小。代取人到达驿站后，若发现实际包裹明显超出所选大小，有权要求发单人补差价或取消订单，由此产生的损失由发单人承担。</view>
     </view>
     <view wx:if="{{packageItems.length}}" class="pub-package-details pub-view">
      <view class="pub-detail-title pub-view">每件包裹信息 <text class="pub-text">{{serviceType === 'send' ? '价格独立设置，请填写取件位置和物品说明' : '价格独立设置，取件码和截图二选一，点截图可查看或删除'}}</text></view>

@@ -137,6 +137,14 @@ class MailService extends Base {
     if (mail.MAIL_END_TIME <= now) this.AppError('该订单已超过接单截止时间');
     if (mail.MAIL_PAYMENT_MODE !== 'offline') this.AppError('旧支付订单须先由管理员核对，不能直接接单');
     if (!store.scope() && !config.campuses.includes(mail.MAIL_OBJ.campus)) this.AppError('该订单校区暂不在服务范围');
+    if (!adminId) {
+     const required = (mail.MAIL_OBJ || {}).riderGender;
+     if (required === 'male' || required === 'female') {
+      const sex = profileRules.formValue(currentUser.USER_FORMS, 'sex');
+      if (!['男', '女'].includes(sex)) this.AppError('该订单有性别要求，请先在个人资料中填写性别');
+      if ((required === 'female' && sex !== '女') || (required === 'male' && sex !== '男')) this.AppError('该订单仅限' + (required === 'female' ? '女生' : '男生') + '配送');
+     }
+    }
     await this._quota(tx,userId,'rider',id,true,config.maxActiveOrders,seed);
     mail.MAIL_STATUS = 1; mail.MAIL_ACCEPT_USER_ID = userId; mail.MAIL_ACCEPT_USER_NAME = currentUser.USER_NAME; mail.MAIL_ACCEPT_TIME = now;
     // 期待送达时间是「最早 ~ 最晚」区间：在区间最晚时间内送达都不算超时。

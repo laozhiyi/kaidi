@@ -36,8 +36,27 @@
 .publish-page .pub-parcel .pub-view { position: absolute; left: 42%; top: -2rpx; width: 9rpx; height: 14rpx; border-left: 2rpx solid #7194bc; border-right: 2rpx solid #7194bc; background: #fff; }
 .publish-page .pub-parcel-medium { width: 52rpx; }
 .publish-page .pub-parcel-large { width: 60rpx; }
+/* 快递代取件型图标：文件袋 / 鞋盒 / 大纸箱（代送继续用上面的原图标） */
+.publish-page .pub-parcel-take { position: relative; height: 38rpx; margin: 6rpx auto 18rpx; border: 2rpx solid #7194bc; border-radius: 4rpx; background: #e4edfa; }
+.publish-page .pub-parcel-take-small { width: 44rpx; }
+.publish-page .pub-parcel-take-medium { width: 52rpx; }
+.publish-page .pub-parcel-take-large { width: 60rpx; }
+.publish-page .pub-parcel-take-small::before { position: absolute; left: 50%; top: -1rpx; margin-left: -13rpx; border-left: 13rpx solid transparent; border-right: 13rpx solid transparent; border-top: 13rpx solid #c6d9ef; content: ''; }
+.publish-page .pub-parcel-take-small::after { position: absolute; left: 50%; top: 18rpx; width: 10rpx; height: 10rpx; margin-left: -5rpx; border: 2rpx solid #7194bc; border-radius: 50%; background: #fff; content: ''; }
+.publish-page .pub-parcel-take-medium::before { position: absolute; left: -4rpx; right: -4rpx; top: 5rpx; height: 11rpx; border: 2rpx solid #7194bc; border-radius: 4rpx; background: #cfdff2; content: ''; }
+.publish-page .pub-parcel-take-medium::after { position: absolute; left: 3rpx; right: 3rpx; top: 21rpx; height: 2rpx; background: #b9cde6; content: ''; }
+.publish-page .pub-parcel-take-large::before { position: absolute; left: 5rpx; top: -7rpx; width: 22rpx; height: 6rpx; border: 2rpx solid #7194bc; border-radius: 3rpx; background: #cfdff2; transform: rotate(-18deg); transform-origin: left bottom; content: ''; }
+.publish-page .pub-parcel-take-large::after { position: absolute; right: 5rpx; top: -7rpx; width: 22rpx; height: 6rpx; border: 2rpx solid #7194bc; border-radius: 3rpx; background: #cfdff2; transform: rotate(18deg); transform-origin: right bottom; content: ''; }
+.publish-page .pub-package-hint { margin-top: 4rpx; color: #94a3b8; font-size: 21rpx; line-height: 1.35; }
+.publish-page .pub-size-guide { margin-top: 18rpx; }
+.publish-page .pub-size-guide-warning { margin-top: 8rpx; color: #ff4d4f; font-size: 23rpx; line-height: 1.6; }
+.publish-page .pub-size-guide-title { display: flex; align-items: center; }
+.publish-page .pub-size-guide-title .pub-parcel-take { flex-shrink: 0; margin: 0 14rpx 0 0; }
+.publish-page .pub-size-guide-line { margin-top: 6rpx; color: #94a3b8; font-size: 22rpx; line-height: 1.6; }
 .publish-page .pub-package-name { font-size: 27rpx; font-weight: 600; }
 .publish-page .pub-package-price { margin-top: 6rpx; color: #397bc8; font-size: 23rpx; }
+.publish-page .pub-package-price-take { display: flex; align-items: center; justify-content: center; white-space: nowrap; }
+.publish-page .pub-package-guide { flex-shrink: 0; margin-left: 4rpx; padding: 0 4rpx; border: 1rpx solid #397bc8; border-radius: 8rpx; background: #fff; color: #397bc8; font-size: 17rpx; line-height: 1.7; white-space: nowrap; }
 .publish-page .pub-package-price > .pub-text:first-child { font-size: 28rpx; font-weight: 600; }
 .publish-page .pub-per-item { color: #93a1b2; font-size: 19rpx; }
 .publish-page .pub-counter { display: flex; align-items: center; justify-content: center; margin-top: 22rpx; }
@@ -86,6 +105,8 @@
 .publish-page .pub-option-row > .pub-view { flex: 1; min-width: 0; }
 .publish-page .pub-option-label { font-size: 27rpx; margin-bottom: 6rpx; }
 .publish-page .pub-option-label .icon-time { color: #7191b7; margin-right: 12rpx; }
+.publish-page .pub-option-row .pub-station-chips { margin-bottom: 0; }
+.publish-page .pub-option-row .pub-station-chip { margin-bottom: 0; }
 .publish-page .pub-deadline { flex-wrap: wrap; }
 .publish-page .pub-deadline-value { font-size: 24rpx; color: #6483a9; padding: 12rpx 0; }
 .publish-page .pub-deadline-value .pub-text { font-size: 22rpx; margin-left: 8rpx; }

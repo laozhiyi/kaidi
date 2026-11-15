@@ -17,6 +17,17 @@ const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
 const MAIL_WEIGHTS = [1, 3, 5];
 const Plugins = require('../../../biz/order_plugins.js');
 const SERVICE_NAMES = Plugins.names;
+// 「参考」弹窗内容，仅用于页面展示，不进入订单数据。
+const SIZE_GUIDE = [
+	{ mark: 'small', title: '小件 · 起步价', size: '长宽高相加不超过 40cm，重量 3kg 以内。',
+		examples: '标准快递文件袋、手机盒、一包衣服、一本书、一支洗面奶、一盒面膜。',
+		scene: '单手就能轻松拿着走回宿舍，甚至可以揣进背包里。' },
+	{ mark: 'medium', title: '中件 · 标准价', size: '长宽高相加在 40cm - 80cm 之间，重量 3kg - 10kg。',
+		examples: '标准鞋盒、一台笔记本电脑包装箱、一整箱抽纸（12卷装）、一箱牛奶（12盒装）、一袋猫砂。',
+		scene: '需要双手抱着，或者需要找个大塑料袋拎着，步行稍微有点重，骑自行车可以放在车筐或踏板上。' },
+	{ mark: 'large', title: '大件 · 加价件（可在每件包裹里自定义价格）', size: '任何一边超过 50cm，或长宽高相加超过 80cm，重量 10kg 以上。',
+		examples: '大号整理箱、小型家电（微波炉、小洗衣机）、整箱矿泉水（24瓶）、大号毛绒玩具、组装家具包裹。' },
+];
 
 module.exports = {
 	data: {
@@ -24,14 +35,19 @@ module.exports = {
 		serviceType: 'take', serviceName: '快递代取', serviceForm:'parcel-fields',
 		serviceState: { kind: 'loading', canPublish: false }, campusIndex: 0,
 		packageTypes: [
-			{ mark: 'small', label: '小件', price: '1.50', count: 0 },
-			{ mark: 'medium', label: '中件', price: '3.00', count: 0 },
-			{ mark: 'large', label: '大件', price: '5.00', count: 0 },
+			{ mark: 'small', label: '小件', price: '1.50', count: 0, hint: '<3kg，如文件、小盒' },
+			{ mark: 'medium', label: '中件', price: '3.00', count: 0, hint: '3-10kg，如鞋盒、抽纸' },
+			{ mark: 'large', label: '大件', price: '5.00', count: 0, hint: '>10kg，如整箱水、大号收纳箱' },
 		],
 		totalCount: 0,
 		totalFee: '0.00',
         customPrice: '',
 		urgent: false,
+		riderGender: 'any',
+		upstairs: false,
+		sizeGuide: SIZE_GUIDE,
+		sizeGuideMark: '',
+		sizeGuideItem: null,
 		expectLead: 0,
 		config:null,campuses:[],campus:'',configError:false,loadError:'',pageLoading:false,submitting:false,hasPendingSubmission:false,
 		proofImages: [], proofPreview:{}, packageItems: [], profileContacts: [], profileAddresses: [], contactPickerVisible: false, addressPickerVisible: false,
@@ -81,7 +97,9 @@ module.exports = {
 			{ mark: 'small', title: '小件数量', type: 'int', must: false },
 			{ mark: 'medium', title: '中件数量', type: 'int', must: false },
 			{ mark: 'large', title: '大件数量', type: 'int', must: false },
-			{ mark: 'urgent', title: '加急订单', type: 'switch', must: false }
+			{ mark: 'urgent', title: '加急订单', type: 'switch', must: false },
+			{ mark: 'riderGender', title: '骑手性别', type: 'text', must: false },
+			{ mark: 'upstairs', title: '送上楼', type: 'switch', must: false }
 		);
 		formData.formForms = [
 			{ mark: 'title', title: '任务名称', type: 'text', val: SERVICE_NAMES[serviceType] },
@@ -99,6 +117,8 @@ module.exports = {
 			{ mark: 'medium', title: '中件数量', type: 'int', val: '0' },
 			{ mark: 'large', title: '大件数量', type: 'int', val: '0' },
 			{ mark: 'urgent', title: '加急订单', type: 'switch', val: false },
+			{ mark: 'riderGender', title: '骑手性别', type: 'text', val: 'any' },
+			{ mark: 'upstairs', title: '送上楼', type: 'switch', val: false },
 		];
 
 		this.setData(Object.assign(formData, {
@@ -249,9 +269,9 @@ module.exports = {
 			const packageValue = Array.isArray(obj.packages) ? obj.packages : findStoredFormVal('packages', []);
 			const storedPackages = Array.isArray(packageValue) ? packageValue : [];
 			const packageTypes = [
-				{ mark: 'small', label: '小件', price: '1.50', count: small },
-				{ mark: 'medium', label: '中件', price: '3.00', count: medium },
-				{ mark: 'large', label: '大件', price: '5.00', count: large },
+				{ mark: 'small', label: '小件', price: '1.50', count: small, hint: '<3kg，如文件、小盒' },
+				{ mark: 'medium', label: '中件', price: '3.00', count: medium, hint: '3-10kg，如鞋盒、抽纸' },
+				{ mark: 'large', label: '大件', price: '5.00', count: large, hint: '>10kg，如整箱水、大号收纳箱' },
 			];
 			// 件数至少 1（如果数据库里全是 0，兜底成 1 件小件）
 			if (small + medium + large === 0) {
@@ -279,6 +299,8 @@ module.exports = {
 				{ mark: 'medium', title: '中件数量', type: 'int', val: String(packageTypes[1].count) },
 				{ mark: 'large', title: '大件数量', type: 'int', val: String(packageTypes[2].count) },
 				{ mark: 'urgent', title: '加急订单', type: 'switch', val: !!obj.urgent },
+				{ mark: 'riderGender', title: '骑手性别', type: 'text', val: this._riderGender(obj.riderGender) },
+				{ mark: 'upstairs', title: '送上楼', type: 'switch', val: obj.upstairs === true },
 			];
 
 			// 原始文件 ID 用于编辑提交；预览使用鉴权后生成的临时地址。
@@ -336,6 +358,8 @@ module.exports = {
 				totalCount,
 				totalFee,
 				urgent: !!obj.urgent,
+				riderGender: this._riderGender(obj.riderGender),
+				upstairs: obj.upstairs === true,
                 customPrice: totalFee,
 				moreRequirements: !!obj.desc,
 			}, () => {
@@ -370,6 +394,17 @@ module.exports = {
 			if (forms[k].mark === mark) return forms[k].val;
 		}
 		return '';
+	},
+
+	bindOpenSizeGuide: function (e) {
+		const mark = e.currentTarget.dataset.mark;
+		const item = (this.data.sizeGuide || []).find(guide => guide.mark === mark);
+		if (!item) return;
+		this.setData({ sizeGuideMark: item.mark, sizeGuideItem: item });
+	},
+
+	bindCloseSizeGuide: function () {
+		this.setData({ sizeGuideMark: '', sizeGuideItem: null });
 	},
 
 	bindPackageTap: function (e) {
@@ -599,10 +634,26 @@ module.exports = {
 		return Number.isFinite(minutes) && minutes > 0 ? minutes * 60000 : 0;
 	},
 
+	_riderGender: function (value) {
+		return ['any', 'male', 'female'].includes(value) ? value : 'any';
+	},
+
 	bindUrgentChange: function (e) {
 		const urgent = !!e.detail.value;
 		this.setData({ urgent, expectLead: this._expectLead(this.data.config, urgent) });
 		this._setFormVal('urgent', urgent);
+	},
+
+	bindRiderGenderTap: function (e) {
+		const riderGender = this._riderGender(e.currentTarget.dataset.value);
+		this.setData({ riderGender });
+		this._setFormVal('riderGender', riderGender);
+	},
+
+	bindUpstairsTap: function (e) {
+		const upstairs = e.currentTarget.dataset.value === 'true';
+		this.setData({ upstairs });
+		this._setFormVal('upstairs', upstairs);
 	},
 
 	bindEndSelect: function (e) {
@@ -673,7 +724,7 @@ module.exports = {
 		const mailValues = { code: '', address2: old.address2 || '', poster: old.poster || '', tel: old.tel || '', tel2: '', desc: '' };
 		const initialCount = this._initialCount(this.data.serviceType);
 		const firstPrice = this.data.packageTypes && this.data.packageTypes[0] ? this.data.packageTypes[0].price : '1.50';
-		const values = { title: this.data.serviceName, num: String(initialCount), weight: '1', price: initialCount ? firstPrice : '0.00', code: '', img: [], address2: mailValues.address2, poster: mailValues.poster, tel: mailValues.tel, tel2: mailValues.tel2, desc: '', small: String(initialCount), medium: '0', large: '0', urgent: false, campus, formEnd: end, packages: [] };
+		const values = { title: this.data.serviceName, num: String(initialCount), weight: '1', price: initialCount ? firstPrice : '0.00', code: '', img: [], address2: mailValues.address2, poster: mailValues.poster, tel: mailValues.tel, tel2: mailValues.tel2, desc: '', small: String(initialCount), medium: '0', large: '0', urgent: false, riderGender: 'any', upstairs: false, campus, formEnd: end, packages: [] };
 		const resetValue = item => Object.prototype.hasOwnProperty.call(values, item.mark) ? values[item.mark] : (item.type === 'image' ? [] : item.type === 'switch' ? false : '');
 		// Reset the parent snapshot too: subsequent property updates must not restore the previous order.
 		this.setData({ formForms: (this.data.formForms || []).map(item => ({ ...item, val: resetValue(item) })) });
@@ -684,10 +735,11 @@ module.exports = {
 		// These flags protect this order's draft, not all future orders on the home page.
 		this._profileEdited = {};
 		const packageTypes = (this.data.packageTypes || []).map((item, index) => Object.assign({}, item, { count: index === 0 ? initialCount : 0 }));
-		this.setData({ editId: '', mailId: '', formEnd: end, formEndFocus: '', mailValues, proofImages: [], proofPreview: {}, packageItems: [], packageTypes, totalCount: initialCount, totalFee: initialCount ? firstPrice : '0.00', urgent: false, campus, campusIndex: Math.max(0, (this.data.campuses || []).indexOf(campus)) });
+		this.setData({ editId: '', mailId: '', formEnd: end, formEndFocus: '', mailValues, proofImages: [], proofPreview: {}, packageItems: [], packageTypes, totalCount: initialCount, totalFee: initialCount ? firstPrice : '0.00', urgent: false, riderGender: 'any', upstairs: false, campus, campusIndex: Math.max(0, (this.data.campuses || []).indexOf(campus)) });
 		this._syncPackageItems([]);
 		this._setFormVal('title', this.data.serviceName);
 		this.bindClosePackagePickup();
+		this.bindCloseSizeGuide();
 		this._refreshFee();
 	},
 	_showMailList: function () { PublicBiz.removeCacheList('admin-mail-list');
@@ -765,8 +817,13 @@ module.exports = {
    const current=form.getForms(true);if(!current)return;
    wx.showLoading({title:'上传并保存中',mask:true});
    const hasPackageProof = this.data.serviceType === 'take' && packages.some(item => item.code || item.images && item.images.length);
-   const forms=JSON.parse(JSON.stringify(current)).filter(x=>!['campus','formEnd','packages','address1','address2','addressPhase','serviceType','goods','buyQuantity','goodsBudget','title','code','img'].includes(x.mark) && (!hasPackageProof || !['code','img'].includes(x.mark)));
+   const forms=JSON.parse(JSON.stringify(current)).filter(x=>!['campus','formEnd','packages','address1','address2','addressPhase','serviceType','goods','buyQuantity','goodsBudget','title','code','img','riderGender','upstairs'].includes(x.mark) && (!hasPackageProof || !['code','img'].includes(x.mark)));
    forms.push({mark:'serviceType',title:'服务类型',type:'text',val:this.data.serviceType});
+   // 配送要求只属于快递代取；代送、代买不提交这两个字段。
+   if(this.data.serviceType === 'take'){
+    forms.push({mark:'riderGender',title:'骑手性别',type:'text',val:this._riderGender(this.data.riderGender)});
+    forms.push({mark:'upstairs',title:'送上楼',type:'switch',val:this.data.upstairs === true});
+   }
    forms.push({mark:'title',title:'任务名称',type:'text',val:this.data.serviceName});
    for (const mark of plugin.extraFields) forms.push({mark,title:mark,type:'text',val:this.data.mailValues[mark]});
    // Submit the visible destination directly even if the component still returns an older value.

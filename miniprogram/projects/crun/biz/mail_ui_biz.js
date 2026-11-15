@@ -99,6 +99,16 @@ function maskPhone(value) {
  const phone = String(value || '');
  return /^1\d{10}$/.test(phone) ? phone.slice(0, 3) + '****' + phone.slice(-4) : phone;
 }
+// 配送要求文案：只有快递代取、且至少一项偏离默认值时才返回内容。
+function requirementText(mail) {
+ const obj = mail && mail.MAIL_OBJ || {};
+ if ((obj.serviceType || 'take') !== 'take') return '';
+ const parts = [];
+ if (obj.riderGender === 'male') parts.push('仅限男生');
+ else if (obj.riderGender === 'female') parts.push('仅限女生');
+ if (obj.upstairs === true) parts.push('需送上楼');
+ return parts.join(' · ');
+}
 function detail(mail, now = Date.now()) {
  const obj = mail.MAIL_OBJ || {}, status = mail.MAIL_STATUS == null ? -1 : Number(mail.MAIL_STATUS);
  const serviceType = obj.serviceType || 'take';
@@ -145,6 +155,7 @@ function detail(mail, now = Date.now()) {
   step: orderProgress.step, showProgress: orderProgress.visible, steps: orderProgress.steps, deliveryAddress: Address.formatOrderAddress(mail),
   phone: phone || '', phoneDisplay: maskPhone(phone), contactName: contactName || (mail.mypost ? (status === 0 && !expired ? '等待骑手接单' : '暂无骑手信息') : '发布者'), contactRole: mail.mypost ? '接单骑手' : '订单发布者',
   createdAt: time(mail.MAIL_ADD_TIME), endAt: time(mail.MAIL_END_TIME) || time(mail.end2), expectAt: expectSpan(mail), dueAt: time(mail.MAIL_DUE_TIME), deliveredAt: time(mail.MAIL_DELIVERED_TIME),
+  requirementText: requirementText(mail),
   autoConfirmAt: time(mail.MAIL_AUTO_CONFIRM_AT), autoConfirmed: mail.MAIL_AUTO_CONFIRMED === true,
   deliveryMode: mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.mode || '', deliveryModeLabel: mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.mode === 'face' ? '当面交付' : mail.MAIL_DELIVERY_PROOF ? '放置指定位置' : '',
   proofVideo: mail.MAIL_MEDIA && mail.MAIL_MEDIA.proofVideo && mail.MAIL_MEDIA.proofVideo[0] || '',
@@ -155,4 +166,4 @@ function detail(mail, now = Date.now()) {
   primary, primaryLabel, receipt: receipt(mail, now), history, canException: participant && [1, 2, 4].includes(status), canCancel: !!mail.mypost && status === 0
  };
 }
-module.exports = { time, service, receipt, progress, detail, deliveryAddress: Address.formatOrderAddress };
+module.exports = { time, service, receipt, progress, detail, requirementText, deliveryAddress: Address.formatOrderAddress };

@@ -662,7 +662,7 @@ page {
 	color: #7b8da8;
 	font-size: 22rpx;
 	line-height: 1.5;
-	text-align: right;
+	text-align: left;
 }
 
 .btn-ghost {
@@ -810,4 +810,6 @@ page {
 .package-proofs { margin-bottom: 4rpx; }
 .package-proof-item + .package-proof-item { margin-top: 14rpx; padding-top: 10rpx; border-top: 1rpx solid #edf1f6; }
 .package-proof-row { display:flex; align-items:center; min-width:0; }
+/* 取件码行沿用 info-row 的标签列，值只占自身宽度，备注小标签紧跟在值后面 */
+.package-proof-row .val { flex: 0 1 auto; }
 .package-note-label { flex-shrink:0; margin-left:12rpx; padding:4rpx 10rpx; border-radius:14rpx; color:#397bc8; background:#edf5ff; font-size:20rpx; }

@@ -180,3 +180,76 @@ test('configuration rechecks current administrator permission inside transaction
  await assert.rejects(new Config().saveConfig(f.config,'admin'));assert.equal(f.table('operation_audit').size,0);
  f.table('admin').get('admin').ADMIN_STATUS=1;await new Config().saveConfig(f.config,'admin');assert.equal(f.table('operation_audit').size,1);
 });
+
+// 配送要求（骑手性别 / 送上楼）：白名单校验、非代取丢弃、公开字段与接单性别拦截。
+function requirementForms(f, riderGender, upstairs) {
+ const forms = f.forms();
+ if (riderGender !== undefined) forms.push({ mark: 'riderGender', val: riderGender });
+ if (upstairs !== undefined) forms.push({ mark: 'upstairs', val: upstairs });
+ return forms;
+}
+function sexed(f, userId, sex) {
+ f.user(userId, { USER_FORMS: [{ mark: 'sex', val: sex }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' }, { mark: 'campus', val: '育才校区' }] });
+}
+
+test('delivery requirements accept only known values and default for take orders', () => {
+ const f = fixture(), rules = f.load('order_rules.js'), now = Date.now();
+ const take = (riderGender, upstairs) => rules.validateForms(requirementForms(f, riderGender, upstairs), f.config, now).obj;
+ assert.equal(take(undefined, undefined).riderGender, 'any');
+ assert.equal(take(undefined, undefined).upstairs, false);
+ assert.equal(take('male', true).riderGender, 'male');
+ assert.equal(take('male', true).upstairs, true);
+ for (const bad of ['girl', 'MALE', '', 1, true, {}]) assert.throws(() => take(bad, false), /骑手性别/);
+ for (const bad of ['true', 1, 'yes', {}, [], 0]) assert.throws(() => take('any', bad), /送上楼/);
+});
+
+test('non-take orders silently drop delivery requirements', () => {
+ const f = fixture(), rules = f.load('order_rules.js');
+ for (const serviceType of ['send', 'buy']) {
+  const forms = requirementForms(f, 'not-a-gender', 'not-a-boolean');
+  forms.push({ mark: 'serviceType', val: serviceType });
+  if (serviceType === 'buy') forms.push(...Object.entries({ goods: '纯牛奶250ml', buyQuantity: 1, goodsBudget: 10 }).map(([mark, val]) => ({ mark, val })));
+  const normalized = rules.validateForms(forms, f.config, Date.now());
+  assert.equal(normalized.obj.serviceType, serviceType);
+  assert.equal(Object.prototype.hasOwnProperty.call(normalized.obj, 'riderGender'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(normalized.obj, 'upstairs'), false);
+  assert.ok(!normalized.forms.some(item => item.mark === 'riderGender' || item.mark === 'upstairs'));
+ }
+});
+
+test('public order projection exposes delivery requirements before accepting', async () => {
+ const f = fixture(), id = await f.publish({ forms: requirementForms(f, 'female', true) });
+ const publicOrder = (await f.service.getMailList('rider', { sortType: 'wait' })).list[0];
+ assert.equal(publicOrder.MAIL_OBJ.riderGender, 'female');
+ assert.equal(publicOrder.MAIL_OBJ.upstairs, true);
+ assert.equal((await f.service.viewMail('other', id)).MAIL_OBJ.riderGender, 'female');
+});
+
+test('gender-restricted orders reject the wrong or missing rider sex and never block any/legacy orders', async () => {
+ const female = fixture(), femaleId = await female.publish({ forms: requirementForms(female, 'female', false) });
+ await assert.rejects(female.service.acceptMail('rider', femaleId, { requestId: female.req('male-rider') }), /该订单仅限女生配送/);
+ assert.equal(female.table('mail').get(femaleId).MAIL_STATUS, 0);
+ sexed(female, 'rider2', '女');
+ await female.service.acceptMail('rider2', femaleId, { requestId: female.req('female-rider') });
+ assert.equal(female.table('mail').get(femaleId).MAIL_ACCEPT_USER_ID, 'rider2');
+
+ const male = fixture(), maleId = await male.publish({ forms: requirementForms(male, 'male', false) });
+ sexed(male, 'rider', '女');
+ await assert.rejects(male.service.acceptMail('rider', maleId, { requestId: male.req('female-rider') }), /该订单仅限男生配送/);
+
+ const any = fixture(), anyId = await any.publish({ forms: requirementForms(any, 'any', false) });
+ await any.service.acceptMail('rider', anyId, { requestId: any.req('any-rider') });
+
+ const legacy = fixture(), legacyId = await legacy.publish();
+ assert.equal(legacy.table('mail').get(legacyId).MAIL_OBJ.riderGender, 'any');
+ await legacy.service.acceptMail('rider', legacyId, { requestId: legacy.req('legacy') });
+});
+
+test('a rider without a recorded sex cannot accept a gender-restricted order', async () => {
+ const f = fixture(), id = await f.publish({ forms: requirementForms(f, 'female', false) });
+ f.user('rider', { USER_FORMS: [{ mark: 'college', val: '计算机学院' }] });
+ // 资料完整性由既有资料规则先行拦截；这里放开它，单独验证接单侧的兜底提示。
+ f.load('profile_rules.js').isReady = () => true;
+ await assert.rejects(f.service.acceptMail('rider', id, { requestId: f.req('no-sex') }), /该订单有性别要求，请先在个人资料中填写性别/);
+ assert.equal(f.table('mail').get(id).MAIL_STATUS, 0);
+});

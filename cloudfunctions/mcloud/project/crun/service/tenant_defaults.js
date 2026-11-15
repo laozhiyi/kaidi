@@ -25,8 +25,7 @@ module.exports = {
     phases: YANSHAN_PHASES,
     pickupStations: [
       { name: '雅园', list: ['中通', '圆通', '申通', '韵达', '顺丰'] },
-      { name: '知园', list: ['邮政', '极兔'] },
-      { name: '奥林苑', list: ['京东'] }
+      { name: '知园', list: ['邮政', '极兔', '京东'] }
     ]
   },
   YANSHAN_PHASES

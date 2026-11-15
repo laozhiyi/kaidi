@@ -122,7 +122,7 @@ page { background: #f3f6fb; }
 .delivery-page.with-receipt-footer { padding-bottom: calc(214rpx + env(safe-area-inset-bottom)); }
 .delivery-page .od-footer-stack { flex-direction: column; align-items: stretch; gap: 12rpx; }
 .delivery-page .od-footer-actions { display: flex; align-items: center; gap: 16rpx; }
-.delivery-page .od-receipt-hint { color: #7b8da8; font-size: 22rpx; line-height: 1.5; text-align: right; }
+.delivery-page .od-receipt-hint { color: #7b8da8; font-size: 22rpx; line-height: 1.5; text-align: left; }
 .delivery-page .od-secondary { background: #edf3fb; color: #397bc8; box-shadow: none; }
 .delivery-page .od-footer-fee { flex-shrink: 0; max-width: 32%; margin-right: 8rpx; }
 .delivery-page .od-footer-fee view { color: #397bc8; font-family: Arial, sans-serif; font-size: 37rpx; line-height: 1.2; word-break: break-all; }

@@ -1,0 +1,11 @@
+<view wx:if="{{serviceType === 'take' && sizeGuideMark}}" class="pub-sheet-mask pub-view" catchtouchmove="bindStopProp" bindtap="bindCloseSizeGuide">
+ <view class="pub-sheet pub-view" catchtap="bindStopProp">
+  <view class="pub-sheet-handle pub-view"></view>
+  <view class="pub-sheet-head pub-view"><view class="pub-view"><view class="pub-sheet-title pub-size-guide-title pub-view"><view class="pub-parcel-take pub-parcel-take-{{sizeGuideMark}} pub-view"></view><text class="pub-text">{{sizeGuideItem.title}}</text></view></view><text class="pub-sheet-close icon-close pub-text" catchtap="bindCloseSizeGuide"></text></view>
+  <scroll-view scroll-y class="pub-sheet-body">
+   <view class="pub-size-guide-line pub-view">尺寸重量：{{sizeGuideItem.size}}</view>
+   <view class="pub-size-guide-line pub-view">具象参照物：{{sizeGuideItem.examples}}</view>
+   <view wx:if="{{sizeGuideItem.scene}}" class="pub-size-guide-line pub-view">代取场景：{{sizeGuideItem.scene}}</view>
+  </scroll-view>
+ </view>
+</view>

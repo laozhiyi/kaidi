@@ -1,8 +1,15 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { harness, makeProfile, copy, event, flush } = require('../test-support/mail-form-harness.cjs');
 const value = (list, mark) => list.find(item => item.mark === mark).val;
+const formWxml = fs.readFileSync(path.join(__dirname, '../../miniprogram/projects/crun/pages/mail/add/mail_add.wxml'), 'utf8');
+const fieldsWxml = fs.readFileSync(path.join(__dirname, '../../miniprogram/projects/crun/pages/mail/add/business_order_fields.wxml'), 'utf8');
+const sizeGuideWxml = fs.readFileSync(path.join(__dirname, '../../miniprogram/projects/crun/pages/mail/add/mail_size_guide.wxml'), 'utf8');
+const parcelTemplate = fieldsWxml.slice(fieldsWxml.indexOf('<template name="parcel-fields">'));
+const HINTS = ['<3kg，如文件、小盒', '3-10kg，如鞋盒、抽纸', '>10kg，如整箱水、大号收纳箱'];
 
 test('form setters match field marks when the parent supplies a different order', () => {
   const h = harness();
@@ -129,4 +136,184 @@ test('two consecutive home submissions use fresh parcel data and the refreshed d
   }
   assert.equal(value(h.commands[1].params.forms, 'packages')[0].code, 'code-2');
   assert.deepEqual(h.errors, []);
+});
+
+async function submitTake(h) {
+  if (!h.page.data.packageItems.length) h.page.bindPackageTap({ currentTarget: { dataset: { index: 0, step: 1 } } });
+  h.page.bindPackageItemInput({ currentTarget: { dataset: { index: 0, mark: 'pickupPoint' } }, detail: { value: '一期 · 菜鸟驿站' } });
+  h.page.bindPackageItemInput({ currentTarget: { dataset: { index: 0, mark: 'code' } }, detail: { value: '12-34' } });
+  const submit = h.page.bindFormSubmit();
+  await flush();
+  h.modals.at(-1).success({ confirm: true });
+  await submit;
+  return h.commands.at(-1).params.forms;
+}
+
+test('delivery requirements start at defaults, are editable and submit with take orders', async () => {
+  const h = harness(); await h.start();
+  assert.equal(h.page.data.riderGender, 'any');
+  assert.equal(h.page.data.upstairs, false);
+  assert.equal(value(h.engine.getForms(), 'riderGender'), 'any');
+  assert.equal(value(h.engine.getForms(), 'upstairs'), false);
+  h.page.bindRiderGenderTap({ currentTarget: { dataset: { value: 'female' } } });
+  h.page.bindUpstairsTap({ currentTarget: { dataset: { value: 'true' } } });
+  assert.equal(h.page.data.riderGender, 'female');
+  assert.equal(h.page.data.upstairs, true);
+  assert.equal(value(h.engine.getForms(), 'riderGender'), 'female');
+  assert.equal(value(h.engine.getForms(), 'upstairs'), true);
+  const forms = await submitTake(h);
+  assert.deepEqual(h.errors, []);
+  assert.equal(forms.filter(field => field.mark === 'riderGender').length, 1);
+  assert.equal(forms.filter(field => field.mark === 'upstairs').length, 1);
+  assert.equal(value(forms, 'riderGender'), 'female');
+  assert.equal(value(forms, 'upstairs'), true);
+});
+
+test('delivery requirements render and submit only for take orders', async () => {
+  assert.match(formWxml, /wx:if="\{\{serviceType === 'take'\}\}"[\s\S]{0,900}骑手性别/);
+  const h = harness({ service: 'send' }); await h.start();
+  h.page.bindPackageTap({ currentTarget: { dataset: { index: 0, step: 1 } } });
+  h.page.bindPackageItemInput({ currentTarget: { dataset: { index: 0, mark: 'pickupPoint' } }, detail: { value: '一期2栋101室门口' } });
+  const submit = h.page.bindFormSubmit();
+  await flush();
+  h.modals.at(-1).success({ confirm: true });
+  await submit;
+  const forms = h.commands.at(-1).params.forms;
+  assert.deepEqual(h.errors, []);
+  assert.equal(value(forms, 'serviceType'), 'send');
+  assert.ok(!forms.some(field => ['riderGender', 'upstairs'].includes(field.mark)));
+});
+
+test('a published order resets delivery requirements', async () => {
+  const h = harness(); await h.start();
+  h.page.bindRiderGenderTap({ currentTarget: { dataset: { value: 'male' } } });
+  h.page.bindUpstairsTap({ currentTarget: { dataset: { value: 'true' } } });
+  h.page.resetAfterPublish();
+  assert.equal(h.page.data.riderGender, 'any');
+  assert.equal(h.page.data.upstairs, false);
+  assert.equal(value(h.page.data.formForms, 'riderGender'), 'any');
+  assert.equal(value(h.page.data.formForms, 'upstairs'), false);
+  assert.equal(value(h.engine.getForms(), 'riderGender'), 'any');
+  assert.equal(value(h.engine.getForms(), 'upstairs'), false);
+});
+
+test('editing a take order restores its delivery requirements', async () => {
+  const mail = { _id: 'order-edit', mypost: true, MAIL_STATUS: 0, MAIL_OBJ: { serviceType: 'take', riderGender: 'female', upstairs: true,
+    small: 1, medium: 0, large: 0, price: 1.5, campus: '育才校区', address2: '一期 1栋101室' } };
+  const h = harness({ mail }); await h.start();
+  assert.equal(h.page.data.riderGender, 'female');
+  assert.equal(h.page.data.upstairs, true);
+  assert.equal(value(h.page.data.formForms, 'riderGender'), 'female');
+  assert.equal(value(h.page.data.formForms, 'upstairs'), true);
+});
+
+test('package size hints stay on every rebuilt packageTypes for take orders', async () => {
+  const h = harness(); await h.start();
+  assert.deepEqual(h.page.data.packageTypes.map(item => item.hint), HINTS);
+  h.page.resetAfterPublish();
+  assert.deepEqual(h.page.data.packageTypes.map(item => item.hint), HINTS);
+
+  const mail = { _id: 'order-edit', mypost: true, MAIL_STATUS: 0, MAIL_OBJ: { serviceType: 'take',
+    small: 1, medium: 1, large: 1, price: 4.5, campus: '育才校区', address2: '一期 1栋101室' } };
+  const edit = harness({ mail }); await edit.start();
+  assert.deepEqual(edit.page.data.packageTypes.map(item => item.hint), HINTS);
+  edit.page.resetAfterPublish();
+  assert.deepEqual(edit.page.data.packageTypes.map(item => item.hint), HINTS);
+});
+
+test('each package card opens the matching size guide sheet and closing clears it', async () => {
+  const h = harness(); await h.start();
+  assert.ok(!/data="\{\{[^}]*sizeGuide/.test(formWxml));
+  assert.ok(formWxml.includes('<include src="./mail_size_guide.wxml" />'));
+  assert.equal(h.page.data.sizeGuideMark, '');
+  assert.equal(h.page.data.sizeGuideItem, null);
+  const titles = { small: '小件 · 起步价', medium: '中件 · 标准价', large: '大件 · 加价件（可在每件包裹里自定义价格）' };
+  for (const mark of ['small', 'medium', 'large']) {
+    h.page.bindOpenSizeGuide({ currentTarget: { dataset: { mark } } });
+    assert.equal(h.page.data.sizeGuideMark, mark);
+    assert.equal(h.page.data.sizeGuideItem.title, titles[mark]);
+  }
+  h.page.bindOpenSizeGuide({ currentTarget: { dataset: { mark: 'small' } } });
+  assert.equal(h.page.data.sizeGuideItem.size, '长宽高相加不超过 40cm，重量 3kg 以内。');
+  h.page.bindOpenSizeGuide({ currentTarget: { dataset: { mark: 'large' } } });
+  assert.equal(h.page.data.sizeGuideItem.scene, undefined);
+  h.page.bindCloseSizeGuide();
+  assert.equal(h.page.data.sizeGuideMark, '');
+  assert.equal(h.page.data.sizeGuideItem, null);
+  h.page.bindOpenSizeGuide({ currentTarget: { dataset: { mark: 'medium' } } });
+  h.page.resetAfterPublish();
+  assert.equal(h.page.data.sizeGuideMark, '');
+  assert.equal(h.page.data.sizeGuideItem, null);
+});
+
+test('the embedded home form exposes the same size guide handlers', async () => {
+  const h = harness({ embedded: true }); await h.start();
+  h.page.bindOpenSizeGuide({ currentTarget: { dataset: { mark: 'medium' } } });
+  assert.equal(h.page.data.sizeGuideMark, 'medium');
+  assert.equal(h.page.data.sizeGuideItem.title, '中件 · 标准价');
+  h.page.bindCloseSizeGuide();
+  assert.equal(h.page.data.sizeGuideMark, '');
+  assert.equal(h.page.data.sizeGuideItem, null);
+});
+
+test('the size guide keeps the reference copy verbatim and never shows prices', async () => {
+  const h = harness(); await h.start();
+  const [small, medium, large] = h.page.data.sizeGuide;
+  assert.equal(small.size, '长宽高相加不超过 40cm，重量 3kg 以内。');
+  assert.equal(small.examples, '标准快递文件袋、手机盒、一包衣服、一本书、一支洗面奶、一盒面膜。');
+  assert.equal(small.scene, '单手就能轻松拿着走回宿舍，甚至可以揣进背包里。');
+  assert.equal(medium.size, '长宽高相加在 40cm - 80cm 之间，重量 3kg - 10kg。');
+  assert.equal(medium.examples, '标准鞋盒、一台笔记本电脑包装箱、一整箱抽纸（12卷装）、一箱牛奶（12盒装）、一袋猫砂。');
+  assert.equal(medium.scene, '需要双手抱着，或者需要找个大塑料袋拎着，步行稍微有点重，骑自行车可以放在车筐或踏板上。');
+  assert.equal(large.size, '任何一边超过 50cm，或长宽高相加超过 80cm，重量 10kg 以上。');
+  assert.equal(large.examples, '大号整理箱、小型家电（微波炉、小洗衣机）、整箱矿泉水（24瓶）、大号毛绒玩具、组装家具包裹。');
+  assert.equal(large.scene, undefined);
+  for (const item of h.page.data.sizeGuide) {
+    for (const text of [item.title, item.size, item.examples, item.scene || '']) assert.ok(!/[¥￥]|元/.test(text), text);
+  }
+  assert.ok(parcelTemplate.includes('请如实选择大小。代取人到达驿站后，若发现实际包裹明显超出所选大小，有权要求发单人补差价或取消订单，由此产生的损失由发单人承担。'));
+  assert.ok(sizeGuideWxml.includes('尺寸重量：{{sizeGuideItem.size}}'));
+  assert.ok(sizeGuideWxml.includes('具象参照物：{{sizeGuideItem.examples}}'));
+  assert.ok(sizeGuideWxml.includes('wx:if="{{sizeGuideItem.scene}}"'));
+  assert.ok(sizeGuideWxml.includes('代取场景：{{sizeGuideItem.scene}}'));
+  assert.ok(!sizeGuideWxml.includes('¥'));
+  assert.ok(!sizeGuideWxml.includes('pub-size-guide-warning'));
+});
+
+test('send keeps the original parcel cards and every addition stays behind the take guard', async () => {
+  assert.ok(parcelTemplate.includes('wx:if="{{serviceType === \'take\'}}" class="pub-parcel-take pub-parcel-take-{{item.mark}}'));
+  assert.ok(parcelTemplate.includes('wx:else class="pub-parcel pub-parcel-{{item.mark}}'));
+  assert.ok(parcelTemplate.includes('wx:if="{{serviceType === \'take\'}}" class="pub-package-hint'));
+  assert.ok(parcelTemplate.includes('wx:if="{{serviceType === \'take\'}}" class="pub-package-guide'));
+  assert.ok(parcelTemplate.includes('wx:if="{{serviceType === \'take\'}}" class="pub-size-guide '));
+  assert.equal(parcelTemplate.split('pub-package-guide').length - 1, 1);
+  assert.equal(parcelTemplate.split('pub-package-hint').length - 1, 1);
+  assert.equal(parcelTemplate.split('pub-size-guide ').length - 1, 1);
+  assert.ok(!parcelTemplate.includes('pub-size-guide-toggle'));
+  assert.ok(!parcelTemplate.includes('pub-size-guide-body'));
+  assert.ok(parcelTemplate.indexOf('pub-size-guide-warning') > parcelTemplate.indexOf('pub-packages'));
+  assert.ok(parcelTemplate.indexOf('pub-size-guide-warning') < parcelTemplate.indexOf('每件包裹信息'));
+  assert.ok(sizeGuideWxml.includes('wx:if="{{serviceType === \'take\' && sizeGuideMark}}"'));
+
+  const h = harness({ service: 'send' }); await h.start();
+  assert.equal(h.page.data.sizeGuideMark, '');
+  h.page.bindPackageTap({ currentTarget: { dataset: { index: 0, step: 1 } } });
+  h.page.bindPackageItemInput({ currentTarget: { dataset: { index: 0, mark: 'pickupPoint' } }, detail: { value: '一期2栋101室门口' } });
+  const submit = h.page.bindFormSubmit();
+  await flush();
+  h.modals.at(-1).success({ confirm: true });
+  await submit;
+  assert.deepEqual(h.errors, []);
+  const forms = h.commands.at(-1).params.forms;
+  assert.equal(value(forms, 'serviceType'), 'send');
+  assert.ok(!forms.some(field => ['hint', 'sizeGuide', 'sizeGuideMark', 'sizeGuideItem'].includes(field.mark)));
+});
+
+test('size hints and the size guide are never submitted', async () => {
+  const h = harness(); await h.start();
+  h.page.bindOpenSizeGuide({ currentTarget: { dataset: { mark: 'medium' } } });
+  const forms = await submitTake(h);
+  assert.deepEqual(h.errors, []);
+  assert.ok(!forms.some(field => ['hint', 'sizeGuide', 'sizeGuideMark', 'sizeGuideItem'].includes(field.mark)));
+  assert.ok(value(forms, 'packages').every(row => !Object.prototype.hasOwnProperty.call(row, 'hint')));
 });

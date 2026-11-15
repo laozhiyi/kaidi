@@ -200,3 +200,21 @@ test('order command locks before async login/upload and refuses actions not allo
  const pending = p.perform('deliver'); await p.perform('deliver'); await new Promise(resolve => setImmediate(resolve));
  assert.equal(uploads, 1); assert.equal(p.data.busy, true); release(); await pending; assert.equal(commands, 1); assert.equal(p.data.busy, false);
 });
+
+test('delivery requirement text appears only for take orders with a non-default requirement', () => {
+ const take = obj => ({ MAIL_OBJ: { serviceType: 'take', ...obj } });
+ assert.equal(UI.requirementText(take({})), '');
+ assert.equal(UI.requirementText(take({ riderGender: 'any', upstairs: false })), '');
+ assert.equal(UI.requirementText(take({ riderGender: 'female' })), '仅限女生');
+ assert.equal(UI.requirementText(take({ riderGender: 'male' })), '仅限男生');
+ assert.equal(UI.requirementText(take({ upstairs: true })), '需送上楼');
+ assert.equal(UI.requirementText(take({ riderGender: 'female', upstairs: true })), '仅限女生 · 需送上楼');
+ assert.equal(UI.requirementText(take({ riderGender: 'male', upstairs: true })), '仅限男生 · 需送上楼');
+ assert.equal(UI.requirementText({ MAIL_OBJ: { serviceType: 'send', riderGender: 'female', upstairs: true } }), '');
+ assert.equal(UI.requirementText({ MAIL_OBJ: { serviceType: 'buy', riderGender: 'female', upstairs: true } }), '');
+ assert.equal(UI.requirementText({}), '');
+ assert.equal(UI.requirementText(null), '');
+ const mail = { ...base, MAIL_OBJ: { ...base.MAIL_OBJ, riderGender: 'female', upstairs: true } };
+ assert.equal(UI.detail(mail, now).requirementText, '仅限女生 · 需送上楼');
+ assert.equal(UI.detail({ ...base, MAIL_OBJ: { ...base.MAIL_OBJ, riderGender: 'any' } }, now).requirementText, '');
+});

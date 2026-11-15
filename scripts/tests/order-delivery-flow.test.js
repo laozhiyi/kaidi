@@ -260,3 +260,17 @@ test('proof entry is a single control and photo or video are mutually exclusive 
  await assert.rejects(empty.f.service.pickupMail('rider', empty.id, { requestId: empty.f.req('pickup-empty') }), /凭证照片或1段视频/);
  assert.equal(empty.stored().MAIL_STATUS, 1);
 });
+
+test('order cards carry the shared delivery requirement text and stay empty for default orders', async () => {
+ const h = await harness();
+ Object.assign(h.stored().MAIL_OBJ, { riderGender: 'female', upstairs: true });
+ const list = h.mount('order/index/order_index', { tab: 1 });
+ list.onShow(); await list._syncOrders();
+ assert.equal(list.data.dataList.list[0].requirementText, '仅限女生 · 需送上楼');
+
+ const plain = await harness();
+ Object.assign(plain.stored().MAIL_OBJ, { riderGender: 'any', upstairs: false });
+ const list2 = plain.mount('order/index/order_index', { tab: 1 });
+ list2.onShow(); await list2._syncOrders();
+ assert.equal(list2.data.dataList.list[0].requirementText, '');
+});

@@ -46,6 +46,15 @@ function validateForms(forms, config, now) {
  const resolvedPhase = deliveryAddress.phaseOf(obj.address2, obj.campus, phases);
  if (resolvedPhase) obj.addressPhase = resolvedPhase;
  if (input.urgent != null && typeof input.urgent !== 'boolean') fail('加急参数无效'); obj.urgent = !!input.urgent; if (obj.urgent && !config.urgentEnabled) fail('当前未开放加急服务');
+ // 配送要求只随快递代取保存；其他服务类型收到即丢弃，不报错。
+ if (obj.serviceType === 'take') {
+  const riderGender = input.riderGender == null ? 'any' : input.riderGender;
+  if (!['any', 'male', 'female'].includes(riderGender)) fail('骑手性别要求无效');
+  obj.riderGender = riderGender;
+  const upstairs = input.upstairs == null ? false : input.upstairs;
+  if (typeof upstairs !== 'boolean') fail('送上楼要求无效');
+  obj.upstairs = upstairs;
+ }
  const quote = plugins.get(obj.serviceType).normalize(input, obj, config, {text,images,fail});
  const totalFee = quote.totalFee;
  if (!Number.isSafeInteger(totalFee) || totalFee < 1 || totalFee > 1000000) fail('订单费用超出范围');
@@ -123,7 +132,7 @@ function project(mail, userId, admin = false) {
  }
  const obj = mail.MAIL_OBJ || {};
  const plugin = Object.prototype.hasOwnProperty.call(SERVICES,obj.serviceType || 'take') ? plugins.get(obj.serviceType || 'take') : null;
- const publicFields = ['title','serviceType','small','medium','large','num','price','referencePrice','urgent','campus','address1','address2','addressPhase',...(plugin ? plugin.publicFields : [])];
+ const publicFields = ['title','serviceType','small','medium','large','num','price','referencePrice','urgent','riderGender','upstairs','campus','address1','address2','addressPhase',...(plugin ? plugin.publicFields : [])];
  out.MAIL_OBJ = privateAccess ? { ...obj } : Object.fromEntries(publicFields.filter(k => obj[k] !== undefined).map(k => [k,obj[k]]));
  out.mypost = mypost; out.myaccept = myaccept;
  out.status = LABELS[mail.MAIL_STATUS] || '状态未知'; if (mail.MAIL_STATUS === 0 && mail.MAIL_END_TIME < Date.now()) out.status = '已过期';

@@ -26,8 +26,7 @@ const DORM_NAMES = DORM_PHASES.reduce((map, item) => { map[item.name] = item.lab
 // 与默认地点表配套的取件点；配置还停留在旧期数时用它，避免地点与取件点对不上。
 const DEFAULT_STATIONS = [
   { name: '雅园', list: ['中通', '圆通', '申通', '韵达', '顺丰'] },
-  { name: '知园', list: ['邮政', '极兔'] },
-  { name: '奥林苑', list: ['京东'] }
+  { name: '知园', list: ['邮政', '极兔', '京东'] }
 ];
 // 初始即为默认地点表，配置尚未到达时也能正常展示选项。
 const PHASES = DEFAULT_PHASES.slice();

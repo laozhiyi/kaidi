@@ -124,6 +124,10 @@
 								<text class="lbl">送达</text>
 								<text class="val">{{order.deliveryAddress || '送达地点待补充'}}</text>
 							</view>
+							<view wx:if="{{order.requirementText}}" class="info-row">
+								<text class="lbl">要求</text>
+								<text class="val">{{order.requirementText}}</text>
+							</view>
 							<view wx:if="{{order.MAIL_OBJ.expectLabel}}" class="info-row info-row-expect">
 								<text class="lbl">期待送达</text>
 								<text class="val expect-val">{{order.MAIL_OBJ.expectLabel}}</text>
@@ -192,9 +196,10 @@
 						<view class="card-mid">
                             <view class="info-row"><text class="lbl">服务</text><text class="val">{{order.MAIL_CATE_NAME || '快递代取'}}</text></view>
                             <view wx:if="{{order.MAIL_OBJ.serviceType === 'buy'}}" class="info-row"><text class="lbl">商品</text><text class="val">{{order.MAIL_OBJ.goods}} × {{order.MAIL_OBJ.buyQuantity}} · 预算 ¥{{order.MAIL_OBJ.goodsBudget}}</text></view>
-							<view class="package-proofs" wx:if="{{order.packageProofs.length && order.MAIL_OBJ.serviceType !== 'buy'}}"><view wx:for="{{order.packageProofs}}" wx:key="index" class="package-proof-item"><view class="info-row"><text class="lbl">取件点</text><text class="val">{{item.pickupPoint}}</text></view><view class="package-proof-row"><text class="lbl">{{order.MAIL_OBJ.serviceType === 'send' ? '物品' : '取件码'}}</text><text class="val code-text">{{item.code}}</text><text class="package-note-label">{{item.noteLabel}}</text></view></view></view>
+							<view class="package-proofs" wx:if="{{order.packageProofs.length && order.MAIL_OBJ.serviceType !== 'buy'}}"><view wx:for="{{order.packageProofs}}" wx:key="index" class="package-proof-item"><view class="info-row"><text class="lbl">取件点</text><text class="val">{{item.pickupPoint}}</text></view><view class="info-row package-proof-row"><text class="lbl">{{order.MAIL_OBJ.serviceType === 'send' ? '物品' : '取件码'}}</text><text class="val code-text">{{item.code}}</text><text class="package-note-label">{{item.noteLabel}}</text></view></view></view>
 							<view wx:else class="info-row"><text class="lbl">{{order.MAIL_OBJ.serviceType === 'buy' ? '购买点' : order.MAIL_OBJ.serviceType === 'send' ? '取件点' : '快递点'}}</text><text class="val">{{order.MAIL_OBJ.address1}}</text></view>
 							<view class="info-row"><text class="lbl">送达</text><text class="val">{{order.deliveryAddress || '送达地点待补充'}}</text></view>
+							<view wx:if="{{order.requirementText}}" class="info-row"><text class="lbl">要求</text><text class="val">{{order.requirementText}}</text></view>
 						</view>
 						<view class="card-divider"></view>
 						<view class="card-bot"><view class="price-block"><text class="symbol">¥</text><text class="num">{{order.MAIL_OBJ.price}}</text></view><view class="actions" catchtap="bindStop"><button class="btn-ghost" catchtap="bindCallTap" data-tel="{{order.MAIL_OBJ.tel}}">联系</button><button class="btn-ghost" catchtap="bindComplaintTap" data-id="{{order._id}}">申诉</button><button wx:if="{{order.MAIL_STATUS===1}}" class="btn-primary" catchtap="bindOrderAction" data-action="pickup" data-id="{{order._id}}" loading="{{actionBusyId === order._id}}" disabled="{{!!actionBusyId}}">{{order.MAIL_OBJ.serviceType === 'buy' ? '已购齐' : '已取件'}}</button><button wx:elif="{{order.MAIL_STATUS===4}}" class="btn-primary" catchtap="bindOrderAction" data-action="deliver" data-id="{{order._id}}" loading="{{actionBusyId === order._id}}" disabled="{{!!actionBusyId}}">已送达</button><button wx:elif="{{order.MAIL_STATUS===2}}" class="btn-ghost" catchtap="bindDetailTap" data-id="{{order._id}}">待收货</button></view></view>
@@ -224,6 +229,7 @@
                             <view wx:if="{{order.MAIL_OBJ.serviceType === 'buy'}}" class="info-row"><text class="lbl">商品</text><text class="val">{{order.MAIL_OBJ.goods}} × {{order.MAIL_OBJ.buyQuantity}} · 预算 ¥{{order.MAIL_OBJ.goodsBudget}}</text></view>
 							<view class="info-row"><text class="lbl">{{order.MAIL_OBJ.serviceType === 'buy' ? '购买点' : order.MAIL_OBJ.serviceType === 'send' ? '取件点' : '快递点'}}</text><text class="val">{{order.MAIL_OBJ.address1}}</text></view>
 							<view class="info-row"><text class="lbl">送达</text><text class="val">{{order.deliveryAddress || '送达地点待补充'}}</text></view>
+							<view wx:if="{{order.requirementText}}" class="info-row"><text class="lbl">要求</text><text class="val">{{order.requirementText}}</text></view>
 						</view>
 						<view class="card-divider"></view>
 						<view class="card-bot">
