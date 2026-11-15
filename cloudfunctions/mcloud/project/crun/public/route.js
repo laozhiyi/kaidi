@@ -17,6 +17,9 @@ module.exports = {
 "mail/deliver":"mail_controller@deliverMail",
 "mail/update_proof":"mail_controller@updateDeliveryProof",
 "mail/remind":"mail_controller@remindReceipt",
+"mail/price_propose":"mail_controller@proposePrice",
+"mail/price_respond":"mail_controller@respondPrice",
+"mail/release":"mail_controller@releaseMail",
 "mail/exception":"mail_controller@exceptionMail",
 "operations/config":"operations_controller@getConfig",
 "operations/feed":"operations_controller@feed",
@@ -129,9 +132,7 @@ module.exports = {
 	'admin/mail_data_del': 'admin/admin_mail_controller@mailDataDel',
 
 	// ========== 支付模块 ==========
-	'pay/create': 'pay_controller@createPay',
 	'pay/query': 'pay_controller@queryPay',
-	'pay/refund': 'pay_controller@refund',
 
 	// ========== 在线客服（全校共享客服池） ==========
 	'customer_service/chat': 'customer_service_controller@getChat',

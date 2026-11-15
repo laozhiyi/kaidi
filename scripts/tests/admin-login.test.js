@@ -22,13 +22,23 @@ async function adminFixture({ credentialsOnly = true, ...overrides } = {}) {
   return { ...f, row, login, sessions };
 }
 
-test('internal testing defaults to credentials-only login and can explicitly restore account checks', () => {
+test('admin login defaults to strict account checks and requires an explicit opt-in flag', () => {
   const source = fs.readFileSync(path.join(root, 'cloudfunctions/mcloud/config/config.js'), 'utf8');
-  for (const [env, expected] of [[{}, true], [{ ADMIN_LOGIN_CREDENTIALS_ONLY: 'false' }, false]]) {
+  for (const [env, expected] of [[{}, false], [{ ADMIN_LOGIN_CREDENTIALS_ONLY: 'false' }, false], [{ ADMIN_LOGIN_CREDENTIALS_ONLY: 'true' }, true]]) {
     const module = { exports: {} };
     vm.runInNewContext(source, { module, process: { env } });
     assert.equal(module.exports.ADMIN_LOGIN_CREDENTIALS_ONLY, expected);
   }
+});
+
+test('default configuration rejects disabled admins and blocks repeated wrong passwords', async () => {
+  const f = await adminFixture({ credentialsOnly: false, ADMIN_STATUS: 0 });
+  await assert.rejects(f.login(), /账号或密码/);
+  f.table('admin').get('legacy').ADMIN_STATUS = 1;
+  // 停用账号那一次也计入限流：再错 9 次即达到 10 次上限。
+  for (let i = 0; i < 9; i++) await assert.rejects(f.login('wrong-' + i), /账号或密码/);
+  await assert.rejects(f.login('wrong-final'), /频繁/);
+  await assert.rejects(f.login(), /频繁/);
 });
 
 for (const status of [1, 0, undefined]) {

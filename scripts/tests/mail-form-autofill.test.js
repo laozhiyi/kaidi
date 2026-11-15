@@ -9,7 +9,6 @@ const formWxml = fs.readFileSync(path.join(__dirname, '../../miniprogram/project
 const fieldsWxml = fs.readFileSync(path.join(__dirname, '../../miniprogram/projects/crun/pages/mail/add/business_order_fields.wxml'), 'utf8');
 const sizeGuideWxml = fs.readFileSync(path.join(__dirname, '../../miniprogram/projects/crun/pages/mail/add/mail_size_guide.wxml'), 'utf8');
 const parcelTemplate = fieldsWxml.slice(fieldsWxml.indexOf('<template name="parcel-fields">'));
-const HINTS = ['<3kg，如文件、小盒', '3-10kg，如鞋盒、抽纸', '>10kg，如整箱水、大号收纳箱'];
 
 test('form setters match field marks when the parent supplies a different order', () => {
   const h = harness();
@@ -170,7 +169,13 @@ test('delivery requirements start at defaults, are editable and submit with take
 });
 
 test('delivery requirements render and submit only for take orders', async () => {
-  assert.match(formWxml, /wx:if="\{\{serviceType === 'take'\}\}"[\s\S]{0,900}骑手性别/);
+  assert.match(formWxml, /wx:if="\{\{serviceType === 'take'\}\}" class="pub-delivery-reqs pub-view">[\s\S]{0,200}骑手性别/);
+  // 配送要求并入「02 送到哪里」卡片，位于送达地址之后、联系人卡片之前。
+  const reqAt = formWxml.indexOf('pub-delivery-reqs');
+  assert.ok(reqAt > formWxml.indexOf('pub-route-card') && reqAt > formWxml.indexOf('mailValues.address2'));
+  assert.ok(reqAt < formWxml.indexOf('pub-contact-card'));
+  assert.equal(formWxml.split('bindUpstairsTap').length - 1, 2);
+  assert.equal(formWxml.split('bindRiderGenderTap').length - 1, 3);
   const h = harness({ service: 'send' }); await h.start();
   h.page.bindPackageTap({ currentTarget: { dataset: { index: 0, step: 1 } } });
   h.page.bindPackageItemInput({ currentTarget: { dataset: { index: 0, mark: 'pickupPoint' } }, detail: { value: '一期2栋101室门口' } });
@@ -207,18 +212,21 @@ test('editing a take order restores its delivery requirements', async () => {
   assert.equal(value(h.page.data.formForms, 'upstairs'), true);
 });
 
-test('package size hints stay on every rebuilt packageTypes for take orders', async () => {
+test('take package cards carry no size hint on any rebuilt packageTypes', async () => {
+  const withoutHint = list => assert.ok(list.every(item => !Object.prototype.hasOwnProperty.call(item, 'hint')));
   const h = harness(); await h.start();
-  assert.deepEqual(h.page.data.packageTypes.map(item => item.hint), HINTS);
+  withoutHint(h.page.data.packageTypes);
   h.page.resetAfterPublish();
-  assert.deepEqual(h.page.data.packageTypes.map(item => item.hint), HINTS);
+  withoutHint(h.page.data.packageTypes);
 
   const mail = { _id: 'order-edit', mypost: true, MAIL_STATUS: 0, MAIL_OBJ: { serviceType: 'take',
     small: 1, medium: 1, large: 1, price: 4.5, campus: '育才校区', address2: '一期 1栋101室' } };
   const edit = harness({ mail }); await edit.start();
-  assert.deepEqual(edit.page.data.packageTypes.map(item => item.hint), HINTS);
+  withoutHint(edit.page.data.packageTypes);
   edit.page.resetAfterPublish();
-  assert.deepEqual(edit.page.data.packageTypes.map(item => item.hint), HINTS);
+  withoutHint(edit.page.data.packageTypes);
+  assert.ok(!parcelTemplate.includes('pub-package-hint'));
+  assert.ok(!parcelTemplate.includes('item.hint'));
 });
 
 test('each package card opens the matching size guide sheet and closing clears it', async () => {
@@ -283,14 +291,21 @@ test('the size guide keeps the reference copy verbatim and never shows prices', 
 test('send keeps the original parcel cards and every addition stays behind the take guard', async () => {
   assert.ok(parcelTemplate.includes('wx:if="{{serviceType === \'take\'}}" class="pub-parcel-take pub-parcel-take-{{item.mark}}'));
   assert.ok(parcelTemplate.includes('wx:else class="pub-parcel pub-parcel-{{item.mark}}'));
-  assert.ok(parcelTemplate.includes('wx:if="{{serviceType === \'take\'}}" class="pub-package-hint'));
-  assert.ok(parcelTemplate.includes('wx:if="{{serviceType === \'take\'}}" class="pub-package-guide'));
-  assert.ok(parcelTemplate.includes('wx:if="{{serviceType === \'take\'}}" class="pub-size-guide '));
+  // 「参考」是件型卡片右上角的角标；价格行恢复原样，不再夹按钮。
+  assert.ok(parcelTemplate.includes('<view wx:if="{{serviceType === \'take\'}}" class="pub-package-guide-tag pub-view" catchtap="bindOpenSizeGuide" data-mark="{{item.mark}}">参考</view>'));
   assert.equal(parcelTemplate.split('pub-package-guide').length - 1, 1);
-  assert.equal(parcelTemplate.split('pub-package-hint').length - 1, 1);
+  assert.ok(parcelTemplate.includes('<view class="pub-package-price pub-view">¥<text class="pub-text">{{item.price}}</text><text class="pub-per-item pub-text"> /件</text></view>'));
+  assert.ok(!parcelTemplate.includes('pub-package-price-take'));
+  assert.ok(parcelTemplate.includes("{{serviceType === 'take' ? ' pub-package-take' : ''}}"));
+  assert.ok(parcelTemplate.includes("pub-card{{serviceType === 'take' ? ' pub-card-take' : ''}} pub-view"));
+  // 代取不再显示底部件数统计（提交时仍会校验至少 1 件），代送照旧。
+  assert.ok(parcelTemplate.includes('<view wx:if="{{serviceType !== \'take\'}}" class="pub-footnote pub-view">'));
+  assert.ok(parcelTemplate.includes('wx:if="{{serviceType === \'take\'}}" class="pub-size-guide '));
   assert.equal(parcelTemplate.split('pub-size-guide ').length - 1, 1);
   assert.ok(!parcelTemplate.includes('pub-size-guide-toggle'));
   assert.ok(!parcelTemplate.includes('pub-size-guide-body'));
+  assert.ok(parcelTemplate.includes('wx:if="{{serviceType !== \'take\'}}" class="pub-price-tip'));
+  assert.ok(parcelTemplate.includes('请如实选择大小。代取人到达驿站后，若发现实际包裹明显超出所选大小，有权要求发单人补差价或取消订单，由此产生的损失由发单人承担。'));
   assert.ok(parcelTemplate.indexOf('pub-size-guide-warning') > parcelTemplate.indexOf('pub-packages'));
   assert.ok(parcelTemplate.indexOf('pub-size-guide-warning') < parcelTemplate.indexOf('每件包裹信息'));
   assert.ok(sizeGuideWxml.includes('wx:if="{{serviceType === \'take\' && sizeGuideMark}}"'));
@@ -316,4 +331,28 @@ test('size hints and the size guide are never submitted', async () => {
   assert.deepEqual(h.errors, []);
   assert.ok(!forms.some(field => ['hint', 'sizeGuide', 'sizeGuideMark', 'sizeGuideItem'].includes(field.mark)));
   assert.ok(value(forms, 'packages').every(row => !Object.prototype.hasOwnProperty.call(row, 'hint')));
+});
+
+test('tip is a custom optional amount: it adds to the shown total, rejects invalid input and submits only with take orders', async () => {
+  const h = harness(); await h.start();
+  assert.equal(h.page.data.tip, 0); assert.equal(h.page.data.tipInput, '');
+  const tipInput = text => h.page.bindTipInput({ detail: { value: text } });
+  h.page.bindPackageTap({ currentTarget: { dataset: { index: 0, step: 1 } } });
+  const base = Number(h.page.data.totalFee);
+  tipInput('2.5');
+  assert.equal(h.page.data.tip, 2.5); assert.equal(h.page.data.tipError, '');
+  assert.equal(h.page.data.payTotal, (base + 2.5).toFixed(2));
+  assert.equal(h.page.data.totalFee, base.toFixed(2), 'package total stays separate from the tip');
+  for (const bad of ['25', '1.234', 'abc']) {
+    tipInput(bad);
+    assert.equal(h.page.data.tip, 0); assert.match(h.page.data.tipError, /0至20元/);
+    assert.equal(h.page.data.payTotal, base.toFixed(2));
+  }
+  tipInput('');
+  assert.equal(h.page.data.tipError, ''); assert.equal(h.page.data.tip, 0);
+  tipInput('3');
+  const forms = await submitTake(h);
+  assert.deepEqual(h.errors, []);
+  assert.equal(value(forms, 'tip'), '3.00');
+  assert.equal(forms.filter(field => field.mark === 'tip').length, 1);
 });

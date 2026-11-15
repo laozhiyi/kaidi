@@ -22,7 +22,8 @@ module.exports = {
 	ALLOW_MANUAL_REGISTRATION: process.env.ALLOW_MANUAL_REGISTRATION !== 'false', // 兼容已登录账号的手填联系电话策略；不允许表单直接建号
 
 	// ### 后台业务相关
-	ADMIN_LOGIN_CREDENTIALS_ONLY: process.env.ADMIN_LOGIN_CREDENTIALS_ONLY !== 'false', // 内测仅校验账号密码；false 恢复登录限流与账号状态检查
+	// 默认关闭（严格模式）：管理员登录有频率限制，已停用账号不能登录；仅当环境变量显式为 'true' 时才跳过这两项检查。
+	ADMIN_LOGIN_CREDENTIALS_ONLY: process.env.ADMIN_LOGIN_CREDENTIALS_ONLY === 'true',
 	ADMIN_LOGIN_EXPIRE: 86400, //管理员token过期时间 (秒) 
 
 	// ### 邀请小程序码

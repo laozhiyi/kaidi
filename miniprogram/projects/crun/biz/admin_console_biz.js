@@ -78,12 +78,12 @@ function time(value, short = false) {
 }
 const STATUS = { 0: '待接单', 1: '已接单', 4: '已取件', 2: '待收货', 3: '异常处理中', 9: '已完成', 99: '已取消' };
 const TONES = { 0: 'amber', 1: 'blue', 4: 'blue', 2: 'amber', 3: 'red', 9: 'green', 99: 'muted' };
-const ACTIONS = { publish: '发布订单', edit: '修改订单', accept: '接取订单', pickup: '确认取件', deliver: '提交送达凭证', update_proof: '更新送达凭证', complete: '确认完成', confirm: '确认收货', cancel: '取消订单', exception: '上报异常', hold: '管理员介入', resume: '恢复配送', resolve: '处理异常', resolve_resume: '恢复配送', resolve_cancel: '取消订单', resolve_complete: '确认完成', expire: '订单到期关闭', overdue: '发送超时提醒' };
+const ACTIONS = { publish: '发布订单', edit: '修改订单', accept: '接取订单', pickup: '确认取件', deliver: '提交送达凭证', update_proof: '更新送达凭证', price_propose: '骑手申请调价', price_respond: '发布人处理调价', release: '骑手放弃接单', complete: '确认完成', confirm: '确认收货', cancel: '取消订单', exception: '上报异常', hold: '管理员介入', resume: '恢复配送', resolve: '处理异常', resolve_resume: '恢复配送', resolve_cancel: '取消订单', resolve_complete: '确认完成', expire: '订单到期关闭', overdue: '发送超时提醒', media_purge: '清理凭证' };
 function order(row) {
   const obj = row.MAIL_OBJ || {};
   const progress = MailUI.progress(row);
   return { ...row, MAIL_OBJ: obj, statusLabel: row.status || STATUS[row.MAIL_STATUS] || '状态未知', tone: TONES[row.MAIL_STATUS] || 'muted',
-    orderNo: row.MAIL_ID || row._id, deliveryAddress: Address.formatOrderAddress(row), createdText: time(row.MAIL_ADD_TIME), dueText: time(row.MAIL_DUE_TIME), endText: time(row.MAIL_END_TIME), expectText: time(row.MAIL_EXPECT_TIME) || time(row.MAIL_END_TIME), requirementText: MailUI.requirementText(row),
+    orderNo: row.MAIL_ID || row._id, deliveryAddress: Address.formatOrderAddress(row), createdText: time(row.MAIL_ADD_TIME), dueText: time(row.MAIL_DUE_TIME), endText: time(row.MAIL_END_TIME), expectText: time(row.MAIL_EXPECT_TIME) || time(row.MAIL_END_TIME), requirementText: MailUI.requirementText(row), mediaPurge: MailUI.mediaPurgeNotice(row),
     priceText: Number.isFinite(Number(obj.price)) ? Number(obj.price).toFixed(2) : '—',
     showProgress: progress.visible, steps: progress.steps,
     history: (row.MAIL_HISTORY || []).filter(Boolean).map((item, index) => ({ ...item, key: item.id || String(index), timeText: time(item.at), label: ACTIONS[item.action] || '更新订单', actorText: ({ admin: '管理员', poster: '发布人', rider: '接单人', system: '系统' })[item.actor] || '系统' })),
@@ -173,6 +173,13 @@ function userProfile(row) {
   const role = ['super', 'admin', 'service'].includes(base.USER_ROLE) ? base.USER_ROLE : '';
   return {
     ...base, role, roleLabel: ROLE_LABELS[role] || '无',
+    // 姓名与手机号是审核时的核对依据；客服拿到的手机号在服务端已打码。
+    name: plainText(row && row.USER_NAME) || '无',
+    mobile: plainText(row && row.USER_MOBILE) || '无',
+    // 待审核用户：客服可只读核对学号与学生证（图片已由服务端换成短期链接）。
+    audit: row && row.USER_AUDIT && typeof row.USER_AUDIT === 'object'
+      ? { studentId: plainText(row.USER_AUDIT.studentId) || '无', studentCard: imageList(row.USER_AUDIT.studentCard), error: row.USER_AUDIT.error || '' }
+      : null,
     roleTime: role ? time(base.USER_ROLE_TIME) : '—',
     registers: REGISTER_FIELDS.map(([mark, label]) => ({ key: mark, label, value: text(mark) || '无' })),
     studentCard: images('studentCard'),

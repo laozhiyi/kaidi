@@ -7,11 +7,15 @@ const store = require('./operation_store.js');
 const rules = require('./order_rules.js');
 const profileRules = require('./profile_rules.js');
 const media = require('./private_media_service.js');
-const REQUEST_ROUTES = {publish:'mail/insert',edit:'mail/edit',accept:'mail/accept',pickup:'mail/pickup',cancel:'mail/cancel',deliver:'mail/deliver',update_proof:'mail/update_proof',confirm:'mail/finish',exception:'mail/exception',remind:'mail/remind',auto_confirm:'mail/auto_confirm',archive:'mail/del',hold:'admin/operations_hold',resolve:'admin/operations_resolve',admin_delete:'admin/operations_delete_order'};
+const REQUEST_ROUTES = {publish:'mail/insert',edit:'mail/edit',accept:'mail/accept',pickup:'mail/pickup',cancel:'mail/cancel',deliver:'mail/deliver',update_proof:'mail/update_proof',price_propose:'mail/price_propose',price_respond:'mail/price_respond',release:'mail/release',confirm:'mail/finish',exception:'mail/exception',remind:'mail/remind',auto_confirm:'mail/auto_confirm',archive:'mail/del',hold:'admin/operations_hold',resolve:'admin/operations_resolve',admin_delete:'admin/operations_delete_order'};
 // 送达后 8 小时内未确认收货，由订单维护任务自动确认。
 const AUTO_CONFIRM_MS = 8 * 3600000;
 // 「提醒发布人收货」的冷却：同一订单 5 分钟内只允许提醒一次，避免刷消息。
 const REMIND_COOLDOWN_MS = 5 * 60000;
+// 价格协商：骑手到快递点发现包裹比所选大小大，可在取件前申请调价，由发布人同意或拒绝。
+// 每单最多申请 3 次；提交取件凭证即视为确认包裹大小，此后不能再调价。
+const PRICE_ADJUST_MAX = 3;
+const yuan = cents => (cents / 100).toFixed(2);
 class MailService extends Base {
  getStatusDesc(mail) { return rules.project(mail, '').status; }
  getFormObj(forms) { return Object.fromEntries((forms || []).map(x => [x.mark,x.val])); }
@@ -89,7 +93,7 @@ class MailService extends Base {
   });
   const title = message && message.title || (action === 'update_proof' ? '送达凭证已更新' : '订单状态更新');
   const content = message && message.content || (action === 'update_proof' ? '骑手已更新送达说明或照片，请核对后确认收货' : rules.LABELS[mail.MAIL_STATUS]);
-  const recipients = message && message.only === 'poster' ? [mail.MAIL_USER_ID] : [mail.MAIL_USER_ID, mail.MAIL_ACCEPT_USER_ID];
+  const recipients = message && message.only === 'poster' ? [mail.MAIL_USER_ID] : message && message.only === 'rider' ? [mail.MAIL_ACCEPT_USER_ID] : [mail.MAIL_USER_ID, mail.MAIL_ACCEPT_USER_ID];
   for (const userId of new Set(recipients.filter(Boolean))) {
    await store.set(tx,'notification',store.key(event.id,userId),{ _pid:this.getProjectId(), userId, orderId:mail._id, title, content, action, createdAt:now, read:false, delivery:'pending', attempts:0, nextAttemptAt:now });
   }
@@ -134,6 +138,7 @@ class MailService extends Base {
     rules.requireOpen(config,now);
     if (state !== 0 || mail.MAIL_ACCEPT_USER_ID) this.AppError('该订单已被接取或状态已变化，请查看其他订单');
     if (poster) this.AppError('不能接取自己发布的订单');
+    if ((mail.MAIL_RELEASED_RIDERS || []).includes(userId)) this.AppError('你已放弃过这个订单，不能再次接单');
     if (mail.MAIL_END_TIME <= now) this.AppError('该订单已超过接单截止时间');
     if (mail.MAIL_PAYMENT_MODE !== 'offline') this.AppError('旧支付订单须先由管理员核对，不能直接接单');
     if (!store.scope() && !config.campuses.includes(mail.MAIL_OBJ.campus)) this.AppError('该订单校区暂不在服务范围');
@@ -157,6 +162,49 @@ class MailService extends Base {
     if (!proof.length && !video) this.AppError('取件请上传至少1张凭证照片或1段视频');
     mail.MAIL_PICKUP_PROOF = {images:proof, video, note:rules.text(input.note || '','取件说明',300,false), at:now};
     mail.MAIL_STATUS = 4; mail.MAIL_PICKUP_TIME = now;
+   } else if (action === 'price_propose') {
+    if (!rider || state !== 1) this.AppError('仅已接单、尚未提交取件凭证的骑手可申请调价');
+    if ((mail.MAIL_OBJ.serviceType || 'take') !== 'take') this.AppError('仅快递代取订单可申请调价');
+    const old = mail.MAIL_PRICE_ADJUST || null;
+    if (old && old.status === 'pending') this.AppError('上一次调价申请尚未处理，请等待发布人回复');
+    const count = Number(old && old.count || 0);
+    if (count >= PRICE_ADJUST_MAX) this.AppError('本单调价申请已达' + PRICE_ADJUST_MAX + '次，如有争议请提交异常');
+    const raw = String(input.price == null ? '' : input.price).trim();
+    if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) this.AppError('请填写有效的新价格（最多两位小数）');
+    const from = Number(mail.MAIL_TOTAL_FEE), to = Math.round(Number(raw) * 100);
+    if (!Number.isSafeInteger(to) || to <= from) this.AppError('新价格须高于当前价格 ¥' + yuan(from));
+    if (to > 1000000) this.AppError('新价格不能超过 ¥10000');
+    note = rules.text(input.reason || '','调价理由',100,true);
+    const base = old && Number.isSafeInteger(old.base) ? old.base : from;
+    mail.MAIL_PRICE_ADJUST = { status:'pending', from, to, base, reason:note, at:now, count:count + 1 };
+    message = { only:'poster', title:'骑手申请调整费用', content:'骑手取件时发现包裹与所选大小不符，申请将费用由 ¥' + yuan(from) + ' 调整为 ¥' + yuan(to) + '，请在订单详情中同意或拒绝' };
+   } else if (action === 'price_respond') {
+    if (!poster || state !== 1) this.AppError('仅发布人可在骑手取件前处理调价申请');
+    const pending = mail.MAIL_PRICE_ADJUST;
+    if (!pending || pending.status !== 'pending') this.AppError('没有待处理的调价申请');
+    if (!['agree','reject'].includes(input.decision)) this.AppError('处理方式无效');
+    const agree = input.decision === 'agree';
+    if (agree && Number(mail.MAIL_TOTAL_FEE) !== pending.from) this.AppError('订单费用已变化，请刷新后重试');
+    if (agree) { mail.MAIL_TOTAL_FEE = pending.to; mail.MAIL_OBJ = { ...mail.MAIL_OBJ, price:pending.to / 100 }; }
+    mail.MAIL_PRICE_ADJUST = { ...pending, status:agree ? 'agreed' : 'rejected', respondedAt:now };
+    note = (agree ? '同意调价 ¥' : '拒绝调价 ¥') + yuan(pending.from) + ' → ¥' + yuan(pending.to);
+    message = { only:'rider', title:agree ? '发布人已同意调价' : '发布人未同意调价',
+     content:agree ? '本单费用已调整为 ¥' + yuan(pending.to) + '，请按约取件' : '本单仍按 ¥' + yuan(pending.from) + ' 计费；如有争议可联系发布人或提交异常' };
+   } else if (action === 'release') {
+    // 调价被拒后，骑手可以放弃接单；订单按原价重新上架，其他骑手可接，放弃的骑手不能再接这一单。
+    if (!rider || state !== 1) this.AppError('仅已接单、尚未取件的骑手可放弃接单');
+    if (!mail.MAIL_PRICE_ADJUST || mail.MAIL_PRICE_ADJUST.status !== 'rejected') this.AppError('调价申请被拒绝后才能放弃接单；其他情况请提交异常');
+    await this._quota(tx,userId,'rider',id,false,config.maxActiveOrders);
+    // 之前同意过的调价只对这位骑手有效：重新上架时恢复发布人最初的价格。
+    const base = Number.isSafeInteger(mail.MAIL_PRICE_ADJUST.base) ? mail.MAIL_PRICE_ADJUST.base : mail.MAIL_PRICE_ADJUST.from;
+    if (Number.isSafeInteger(base) && base > 0 && base !== Number(mail.MAIL_TOTAL_FEE)) { mail.MAIL_TOTAL_FEE = base; mail.MAIL_OBJ = { ...mail.MAIL_OBJ, price:base / 100 }; }
+    const fee = (Number(mail.MAIL_TOTAL_FEE) / 100).toFixed(2);
+    note = '调价未达成，骑手放弃接单，订单按原价 ¥' + fee + ' 重新发布';
+    mail.MAIL_RELEASED_RIDERS = [...new Set([...(mail.MAIL_RELEASED_RIDERS || []), userId])].slice(-20);
+    mail.MAIL_STATUS = 0; mail.MAIL_ACCEPT_USER_ID = ''; mail.MAIL_ACCEPT_USER_NAME = '';
+    delete mail.MAIL_ACCEPT_TIME; delete mail.MAIL_DUE_TIME; mail.MAIL_PRICE_ADJUST = null;
+    const expired = !(mail.MAIL_END_TIME > now);
+    message = { only:'poster', title:'骑手已放弃接单', content:expired ? '调价未达成，骑手已放弃接单；订单已过接单截止时间，请编辑后重新发布' : '调价未达成，骑手已放弃接单，订单已按原价 ¥' + fee + ' 重新发布，等待其他骑手接单' };
    } else if (action === 'cancel') {
     if (!poster || state !== 0) this.AppError('只有发布者可取消待接单订单；已接单请提交异常申请'); mail.MAIL_STATUS = 99; note = rules.text(input.note || '发布者取消','取消原因',300,true);
    } else if (action === 'deliver') {
@@ -193,6 +241,7 @@ class MailService extends Base {
     if (!['resume','cancel','complete'].includes(input.resolution)) this.AppError('处理方式无效');
     mail.MAIL_STATUS = input.resolution === 'resume' ? mail.MAIL_EXCEPTION.previousStatus : input.resolution === 'cancel' ? 99 : 9;
     if (![0,1,2,4,9,99].includes(mail.MAIL_STATUS)) this.AppError('异常订单原状态无效'); if (mail.MAIL_STATUS === 9) mail.MAIL_OVER_TIME = now;
+    if (mail.MAIL_STATUS === 2) { mail.MAIL_DELIVERED_TIME = now; mail.MAIL_AUTO_CONFIRM_AT = now + AUTO_CONFIRM_MS; }
     mail.MAIL_EXCEPTION = {...mail.MAIL_EXCEPTION,resolution:input.resolution,resolvedAt:now,resolvedBy:adminId,result:note};
    } else if (action === 'edit') {
     if (!poster || state !== 0) this.AppError('仅可编辑尚未被接取的订单'); const normalized = rules.validateForms(input.forms,config,now);
@@ -203,7 +252,11 @@ class MailService extends Base {
    } else if (action === 'archive') {
     if (!poster || ![9,99].includes(state)) this.AppError('仅可隐藏已结束的本人订单'); mail.MAIL_POSTER_ARCHIVED = true;
    } else this.AppError('不支持的订单操作');
+   if (mail.MAIL_STATUS !== 1 && mail.MAIL_PRICE_ADJUST && mail.MAIL_PRICE_ADJUST.status === 'pending') {
+    mail.MAIL_PRICE_ADJUST = { ...mail.MAIL_PRICE_ADJUST, status:'withdrawn', respondedAt:now };
+   }
    if ([9,99].includes(mail.MAIL_STATUS) && ![9,99].includes(state)) {
+    mail.MAIL_END_AT = now;
     await this._quota(tx,mail.MAIL_USER_ID,'poster',id,false,config.maxOpenOrders);
     if (oldRider) await this._quota(tx,oldRider,'rider',id,false,config.maxActiveOrders);
    }
@@ -214,8 +267,12 @@ class MailService extends Base {
  // 送达后 8 小时未确认收货，系统自动确认（见 maintenance_service）。
  static get AUTO_CONFIRM_MS() { return AUTO_CONFIRM_MS; }
  static get REMIND_COOLDOWN_MS() { return REMIND_COOLDOWN_MS; }
+ static get PRICE_ADJUST_MAX() { return PRICE_ADJUST_MAX; }
  async acceptMail(userId,id,input) { return this._change(userId,id,'accept',input); }
  async pickupMail(userId,id,input) { return this._change(userId,id,'pickup',input); }
+ async proposePrice(userId,id,input) { return this._change(userId,id,'price_propose',input); }
+ async respondPrice(userId,id,input) { return this._change(userId,id,'price_respond',input); }
+ async releaseMail(userId,id,input) { return this._change(userId,id,'release',input); }
  async remindReceipt(userId,id,input = {}) {
   this._request(input.requestId);
   if (typeof id !== 'string' || !id || id.length > 100) this.AppError('订单标识无效');
@@ -280,6 +337,8 @@ class MailService extends Base {
    }
    await store.limitInTransaction(tx,this.getProjectId(),adminId,'order_delete',30,60000);
    mail.MAIL_ADMIN_DELETED = true; mail.MAIL_ADMIN_DELETED_AT = Date.now(); mail.MAIL_ADMIN_DELETED_BY = adminId;
+   // 管理员删除也视为结束：记录统一结束时间，供后续清理与统计使用。
+   if (!mail.MAIL_END_AT) mail.MAIL_END_AT = mail.MAIL_ADMIN_DELETED_AT;
    await this._quota(tx,mail.MAIL_USER_ID,'poster',id,false,0);
    if (mail.MAIL_ACCEPT_USER_ID) await this._quota(tx,mail.MAIL_ACCEPT_USER_ID,'rider',id,false,0);
    await this._record(tx,mail,{adminId},'admin_delete',input.requestId,'管理员删除订单',fingerprint);
@@ -385,7 +444,7 @@ class MailService extends Base {
   order = { ...order, _id: 'desc' };
   // Resolve submitted addresses and legacy milestone times before removing
   // private forms and event history from the response below.
-  const fields = '_id,_pid,MAIL_ID,MAIL_USER_ID,MAIL_ACCEPT_USER_ID,MAIL_STATUS,MAIL_END_TIME,MAIL_EXPECT_TIME,MAIL_ADD_TIME,MAIL_ACCEPT_TIME,MAIL_PICKUP_TIME,MAIL_OVER_TIME,MAIL_TOTAL_FEE,MAIL_PAYMENT_MODE,MAIL_CATE_ID,MAIL_CATE_NAME,MAIL_DUE_TIME,MAIL_DELIVERED_TIME,MAIL_OBJ,MAIL_FORMS,MAIL_HISTORY,MAIL_VERSION';
+  const fields = '_id,_pid,MAIL_ID,MAIL_USER_ID,MAIL_ACCEPT_USER_ID,MAIL_STATUS,MAIL_END_TIME,MAIL_EXPECT_TIME,MAIL_ADD_TIME,MAIL_ACCEPT_TIME,MAIL_PICKUP_TIME,MAIL_OVER_TIME,MAIL_TOTAL_FEE,MAIL_PAYMENT_MODE,MAIL_CATE_ID,MAIL_CATE_NAME,MAIL_DUE_TIME,MAIL_DELIVERED_TIME,MAIL_OBJ,MAIL_FORMS,MAIL_HISTORY,MAIL_VERSION,MAIL_PRICE_ADJUST';
   const field = Object.keys(order)[0], direction = order[field];
   const cursor = input.cursor;
   if (cursor && (typeof cursor !== 'object' || cursor.field !== field || cursor.direction !== direction

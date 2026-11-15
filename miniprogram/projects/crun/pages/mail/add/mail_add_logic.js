@@ -29,15 +29,18 @@ const SIZE_GUIDE = [
 		examples: '大号整理箱、小型家电（微波炉、小洗衣机）、整箱矿泉水（24瓶）、大号毛绒玩具、组装家具包裹。' },
 ];
 
+// 订单里保存的小费（整元）；老订单与非快递代取为 0。
+function serviceTypeTip(obj) { const tip = Number(obj && obj.tip); return (obj && (obj.serviceType || 'take') === 'take') && Number.isFinite(tip) && tip > 0 ? Math.round(tip * 100) / 100 : 0; }
+
 module.exports = {
 	data: {
 		isLoad: false,
 		serviceType: 'take', serviceName: '快递代取', serviceForm:'parcel-fields',
 		serviceState: { kind: 'loading', canPublish: false }, campusIndex: 0,
 		packageTypes: [
-			{ mark: 'small', label: '小件', price: '1.50', count: 0, hint: '<3kg，如文件、小盒' },
-			{ mark: 'medium', label: '中件', price: '3.00', count: 0, hint: '3-10kg，如鞋盒、抽纸' },
-			{ mark: 'large', label: '大件', price: '5.00', count: 0, hint: '>10kg，如整箱水、大号收纳箱' },
+			{ mark: 'small', label: '小件', price: '1.50', count: 0 },
+			{ mark: 'medium', label: '中件', price: '3.00', count: 0 },
+			{ mark: 'large', label: '大件', price: '5.00', count: 0 },
 		],
 		totalCount: 0,
 		totalFee: '0.00',
@@ -45,6 +48,10 @@ module.exports = {
 		urgent: false,
 		riderGender: 'any',
 		upstairs: false,
+		tip: 0,
+		tipInput: '',
+		tipError: '',
+		payTotal: '0.00',
 		sizeGuide: SIZE_GUIDE,
 		sizeGuideMark: '',
 		sizeGuideItem: null,
@@ -232,7 +239,7 @@ module.exports = {
    else this.setData({ packagePickupNumber: index + 1 });
   }
  },
- _refreshFee(){const reference=this.data.packageTypes.reduce((sum,x,i)=>sum+x.count*this._prices[i],0);const total=this.data.packageItems.length ? this.data.packageItems.reduce((sum,x)=>sum+(Number(x.price)||0),0) : reference;const referencePrice=reference.toFixed(2);this.setData({totalFee:total.toFixed(2),referencePrice});this._setFormVal('price',total.toFixed(2));},
+ _refreshFee(){const reference=this.data.packageTypes.reduce((sum,x,i)=>sum+x.count*this._prices[i],0);const total=this.data.packageItems.length ? this.data.packageItems.reduce((sum,x)=>sum+(Number(x.price)||0),0) : reference;const referencePrice=reference.toFixed(2);this.setData({totalFee:total.toFixed(2),payTotal:((Math.round(total*100)+(this.data.serviceType==='take'?Math.round((Number(this.data.tip)||0)*100):0))/100).toFixed(2),referencePrice});this._setFormVal('price',total.toFixed(2));},
  bindPackageItemInput(e){const index=Number(e.currentTarget.dataset.index);const mark=e.currentTarget.dataset.mark;let items=this.data.packageItems.map((item,i)=>i===index?{...item,[mark]:e.detail.value}:item); if(mark==='code' && String(e.detail.value || '').trim() && items[index] && items[index].images && items[index].images.length){ items[index]=Object.assign({},items[index],{images:[],imagePreviews:[]}); } this.setData({packageItems:items});this._setFormVal('packages',items);if(mark==='price')this._refreshFee();},
  bindCustomPrice(e){const value=String(e.detail.value||'').replace(/[^0-9.]/g,'');this.setData({customPrice:value});this._setFormVal('price',value);},
 
@@ -269,9 +276,9 @@ module.exports = {
 			const packageValue = Array.isArray(obj.packages) ? obj.packages : findStoredFormVal('packages', []);
 			const storedPackages = Array.isArray(packageValue) ? packageValue : [];
 			const packageTypes = [
-				{ mark: 'small', label: '小件', price: '1.50', count: small, hint: '<3kg，如文件、小盒' },
-				{ mark: 'medium', label: '中件', price: '3.00', count: medium, hint: '3-10kg，如鞋盒、抽纸' },
-				{ mark: 'large', label: '大件', price: '5.00', count: large, hint: '>10kg，如整箱水、大号收纳箱' },
+				{ mark: 'small', label: '小件', price: '1.50', count: small },
+				{ mark: 'medium', label: '中件', price: '3.00', count: medium },
+				{ mark: 'large', label: '大件', price: '5.00', count: large },
 			];
 			// 件数至少 1（如果数据库里全是 0，兜底成 1 件小件）
 			if (small + medium + large === 0) {
@@ -332,7 +339,9 @@ module.exports = {
 			const formCateId = String(mail.MAIL_CATE_ID || this.data.formCateId || '');
 
 			// 总价 = 件数档位价求和（数据库里存的 price 是发布人定价，保留）
-			const totalFee = String(obj.price != null ? obj.price : findFormVal('price', '1.50'));
+			const tip = serviceTypeTip(obj);
+			const payTotal = String(obj.price != null ? obj.price : findFormVal('price', '1.50'));
+			const totalFee = tip ? ((Math.round(Number(payTotal) * 100) - Math.round(tip * 100)) / 100).toFixed(2) : payTotal;
 			const totalCount = (small + medium + large) || 1;
 			// Older orders stored one pickup point for the whole order; migrate it into each parcel when editing.
 			const legacyPickup = String(obj.address1 || findFormVal('address1', ''));
@@ -360,6 +369,10 @@ module.exports = {
 				urgent: !!obj.urgent,
 				riderGender: this._riderGender(obj.riderGender),
 				upstairs: obj.upstairs === true,
+				tip,
+				tipInput: tip ? String(tip) : '',
+				tipError: '',
+				payTotal: Number(payTotal).toFixed(2),
                 customPrice: totalFee,
 				moreRequirements: !!obj.desc,
 			}, () => {
@@ -650,6 +663,14 @@ module.exports = {
 		this._setFormVal('riderGender', riderGender);
 	},
 
+	// 小费由发布人自定义：选填，0~20 元，最多两位小数；不合法时不计入合计并提示。
+	bindTipInput: function (e) {
+		const tipInput = String(e.detail.value || '').trim();
+		const valid = !tipInput || (/^\d{1,2}(\.\d{1,2})?$/.test(tipInput) && Number(tipInput) <= 20);
+		this.setData({ tipInput, tip: valid && tipInput ? Number(tipInput) : 0, tipError: valid ? '' : '小费须在0至20元之间，最多两位小数' });
+		this._refreshFee();
+	},
+
 	bindUpstairsTap: function (e) {
 		const upstairs = e.currentTarget.dataset.value === 'true';
 		this.setData({ upstairs });
@@ -735,7 +756,7 @@ module.exports = {
 		// These flags protect this order's draft, not all future orders on the home page.
 		this._profileEdited = {};
 		const packageTypes = (this.data.packageTypes || []).map((item, index) => Object.assign({}, item, { count: index === 0 ? initialCount : 0 }));
-		this.setData({ editId: '', mailId: '', formEnd: end, formEndFocus: '', mailValues, proofImages: [], proofPreview: {}, packageItems: [], packageTypes, totalCount: initialCount, totalFee: initialCount ? firstPrice : '0.00', urgent: false, riderGender: 'any', upstairs: false, campus, campusIndex: Math.max(0, (this.data.campuses || []).indexOf(campus)) });
+		this.setData({ editId: '', mailId: '', formEnd: end, formEndFocus: '', mailValues, proofImages: [], proofPreview: {}, packageItems: [], packageTypes, totalCount: initialCount, totalFee: initialCount ? firstPrice : '0.00', urgent: false, riderGender: 'any', upstairs: false, tip: 0, tipInput: '', tipError: '', campus, campusIndex: Math.max(0, (this.data.campuses || []).indexOf(campus)) });
 		this._syncPackageItems([]);
 		this._setFormVal('title', this.data.serviceName);
 		this.bindClosePackagePickup();
@@ -799,6 +820,7 @@ module.exports = {
    if(!await PassportBiz.loginForPublish(this, 'cancel'))return;
    const packages = Array.isArray(this.data.packageItems) ? this.data.packageItems : [];
    if (!packages.length) throw new Error('请至少选择1件包裹');
+   if (this.data.serviceType === 'take' && this.data.tipError) throw new Error(this.data.tipError);
    const missingPickup = packages.findIndex(item => !String(item.pickupPoint || '').trim());
    if (missingPickup >= 0) throw new Error(this.data.serviceType === 'buy' ? '请填写购买地点' : '请填写第' + (missingPickup + 1) + '件包裹的取件点');
    if (packages.some(item => !/^\d+(?:\.\d{1,2})?$/.test(String(item.price)) || Number(item.price) < 0.01 || Number(item.price) > 10000)) throw new Error('跑腿费须在0.01至10000元之间，最多保留两位小数');
@@ -823,6 +845,7 @@ module.exports = {
    if(this.data.serviceType === 'take'){
     forms.push({mark:'riderGender',title:'骑手性别',type:'text',val:this._riderGender(this.data.riderGender)});
     forms.push({mark:'upstairs',title:'送上楼',type:'switch',val:this.data.upstairs === true});
+    forms.push({mark:'tip',title:'小费',type:'text',val:this.data.tip ? Number(this.data.tip).toFixed(2) : '0'});
    }
    forms.push({mark:'title',title:'任务名称',type:'text',val:this.data.serviceName});
    for (const mark of plugin.extraFields) forms.push({mark,title:mark,type:'text',val:this.data.mailValues[mark]});

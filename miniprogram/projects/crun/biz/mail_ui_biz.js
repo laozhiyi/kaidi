@@ -109,6 +109,57 @@ function requirementText(mail) {
  if (obj.upstairs === true) parts.push('需送上楼');
  return parts.join(' · ');
 }
+// 订单卡片上的配送要求标签，随状态变化：性别要求只在待接单时有意义（接单时已校验），
+// 送上楼在送达前（待接单 / 已接单 / 已取件）都要提醒；送达后不再展示。详情页仍用 requirementText 完整留档。
+function requirementTags(mail) {
+ const obj = mail && mail.MAIL_OBJ || {};
+ if (!mail || (obj.serviceType || 'take') !== 'take') return [];
+ const status = Number(mail.MAIL_STATUS);
+ const tags = [];
+ if (status === 0 && obj.riderGender === 'female') tags.push({ key: 'gender', text: '仅限女生', tone: 'female' });
+ else if (status === 0 && obj.riderGender === 'male') tags.push({ key: 'gender', text: '仅限男生', tone: 'male' });
+ if ([0, 1, 4].includes(status) && obj.upstairs === true) tags.push({ key: 'upstairs', text: '需送上楼', tone: 'upstairs' });
+ return tags;
+}
+// 价格协商（仅快递代取）：骑手在取件前可申请调价，发布人同意或拒绝；提交取件凭证后锁定。
+const PRICE_ADJUST_MAX = 3;
+function priceAdjust(mail) {
+ const obj = mail && mail.MAIL_OBJ || {}, adjust = mail && mail.MAIL_PRICE_ADJUST || null;
+ const status = mail ? Number(mail.MAIL_STATUS) : -1;
+ const empty = { visible: false, pending: false, canPropose: false, canRespond: false };
+ if (!mail || (obj.serviceType || 'take') !== 'take' || !(mail.mypost || mail.myaccept)) return empty;
+ const money = cents => (Number(cents) / 100).toFixed(2);
+ const used = Number(adjust && adjust.count || 0);
+ const pending = !!adjust && adjust.status === 'pending' && status === 1;
+ const canPropose = !!mail.myaccept && status === 1 && !pending && used < PRICE_ADJUST_MAX;
+ // 调价被拒后骑手可以放弃接单，订单按原价重新上架。
+ const canRelease = !!mail.myaccept && status === 1 && !!adjust && adjust.status === 'rejected';
+ const info = adjust ? { from: money(adjust.from), to: money(adjust.to), reason: adjust.reason || '' } : {};
+ let tone = '', title = '', note = '';
+ if (pending) {
+  tone = 'pending';
+  title = mail.mypost ? '骑手申请调整费用' : '调价申请等待发布人确认';
+  note = mail.mypost ? '同意后本单费用改为新价格；拒绝则仍按原价' : '发布人处理前也可以先取件，但提交取件凭证会自动撤回申请';
+ } else if (adjust && adjust.status === 'agreed') {
+  tone = 'agreed'; title = '发布人已同意调价'; note = '本单费用已调整为 ¥' + info.to;
+ } else if (adjust && adjust.status === 'rejected') {
+  tone = 'rejected'; title = '发布人未同意调价'; note = '本单仍按 ¥' + info.from + ' 计费' + (mail.myaccept ? '；不合适可以放弃接单，订单会按原价重新发布给其他骑手' : '');
+ } else if (adjust && adjust.status === 'withdrawn') {
+  tone = 'withdrawn'; title = '调价申请已撤回'; note = '骑手已提交取件凭证，本单按 ¥' + info.from + ' 计费';
+ }
+ return { visible: !!tone || canPropose, tone, title, note, pending, canPropose, canRelease, canRespond: pending && !!mail.mypost,
+  hasRecord: !!tone, left: Math.max(0, PRICE_ADJUST_MAX - used), ...info };
+}
+// 订单结束后 10 天清理凭证：已清理显示日期，已结束未清理显示预告，其余状态不显示。
+function mediaPurgeNotice(mail) {
+ const status = mail.MAIL_STATUS == null ? -1 : Number(mail.MAIL_STATUS);
+ if (mail.MAIL_MEDIA_PURGED_AT) {
+  const at = time(mail.MAIL_MEDIA_PURGED_AT);
+  return { purged: true, text: at ? '凭证照片和视频已于 ' + at.slice(0, 10) + ' 清理' : '凭证照片和视频已清理' };
+ }
+ if ([9, 99].includes(status)) return { purged: false, text: '订单结束 10 天后将自动清理凭证照片和视频' };
+ return { purged: false, text: '' };
+}
 function detail(mail, now = Date.now()) {
  const obj = mail.MAIL_OBJ || {}, status = mail.MAIL_STATUS == null ? -1 : Number(mail.MAIL_STATUS);
  const serviceType = obj.serviceType || 'take';
@@ -136,7 +187,7 @@ function detail(mail, now = Date.now()) {
  else if (participant && mail.mypost && status === 2) { primary = 'confirm'; primaryLabel = '确认收货'; }
  else if (participant && status === 9 && (mail.MAIL_CAN_REVIEW || mail.MAIL_REVIEWED)) { primary = 'review'; primaryLabel = mail.MAIL_REVIEWED ? '查看我的评价' : '评价对方'; }
  else if (phone) { primary = 'contact'; primaryLabel = mail.mypost ? '联系骑手' : '联系发布者'; }
- const actions = { overdue: '已超过预计送达时间', archive: '订单已归档', expire: '已超过接单截止时间', hold: '管理员已介入', resume: '配送已恢复', admin_cancel: '管理员已取消订单', admin_finish: '管理员已完结订单', publish: '订单已发布', accept: '骑手已接单', pickup: '骑手已取件，开始配送', edit: '订单信息已更新', deliver: '骑手已提交送达凭证', update_proof: '骑手已更新送达凭证', finish: '已确认收货', confirm: '已确认收货', cancel: '订单已取消', exception: '已提交配送异常', resolve: '异常处理已更新' };
+ const actions = { overdue: '已超过预计送达时间', archive: '订单已归档', expire: '已超过接单截止时间', hold: '管理员已介入', resume: '配送已恢复', admin_cancel: '管理员已取消订单', admin_finish: '管理员已完结订单', publish: '订单已发布', accept: '骑手已接单', pickup: '骑手已取件，开始配送', edit: '订单信息已更新', deliver: '骑手已提交送达凭证', update_proof: '骑手已更新送达凭证', price_propose: '骑手申请调整费用', price_respond: '发布人已处理调价申请', release: '骑手放弃接单，订单已重新发布', finish: '已确认收货', confirm: '已确认收货', cancel: '订单已取消', exception: '已提交配送异常', resolve: '异常处理已更新', media_purge: '凭证照片和视频已清理' };
  const history = mail.mypost && Array.isArray(mail.MAIL_HISTORY) ? mail.MAIL_HISTORY.filter(x => x && typeof x === 'object').map((x, i) => ({
   id: x.id || String(i), title: actions[x.action] || '订单状态已更新', note: x.note || '',
   actor: x.actor === 'admin' ? '管理员' : x.actor === 'poster' ? '发布者' : x.actor === 'rider' ? '骑手' : '系统', time: time(x.at) || '时间待确认'
@@ -155,7 +206,7 @@ function detail(mail, now = Date.now()) {
   step: orderProgress.step, showProgress: orderProgress.visible, steps: orderProgress.steps, deliveryAddress: Address.formatOrderAddress(mail),
   phone: phone || '', phoneDisplay: maskPhone(phone), contactName: contactName || (mail.mypost ? (status === 0 && !expired ? '等待骑手接单' : '暂无骑手信息') : '发布者'), contactRole: mail.mypost ? '接单骑手' : '订单发布者',
   createdAt: time(mail.MAIL_ADD_TIME), endAt: time(mail.MAIL_END_TIME) || time(mail.end2), expectAt: expectSpan(mail), dueAt: time(mail.MAIL_DUE_TIME), deliveredAt: time(mail.MAIL_DELIVERED_TIME),
-  requirementText: requirementText(mail),
+  requirementText: requirementText(mail), mediaPurge: mediaPurgeNotice(mail), priceAdjust: priceAdjust(mail), tipText: serviceType === 'take' && Number(obj.tip) > 0 ? '含小费 ¥' + Number(obj.tip) : '',
   autoConfirmAt: time(mail.MAIL_AUTO_CONFIRM_AT), autoConfirmed: mail.MAIL_AUTO_CONFIRMED === true,
   deliveryMode: mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.mode || '', deliveryModeLabel: mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.mode === 'face' ? '当面交付' : mail.MAIL_DELIVERY_PROOF ? '放置指定位置' : '',
   proofVideo: mail.MAIL_MEDIA && mail.MAIL_MEDIA.proofVideo && mail.MAIL_MEDIA.proofVideo[0] || '',
@@ -166,4 +217,4 @@ function detail(mail, now = Date.now()) {
   primary, primaryLabel, receipt: receipt(mail, now), history, canException: participant && [1, 2, 4].includes(status), canCancel: !!mail.mypost && status === 0
  };
 }
-module.exports = { time, service, receipt, progress, detail, requirementText, deliveryAddress: Address.formatOrderAddress };
+module.exports = { time, service, receipt, progress, detail, requirementText, requirementTags, priceAdjust, mediaPurgeNotice, deliveryAddress: Address.formatOrderAddress };

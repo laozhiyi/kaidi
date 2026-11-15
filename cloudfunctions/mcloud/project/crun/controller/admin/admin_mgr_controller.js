@@ -190,7 +190,8 @@ class AdminMgrController extends BaseProjectAdminController {
 	} 
 
 	async clearLog() {
-		await this.isAdmin();
+		// 操作日志是追责依据：只有超级管理员可以清空，普通管理员不能抹掉自己的记录。
+		await this.isSuperAdmin();
 
 		let service = new AdminMgrService();
 		await service.clearLog();

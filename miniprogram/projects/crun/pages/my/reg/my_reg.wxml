@@ -4,7 +4,7 @@
   <block wx:if="{{!phoneLoginEnabled}}">
     <view class="login-brand">
       <view class="login-brand-mark"><text class="icon-cardboard"></text></view>
-      <view class="login-brand-name">GXNU随手取</view>
+      <view class="login-brand-name">云速取</view>
       <view class="login-brand-slogan">校内代取 · 随手就取</view>
     </view>
     <view class="login-card">
@@ -26,7 +26,7 @@
   </block>
   <block wx:else>
     <view class="wechat-login-header">
-      <view class="wechat-login-title">GXNU随手取</view>
+      <view class="wechat-login-title">云速取</view>
       <view class="wechat-login-description">微信登录，开启校园互助</view>
     </view>
     <form bindsubmit="bindProfileFormSubmit">

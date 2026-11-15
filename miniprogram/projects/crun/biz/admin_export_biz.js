@@ -26,7 +26,7 @@ async function generate(page) {
   try {
     const report = await Ops.get(route(page, 'export'), params);
     if (!report || !report.url) throw new Error('报表生成失败，请重试');
-    if (page._visible) { page.setData({ reportUrl: report.url, total: report.total, generatedAt: UI.time(Date.now()), error: '' }); wx.showToast({ title: '报表已生成' }); }
+    if (page._visible) { page.setData({ reportUrl: report.url, total: report.total, generatedAt: UI.time(Date.now()), error: '' }); wx.showToast({ title: '报表已生成，下载链接 1 天内有效，文件保留 2 天', icon: 'none' }); }
   } catch (error) { if (page._visible) Ops.error(error); }
   finally { if (!page._unloaded) page.setData({ busy: false }); }
 }

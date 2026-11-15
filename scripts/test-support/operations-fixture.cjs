@@ -25,11 +25,11 @@ function fixture({ projectFields = false } = {}) {
   return Object.entries(where || {}).every(([k,v])=>{
    if(k==='and')return Array.isArray(v) ? v.every(part=>matches(row,part)) : matches(row,v);
    if(k==='or')return v.some(part=>matches(row,part));
-   const val=field(row,k); if(v instanceof RegExp)return v.test(String(val || '')); if(Array.isArray(v)){const [op,x]=v;return op==='in'?x.includes(val):op==='not in'?!x.includes(val):op==='<'?val<x:op==='>'?val>x:['lte','<='].includes(op)?val<=x:['gte','>='].includes(op)?val>=x:op==='<>'?val!==x:op==='like'?new RegExp(x).test(val):false;}
+   const val=field(row,k); if(v instanceof RegExp)return v.test(String(val || '')); if(Array.isArray(v)){const [op,x]=v;return op==='in'?x.includes(val):op==='not in'?!x.includes(val):op==='<'?val<x:op==='>'?val>x:['lte','<='].includes(op)?val<=x:['gte','>='].includes(op)?val>=x:op==='<>'?val!==x:op==='exists'?(val!==undefined)===x:op==='like'?new RegExp(x).test(val):false;}
    return val===v;
   });
  }
- const command={lt:v=>['<',v],gt:v=>['>',v],lte:v=>['lte',v],gte:v=>['gte',v],neq:v=>['<>',v],in:v=>['in',v],and:v=>({and:v}),or:v=>({or:v}),aggregate:{sum:value=>({sum:value})}};
+ const command={lt:v=>['<',v],gt:v=>['>',v],lte:v=>['lte',v],gte:v=>['gte',v],neq:v=>['<>',v],in:v=>['in',v],exists:v=>['exists',v],and:v=>({and:v}),or:v=>({or:v}),aggregate:{sum:value=>({sum:value})}};
  function collection(name) {
   let where={},sort=[],skip=0,limit=100;name=name.replace(/^bx_/,'');
   const api={where(v){where=v;return api;},field(){return api;},orderBy(k,d){sort.push([k,d]);return api;},skip(v){skip=v;return api;},limit(v){limit=v;return api;},
@@ -50,7 +50,7 @@ function fixture({ projectFields = false } = {}) {
  // SDK-facing helpers (including the global login limiter) use this same
  // rollback-capable adapter; business tests must not bypass those writes.
  db.runTransaction=fn=>store.transaction(fn);
- class Base {constructor(){this._timestamp=Date.now();}getProjectId(){return 'crun';}AppError(message){throw new Error(message);}async insertLog(){}}
+ class Base {constructor(){this._timestamp=Date.now();}getProjectId(){return 'crun';}AppError(message){throw new Error(message);}async insertLog(){}fmtOrderBySort(sortVal,defaultSort){const orderBy={[defaultSort]:'desc'};if(String(sortVal).includes('|')){const [field,order]=String(sortVal).split('|');orderBy[field]=order;if(defaultSort!==field)orderBy[defaultSort]='desc';}return orderBy;}}
  function model(name){return {
   async insert(data){const id=name+'-document-'+(table(name).size+1);table(name).set(id,{_pid:'crun',...clone(data),_id:id});return id;},
   async getOne(w,f){reads.push({name,method:'getOne',fields:f});return project([...table(name).values()].find(x=>x._pid==='crun'&&matches(x,w))||null,f);},
@@ -59,7 +59,10 @@ function fixture({ projectFields = false } = {}) {
   async edit(w,data){for(const [id,row] of table(name))if(matches(row,w))table(name).set(id,{...row,...clone(data)});},
   async count(w){return [...table(name).values()].filter(x=>matches(x,w)).length;},async inc(){}};}
  let sendError=null,sends=0;
+ const deletedFiles=[],deleteFailed=new Set();let deleteError='';
  const cloud={database:()=>db,getTempFileURL:async({fileList})=>({fileList:fileList.map(x=>({fileID:x.fileID,tempFileURL:'https://signed.invalid/'+encodeURIComponent(x.fileID)}))}),openapi:{subscribeMessage:{send:async()=>{sends++;if(sendError)throw sendError;return {errCode:0};}}}};
+ // 供媒体清理用例使用：deleteFailed 里的文件返回失败状态，deleteError 让整批抛错。
+ cloud.deleteFile=async({fileList})=>{if(deleteError)throw Object.assign(new Error(deleteError),{errCode:deleteError});const out=[];for(const fileID of fileList){if(deleteFailed.has(fileID)){out.push({fileID,status:-1});continue;}deletedFiles.push(fileID);out.push({fileID,status:0});}return {fileList:out};};
  const cache={};function load(name){if(cache[name])return cache[name];const file=path.join(root,name);const module={exports:{}};
   vm.runInNewContext(fs.readFileSync(file,'utf8'),{module,Date,Buffer,process,console,setTimeout,clearTimeout,require(request){
    if(request.includes('base_project') || request.endsWith('/base_service.js'))return Base;
@@ -78,7 +81,7 @@ function fixture({ projectFields = false } = {}) {
    if(request.endsWith('password_util.js'))return require(path.resolve(root,'../../../framework/utils/password_util.js'));
    if(request.endsWith('/data_util.js'))return {dbForms2Obj:forms=>Object.fromEntries(forms.map(x=>[x.mark,x.val]))};
    if(request.endsWith('/time_util.js'))return {time:Date.now,timestamp2Time:String};
-   if(request.endsWith('/util.js'))return {};
+   if(request.endsWith('/util.js'))return {isDefined:value=>value!==undefined&&value!==null};
    if(request==='crypto')return crypto;
    if(request==='async_hooks')return require('node:async_hooks');
    if(request.startsWith('.'))return load(path.relative(root,path.resolve(path.dirname(file),request)));
@@ -96,6 +99,6 @@ function fixture({ projectFields = false } = {}) {
  const req=(value='default')=>'request_'+value.padEnd(16,'_');
  const Mail=load('mail_service.js'),service=new Mail();
  const publish=async(extra={},actor='poster')=>(await service.insertMail(actor,{forms:forms(),requestId:req('publish'),...extra}))._id;
- return {store,table,load,user,config,forms,req,service,publish,reads,cloud,setSendError:e=>sendError=e,get sends(){return sends;}};
+ return {store,table,load,user,config,forms,req,service,publish,reads,cloud,deletedFiles,setDeleteError:e=>deleteError=e,failDeleteFile:f=>deleteFailed.add(f),setSendError:e=>sendError=e,get sends(){return sends;}};
 }
 module.exports={fixture};

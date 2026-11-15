@@ -56,7 +56,17 @@ function validateForms(forms, config, now) {
   obj.upstairs = upstairs;
  }
  const quote = plugins.get(obj.serviceType).normalize(input, obj, config, {text,images,fail});
- const totalFee = quote.totalFee;
+ let totalFee = quote.totalFee;
+ // 小费（快递代取）：下单时给骑手的额外费用，常用于送上楼；骑手接单前可见，计入订单总价。
+ // 金额由发布人自定义，最多 20 元、两位小数（上限防止误填与刷单）。
+ if (obj.serviceType === 'take') {
+  const raw = input.tip == null || input.tip === '' ? '0' : String(input.tip).trim();
+  if (!/^\d{1,2}(?:\.\d{1,2})?$/.test(raw)) fail('小费须在0至20元之间，最多两位小数');
+  const tipFee = Math.round(Number(raw) * 100);
+  if (!Number.isSafeInteger(tipFee) || tipFee < 0 || tipFee > 2000) fail('小费须在0至20元之间，最多两位小数');
+  obj.tip = tipFee / 100;
+  if (tipFee) { totalFee += tipFee; obj.price = totalFee / 100; }
+ }
  if (!Number.isSafeInteger(totalFee) || totalFee < 1 || totalFee > 1000000) fail('订单费用超出范围');
  // 下单人选的是「期待送达时间」；接单截止由它往前减掉配送时长推算，
  // 这样骑手接到单时仍留得出配送时间。状态机只认推算出来的 endTime。
@@ -98,8 +108,8 @@ function project(mail, userId, admin = false) {
  const mypost = !!userId && mail.MAIL_USER_ID === userId;
  const myaccept = !!userId && mail.MAIL_ACCEPT_USER_ID === userId;
  const privateAccess = admin || mypost || myaccept;
- const keys = ['_id','MAIL_ID','MAIL_STATUS','MAIL_END_TIME','MAIL_EXPECT_TIME','MAIL_EXPECT_START','MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_PICKUP_TIME','MAIL_OVER_TIME','MAIL_TOTAL_FEE','MAIL_PAYMENT_MODE','MAIL_CATE_ID','MAIL_CATE_NAME','MAIL_DUE_TIME','MAIL_DELIVERED_TIME','MAIL_AUTO_CONFIRM_AT','MAIL_AUTO_CONFIRMED','MAIL_VERSION','MAIL_SCHEMA_VERSION','schoolId','campusId'];
- if (privateAccess) keys.push('MAIL_RULE_SNAPSHOT','MAIL_FORMS','MAIL_EXCEPTION','MAIL_DELIVERY_PROOF','MAIL_PICKUP_PROOF','MAIL_PAY_STATUS','MAIL_CAN_REVIEW','MAIL_REVIEWED');
+ const keys = ['_id','MAIL_ID','MAIL_STATUS','MAIL_END_TIME','MAIL_EXPECT_TIME','MAIL_EXPECT_START','MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_PICKUP_TIME','MAIL_OVER_TIME','MAIL_END_AT','MAIL_MEDIA_PURGED_AT','MAIL_TOTAL_FEE','MAIL_PAYMENT_MODE','MAIL_CATE_ID','MAIL_CATE_NAME','MAIL_DUE_TIME','MAIL_DELIVERED_TIME','MAIL_AUTO_CONFIRM_AT','MAIL_AUTO_CONFIRMED','MAIL_VERSION','MAIL_SCHEMA_VERSION','schoolId','campusId'];
+ if (privateAccess) keys.push('MAIL_PRICE_ADJUST','MAIL_RULE_SNAPSHOT','MAIL_FORMS','MAIL_EXCEPTION','MAIL_DELIVERY_PROOF','MAIL_PICKUP_PROOF','MAIL_PAY_STATUS','MAIL_CAN_REVIEW','MAIL_REVIEWED');
  if (admin || mypost) keys.push('MAIL_HISTORY');
  const out = {}; keys.forEach(k => { if (mail[k] !== undefined) out[k] = mail[k]; });
  // Preserve safe milestone times before private history is removed. Projection
@@ -116,13 +126,16 @@ function project(mail, userId, admin = false) {
   return Number.isFinite(at) && at > 0 && Number.isFinite(new Date(at).getTime()) ? at : 0;
  };
  const history = (Array.isArray(mail.MAIL_HISTORY) ? mail.MAIL_HISTORY : []).filter(item => item && typeof item === 'object');
+ // 骑手放弃接单后订单重新上架：之前那位骑手的接单 / 取件记录不再算作当前进度。
+ const lastRelease = history.map(item => item.action).lastIndexOf('release');
  out.MAIL_MILESTONES = {};
  for (const [field, actions] of [
   ['MAIL_ADD_TIME', ['publish']], ['MAIL_ACCEPT_TIME', ['accept']],
   ['MAIL_PICKUP_TIME', ['pickup']], ['MAIL_DELIVERED_TIME', ['deliver']],
   ['MAIL_OVER_TIME', ['confirm', 'finish', 'complete', 'admin_finish', 'resolve_complete']]
  ]) {
-  const events = history.filter(item => actions.includes(item.action) || field === 'MAIL_OVER_TIME' && item.action === 'resolve' && Number(item.status) === 9);
+  const pool = ['MAIL_ACCEPT_TIME', 'MAIL_PICKUP_TIME', 'MAIL_DELIVERED_TIME'].includes(field) ? history.slice(lastRelease + 1) : history;
+  const events = pool.filter(item => actions.includes(item.action) || field === 'MAIL_OVER_TIME' && item.action === 'resolve' && Number(item.status) === 9);
   const event = events.find(item => recordedTime(item.at, true));
   const at = recordedTime(mail[field]) || (event ? recordedTime(event.at, true) : 0);
   if (mail[field] !== undefined || at) out[field] = at;
@@ -132,7 +145,7 @@ function project(mail, userId, admin = false) {
  }
  const obj = mail.MAIL_OBJ || {};
  const plugin = Object.prototype.hasOwnProperty.call(SERVICES,obj.serviceType || 'take') ? plugins.get(obj.serviceType || 'take') : null;
- const publicFields = ['title','serviceType','small','medium','large','num','price','referencePrice','urgent','riderGender','upstairs','campus','address1','address2','addressPhase',...(plugin ? plugin.publicFields : [])];
+ const publicFields = ['title','serviceType','small','medium','large','num','price','referencePrice','urgent','riderGender','upstairs','tip','campus','address1','address2','addressPhase',...(plugin ? plugin.publicFields : [])];
  out.MAIL_OBJ = privateAccess ? { ...obj } : Object.fromEntries(publicFields.filter(k => obj[k] !== undefined).map(k => [k,obj[k]]));
  out.mypost = mypost; out.myaccept = myaccept;
  out.status = LABELS[mail.MAIL_STATUS] || '状态未知'; if (mail.MAIL_STATUS === 0 && mail.MAIL_END_TIME < Date.now()) out.status = '已过期';

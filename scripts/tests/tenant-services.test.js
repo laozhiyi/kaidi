@@ -149,6 +149,11 @@ test('administrator login limits cannot be reset by changing campuses',async()=>
   await assert.rejects(tenant.run(B,()=>f.store.limitAdmin('crun','same-admin','login',1,900000)),/频繁/);
   assert.equal(f.table('admin_limit').size,1);
 });
+test('user operation limits cannot be multiplied by switching campuses',async()=>{
+  const f=await setup();await tenant.run(A,()=>f.store.limit('crun','same-user','order_audit',1,60000));
+  await assert.rejects(tenant.run(B,()=>f.store.limit('crun','same-user','order_audit',1,60000)),/频繁/);
+  assert.equal(f.table('operation_limit').size,1);
+});
 test('worker budget stops starting new items and preserves the first unprocessed row',async()=>{
   const f=await setup(),Worker=f.service('maintenance_service'),worker=new Worker(),real=Date.now;
   let now=real();for(let i=0;i<10;i++)await f.put(A,'mail','budget-'+i,{MAIL_STATUS:0,MAIL_PAYMENT_MODE:'offline',MAIL_END_TIME:now-5000+i,MAIL_USER_ID:'poster'});

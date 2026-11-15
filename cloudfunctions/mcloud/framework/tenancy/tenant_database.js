@@ -5,7 +5,7 @@ const AppError = require('../core/app_error.js');
 // Account profiles are shared within a school. Operational data is campus scoped.
 // Administrator authentication and the directory use explicit service authorization.
 const SCHOOL = new Set(['user', 'identity_unique']);
-const GLOBAL = new Set(['admin', 'school', 'campus', 'tenant_migration', 'request_scope', 'admin_limit', 'account_session', 'account_media', 'account_cleanup_file']);
+const GLOBAL = new Set(['admin', 'school', 'campus', 'tenant_migration', 'request_scope', 'admin_limit', 'operation_limit', 'account_session', 'account_media', 'account_cleanup_file', 'export_file']);
 function kind(name) {
   const short = name.replace(/^bx_/, '');
   return GLOBAL.has(short) || /^setup_crun(?:_|$)/.test(short) ? 'global' : SCHOOL.has(short) ? 'school' : 'campus';

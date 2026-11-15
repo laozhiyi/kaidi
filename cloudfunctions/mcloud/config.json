@@ -4,7 +4,6 @@
       "wxacode.getUnlimited",
       "security.imgSecCheck",
       "security.msgSecCheck",
-      "serviceMarket.invokeService",
       "subscribeMessage.send",
       "phonenumber.getPhoneNumber"
     ]

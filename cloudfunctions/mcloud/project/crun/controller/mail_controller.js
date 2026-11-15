@@ -10,18 +10,23 @@ class MailController extends Base {
  async _action(method, extra = {}, audit = false) {
   const input=this._input(extra), svc=new MailService();
   if(audit) {
-   const action={pickupMail:'pickup',cancelMail:'cancel',deliverMail:'deliver',updateDeliveryProof:'update_proof',exceptionMail:'exception'}[method];
+   const action={pickupMail:'pickup',cancelMail:'cancel',deliverMail:'deliver',updateDeliveryProof:'update_proof',exceptionMail:'exception',proposePrice:'price_propose'}[method];
    const replay=await svc.replayRequest(this._userId,action,input); if(replay)return replay;
    input._sourceFingerprint=store.key(input);
    const oldProof=method === 'updateDeliveryProof' ? await svc.getDeliveryProofForUpdate(this._userId,input.id) : null;
    await this._limitAudit();await check.checkTextMultiClient(input); input.images=await this._checkImages(input.images || [],oldProof && oldProof.images || []);
+   if(input.videos!==undefined && input.videos!==null) input.videos=await this._checkVideos(input.videos,oldProof && oldProof.video ? [oldProof.video] : []);
   }
   return svc[method](this._userId,input.id,input);
  }
+ async _checkVideos(videos,allowed=[]) { const result=[];for (const id of require('../service/order_rules.js').videos(videos)) result.push(await check.checkCloudVideo(id,allowed));return result; }
  async _checkImages(images,allowed=[]) { const result=[];for (const id of require('../service/order_rules.js').images(images)) result.push(await check.checkCloudImage(id,allowed));return result; }
  async acceptMail() {return this._action('acceptMail');}
  async pickupMail() {return this._action('pickupMail',{note:'string|max:300',images:'array',videos:'array'},true);}
  async remindReceipt() {return this._action('remindReceipt');}
+ async proposePrice() {return this._action('proposePrice',{price:'must|string|max:12',reason:'must|string|max:100'},true);}
+ async respondPrice() {return this._action('respondPrice',{decision:'must|string|max:10'});}
+ async releaseMail() {return this._action('releaseMail');}
  async cancelMail() {return this._action('cancelMail',{note:'string|max:300'},true);}
  async finishMail() {return this._action('finishMail');}
  async deliverMail() {return this._action('deliverMail',{note:'string|max:300',mode:'string|max:10',images:'array',videos:'array'},true);}

@@ -21,7 +21,7 @@
 
 后台学校／校区管理授权校验已按用户要求直接删除，登录、会话、订单事务、配置与用户管理均不再依赖 `ADMIN_SCOPES`。历史字段和迁移格式保留作兼容数据。平台身份仍需同时满足 `ADMIN_TYPE=1`、`ADMIN_PLATFORM=true`；`ADMIN_TYPE=1` 控制高级配置权限，本身不等于平台身份。通过目录页更新管理员角色和历史授权会使目标账号旧令牌失效。
 
-默认启用 `ADMIN_LOGIN_CREDENTIALS_ONLY=true`：内测已有管理员凭正确账号密码即可登录，暂停登录限流与账号状态检查，会话和业务事务同步采用该规则。显式设置 false 仅恢复限流和状态检查，不会恢复已经删除的学校／校区授权门槛。角色、令牌校验及数据库范围隔离继续生效；开关由服务端环境控制，不能由小程序请求选择。上传步骤与行为见 [后台内测登录](../ADMIN_CONSOLE.md#内测登录)。
+默认关闭 `ADMIN_LOGIN_CREDENTIALS_ONLY`：管理员登录执行登录限流与账号状态检查，会话和业务事务同步采用该规则。仅当环境变量显式设为 `ADMIN_LOGIN_CREDENTIALS_ONLY=true` 时才暂停限流和状态检查，该开关也不会恢复已经删除的学校／校区授权门槛。角色、令牌校验及数据库范围隔离继续生效；开关由服务端环境控制，不能由小程序请求选择。上传步骤与行为见 [后台内测登录](../ADMIN_CONSOLE.md#内测登录)。
 
 登录默认关闭 `WECHAT_PHONE_LOGIN_ENABLED`。点击“点击微信登录”打开同一头像／昵称弹层，用原生 `chooseAvatar` 和 `nickname` 控件填写；确认后使用可信微信身份建立会话、保存头像昵称，并进入个人资料页。联系资料始终展开，保存时仍执行必填、学校内号码唯一性及审核规则。进入页面或静默刷新不能登录，也不能撤销注销。只有明确恢复旧手机号流程时才设置 `WECHAT_PHONE_LOGIN_ENABLED=true`。详见 [登录与账户说明](WECHAT_LOGIN.md)。
 
@@ -56,6 +56,8 @@
 **为什么不需要唯一索引：`bx_staff_invite`。** 客服邀请码的文档 ID 是确定性的 `store.key(pid, 'staff_invite', code)`，同一个码只可能落在同一条记录上——`_id` 本身就是数据库主键唯一索引，`code → _id` 又是一一对应，所以字段级唯一索引带来的保证已经由主键承担。`create()` 在事务内先查 ID 再写入，并发撞码时事务冲突重试会让后到的一方换码，最坏情况也只覆盖同一条记录，不会出现两条同码。`redeem()` 再取两条记录，一旦发现同码重复（只可能来自控制台手工导入或直接写库）直接拒绝并要求清理，不会随机命中其中一条造成两人抢同一权限；系统维护还会定期把过期未用的码标记为已过期并巡检重复码，只报告不自动删除。因此清单里的 `invite_code` 只是给 `redeem()` 按码查记录用的**普通索引**，按常规方式创建即可。微信云开发没有建索引的编程接口（开发者工具 CLI 只有 `cloud env` 和 `cloud functions`），这也是项目统一用"稳定文档 ID + 事务"而不是数据库唯一约束的原因。若之后仍想要一层字段级兜底，可在控制台为 `bx_staff_invite` 手动建 `_pid` + `INVITE_CODE` 的唯一索引，属可选加固，不影响功能正确性。
 
 账户注销新增 `_pid, status, cancelAt` 到期扫描和各关联集合的全局身份索引，以及 `_pid, orderId, accountCleanupId` 事件副本索引。`bx_user`／`bx_identity_unique` 的 `system` 索引仅限标记为 `account_lifecycle` 的跨校清理，日常查询仍用学校索引。三个账户集合均应用 server-only 规则；清理日志不能配置自动 TTL 删除。
+
+**订单凭证自动清理（`bx_mail`）。** 结束（或管理员删除）10 天后清理凭证的巡检按 `MAIL_MEDIA_PURGED`、`MAIL_EDIT_TIME` 过滤并按 `MAIL_EDIT_TIME` 升序取批，同时用 `MAIL_MEDIA_PURGE_CHECK_AT` 跳过刚检查过的订单。请在云开发控制台为 `bx_mail` 建一条 `_pid ASC, MAIL_MEDIA_PURGED ASC, MAIL_EDIT_TIME ASC` 的组合索引；若执行计划显示仍需过滤下次检查时间，再追加 `MAIL_MEDIA_PURGE_CHECK_AT ASC`。订单量变大后缺少该索引，每次巡检都会退化为全表扫描，读取量随订单总量增长，也会拖慢同一触发器里的其他维护任务。
 
 定时扫描使用 `时间 ASC, _id ASC` 游标，不能省略同时间戳的 `_id`。`WORKER_SHARD` 启用时，在对应全局任务索引的 `_pid` 后加 `workerShard ASC`。迁移窗口内全表分页使用 `_pid ASC, _id ASC`；是否需要临时索引取决于实际执行计划。
 

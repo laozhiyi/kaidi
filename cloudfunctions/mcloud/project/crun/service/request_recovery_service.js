@@ -5,7 +5,7 @@ const store = require('./operation_store.js');
 const ORDER_ACTIONS = {
  'mail/insert': 'publish', 'mail/edit': 'edit', 'mail/accept': 'accept',
  'mail/pickup': 'pickup', 'mail/cancel': 'cancel', 'mail/deliver': 'deliver',
- 'mail/update_proof': 'update_proof',
+ 'mail/update_proof': 'update_proof', 'mail/price_propose': 'price_propose', 'mail/price_respond': 'price_respond', 'mail/release': 'release',
  'mail/finish': 'confirm', 'mail/exception': 'exception', 'mail/del': 'archive',
  'admin/operations_hold': 'hold', 'admin/operations_resolve': 'resolve',
  'admin/operations_delete_order': 'admin_delete'

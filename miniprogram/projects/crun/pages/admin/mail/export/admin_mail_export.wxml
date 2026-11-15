@@ -8,7 +8,7 @@
     <view class="ac-field"><view class="ac-field-label">订单状态</view><picker range="{{statuses}}" value="{{statusIndex}}" bindchange="bindStatus" disabled="{{busy}}"><view class="ac-form-picker"><text>{{statuses[statusIndex]}}</text><text>⌄</text></view></picker></view>
     <view class="ac-row-desc">按发布时间筛选，包含结束日期当天的订单。</view>
   </view>
-  <view class="ac-notice">每次最多导出 5,000 条记录，超出时请缩小筛选范围。报表按管理员账号分别保存。</view>
+  <view class="ac-notice">每次最多导出 5,000 条记录，超出时请缩小筛选范围。报表按管理员账号分别保存。下载链接 1 天内有效，文件保留 2 天。</view>
   <button class="ac-primary" bindtap="bindExportTap" loading="{{busy}}" disabled="{{busy || loading}}">{{reportUrl?'重新生成报表':'生成 Excel 报表'}}</button>
   <view wx:if="{{reportUrl}}" class="ac-card ac-export-result"><view class="ac-section-head"><text class="ac-section-title">已生成的报表</text><text class="ac-badge green">可下载</text></view><view class="ac-row"><text class="ac-muted">生成时间</text><text>{{generatedAt || '—'}}</text></view><view wx:if="{{total!==null}}" class="ac-row"><text class="ac-muted">导出记录</text><text>{{total}} 条</text></view><view class="ac-form-actions"><button class="ac-secondary" bindtap="bindOpenTap" disabled="{{busy}}">打开文件</button><button class="ac-secondary" bindtap="bindCopy" disabled="{{busy}}">复制下载链接</button></view><button class="ac-ghost ac-delete-export" bindtap="bindDelTap" disabled="{{busy}}">删除导出文件</button></view>
   <view wx:elif="{{!loading}}" class="ac-footnote">当前账号还没有生成报表</view>

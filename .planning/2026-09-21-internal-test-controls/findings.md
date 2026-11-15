@@ -48,7 +48,7 @@
 - 后台实际返回 1600“没有当前学校或校区的管理权限”。登录验证密码后调用 `tenant_context.assertAdmin`；没有 ADMIN_PLATFORM / ADMIN_SCOPES 的旧账号会被拒绝。会话与部分事务也重复校验，不能只删除登录入口的一行。
 - 用户授权临时凭账号密码登录；以服务端开关统一内测／严格模式，保留角色与数据库隔离。不持久化临时平台授权。
 - 沿用 planning-with-files、systematic-debugging 与 bounded brainstorming，用户已明确更改范围，直接实施；行为回归使用 test-driven-development。
-- 内测开关为 `ADMIN_LOGIN_CREDENTIALS_ONLY`，默认 true，false 恢复次数／状态／校区授权。只有服务端配置决定该开关；前端收到的 credentialsOnly 只影响入口展示。普通／超级管理员及平台身份仍区分，不持久化临时 scopes。
+- 内测开关为 `ADMIN_LOGIN_CREDENTIALS_ONLY`，默认关闭，仅显式设为 true 才暂停次数／状态检查（不会恢复已删除的校区授权）。只有服务端配置决定该开关；前端收到的 credentialsOnly 只影响入口展示。普通／超级管理员及平台身份仍区分，不持久化临时 scopes。
 - 后台真实服务与 `admin/login` 路由、错误／正确密码、已有锁定桶、旧账户无 scopes、状态0、短用户名、登录回包、会话更换／过期及数据库隔离均有回归。466/466 与编译、源码检查通过；新本地快照为 `architecture-g0W2OF`，未上传。
 - 独立审查无可行动发现，58/58 回归及实际路由探测通过；同一已签发 token 恢复严格模式后重新应用状态与授权限制。审查未将真实平台服务开通或完整架构验收算作完成。
 

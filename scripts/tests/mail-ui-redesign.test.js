@@ -218,3 +218,19 @@ test('delivery requirement text appears only for take orders with a non-default 
  assert.equal(UI.detail(mail, now).requirementText, '仅限女生 · 需送上楼');
  assert.equal(UI.detail({ ...base, MAIL_OBJ: { ...base.MAIL_OBJ, riderGender: 'any' } }, now).requirementText, '');
 });
+
+test('card requirement tags follow the order status', () => {
+ const order = (status, obj) => ({ MAIL_STATUS: status, MAIL_OBJ: { serviceType: 'take', riderGender: 'female', upstairs: true, ...obj } });
+ const texts = mail => UI.requirementTags(mail).map(tag => tag.text);
+ assert.deepEqual(texts(order(0)), ['仅限女生', '需送上楼']);
+ assert.deepEqual(texts(order(0, { riderGender: 'male' })), ['仅限男生', '需送上楼']);
+ assert.deepEqual(UI.requirementTags(order(0)).map(tag => tag.tone), ['female', 'upstairs']);
+ assert.deepEqual(texts(order(1)), ['需送上楼']);
+ assert.deepEqual(texts(order(4)), ['需送上楼']);
+ assert.deepEqual(texts(order(2)), []);
+ assert.deepEqual(texts(order(3)), []);
+ assert.deepEqual(texts(order(0, { riderGender: 'any', upstairs: false })), []);
+ assert.deepEqual(texts(order(0, { upstairs: false })), ['仅限女生']);
+ assert.deepEqual(texts({ MAIL_STATUS: 0, MAIL_OBJ: { serviceType: 'send', riderGender: 'female', upstairs: true } }), []);
+ assert.deepEqual(UI.requirementTags(null), []);
+});

@@ -23,7 +23,7 @@
    </view>
    <view wx:if="{{configError}}" class="pub-inline-error pub-view"><text class="pub-text">{{loadError}}，已保留所填内容。</text><text class="pub-text" bindtap="bindRetryLoad">重试</text></view>
 
-   <template is="{{serviceForm}}" data="{{packageItems,packageTypes,serviceType,totalFee,totalCount,config,submitting,mailValues}}" />
+   <template is="{{serviceForm}}" data="{{packageItems,packageTypes,serviceType,totalFee,payTotal,tip,totalCount,config,submitting,mailValues}}" />
 
    <view class="pub-card pub-route-card pub-view">
     <view class="pub-heading pub-view"><view class="pub-view"><text class="pub-section-no pub-text">02</text><text class="pub-text">送到哪里</text></view></view>
@@ -33,6 +33,29 @@
       <button class="pub-quick-select pub-button-base" hover-class="pub-quick-select-hover" bindtap="bindChooseProfileAddress" aria-label="选择常用地址">常用地址<text class="icon-right pub-text"></text></button>
      </view>
      <view class="pub-input-box pub-view"><textarea class="pub-address-input pub-textarea" value="{{mailValues.address2}}" maxlength="200" auto-height placeholder="例如：二期3号宿舍楼201室" placeholder-class="pub-placeholder" bindinput="bindMailInput" data-mark="address2" /></view>
+    </view>
+    <view wx:if="{{serviceType === 'take'}}" class="pub-delivery-reqs pub-view">
+     <view class="pub-req-row pub-view">
+      <text class="pub-req-label pub-text">骑手性别</text>
+      <view class="pub-segment pub-view">
+       <view class="pub-segment-item {{riderGender === 'any' ? 'pub-segment-active' : ''}} pub-view" bindtap="bindRiderGenderTap" data-value="any">不限</view>
+       <view class="pub-segment-item {{riderGender === 'male' ? 'pub-segment-active' : ''}} pub-view" bindtap="bindRiderGenderTap" data-value="male">男生</view>
+       <view class="pub-segment-item {{riderGender === 'female' ? 'pub-segment-active' : ''}} pub-view" bindtap="bindRiderGenderTap" data-value="female">女生</view>
+      </view>
+     </view>
+     <view class="pub-req-row pub-view">
+      <text class="pub-req-label pub-text">送上楼</text>
+      <view class="pub-segment pub-view">
+       <view class="pub-segment-item {{!upstairs ? 'pub-segment-active' : ''}} pub-view" bindtap="bindUpstairsTap" data-value="false">不需要</view>
+       <view class="pub-segment-item {{upstairs ? 'pub-segment-active' : ''}} pub-view" bindtap="bindUpstairsTap" data-value="true">需要</view>
+      </view>
+     </view>
+     <view class="pub-req-row pub-view">
+      <text class="pub-req-label pub-text">小费</text>
+      <view class="pub-tip-box pub-view"><text class="pub-text">¥</text><input class="pub-tip-input" type="digit" value="{{tipInput}}" maxlength="5" placeholder="选填，自定义金额" placeholder-class="pub-placeholder" bindinput="bindTipInput" disabled="{{submitting}}"/></view>
+     </view>
+     <view wx:if="{{tipError}}" class="pub-req-hint pub-req-error pub-view">{{tipError}}</view>
+     <view wx:elif="{{upstairs && !tip}}" class="pub-req-hint pub-view">送上楼建议加小费，骑手更愿意接单</view>
     </view>
    </view>
     <view class="pub-card pub-contact-card pub-view">
@@ -57,33 +80,12 @@
     <view class="pub-deadline pub-view"><view class="pub-option-label pub-view"><text class="icon-time pub-text"></text><text class="pub-text">期待送达时间</text></view><deadline-picker value="{{formEnd}}" lead="{{expectLead}}" disabled="{{submitting}}" bind:select="bindEndSelect" /></view>
     <view wx:if="{{formEndFocus}}" class="pub-validation pub-view">{{formEndFocus}}</view>
    </view>
-   <view wx:if="{{serviceType === 'take'}}" class="pub-card pub-options pub-view">
-    <view class="pub-option-row pub-view">
-     <view class="pub-view">
-      <view class="pub-option-label pub-view">骑手性别</view>
-      <view class="pub-station-chips pub-view">
-       <view class="pub-station-chip {{riderGender === 'any' ? 'pub-station-active' : ''}} pub-view" bindtap="bindRiderGenderTap" data-value="any">不限</view>
-       <view class="pub-station-chip {{riderGender === 'male' ? 'pub-station-active' : ''}} pub-view" bindtap="bindRiderGenderTap" data-value="male">男生</view>
-       <view class="pub-station-chip {{riderGender === 'female' ? 'pub-station-active' : ''}} pub-view" bindtap="bindRiderGenderTap" data-value="female">女生</view>
-      </view>
-     </view>
-    </view>
-    <view class="pub-option-row pub-view">
-     <view class="pub-view">
-      <view class="pub-option-label pub-view">送上楼</view>
-      <view class="pub-station-chips pub-view">
-       <view class="pub-station-chip {{!upstairs ? 'pub-station-active' : ''}} pub-view" bindtap="bindUpstairsTap" data-value="false">不需要</view>
-       <view class="pub-station-chip {{upstairs ? 'pub-station-active' : ''}} pub-view" bindtap="bindUpstairsTap" data-value="true">需要</view>
-      </view>
-     </view>
-    </view>
-   </view>
 <view wx:if="{{config.urgentEnabled}}" class="pub-card pub-options pub-view">
     <view class="pub-option-row pub-view"><view class="pub-view"><view class="pub-option-label pub-view">加急 <text class="pub-urgent-tag pub-text">可选</text></view><view class="pub-caption pub-view">优先处理，预计 {{config.urgentMinutes}} 分钟内完成</view></view><switch class="pub-switch" checked="{{urgent}}" color="#397bc8" bindchange="bindUrgentChange"/></view>
    </view>
   </view>
 
-  <view class="pub-submit-bar pub-view"><view class="pub-total pub-view"><view class="pub-total-label pub-view">{{serviceType === 'buy' ? '跑腿费 · 不含商品款' : '共 ' + totalCount + ' 件 · 线下费用'}}</view><view class="pub-total-price pub-view"><text class="pub-text">¥</text>{{totalFee}}</view></view><button class="pub-submit pub-button-base {{(submitting || pageLoading || configError || (!serviceState.canPublish && !editId) || (serviceType !== 'buy' && totalCount < 1)) ? 'pub-disabled' : ''}}" hover-class="pub-submit-hover" bindtap="bindFormSubmit" loading="{{submitting}}" disabled="{{submitting || pageLoading || configError || (!serviceState.canPublish && !editId) || (serviceType !== 'buy' && totalCount < 1)}}">{{(serviceType !== 'buy' && totalCount < 1) ? '请先选择包裹' : editId ? '保存修改' : serviceState.kind==='paused' ? '暂时停止接单' : serviceState.kind==='closed' ? '营业后可发布' : serviceType === 'buy' ? '发布代买订单' : serviceType === 'send' ? '发布代送订单' : '发布代取订单'}}<text wx:if="{{!submitting && serviceState.canPublish}}" class="icon-right pub-text"></text></button></view>
+  <view class="pub-submit-bar pub-view"><view class="pub-total pub-view"><view class="pub-total-label pub-view">{{serviceType === 'buy' ? '跑腿费 · 不含商品款' : '共 ' + totalCount + ' 件 · 线下费用'}}</view><view class="pub-total-price pub-view"><text class="pub-text">¥</text>{{payTotal}}</view></view><button class="pub-submit pub-button-base {{(submitting || pageLoading || configError || (!serviceState.canPublish && !editId) || (serviceType !== 'buy' && totalCount < 1)) ? 'pub-disabled' : ''}}" hover-class="pub-submit-hover" bindtap="bindFormSubmit" loading="{{submitting}}" disabled="{{submitting || pageLoading || configError || (!serviceState.canPublish && !editId) || (serviceType !== 'buy' && totalCount < 1)}}">{{(serviceType !== 'buy' && totalCount < 1) ? '请先选择包裹' : editId ? '保存修改' : serviceState.kind==='paused' ? '暂时停止接单' : serviceState.kind==='closed' ? '营业后可发布' : serviceType === 'buy' ? '发布代买订单' : serviceType === 'send' ? '发布代送订单' : '发布代取订单'}}<text wx:if="{{!submitting && serviceState.canPublish}}" class="icon-right pub-text"></text></button></view>
   <view class="pub-form-engine pub-view"><cmpt-form-show id="cmpt-form" mark="mail-add-engine" isCacheMatch="{{false}}" fields="{{fields}}" forms="{{formForms}}" isDefMatch="{{true}}"/></view>
  </block>
  <include src="./mail_profile_picker.wxml" />

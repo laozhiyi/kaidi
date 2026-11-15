@@ -168,6 +168,21 @@ function textServiceError(code, reason) {
 	return new AppError(message + (code === null ? '' : '（错误码：' + code + '）'));
 }
 
+// 凭证视频不做内容下载（最大 20MB），但与图片一样只允许引用本人当前会话上传的文件；
+// allowed 用于「更新送达凭证」时保留原有视频。
+async function checkCloudVideo(fileID, allowed = []) {
+ if (typeof fileID !== 'string' || !fileID.startsWith('cloud://')) throw new AppError('视频须先上传');
+ if (allowed.includes(fileID)) return fileID;
+ const cloud = cloudBase.getCloud(), openid = cloud.getWXContext().OPENID;
+ const request = require('../core/account_context.js').getStore();
+ const generation = request && request.mediaGeneration || '';
+ const match = /^cloud:\/\/[^/]+\/(.+)$/.exec(fileID), filePath = match && match[1] || '';
+ const prefix = 'private/' + openid + '/' + (generation ? generation + '/' : '');
+ if (!openid || !filePath.startsWith(prefix) || /(?:^|\/)\.\.?\//.test(filePath) || !/\.mp4$/i.test(filePath)) throw new AppError('不可引用其他账户的视频，请重新上传');
+ if (request && request.trackMedia) await request.trackMedia([fileID]);
+ return fileID;
+}
+
 async function trackCloudImages(values) {
  const request = require('../core/account_context.js').getStore();
  if (request && request.trackMedia) await request.trackMedia(values);
@@ -203,6 +218,7 @@ async function checkCloudImage(fileID, allowed = []) {
 module.exports = {
  trackCloudImages,
  checkCloudImage,
+ checkCloudVideo,
 	checkImg,
 	checkImgClient,
 	checkImgAdmin,

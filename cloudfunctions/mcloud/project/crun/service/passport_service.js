@@ -70,6 +70,8 @@ class PassportService extends BaseProjectService {
    const current = await store.get(tx, 'user', id);
    if (current && current.USER_STATUS === 9) this.AppError('账号已停用，请联系客服');
    if (!current) this.AppError('账号状态已变化，请重新微信登录');
+   const oldSex = profileRules.formValue(current.USER_FORMS, 'sex');
+   if (current.USER_STATUS === 1 && ['男', '女'].includes(oldSex) && profileRules.formValue(forms, 'sex') !== oldSex) this.AppError('性别审核通过后不能自行修改，如需更正请联系客服');
    if (!profileRules.allowsManualRegistration() && (!current || current.USER_MOBILE_VERIFIED !== true)) this.AppError('请先使用微信手机号授权登录');
    if (profileRules.isPhoneLoginEnabled() && current && current.USER_MOBILE_VERIFIED === true && current.USER_MOBILE !== mobile) this.AppError('手机号已变化，请重新授权微信手机号后保存');
    if (registering && profileRules.isComplete(current)) return;

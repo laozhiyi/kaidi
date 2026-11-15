@@ -3,7 +3,7 @@
  <view wx:if="{{loading && !mail}}" class="od-state"><view class="od-state-icon"><text class="icon-time"></text></view><view class="od-state-title">正在获取订单</view><view class="od-state-note">为你整理本次代取的最新进展</view></view>
  <view wx:if="{{error}}" class="od-state"><view class="od-state-icon"><text class="icon-info"></text></view><view class="od-state-title">{{notFound ? '订单暂不可用' : '暂时无法加载'}}</view><view class="od-state-note">{{errorMessage}}</view><button wx:if="{{id}}" class="od-primary" bindtap="load" disabled="{{loading}}" loading="{{loading}}">重新加载</button><view class="od-state-link" bindtap="bindBackOrders">返回订单列表</view></view>
  <block wx:if="{{mail}}">
-  <template is="mailDetailContent" data="{{mail: mail, ui: detailUI, actionDisabled: busy || loading || error}}"/>
+  <template is="mailDetailContent" data="{{mail: mail, ui: detailUI, actionDisabled: busy || loading || error, priceActions: true}}"/>
   <view wx:if="{{configError}}" class="od-config-note">提醒配置暂不可用，不影响查看订单；下拉可重试。</view>
   <view class="od-footer od-footer-stack">
    <view wx:if="{{detailUI.receipt.visible}}" class="od-receipt-hint">{{detailUI.receipt.hint}}</view>
@@ -16,6 +16,21 @@
   </view>
  </block>
  <view wx:if="{{confirmGate}}" class="od-sheet-mask confirm-gate-mask" catchtouchmove="bindStopProp"><view class="confirm-gate" catchtap="bindStopProp"><view class="confirm-gate-icon">?</view><view class="confirm-gate-title">请仔细核对后确认收货</view><view class="confirm-gate-copy">确认后订单会自动从双方的日常订单列表中移除，请确认包裹、数量和外观均无误。</view><view class="confirm-gate-count" wx:if="{{confirmCountdown > 0}}">请阅读 {{confirmCountdown}} 秒</view><view class="confirm-gate-count ready" wx:else>已阅读完毕，可以确认</view><view class="confirm-gate-actions"><button class="od-footer-tool" bindtap="bindGateCancel">再看一看</button><button class="od-primary" bindtap="bindGateConfirm" disabled="{{confirmCountdown > 0 || busy}}">确认收货</button></view></view></view>
+
+ <view wx:if="{{pickupGate}}" class="od-sheet-mask confirm-gate-mask" catchtouchmove="bindStopProp"><view class="confirm-gate pickup-gate" catchtap="bindStopProp"><view class="confirm-gate-icon pickup-gate-icon">!</view><view class="confirm-gate-title">提交前请确认包裹大小</view><view class="pickup-gate-copy">提交取件凭证即视为已确认包裹大小，之后不能再申请调价或更改价格。</view><view wx:if="{{detailUI.priceAdjust.pending}}" class="pickup-gate-sub">你的调价申请尚未处理，提交后将自动撤回。</view><button class="od-primary pickup-gate-skip" bindtap="bindPickupGateSkip">跳过（{{pickupCountdown}}s）</button></view></view>
+ <view wx:if="{{priceSheet}}" class="od-sheet-mask" catchtouchmove="bindStopProp" bindtap="bindClosePriceSheet">
+  <view class="od-sheet" catchtap="bindStopProp">
+   <view class="od-sheet-handle"></view>
+   <view class="od-heading"><text class="od-sheet-title">申请调整费用</text><button class="od-close" bindtap="bindClosePriceSheet" disabled="{{busy}}"><text class="icon-close"></text></button></view>
+   <view class="od-sheet-note">包裹实际比发布人所选大小大时使用。发布人同意后费用才会变更；提交取件凭证后不能再申请。</view>
+   <view class="price-sheet-row"><text class="price-sheet-label">当前费用</text><text class="price-sheet-current">¥{{detailUI.fee}}</text></view>
+   <view class="price-sheet-row"><text class="price-sheet-label">新的费用</text><view class="price-sheet-input-box"><text>¥</text><input class="price-sheet-input" type="digit" value="{{priceValue}}" placeholder="须高于当前费用" bindinput="bindPriceInput" disabled="{{busy}}"/></view></view>
+   <view class="price-sheet-label price-sheet-reason-label">调价理由</view>
+   <view class="price-sheet-chips"><text wx:for="{{priceReasons}}" wx:key="*this" class="price-sheet-chip {{priceReason === item ? 'price-sheet-chip-active' : ''}}" bindtap="bindPriceReasonChip" data-reason="{{item}}">{{item}}</text></view>
+   <textarea class="od-textarea price-sheet-textarea" placeholder="说明实际情况，例如：实际是大件，约 8kg（必填）" value="{{priceReason}}" bindinput="bindPriceReasonInput" maxlength="100" disabled="{{busy}}"/>
+   <button class="od-primary od-sheet-submit" bindtap="bindSubmitPrice" loading="{{busy}}" disabled="{{busy || loading || error}}">发送给发布人</button>
+  </view>
+ </view>
  <view wx:if="{{panel}}" class="od-sheet-mask" catchtouchmove="bindStopProp" bindtap="bindClosePanel">
   <view class="od-sheet" catchtap="bindStopProp">
    <view class="od-sheet-handle"></view>

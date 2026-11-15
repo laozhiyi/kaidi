@@ -8,6 +8,7 @@ const BaseProjectController = require('./base_project_controller.js');
 const PassportService = require('../service/passport_service.js');
 const contentCheck = require('../../../framework/validate/content_check.js');
 const profileRules = require('../service/profile_rules.js');
+const store = require('../service/operation_store.js');
 
 class PassportController extends BaseProjectController {
 
@@ -31,12 +32,14 @@ class PassportController extends BaseProjectController {
    name: 'must|string|min:1|max:30|name=昵称',
    pic: 'must|string|min:1|max:500|name=头像'
   });
+  await store.limit('crun', this._userId, 'profile_audit', 10, 60000);
   await contentCheck.trackCloudImages([input.pic]);
   await contentCheck.checkTextMultiClient({ 昵称: input.name }, { scene: 1, byField: true });
   return new PassportService().saveWechatProfile(this._userId, input);
  }
 
  async _checkProfileContent(input) {
+  await store.limit('crun', this._userId, 'profile_audit', 10, 60000);
   await contentCheck.trackCloudImages([input.pic]);
   const error = profileRules.validationError(input);
   if (error) this.AppError(error);

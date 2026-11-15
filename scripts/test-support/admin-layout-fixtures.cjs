@@ -10,7 +10,7 @@ function scenarios() {
   const service = { _id: 'service-one', CS_CAMPUS: '育才校区', CS_NAME: '示例客服', CS_STATUS: 1, CS_MOBILE: '13800000000', CS_WORK_TIME: '周一至周日 08:00–22:00，节假日安排以公告为准', CS_WECHAT: 'sample_campus_service_contact', CS_QQ: '1000000001', CS_ORDER: 0 };
   const manager = { _id: 'manager-one', ADMIN_NAME: 'sample_campus_administrator', ADMIN_DESC: '校区运营管理员', ADMIN_TYPE: 0, ADMIN_STATUS: 1, ADMIN_PHONE: '13800000000', ADMIN_LOGIN_CNT: 1, ADMIN_LOGIN_TIME: '2026-09-14 10:20' };
   const news = { _id: 'news-one', NEWS_TITLE: '关于开学季校区快递代取服务时间调整的通知', NEWS_DESC: '为方便同学们领取开学包裹，校区服务时间和取件安排如下，请及时查看。', NEWS_CATE_NAME: '校区公告', NEWS_STATUS: 1, NEWS_ORDER: 0, NEWS_VOUCH: 1, NEWS_ADD_TIME: '2026-09-14 10:20', NEWS_PIC: [] };
-  const content = [{ type: 'text', val: '欢迎使用 GXNU 随手取。我们为同学们提供校区快递代取与配送服务。\n如需帮助，请联系所在校区的客服。' }];
+  const content = [{ type: 'text', val: '欢迎使用 云速取。我们为同学们提供校区快递代取与配送服务。\n如需帮助，请联系所在校区的客服。' }];
   const list = row => ({ list: [row], total: 1, page: 1, hasMore: false });
   const managerForm = { isLoad: true, formName: 'sample_admin', formDesc: '校区管理员', formPhone: '13800000000' };
   const campusForm = { isLoad: true, formCampus: '育才校区', formName: '示例客服', formMobile: '13800000000', formWechat: 'sample_campus_contact', formQQ: '1000000001', formWorkTime: '周一至周日 08:00–22:00', formOrder: 0 };

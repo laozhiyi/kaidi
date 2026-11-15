@@ -17,12 +17,13 @@ function log(method, err, level = 'error') {
 	});
 }
 
-async function getTempFileURLOne(fileID) {
+async function getTempFileURLOne(fileID, maxAge) {
 	if (!fileID) return '';
 
 	const cloud = cloudBase.getCloud();
+	// maxAge 只在调用处显式传入时生效，默认保持原有有效期（凭证等链接不受影响）。
 	let result = await cloud.getTempFileURL({
-		fileList: [fileID],
+		fileList: [maxAge ? { fileID, maxAge } : fileID],
 	})
 	if (result && result.fileList && result.fileList[0] && result.fileList[0].tempFileURL)
 		return result.fileList[0].tempFileURL;

@@ -9,3 +9,20 @@
 .confirm-gate-count.ready { background: #eaf8f0; color: #258b5d; }
 .confirm-gate-actions { display: flex; gap: 18rpx; margin-top: 20rpx; }
 .confirm-gate-actions button { flex: 1; }
+
+/* 取件前确认包裹大小：2 秒后自动继续，可跳过 */
+.pickup-gate-icon { background: #fff4e5; color: #d27a12; font-weight: 700; }
+.pickup-gate-copy { margin-top: 20rpx; color: #25364d; font-size: 29rpx; font-weight: 700; line-height: 1.65; text-align: left; }
+.pickup-gate-sub { margin-top: 12rpx; color: #c2410c; font-size: 24rpx; line-height: 1.6; text-align: left; }
+.pickup-gate-skip { margin-top: 32rpx; }
+/* 申请调价弹窗 */
+.price-sheet-row { display: flex; align-items: center; justify-content: space-between; margin-top: 24rpx; }
+.price-sheet-label { color: #5b6b82; font-size: 26rpx; }
+.price-sheet-current { color: #25364d; font-size: 30rpx; font-weight: 600; }
+.price-sheet-input-box { display: flex; align-items: center; width: 300rpx; padding: 14rpx 20rpx; border-radius: 16rpx; background: #f6f8fc; color: #25364d; font-size: 30rpx; font-weight: 600; box-sizing: border-box; }
+.price-sheet-input { flex: 1; min-width: 0; margin-left: 8rpx; font-size: 30rpx; }
+.price-sheet-reason-label { margin-top: 28rpx; }
+.price-sheet-chips { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: 16rpx; }
+.price-sheet-chip { padding: 10rpx 22rpx; border-radius: 30rpx; background: #f1f4f8; color: #5b6b82; font-size: 24rpx; }
+.price-sheet-chip-active { background: #e8f1fc; color: #397bc8; font-weight: 600; }
+.price-sheet-textarea { height: 150rpx; margin-top: 18rpx; }

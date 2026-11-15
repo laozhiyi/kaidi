@@ -30,7 +30,8 @@ async function transaction(fn) {
  }
 }
 async function limitInTransaction(tx, pid, identity, action, max, windowMs) {
- const now = Date.now(), bucket = Math.floor(now / windowMs), id = scopeKey(pid, identity, action, bucket);
+ // 不带校区后缀：校区由客户端选择，按校区分桶会让同一账号切换校区获得成倍额度。
+ const now = Date.now(), bucket = Math.floor(now / windowMs), id = key(pid, identity, action, bucket);
  const row = await get(tx, 'operation_limit', id);
  if (row && row.count >= max) throw new AppError('操作过于频繁，请稍后再试');
  await set(tx, 'operation_limit', id, { _pid: pid, count: (row && row.count || 0) + 1, expiresAt: (bucket + 2) * windowMs });

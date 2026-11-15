@@ -46,7 +46,7 @@ class AdminReportService extends Base {
    const obj = row.MAIL_OBJ || {};
    data.push([safe(row.MAIL_ID || row._id), rules.LABELS[row.MAIL_STATUS] || '状态未知', safe(obj.campus), safe(obj.title), Number(obj.num || 0), Number.isFinite(Number(obj.price)) ? Number(obj.price) : '', row.MAIL_PAYMENT_MODE === 'offline' ? '线下结算' : '历史支付订单', dateText(row.MAIL_ADD_TIME), dateText(row.MAIL_ACCEPT_TIME), dateText(row.MAIL_PICKUP_TIME), dateText(row.MAIL_DELIVERED_TIME), dateText(row.MAIL_OVER_TIME)]);
   }
-  return exportsUtil.exportDataExcel(key, '订单报表', rows.length, data);
+  return this._export('订单报表', key, rows.length, data, adminId);
  }
  async users(condition, adminId) {
   const key = this.key('user', adminId);
@@ -70,7 +70,14 @@ class AdminReportService extends Base {
   const rows = await this.rows(User, where, 'USER_ADD_TIME');
   const data = [['姓名', '手机号码', '账号状态', '注册时间', '最近登录', '最近处理说明']];
   for (const row of rows) data.push([safe(row.USER_NAME), safe(row.USER_MOBILE), ({ 0: '待审核', 1: '正常', 8: '审核未过', 9: '已停用' })[row.USER_STATUS] || '状态未知', dateText(row.USER_ADD_TIME), dateText(row.USER_LOGIN_TIME), safe(row.USER_CHECK_REASON)]);
-  return exportsUtil.exportDataExcel(key, '用户报表', rows.length, data);
+  return this._export('用户报表', key, rows.length, data, adminId);
+ }
+ // 生成文件后登记到自动清理表；登记失败不影响本次下载，只记日志。
+ async _export(title, key, total, data, adminId) {
+  const exported = await exportsUtil.exportDataExcel(key, title, total, data);
+  try { await require('../export_cleanup.js').record(exported.fileID, adminId); }
+  catch (error) { console.warn('[export] cleanup record failed', { code: error && (error.code || error.errCode) || 'RECORD_FAILED' }); }
+  return { total: exported.total, url: exported.url };
  }
 }
 module.exports = AdminReportService;

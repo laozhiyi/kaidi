@@ -15,14 +15,30 @@
     <view class="ac-card">
       <view class="ac-section-title">账号信息</view>
       <view class="ac-row"><text class="ac-muted">姓名</text><text>{{profile.name}}</text></view>
-      <view class="ac-row"><text class="ac-muted">手机号码</text><text>{{profile.mobile}}</text><text wx:if="{{profile.mobile!=='无'}}" class="ac-link" bindtap="bindPhone">拨打</text></view>
+      <view class="ac-row"><text class="ac-muted">手机号码</text><text>{{profile.mobile}}</text><text wx:if="{{!isServiceAdmin && profile.mobile!=='无'}}" class="ac-link" bindtap="bindPhone">拨打</text></view>
       <view class="ac-row"><text class="ac-muted">后台角色</text><text>{{profile.roleLabel}}</text></view>
       <view class="ac-row"><text class="ac-muted">注册时间</text><text>{{profile.USER_ADD_TIME}}</text></view>
+      <view wx:if="{{profile.USER_CAMPUS}}" class="ac-row"><text class="ac-muted">所在校区</text><text>{{profile.USER_CAMPUS}}</text></view>
       <view class="ac-row"><text class="ac-muted">最近登录</text><text>{{profile.USER_LOGIN_TIME}}</text></view>
       <view wx:if="{{profile.USER_CHECK_REASON}}" class="ac-row"><text class="ac-muted">最近处理说明</text><text>{{profile.USER_CHECK_REASON}}</text></view>
     </view>
 
-    <view class="ac-card">
+    <view wx:if="{{isServiceAdmin && profile.audit}}" class="ac-card">
+      <view class="ac-section-head"><text class="ac-section-title">审核资料：学号、学生证</text><text class="ac-muted">只读核对</text></view>
+      <view class="ac-row"><text class="ac-muted">学号</text><text>{{profile.audit.studentId}}</text></view>
+      <view class="ac-field">
+        <view class="ac-field-label">学生证照片</view>
+        <view class="ac-images"><block wx:for="{{profile.audit.studentCard}}" wx:for-item="src" wx:key="*this"><image class="ac-image" src="{{src}}" mode="aspectFill" data-type="image" data-url="{{src}}" bindtap="url" show-menu-by-longpress="{{true}}" /></block><text wx:if="{{!profile.audit.studentCard.length}}" class="ac-muted">无</text></view>
+        <view wx:if="{{profile.audit.error}}" class="ac-muted">{{profile.audit.error}}</view>
+      </view>
+    </view>
+
+    <view wx:elif="{{isServiceAdmin}}" class="ac-card">
+      <view class="ac-section-title">注册资料</view>
+      <view class="ac-muted">无权限查看：客服只能核对姓名、头像、手机号码与审核状态。</view>
+    </view>
+
+    <view wx:if="{{!isServiceAdmin}}" class="ac-card">
       <view class="ac-section-head"><text class="ac-section-title">注册资料</text><text class="ac-muted">审核注册时填写</text></view>
       <view wx:for="{{profile.registers}}" wx:key="key" class="ac-row"><text class="ac-muted">{{item.label}}</text><text>{{item.value}}</text></view>
       <view class="ac-field">
@@ -33,19 +49,19 @@
       <view class="ac-row"><text class="ac-muted">免责声明</text><text>{{profile.disclaimer}}</text></view>
     </view>
 
-    <view class="ac-card">
+    <view wx:if="{{!isServiceAdmin}}" class="ac-card">
       <view class="ac-section-title">常用联系人</view>
       <view wx:if="{{!profile.contacts.length}}" class="ac-muted">无</view>
       <view wx:for="{{profile.contacts}}" wx:key="key" class="ac-row"><text>{{item.name}}</text><text>{{item.phone}}</text><text wx:if="{{item.isDefault}}" class="ac-badge">默认</text><text wx:if="{{item.phone!=='无'}}" class="ac-link" data-phone="{{item.phone}}" bindtap="bindCall">拨打</text></view>
     </view>
 
-    <view class="ac-card">
+    <view wx:if="{{!isServiceAdmin}}" class="ac-card">
       <view class="ac-section-title">常用地址</view>
       <view wx:if="{{!profile.addresses.length}}" class="ac-muted">无</view>
       <view wx:for="{{profile.addresses}}" wx:key="key" class="ac-field"><view class="ac-field-value">{{item.label}} · {{item.detail}}<text wx:if="{{item.isDefault}}" class="ac-badge">默认</text></view><view wx:if="{{item.note!=='无'}}" class="ac-muted">{{item.note}}</view></view>
     </view>
 
-    <view wx:if="{{profile.others.length}}" class="ac-card">
+    <view wx:if="{{!isServiceAdmin && profile.others.length}}" class="ac-card">
       <view class="ac-section-title">其他资料</view>
       <view wx:for="{{profile.others}}" wx:key="key" class="ac-field"><view class="ac-field-label">{{item.label}}</view>
         <view wx:if="{{item.images.length}}" class="ac-images"><image wx:for="{{item.images}}" wx:for-item="src" wx:key="*this" class="ac-image" src="{{src}}" mode="aspectFill" data-type="image" data-url="{{src}}" bindtap="url" show-menu-by-longpress="{{true}}" /></view>

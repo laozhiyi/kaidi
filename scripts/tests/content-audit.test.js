@@ -309,3 +309,27 @@ test('configuration format and authorization checks still precede external audit
   assert.notEqual(denied.code, 200);
   assert.equal(f.auditCalls.length, 0); assert.deepEqual(copy(f.configRow()), before);
 });
+
+test('an approved account cannot change its own gender (order gender requirements rely on it), while unreviewed accounts still can', async () => {
+  const f = await profileFixture(); assert.equal((await f.call('passport/register', profile(f))).code, 200);
+  const flip = () => { const input = profile(f); input.forms[0].val = '男'; return input; };
+  // 待审核账号仍可修改
+  f.table('user').set(f.userRow()._id, { ...f.userRow(), USER_STATUS: 0 });
+  assert.equal((await f.call('passport/edit_base', flip())).code, 200);
+  // 审核通过后锁定
+  f.table('user').set(f.userRow()._id, { ...f.userRow(), USER_STATUS: 1 });
+  const before = copy(f.userRow());
+  const back = profile(f); back.forms[0].val = '女';
+  const result = await f.call('passport/edit_base', back);
+  assert.notEqual(result.code, 200); assert.match(result.msg, /性别审核通过后不能自行修改/);
+  assert.deepEqual(copy(f.userRow()), before);
+});
+
+test('profile saves are rate limited before the shared text-audit quota is spent', async () => {
+  const f = await profileFixture();
+  for (let i = 0; i < 10; i++) await f.call('passport/wechat_profile', { name: '昵称' + i, pic: f.avatar('wechat.jpg') });
+  const calls = f.auditCalls.length;
+  const blocked = await f.call('passport/wechat_profile', { name: '再来一次', pic: f.avatar('wechat.jpg') });
+  assert.match(blocked.msg, /频繁/);
+  assert.equal(f.auditCalls.length, calls, 'the 11th call never reaches msgSecCheck');
+});

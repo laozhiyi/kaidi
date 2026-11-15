@@ -42,6 +42,16 @@ async function formMedia(forms) {
 	}
 }
 
+/**
+ * 待审核用户的学生证只在客服详情里只读展示：原始 fileID 交给同一套
+ * formMedia 换短期临时链接，前端拿不到 cloud:// 原值。
+ */
+async function auditPreview(audit) {
+	if (!audit) return null;
+	const preview = await formMedia([{ mark: 'studentCard', val: audit.studentCard }]);
+	return { studentId: audit.studentId || '', studentCard: preview.images.studentCard || [], error: preview.error };
+}
+
 class AdminUserController extends BaseProjectAdminController {
 
 
@@ -58,9 +68,11 @@ class AdminUserController extends BaseProjectAdminController {
 		let input = this.validateData(rules);
 
 		let service = new AdminUserService();
+		// 客服只能看到脱敏白名单字段；管理员及以上保持完整内容。
+		const serviceView = Roles.ofAdmin(this._admin) === 'service';
 		let user = await service.getUser({
 			userId: input.id
-		});
+		}, { service: serviceView, audit: serviceView });
 
 		if (user) {
 			// 显示转换  
@@ -71,6 +83,9 @@ class AdminUserController extends BaseProjectAdminController {
 			const preview = await formMedia(user.USER_FORMS);
 			user.USER_FORM_MEDIA = preview.images;
 			user.USER_FORM_MEDIA_ERROR = preview.error;
+			// 待审核用户：客服额外拿到学号与学生证的只读预览（临时链接），其它资料仍不返回。
+			user.USER_AUDIT = await auditPreview(user.USER_AUDIT);
+			if (!user.USER_AUDIT) delete user.USER_AUDIT;
 		}
 
 		return user;
@@ -98,7 +113,7 @@ class AdminUserController extends BaseProjectAdminController {
 		let input = this.validateData(rules);
 
 		let service = new AdminUserService();
-		let result = await service.getUserList(input);
+		let result = await service.getUserList(input, { service: Roles.ofAdmin(this._admin) === 'service' });
 
 		// 数据格式化
 		let list = result.list;

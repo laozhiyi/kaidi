@@ -18,22 +18,83 @@ const AdminMgrService = require('./admin_mgr_service.js');
 // 导出用户数据KEY
 const EXPORT_USER_DATA_KEY = 'EXPORT_USER_DATA';
 
+// 客服只做注册审核：列表与详情都按白名单重建，学号、学生证图片、openid
+// 与注册资料的其它内容不会离开服务端，手机号一律打码。
+const SERVICE_LIST_FIELDS = ['_id', 'USER_NAME', 'USER_PIC', 'USER_MOBILE', 'USER_STATUS', 'USER_ADD_TIME'];
+const SERVICE_DETAIL_FIELDS = [...SERVICE_LIST_FIELDS, 'USER_LOGIN_TIME', 'USER_CHECK_REASON', 'USER_ROLE'];
+// 用户列表页面实际只按注册时间排序，其余字段一律拒绝。
+const ORDER_FIELDS = ['USER_ADD_TIME'];
+// 待审核（USER_STATUS=0）：客服这时候要核对学号与学生证，只读放开这两项。
+const USER_STATUS_PENDING = 0;
+
+/** 138****1234；非 11 位手机号原样返回，避免把空值变成星号串。 */
+function maskMobile(value) {
+	const phone = String(value == null ? '' : value).trim();
+	return /^\d{11}$/.test(phone) ? phone.slice(0, 3) + '****' + phone.slice(-4) : phone;
+}
+
+function campusOf(forms) {
+	const item = (Array.isArray(forms) ? forms : []).find(row => row && row.mark === 'campus');
+	return item ? String(item.val == null ? '' : item.val) : '';
+}
+
+/** 待审核用户只放开学号与学生证：学号回文字，学生证回原始 fileID 由控制器换短期链接。 */
+function auditOf(forms) {
+	const pick = mark => (Array.isArray(forms) ? forms : []).find(row => row && row.mark === mark);
+	const id = pick('studentId'), card = pick('studentCard');
+	const files = card ? (Array.isArray(card.val) ? card.val : [card.val]) : [];
+	return {
+		studentId: id && id.val != null ? String(id.val) : '',
+		studentCard: files.filter(value => typeof value === 'string' && value)
+	};
+}
+
+/** 按白名单重建客服可见的用户对象，只额外补所在校区与待审核时的审核资料。 */
+function serviceUser(row, fields, options = {}) {
+	if (!row) return row;
+	const out = { _id: row._id, USER_CAMPUS: campusOf(row.USER_FORMS) };
+	for (const key of fields) {
+		if (key === '_id' || row[key] === undefined) continue;
+		out[key] = row[key];
+	}
+	if (row.USER_MOBILE !== undefined) out.USER_MOBILE = maskMobile(row.USER_MOBILE);
+	// 只有待审核状态才把学号与学生证交给控制器做只读核对；列表永远不带这两项。
+	if (options.audit === true && Number(row.USER_STATUS) === USER_STATUS_PENDING) out.USER_AUDIT = auditOf(row.USER_FORMS);
+	return out;
+}
+
 class AdminUserService extends BaseProjectAdminService {
 
 
-	/** 获得某个用户信息 */
+	/** 获得某个用户信息。客服视角只返回脱敏白名单字段。 */
 	async getUser({
 		userId,
 		fields = '*'
-	}) {
+	}, options = {}) {
 		if (typeof userId !== 'string' || !userId.trim()) this.AppError('请选择有效的用户');
+		const limited = options.service === true;
+		const projection = limited ? [...SERVICE_DETAIL_FIELDS, 'USER_FORMS'].join(',') : fields;
 		// Current lists use the document id. Old links may contain an OpenID or
 		// USER_ID; resolve them here and always mutate the resolved document.
 		for (const field of ['_id', 'USER_MINI_OPENID', 'USER_ID']) {
-			const user = await UserModel.getOne({ [field]: userId.trim() }, fields);
-			if (user) return user;
+			const user = await UserModel.getOne({ [field]: userId.trim() }, projection);
+			if (user) return limited ? serviceUser(user, SERVICE_DETAIL_FIELDS, options) : user;
 		}
 		return null;
+	}
+
+	/** orderBy 白名单：只接受页面实际使用的注册时间排序。 */
+	_orderBy(orderBy) {
+		const entries = Object.entries(orderBy || {});
+		if (!entries.length) return { USER_ADD_TIME: 'desc' };
+		const out = {};
+		for (const [field, direction] of entries) {
+			if (!ORDER_FIELDS.includes(field)) this.AppError('排序字段无效');
+			const dir = String(direction).toLowerCase();
+			if (dir !== 'asc' && dir !== 'desc') this.AppError('排序方式无效');
+			out[field] = dir;
+		}
+		return out;
 	}
 
 	/** 取得用户分页列表 */
@@ -46,12 +107,11 @@ class AdminUserService extends BaseProjectAdminService {
 		page,
 		size,
 		oldTotal = 0
-	}) {
+	}, options = {}) {
 
-		orderBy = orderBy || {
-			USER_ADD_TIME: 'desc'
-		};
-		let fields = '*';
+		orderBy = orderBy || { USER_ADD_TIME: 'desc' };
+		const limited = options.service === true;
+		let fields = limited ? [...SERVICE_LIST_FIELDS, 'USER_FORMS'].join(',') : '*';
 
 
 		let where = {};
@@ -86,8 +146,10 @@ class AdminUserService extends BaseProjectAdminService {
 				}
 			}
 		}
+		// 排序在拼装完条件后统一校验：无论 orderBy 来自入参还是 sortVal，都只允许白名单字段。
+		orderBy = this._orderBy(orderBy);
 		let result = await UserModel.getList(where, fields, orderBy, page, size, true, oldTotal, false);
-
+		if (limited) result.list = (result.list || []).map(row => serviceUser(row, SERVICE_LIST_FIELDS));
 
 		// 为导出增加一个参数condition
 		result.condition = encodeURIComponent(JSON.stringify(where));

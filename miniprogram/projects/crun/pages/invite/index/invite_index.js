@@ -96,6 +96,6 @@ Page({
   },
   onShareAppMessage() {
     const query = this.data.code ? '?inviteCode=' + encodeURIComponent(this.data.code) : '';
-    return { title: 'GXNU随手取，便捷互助，邀请你一起加入', path: '/projects/crun/pages/default/index/default_index' + query };
+    return { title: '云速取，便捷互助，邀请你一起加入', path: '/projects/crun/pages/default/index/default_index' + query };
   }
 });

@@ -17,7 +17,7 @@ function historyTime(value) {
  return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 19).replace('T', ' ') : '时间未知';
 }
 Page({
- data:{id:'',mail:null,detailUI:null,loading:true,error:false,errorMessage:'',notFound:false,configError:false,confirmGate:false,confirmCountdown:0,offlineNotice:'费用由双方线下协商结算，平台不代收、不担保；请勿提前向陌生人转账。',busy:false,panel:'',note:'',images:[],imagePreviews:{},video:'',videoPreview:'',deliveryMode:'place',reasons:['取件失败','取件码错误','联系不上','物品损坏','送错地址','申请取消','其他'],reasonIndex:0,config:null},
+ data:{id:'',mail:null,detailUI:null,loading:true,error:false,errorMessage:'',notFound:false,configError:false,confirmGate:false,confirmCountdown:0,offlineNotice:'费用由双方线下协商结算，平台不代收、不担保；请勿提前向陌生人转账。',busy:false,panel:'',note:'',images:[],imagePreviews:{},video:'',videoPreview:'',deliveryMode:'place',reasons:['取件失败','取件码错误','联系不上','物品损坏','送错地址','申请取消','其他'],reasonIndex:0,config:null,pickupGate:false,pickupCountdown:2,priceSheet:false,priceValue:'',priceReason:'',priceReasons:['实际是中件','实际是大件','包裹超重','体积过大']},
  onLoad(options = {}) {
   ProjectBiz.initPage(this);
   this._openPanelAfterLoad = ['pickup', 'deliver', 'update_proof'].includes(options.panel) ? options.panel : '';
@@ -36,8 +36,8 @@ Page({
   this._stopOrderSync = OrderSync.subscribe(() => this.load({ silent: true }));
  },
  onHide() {
-  this._visible = false; this._seq = (this._seq || 0) + 1; this._clearConfirmTimer();
-  this._confirming = false; this.setData({ confirmGate: false, confirmCountdown: 0 });
+  this._visible = false; this._seq = (this._seq || 0) + 1; this._clearConfirmTimer(); this._clearPickupGate();
+  this._confirming = false; this.setData({ confirmGate: false, confirmCountdown: 0, pickupGate: false, pickupCountdown: 2 });
   if (this._stopOrderSync) this._stopOrderSync(); this._stopOrderSync = null;
  },
  onUnload() { this.onHide(); },
@@ -282,7 +282,7 @@ Page({
   try { await this.perform('confirm'); } finally { this._confirming = false; }
  },
  async bindSubmitPanel() {
-  if (!this.data.panel || this.data.busy) return;
+  if (!this.data.panel || this.data.busy || this.data.pickupGate) return;
  const placeProof = this.data.deliveryMode !== 'face';
  const deliveryPanel = ['deliver', 'update_proof'].includes(this.data.panel);
  // 放置指定位置必须有说明与凭证；当面交付由发布人确认收货，凭证与说明都可以留空。
@@ -292,7 +292,79 @@ Page({
  const hasProof = this.data.images.length > 0 || !!this.data.video;
  if (needsNote && !this.data.note.trim()) { Ops.error(new Error('请填写送达位置与物品情况')); return; }
  if (needsProof && !hasProof) { Ops.error(new Error(this.data.panel === 'pickup' ? '取件请上传至少1张凭证照片或1段视频' : '请至少上传1张凭证照片或1段视频，或改为当面交付')); return; }
+  // 快递代取：提交取件凭证即锁定包裹大小与价格，先弹出 2 秒提醒（可跳过）。
+  if (this.data.panel === 'pickup' && this.data.detailUI && this.data.detailUI.serviceType === 'take') return this._startPickupGate();
   await this.perform(this.data.panel);
+ },
+ _clearPickupGate() { if (this._pickupTimer) { clearInterval(this._pickupTimer); this._pickupTimer = null; } },
+ _startPickupGate() {
+  this._clearPickupGate();
+  this.setData({ pickupGate: true, pickupCountdown: 2 });
+  this._pickupTimer = setInterval(() => {
+   const left = Math.max(0, Number(this.data.pickupCountdown || 0) - 1);
+   this.setData({ pickupCountdown: left });
+   if (!left) this.bindPickupGateSkip();
+  }, 1000);
+ },
+ async bindPickupGateSkip() {
+  if (!this.data.pickupGate) return;
+  this._clearPickupGate(); this.setData({ pickupGate: false, pickupCountdown: 2 });
+  if (this._visible && this.data.panel === 'pickup') await this.perform('pickup');
+ },
+ // 公共详情页的「前往处理」入口；本页已就地展示调价操作，无需跳转。
+ bindManageTap() {},
+ bindOpenPriceSheet() {
+  const ui = this.data.detailUI;
+  if (!ui || !ui.priceAdjust || !ui.priceAdjust.canPropose || this.data.busy) return;
+  this.setData({ priceSheet: true, priceValue: '', priceReason: '' });
+ },
+ bindClosePriceSheet() { if (!this.data.busy) this.setData({ priceSheet: false }); },
+ bindPriceInput(e) { this.setData({ priceValue: String(e.detail.value || '').trim() }); },
+ bindPriceReasonInput(e) { this.setData({ priceReason: e.detail.value }); },
+ bindPriceReasonChip(e) { if (!this.data.busy) this.setData({ priceReason: e.currentTarget.dataset.reason }); },
+ async bindSubmitPrice() {
+  const ui = this.data.detailUI;
+  if (this.data.busy || this._performing || !ui || !ui.priceAdjust || !ui.priceAdjust.canPropose) return;
+  const price = this.data.priceValue, reason = String(this.data.priceReason || '').trim();
+  if (!/^\d+(\.\d{1,2})?$/.test(price)) return Ops.error(new Error('请填写有效的新费用（最多两位小数）'));
+  if (Number(price) <= Number(ui.fee)) return Ops.error(new Error('新费用须高于当前费用 ¥' + ui.fee));
+  if (!reason) return Ops.error(new Error('请填写调价理由'));
+  await this._priceCommand('mail/price_propose', { id: this.data.id, price, reason }, '已发送给发布人', () => this.setData({ priceSheet: false }));
+ },
+ async bindPriceRespond(e) {
+  const decision = e.currentTarget.dataset.decision, ui = this.data.detailUI;
+  if (!['agree', 'reject'].includes(decision) || !ui || !ui.priceAdjust || !ui.priceAdjust.canRespond || this.data.busy) return;
+  const content = decision === 'agree' ? '同意后本单费用将由 ¥' + ui.priceAdjust.from + ' 调整为 ¥' + ui.priceAdjust.to + '，确定同意吗？' : '拒绝后本单仍按 ¥' + ui.priceAdjust.from + ' 计费，确定拒绝吗？';
+  const result = await new Promise(resolve => wx.showModal({ title: decision === 'agree' ? '同意调价' : '拒绝调价', content, success: resolve, fail: () => resolve({ confirm: false }) }));
+  if (!result.confirm || !this._visible) return;
+  await this._priceCommand('mail/price_respond', { id: this.data.id, decision }, decision === 'agree' ? '已同意调价' : '已拒绝调价');
+ },
+ async bindReleaseOrder() {
+  const ui = this.data.detailUI;
+  if (!ui || !ui.priceAdjust || !ui.priceAdjust.canRelease || this.data.busy) return;
+  const result = await new Promise(resolve => wx.showModal({ title: '放弃接单', content: '放弃后订单将按原价 ¥' + ui.fee + ' 重新发布给其他骑手，你将不能再接这一单。确定放弃吗？', confirmText: '确定放弃', success: resolve, fail: () => resolve({ confirm: false }) }));
+  if (!result.confirm || !this._visible) return;
+  if (this._performing) return;
+  this._performing = true; this.setData({ busy: true });
+  try {
+   if (!await PassportBiz.loginMustCancelWin(this)) return;
+   await Ops.command('mail/release', { id: this.data.id });
+   invalidateOrderLists();
+   // 放弃后已不是本单骑手，回到订单列表。
+   if (this._visible) { wx.showToast({ title: '已放弃接单' }); this.bindBackOrders(); }
+  } catch (e) { if (this._visible) { Ops.error(e); await this.load(); } }
+  finally { this._performing = false; if (this._visible) this.setData({ busy: false }); else this.data.busy = false; }
+ },
+ async _priceCommand(route, params, toast, done) {
+  if (this._performing) return;
+  this._performing = true; this.setData({ busy: true });
+  try {
+   if (!await PassportBiz.loginMustCancelWin(this)) return;
+   await Ops.command(route, params);
+   invalidateOrderLists();
+   if (this._visible) { if (done) done(); await this.load(); wx.showToast({ title: toast }); }
+  } catch (e) { if (this._visible) { Ops.error(e); await this.load(); } }
+  finally { this._performing = false; if (this._visible) this.setData({ busy: false }); else this.data.busy = false; }
  },
  async perform(action) {
   const ui = this.data.detailUI;

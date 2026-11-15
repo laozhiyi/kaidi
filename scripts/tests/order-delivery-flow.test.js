@@ -38,7 +38,7 @@ async function harness(pickedUp = false) {
  function mount(file, options) {
   let page;
   runMiniProgram(path.join(__dirname, '../../miniprogram/projects/crun/pages', file + '.js'), {
-   Page: value => { page = value; }, wx, console: { error() {} },
+   Page: value => { page = value; }, wx, console: { error() {} }, setInterval, clearInterval,
    require(name) {
     if (name.includes('mail_ui_biz')) return UI;
     if (name.includes('operations_biz')) return ops;
@@ -91,6 +91,9 @@ test('card pickup opens details for photo proof, and delivery only advances afte
  assert.equal(pickupPage.data.panel, 'pickup'); assert.equal(pickupPage.data.detailUI.primaryLabel, '已取件');
  await pickupPage.bindSubmitPanel(); assert.equal(h.stored().MAIL_STATUS, 1);
  pickupPage.setData({ images: ['pickup.jpg'] }); await pickupPage.bindSubmitPanel();
+ // 快递代取提交取件凭证前先弹出「确认包裹大小」提醒，跳过后才真正提交。
+ assert.equal(pickupPage.data.pickupGate, true); assert.equal(h.stored().MAIL_STATUS, 1);
+ await pickupPage.bindPickupGateSkip(); assert.equal(pickupPage.data.pickupGate, false);
  assert.equal(h.stored().MAIL_STATUS, 4);
  assert.deepEqual(Array.from(h.stored().MAIL_PICKUP_PROOF.images), ['cloud://delivery/proof-0']);
  pickupPage.onHide();
@@ -143,7 +146,7 @@ test('detail pickup and delivery use separate confirmations, and cancelling eith
  // 取件确认后先进入凭证面板：没有照片不提交，状态停在本页。
  assert.equal(page.data.panel, 'pickup'); assert.equal(h.commands.length, 0);
  await page.bindSubmitPanel(); assert.equal(h.stored().MAIL_STATUS, 1); assert.equal(page.data.panel, 'pickup');
- page.setData({ images: ['local-pickup.jpg'] }); await page.bindSubmitPanel();
+ page.setData({ images: ['local-pickup.jpg'] }); await page.bindSubmitPanel(); await page.bindPickupGateSkip();
  assert.equal(h.stored().MAIL_STATUS, 4); assert.equal(page.data.detailUI.primaryLabel, '已送达');
  assert.equal(page.data.detailUI.showProgress, true); assert.equal(page.data.detailUI.step, 2);
  assert.equal(h.commands.length, 1); assert.equal(page.data.panel, '');
@@ -248,7 +251,7 @@ test('proof entry is a single control and photo or video are mutually exclusive 
  assert.equal(page.data.video, 'clip.mp4');
 
  // 只有视频也能提交取件凭证，服务端同样接受。
- await page.bindSubmitPanel();
+ await page.bindSubmitPanel(); await page.bindPickupGateSkip();
  assert.equal(h.stored().MAIL_STATUS, 4);
  assert.equal(h.stored().MAIL_PICKUP_PROOF.images.length, 0);
  assert.equal(h.stored().MAIL_PICKUP_PROOF.video, 'cloud://delivery/video-0');
@@ -261,16 +264,17 @@ test('proof entry is a single control and photo or video are mutually exclusive 
  assert.equal(empty.stored().MAIL_STATUS, 1);
 });
 
-test('order cards carry the shared delivery requirement text and stay empty for default orders', async () => {
+test('order cards carry status-aware requirement tags and stay empty for default orders', async () => {
  const h = await harness();
  Object.assign(h.stored().MAIL_OBJ, { riderGender: 'female', upstairs: true });
  const list = h.mount('order/index/order_index', { tab: 1 });
  list.onShow(); await list._syncOrders();
- assert.equal(list.data.dataList.list[0].requirementText, '仅限女生 · 需送上楼');
+ // 「我的接单」里的订单已被接取：性别要求已在接单时校验，只剩送上楼提醒。
+ assert.deepEqual(list.data.dataList.list[0].requirementTags.map(tag => tag.text), ['需送上楼']);
 
  const plain = await harness();
  Object.assign(plain.stored().MAIL_OBJ, { riderGender: 'any', upstairs: false });
  const list2 = plain.mount('order/index/order_index', { tab: 1 });
  list2.onShow(); await list2._syncOrders();
- assert.equal(list2.data.dataList.list[0].requirementText, '');
+ assert.deepEqual(list2.data.dataList.list[0].requirementTags, []);
 });

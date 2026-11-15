@@ -5,7 +5,7 @@ const Mail = require('./mail_service.js');
 const cloudBase = require('../../../framework/cloud/cloud_base.js');
 class MaintenanceService extends Base {
  async runScheduled(kind, options = {}) {
-  if (!['orders','notifications'].includes(kind)) throw new Error('INVALID_WORKER_KIND');
+  if (!['orders','notifications','media_purge'].includes(kind)) throw new Error('INVALID_WORKER_KIND');
   const tenant=require('../../../framework/tenancy/tenant_context.js');
   const Tenant=require('./tenant_service.js');
   const batchSize=Math.max(1,Math.min(100,Number(options.batchSize)||50));
@@ -31,6 +31,7 @@ class MaintenanceService extends Base {
     const now=Date.now();
     const queries=kind==='notifications'
      ? [['notification',{delivery:cmd.in(['pending','retry','sending']),nextAttemptAt:cmd.lte(now)},'nextAttemptAt']]
+     : kind==='media_purge' ? []
      : [['mail',{MAIL_STATUS:0,MAIL_PAYMENT_MODE:'offline',MAIL_END_TIME:cmd.lt(now)},'MAIL_END_TIME','expire'],
         ['mail',cmd.and([{MAIL_STATUS:cmd.in([1,2,3,4]),MAIL_DUE_TIME:cmd.lt(now),MAIL_OVERDUE_NOTIFIED:cmd.neq(true)},{MAIL_DUE_TIME:cmd.gt(0)}]),'MAIL_DUE_TIME','overdue'],
         // 送达后 8 小时未确认收货：自动确认，订单双方都收到一次状态更新。
@@ -63,9 +64,37 @@ class MaintenanceService extends Base {
     const cleaned=await this._scheduledBatch(rows,row=>db.collection(store.collection(collection)).doc(row._id).remove(),deadline);
     result.pruned+=cleaned.started-cleaned.failed;result.cleanupFailed+=cleaned.failed;result.cleanupHasMore=result.cleanupHasMore||rows.length===100||cleaned.started<rows.length;
    }
+   // 结束满 10 天的订单凭证媒体（kind 'media_purge' 时只跑这一段）。
+   // 随订单维护执行时最多每小时一次；单独调用 media_purge 不受间隔限制。
+   result.mediaPurge={ran:false,scanned:0,purged:0,failed:0,skipped:0,hasMore:false};
+   const lastPurgeAt=Number(previous&&previous.mediaPurgeAt)||0;
+   let mediaPurgeAt=lastPurgeAt;
+   if(kind==='orders'||kind==='media_purge'){
+    if(kind==='orders'&&lastPurgeAt>0&&Date.now()-lastPurgeAt<3600000)result.mediaPurge.reason='interval';
+    else if(Date.now()<deadline){
+     // 单个清理阶段失败不能中断维护：不写间隔时间，下轮自动重试，worker_state 照常落盘。
+     try{result.mediaPurge=await require('./order_media_purge.js').sweep({batchSize,shard,budgetMs:Math.max(1,deadline-Date.now())});result.mediaPurge.ran=true;mediaPurgeAt=Date.now();}
+     catch(error){result.mediaPurge.reason='error';console.error('[worker] media_purge failed',{code:error&&(error.code||error.errCode)||'PURGE_FAILED'});}
+    }
+    else result.mediaPurge.reason='deadline';
+   }
+   result.hasMore=result.hasMore||result.mediaPurge.hasMore;
+   // 导出文件保留 2 天：每小时最多清理一次，每批与预算沿用本次 sweep。
+   result.exportCleanup={ran:false,scanned:0,deleted:0,failed:0,hasMore:false};
+   const lastExportCleanupAt=Number(previous&&previous.exportCleanupAt)||0;
+   let exportCleanupAt=lastExportCleanupAt;
+   if(kind==='orders'){
+    if(lastExportCleanupAt>0&&Date.now()-lastExportCleanupAt<3600000)result.exportCleanup.reason='interval';
+    else if(Date.now()<deadline){
+     try{result.exportCleanup=await require('./export_cleanup.js').sweep({batchSize,budgetMs:Math.max(1,deadline-Date.now())});result.exportCleanup.ran=true;exportCleanupAt=Date.now();}
+     catch(error){result.exportCleanup.reason='error';console.error('[worker] export_cleanup failed',{code:error&&(error.code||error.errCode)||'CLEANUP_FAILED'});}
+    }
+    else result.exportCleanup.reason='deadline';
+   }
+   result.hasMore=result.hasMore||result.exportCleanup.hasMore;
    result.finishedAt=Date.now();result.durationMs=result.finishedAt-result.startedAt;
    // Only scheduling diagnostics are written here; no contact or order payload.
-   await store.set(db,'worker_state',stateId,{_pid:'crun',...result,cursors});
+   await store.set(db,'worker_state',stateId,{_pid:'crun',...result,cursors,mediaPurgeAt,exportCleanupAt});
    console.info('[worker]',result);
    return result;
   });
@@ -83,11 +112,11 @@ class MaintenanceService extends Base {
   const svc=new Mail();row._id=id;
   if(action==='expire'){
    if(row.MAIL_STATUS!==0||row.MAIL_PAYMENT_MODE!=='offline'||row.MAIL_END_TIME>=now)return;
-   row.MAIL_STATUS=99;await svc._quota(tx,row.MAIL_USER_ID,'poster',id,false,0);
+   row.MAIL_STATUS=99;row.MAIL_END_AT=now;await svc._quota(tx,row.MAIL_USER_ID,'poster',id,false,0);
   }else if(action==='auto_confirm'){
    // 送达满 8 小时仍未确认收货，视为收货，避免订单长期挂在待收货。
    if(row.MAIL_STATUS!==2||!(row.MAIL_DELIVERED_TIME>0)||row.MAIL_DELIVERED_TIME>now-Mail.AUTO_CONFIRM_MS)return;
-   row.MAIL_STATUS=9;row.MAIL_OVER_TIME=now;row.MAIL_AUTO_CONFIRMED=true;row.MAIL_POSTER_ARCHIVED=true;row.MAIL_RIDER_ARCHIVED=true;
+   row.MAIL_STATUS=9;row.MAIL_END_AT=now;row.MAIL_OVER_TIME=now;row.MAIL_AUTO_CONFIRMED=true;row.MAIL_POSTER_ARCHIVED=true;row.MAIL_RIDER_ARCHIVED=true;
    await svc._quota(tx,row.MAIL_USER_ID,'poster',id,false,0);
    if(row.MAIL_ACCEPT_USER_ID)await svc._quota(tx,row.MAIL_ACCEPT_USER_ID,'rider',id,false,0);
   }else{
@@ -107,7 +136,7 @@ class MaintenanceService extends Base {
  async run() {
   const db=store.database(),pid=this.getProjectId(),now=Date.now(),cmd=db.command;
   const expired=await db.collection(store.collection('mail')).where({_pid:pid,MAIL_ADMIN_DELETED:cmd.neq(true),MAIL_STATUS:0,MAIL_PAYMENT_MODE:'offline',MAIL_END_TIME:cmd.lt(now)}).orderBy('MAIL_END_TIME','asc').limit(30).get();
-  const expiredFailed=await this._batch(expired.data,item=>store.transaction(async tx=>{const row=await store.get(tx,'mail',item._id);if(!row||row._pid!==pid||row.MAIL_ADMIN_DELETED===true||row.MAIL_STATUS!==0||row.MAIL_END_TIME>=Date.now())return;row._id=item._id;row.MAIL_STATUS=99;const svc=new Mail();await svc._quota(tx,row.MAIL_USER_ID,'poster',row._id,false,0);await svc._record(tx,row,{userId:row.MAIL_USER_ID},'expire',store.key('expire',row._id),'超过接单截止时间，自动关闭');}));
+  const expiredFailed=await this._batch(expired.data,item=>store.transaction(async tx=>{const row=await store.get(tx,'mail',item._id);if(!row||row._pid!==pid||row.MAIL_ADMIN_DELETED===true||row.MAIL_STATUS!==0||row.MAIL_END_TIME>=Date.now())return;row._id=item._id;row.MAIL_STATUS=99;row.MAIL_END_AT=Date.now();const svc=new Mail();await svc._quota(tx,row.MAIL_USER_ID,'poster',row._id,false,0);await svc._record(tx,row,{userId:row.MAIL_USER_ID},'expire',store.key('expire',row._id),'超过接单截止时间，自动关闭');}));
   const overdue=await db.collection(store.collection('mail')).where({_pid:pid,MAIL_ADMIN_DELETED:cmd.neq(true),MAIL_STATUS:cmd.in([1,2,3,4]),MAIL_DUE_TIME:cmd.lt(now),MAIL_OVERDUE_NOTIFIED:cmd.neq(true)}).orderBy('MAIL_DUE_TIME','asc').limit(30).get();
   const overdueFailed=await this._batch(overdue.data,item=>store.transaction(async tx=>{const row=await store.get(tx,'mail',item._id);if(!row||row._pid!==pid||row.MAIL_ADMIN_DELETED===true||![1,2,3,4].includes(row.MAIL_STATUS)||row.MAIL_OVERDUE_NOTIFIED||!(row.MAIL_DUE_TIME>0&&row.MAIL_DUE_TIME<Date.now()))return;row._id=item._id;row.MAIL_OVERDUE_NOTIFIED=true;await new Mail()._record(tx,row,{userId:row.MAIL_USER_ID},'overdue',store.key('overdue',row._id),'订单已超过预计履约时限，请联系对方或提交异常');}));
   // 手动维护入口与定时任务保持一致：送达满 8 小时也自动确认收货。

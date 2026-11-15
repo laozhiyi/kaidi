@@ -192,7 +192,7 @@ Page({
         }
 		return Object.assign({}, order, {
 			showProgress: progress.visible, progressStep: progress.step, progressSteps: progress.steps, progressLabels: progress.steps.map(step => step.label),
-			deliveryAddress: MailUI.deliveryAddress(order), receipt: MailUI.receipt(order), requirementText: MailUI.requirementText(order),
+			deliveryAddress: MailUI.deliveryAddress(order), receipt: MailUI.receipt(order), requirementTags: MailUI.requirementTags(order), priceAdjust: MailUI.priceAdjust(order),
 			MAIL_FAV_CNT: Number(order.MAIL_FAV_CNT) || 0, MAIL_IS_FAV: !!order.MAIL_IS_FAV,
 			packageProofs: packages.filter(item => item && typeof item === 'object').map(item => ({ pickupPoint: item.pickupPoint || obj.address1 || '', code: obj.serviceType === 'send' ? item.note || '请联系发布者交接' : item.code || '查看取件截图', noteLabel: item.note ? '有备注' : '无备注' }))
 		});

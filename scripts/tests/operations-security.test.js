@@ -39,4 +39,12 @@ test('administrator sessions require matching identity, active account, unexpire
  const Model={async getOne(where){return Object.entries(where).every(([k,v])=>Array.isArray(v)?row[k]>v[1]:row[k]===v)?row:null;}};
  const Service=load('cloudfunctions/mcloud/framework/platform/service/base_admin_service.js',{'./base_service.js':Base,'../../../framework/utils/time_util.js':{time:Date.now},'../../../framework/core/app_code.js':{ADMIN_ERROR:2401},'../../../config/config.js':{ADMIN_LOGIN_EXPIRE:86400},'../model/admin_model.js':Model,'../model/log_model.js':{}});
  const svc=new Service();assert.equal(await svc.isAdmin('token','owner'),row);await assert.rejects(svc.isAdmin('token','other'));row.ADMIN_STATUS=0;await assert.rejects(svc.isAdmin('token','owner'));row.ADMIN_STATUS=1;row.ADMIN_TOKEN_TIME=0;await assert.rejects(svc.isAdmin('token','owner'));row.ADMIN_TOKEN_TIME=Date.now();row.ADMIN_TYPE=2;await assert.rejects(svc.isSuperAdmin('token','owner'));assert.equal(await svc.isAdmin('token','owner'),row);
+ // 令牌必须是字符串：数组 / 对象会被查询层当作操作符（如 ['<>','x'] 匹配任意令牌）
+ for(const forged of [['<>','x'],{$ne:'x'},'',123]){await assert.rejects(svc.isAdmin(forged,'owner'),/重新登录/);await assert.rejects(svc.isSuperAdmin(forged,'owner'),/重新登录/);}
 }));
+
+test('proof videos accept only the caller own upload (or the kept original) and never a file of another account',async()=>{const {api,state}=auditFixture();
+ assert.equal(await api.checkCloudVideo('cloud://env.bucket/private/owner/video/a.mp4'),'cloud://env.bucket/private/owner/video/a.mp4');
+ for(const id of ['http://bad','cloud://env.bucket/private/other/video/a.mp4','cloud://env.bucket/private-evidence/other/x.mp4','cloud://env.bucket/private/other/private/owner/a.mp4','cloud://env.bucket/private/owner/../other/a.mp4','cloud://env.bucket/private/owner/video/a.png'])await assert.rejects(api.checkCloudVideo(id),/视频/);
+ const kept='cloud://env.bucket/private/rider-old-session/video/kept.mp4';assert.equal(await api.checkCloudVideo(kept,[kept]),kept);
+ assert.equal(state.downloads,0,'videos are never downloaded for checking');});

@@ -19,8 +19,13 @@ const MailModel = require('../model/mail_model.js');
 const MessageModel = require('../model/campus_service_message_model.js');
 const deliveryAddress = require('./delivery_address.js');
 const Roles = require('./admin/admin_roles.js');
+const contentCheck = require('../../../framework/validate/content_check.js');
 
 const MAX_CONTENT = 500;
+// 用户发消息：先限流再送审，超频请求不消耗微信内容审核配额。
+const CHAT_SEND_MAX = 20;
+// 后台客服回复沿用原有额度，不新增审核。
+const CHAT_REPLY_MAX = 60;
 const PUBLIC_SERVICE = { CS_NAME: '在线客服', CS_CAMPUS: '', CS_WORK_TIME: '', CS_PIC: '', CS_STATUS: 1 };
 const SERVICE_NAME = { take: '快递代取', send: '物品代送', buy: '商品代买' };
 const ORDER_STATUS = { 0: '等待接单', 1: '等待取件', 2: '等待确认收货', 3: '异常处理中', 4: '配送中', 9: '已完成', 99: '已取消' };
@@ -96,6 +101,13 @@ class CustomerServiceService extends BaseProjectService {
 		content = String(content || '').trim();
 		if (!content && !card) this.AppError('请输入咨询内容');
 		if (content.length > MAX_CONTENT) this.AppError('咨询内容不能超过' + MAX_CONTENT + '字');
+		// 顺序固定：先按用户限流，再把用户输入送内容审核；任何一步失败都不写库。
+		// 已经保存过的同一请求直接走幂等返回，网络重试不重复占用额度与审核配额。
+		// 订单卡片是系统快照，不是用户输入，没有文字时不送审。
+		if (!await this._savedMessage(userId, requestId)) {
+			await store.limit(this._pid(), userId, 'chat_send', CHAT_SEND_MAX, 60000);
+			if (content) await contentCheck.checkTextMultiClient({ content });
+		}
 		return this._saveMessage({
 			_pid: this._pid(),
 			CSM_SESSION_ID: this._sessionId(userId),
@@ -107,7 +119,7 @@ class CustomerServiceService extends BaseProjectService {
 			CSM_READ: 0,
 			CSM_ADD_TIME: this._timestamp,
 			CSM_EDIT_TIME: this._timestamp
-		}, requestId, userId, userId);
+		}, requestId, userId, userId, undefined, { limited: true });
 	}
 
 	/** 发送订单前必须确认是本人参与的订单，卡片只存展示所需的快照。 */
@@ -142,7 +154,13 @@ class CustomerServiceService extends BaseProjectService {
 		return content;
 	}
 
-	async _saveMessage(message, requestId, actorId, targetUserId, sourceId) {
+	/** 同一请求是否已经落库；用于网络重试时不重复计费限流与审核配额。 */
+	async _savedMessage(userId, requestId) {
+		if (typeof requestId !== 'string' || !/^[\w-]{16,100}$/.test(requestId)) return null;
+		return await store.get(store.database(), 'campus_service_message', store.key(this._pid(), 'chat', 'user', userId, requestId));
+	}
+
+	async _saveMessage(message, requestId, actorId, targetUserId, sourceId, options = {}) {
 		if (typeof requestId !== 'string' || !/^[\w-]{16,100}$/.test(requestId)) this.AppError('消息请求标识无效，请重试');
 		const id = store.key(this._pid(), 'chat', message.CSM_SENDER, actorId, requestId);
 		// 幂等指纹包含订单标识：同一 requestId 重试时订单状态变化不应被判成「不同消息」。
@@ -167,7 +185,8 @@ class CustomerServiceService extends BaseProjectService {
 				if (old.CSM_REQUEST_FINGERPRINT !== fingerprint) this.AppError('相同请求不能发送不同消息');
 				return { id: old.CSM_ID, sessionId: old.CSM_SESSION_ID };
 			}
-			await store.limitInTransaction(tx, this._pid(), actorId, 'chat_send', 60, 60000);
+			// 用户消息已在送审前限流，这里只对后台回复沿用原有额度。
+			if (options.limited !== true) await store.limitInTransaction(tx, this._pid(), actorId, 'chat_send', CHAT_REPLY_MAX, 60000);
 			await store.set(tx, 'campus_service_message', id, {
 				...message, CSM_ID: 'CSM' + id, CSM_REQUEST_FINGERPRINT: fingerprint
 			});

@@ -10,6 +10,9 @@ const timeUtil = require('../../framework/utils/time_util.js');
 const util = require('../../framework/utils/util.js');
 const setupUtil = require('../utils/setup/setup_util.js');
 
+// 导出文件的下载链接有效期：1 天。其它业务链接（如凭证）仍用各自调用的默认值。
+const EXPORT_URL_MAX_AGE = 86400;
+
 // 获得当前导出链接
 async function getExportDataURL(key) {
 
@@ -20,7 +23,7 @@ async function getExportDataURL(key) {
 		url = '';
 	else {
 		url = expData.EXPORT_CLOUD_ID;
-		url = await cloudUtil.getTempFileURLOne(url);
+		url = await cloudUtil.getTempFileURLOne(url, EXPORT_URL_MAX_AGE);
 		if (!url) throw new Error('暂时无法获取报表下载链接，请重试');
 		time = timeUtil.timestamp2Time(expData.EXPORT_ADD_TIME);
 	}
@@ -100,7 +103,7 @@ async function exportDataExcel(key, title, total, data, options = {}) {
 	// replacing the previous report so a signing failure keeps it available.
 	let url;
 	try {
-		url = await cloudUtil.getTempFileURLOne(upload.fileID);
+		url = await cloudUtil.getTempFileURLOne(upload.fileID, EXPORT_URL_MAX_AGE);
 		if (!url) throw new Error('暂时无法获取报表下载链接，请重试');
 	} catch (error) {
 		try { await cloud.deleteFile({ fileList: [upload.fileID] }); } catch (_) { console.warn('[ExportData] incomplete report cleanup failed'); }
@@ -123,7 +126,9 @@ async function exportDataExcel(key, title, total, data, options = {}) {
 
 	return {
 		total,
-		url
+		url,
+		// 供调用方登记自动清理；对外返回给前端的字段仍由业务层裁剪。
+		fileID: upload.fileID
 	}
 }
 

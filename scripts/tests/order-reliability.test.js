@@ -156,7 +156,8 @@ test('SDK transactions retry only definite conflicts, with rollback-aware SDK re
 
 test('chat messages and administrator replies keep one record when their responses are lost or requests race', async () => {
   const f = fixture(), metrics = concurrentTransactions(f), Chat = f.load('customer_service_service.js'), service = new Chat();
-  const responses = await Promise.all(Array.from({ length: 50 }, () => service.sendMessage('poster', '请问如何取件', f.req('message'))));
+  // 用户发消息限流为每分钟 20 条：并发重试控制在额度内，仍验证只落一条记录。
+  const responses = await Promise.all(Array.from({ length: 10 }, () => service.sendMessage('poster', '请问如何取件', f.req('message'))));
   assert.equal(new Set(responses.map(result => result.id)).size, 1); assert.equal(f.table('campus_service_message').size, 1);
   const session = responses[0].sessionId;
   await Promise.all(Array.from({ length: 30 }, () => service.reply(session, '请提供订单编号', f.req('reply'), 'admin')));

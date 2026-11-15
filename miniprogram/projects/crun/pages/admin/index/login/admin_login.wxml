@@ -4,7 +4,7 @@
 		<view class="ac-login-id">
 			<view class="ac-login-mark"><text class="icon-settings"></text></view>
 			<view class="ac-login-id-text">
-				<view class="ac-login-brand">GXNU随手取</view>
+				<view class="ac-login-brand">云速取</view>
 				<view class="ac-login-title">管理后台</view>
 			</view>
 		</view>

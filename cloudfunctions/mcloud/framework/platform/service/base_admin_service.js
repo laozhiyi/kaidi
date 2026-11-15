@@ -21,7 +21,8 @@ class BaseAdminService extends BaseService {
 	async isAdmin(token, userId) {
 
 
-		if (!token || !userId) this.AppError('请重新登录管理员', appCode.ADMIN_ERROR);
+		// 令牌必须是字符串：数组、对象会被查询层当作操作符（如 ['<>','x']），必须拒绝。
+		if (typeof token !== 'string' || !token || token.length > 128 || !userId) this.AppError('请重新登录管理员', appCode.ADMIN_ERROR);
 		let where = {
 			ADMIN_TOKEN: token,
 			ADMIN_TOKEN_USER: userId,
@@ -39,7 +40,8 @@ class BaseAdminService extends BaseService {
 	async isSuperAdmin(token, userId) {
 
 
-		if (!token || !userId) this.AppError('请重新登录管理员', appCode.ADMIN_ERROR);
+		// 令牌必须是字符串：数组、对象会被查询层当作操作符（如 ['<>','x']），必须拒绝。
+		if (typeof token !== 'string' || !token || token.length > 128 || !userId) this.AppError('请重新登录管理员', appCode.ADMIN_ERROR);
 		let where = {
 			ADMIN_TOKEN: token,
 			ADMIN_TOKEN_USER: userId,

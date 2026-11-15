@@ -5,9 +5,23 @@
   <view wx:if="{{ui.showProgress}}" class="od-progress"><view wx:for="{{ui.steps}}" wx:key="index" class="od-step {{item.done ? 'od-step-done' : ''}} {{item.current ? 'od-step-current' : ''}} {{item.connected ? 'od-step-connected' : ''}}"><view class="od-step-track"><view class="od-step-dot"><text wx:if="{{item.done}}" class="icon-check"></text></view></view><text class="od-step-label">{{item.displayLabel}}</text><view wx:if="{{item.timeText}}" class="od-step-time"><view>{{item.dateText}}</view><view>{{item.clockText}}</view></view><view wx:elif="{{item.recordText}}" class="od-step-time">{{item.recordText}}</view></view></view>
  </view>
  <view class="od-content">
+  <view wx:if="{{ui.priceAdjust.visible}}" class="od-card od-price-card od-price-{{ui.priceAdjust.tone || 'idle'}}">
+   <block wx:if="{{ui.priceAdjust.hasRecord}}">
+    <view class="od-price-head"><text class="od-price-title">{{ui.priceAdjust.title}}</text><text wx:if="{{ui.priceAdjust.pending}}" class="od-price-badge">待处理</text></view>
+    <view class="od-price-amount"><text class="od-price-from">¥{{ui.priceAdjust.from}}</text><text class="od-price-arrow">→</text><text class="od-price-to">¥{{ui.priceAdjust.to}}</text></view>
+    <view wx:if="{{ui.priceAdjust.reason}}" class="od-price-reason">理由：{{ui.priceAdjust.reason}}</view>
+    <view class="od-price-note">{{ui.priceAdjust.note}}</view>
+   </block>
+   <block wx:if="{{priceActions}}">
+    <view wx:if="{{ui.priceAdjust.canRespond}}" class="od-price-actions"><button class="od-price-btn" bindtap="bindPriceRespond" data-decision="reject" disabled="{{actionDisabled}}">拒绝</button><button class="od-price-btn od-price-btn-main" bindtap="bindPriceRespond" data-decision="agree" disabled="{{actionDisabled}}">同意调价</button></view>
+    <view wx:if="{{ui.priceAdjust.canRelease}}" class="od-price-actions"><button class="od-price-btn od-price-btn-warn" bindtap="bindReleaseOrder" disabled="{{actionDisabled}}">放弃接单</button></view>
+    <view wx:if="{{ui.priceAdjust.canPropose}}" class="od-price-propose {{ui.priceAdjust.hasRecord ? 'od-price-propose-line' : ''}}"><view class="od-price-propose-copy"><view class="od-price-propose-title">包裹比所选大小大？</view><view class="od-price-propose-note">取件前可向发布人申请调价，还可申请 {{ui.priceAdjust.left}} 次</view></view><button class="od-price-btn od-price-btn-main" bindtap="bindOpenPriceSheet" disabled="{{actionDisabled}}">申请调价</button></view>
+   </block>
+   <view wx:elif="{{ui.priceAdjust.canRespond}}" class="od-price-actions"><button class="od-price-btn od-price-btn-main" bindtap="bindManageTap">前往处理</button></view>
+  </view>
   <view wx:if="{{mail.overdue}}" class="od-alert"><text class="icon-info"></text><text>已超过预计送达时间，请联系对方或通过“更多”提交异常。</text></view>
   <view class="od-card">
-   <view class="od-summary"><view class="od-summary-copy"><view class="od-section-title">{{mail.MAIL_OBJ.title || '快递代取'}}</view><view class="od-campus"><text class="icon-location"></text>{{mail.MAIL_OBJ.campus || '校区待确认'}}</view><view wx:if="{{ui.serviceType !== 'buy'}}" class="od-tags"><text wx:for="{{ui.packages}}" wx:key="key" class="od-tag">{{item.label}} × {{item.count}}</text><text wx:if="{{!ui.packages.length}}" class="od-tag">共 {{ui.count}} 件</text></view></view><view class="od-fee"><view class="od-fee-label">{{ui.legacyPayment ? '订单金额' : ui.feeLabel}}</view><view class="od-price"><text>¥</text>{{ui.fee}}</view><text class="od-fee-badge">{{ui.legacyPayment ? '结算待核对' : '双方线下结算'}}</text></view></view>
+   <view class="od-summary"><view class="od-summary-copy"><view class="od-section-title">{{mail.MAIL_OBJ.title || '快递代取'}}</view><view class="od-campus"><text class="icon-location"></text>{{mail.MAIL_OBJ.campus || '校区待确认'}}</view><view wx:if="{{ui.serviceType !== 'buy'}}" class="od-tags"><text wx:for="{{ui.packages}}" wx:key="key" class="od-tag">{{item.label}} × {{item.count}}</text><text wx:if="{{!ui.packages.length}}" class="od-tag">共 {{ui.count}} 件</text></view></view><view class="od-fee"><view class="od-fee-label">{{ui.legacyPayment ? '订单金额' : ui.feeLabel}}</view><view class="od-price"><text>¥</text>{{ui.fee}}</view><text wx:if="{{ui.tipText}}" class="od-fee-tip">{{ui.tipText}}</text><text class="od-fee-badge">{{ui.legacyPayment ? '结算待核对' : '双方线下结算'}}</text></view></view>
    <view wx:if="{{!ui.participant && ui.expectAt}}" class="od-expect"><text class="icon-time"></text><text class="od-expect-label">期待送达</text><text class="od-expect-time">{{ui.expectAt}}</text></view>
    <view class="od-divider"></view>
    <view class="od-route"><view class="od-route-stop"><view class="od-route-marker od-pickup">取</view><view class="od-route-copy"><view class="od-label">{{ui.serviceType === 'buy' ? '购买地点' : '取件地点'}}</view><view class="od-address">{{mail.MAIL_OBJ.address1 || '取件地点待补充'}}</view></view></view><view class="od-route-stop"><view class="od-route-marker od-dropoff">送</view><view class="od-route-copy"><view class="od-label">送达地点</view><view class="od-address">{{ui.deliveryAddress || '送达地点待补充'}}</view><view wx:if="{{!ui.participant}}" class="od-caption"><text class="icon-lock"></text> {{ui.serviceType === 'take' ? '联系人信息、取件码和取件截图仅接单后可见' : '联系人信息仅接单后可见'}}</view></view></view></view>
@@ -19,19 +33,20 @@
   <view wx:if="{{ui.serviceType === 'buy'}}" class="od-card"><view class="od-section-title">购买要求</view><view class="od-note">{{mail.MAIL_OBJ.goods}}</view><view class="od-note">数量：{{mail.MAIL_OBJ.buyQuantity}} 件</view><view class="od-note">商品总预算：¥{{mail.MAIL_OBJ.goodsBudget}}</view><view class="od-caption">商品款按实际小票线下结算，跑腿费另计；超出预算须先确认。</view></view>
   <view wx:if="{{ui.participant && ui.serviceType !== 'buy'}}" class="od-card">
    <view class="od-heading"><text class="od-section-title">{{ui.serviceType === 'send' ? '物品与交接信息' : '取件凭证'}}</text><text class="od-private-badge"><text class="icon-lock"></text> 仅订单双方可见</text></view>
+   <view wx:if="{{ui.mediaPurge.text}}" class="od-caption">{{ui.mediaPurge.text}}</view>
    <block wx:if="{{ui.pickupItems.length}}">
     <view wx:for="{{ui.pickupItems}}" wx:key="index" class="od-parcel-proof">
      <view class="od-label">{{item.label}}</view><view class="od-parcel-pickup"><text class="icon-location"></text><text>{{item.pickupPoint}}</text></view>
      <view wx:if="{{ui.serviceType === 'take' && item.code}}" class="od-code-box"><view class="od-code-copy"><view class="od-label">取件码 / 取件信息</view><text selectable class="od-code">{{item.code}}</text></view><button class="od-copy" bindtap="bindCopyCodeTap" data-index="{{index}}">复制</button></view>
      <view wx:if="{{ui.serviceType === 'take' && item.images.length}}" class="od-media"><image wx:for="{{item.images}}" wx:for-item="url" wx:key="*this" class="od-photo" src="{{url}}" mode="aspectFill" data-url="{{url}}" data-group="pickup" bindtap="bindPreviewImageTap"/></view>
-     <view wx:if="{{ui.serviceType === 'take' && !item.code && !item.images.length}}" class="od-empty-note">{{mail.MAIL_MEDIA_ERROR ? '取件图片暂不可用，请刷新或联系发布者' : '暂无取件凭证，请联系发布者确认'}}</view>
+     <view wx:if="{{ui.serviceType === 'take' && !ui.mediaPurge.purged && !item.code && !item.images.length}}" class="od-empty-note">{{mail.MAIL_MEDIA_ERROR ? '取件图片暂不可用，请刷新或联系发布者' : '暂无取件凭证，请联系发布者确认'}}</view>
      <view wx:if="{{item.note}}" class="od-note"><view class="od-label">本件备注</view><view>{{item.note}}</view></view>
     </view>
    </block>
    <block wx:else>
    <view wx:if="{{ui.serviceType === 'take' && mail.MAIL_OBJ.code}}" class="od-code-box"><view class="od-code-copy"><view class="od-label">取件码 / 取件信息</view><text selectable class="od-code">{{mail.MAIL_OBJ.code}}</text></view><button class="od-copy" bindtap="bindCopyCodeTap">复制</button></view>
    <view wx:if="{{mail.MAIL_MEDIA.pickup.length}}" class="od-media"><image wx:for="{{mail.MAIL_MEDIA.pickup}}" wx:key="*this" class="od-photo" src="{{item}}" mode="aspectFill" data-url="{{item}}" data-group="pickup" bindtap="bindPreviewImageTap"/></view>
-   <view wx:if="{{ui.serviceType === 'take' && !mail.MAIL_OBJ.code && !mail.MAIL_MEDIA.pickup.length}}" class="od-empty-note">{{mail.MAIL_MEDIA_ERROR ? '取件图片暂不可用，请刷新或联系发布者' : '暂无取件凭证，请联系发布者确认'}}</view>
+   <view wx:if="{{ui.serviceType === 'take' && !ui.mediaPurge.purged && !mail.MAIL_OBJ.code && !mail.MAIL_MEDIA.pickup.length}}" class="od-empty-note">{{mail.MAIL_MEDIA_ERROR ? '取件图片暂不可用，请刷新或联系发布者' : '暂无取件凭证，请联系发布者确认'}}</view>
    </block>
    <view wx:if="{{mail.MAIL_MEDIA_ERROR}}" class="od-media-error" bindtap="bindReload"><text class="icon-info"></text><text>{{mail.MAIL_MEDIA_ERROR}}</text><text class="od-text-link">刷新</text></view>
    <view wx:if="{{mail.MAIL_OBJ.desc}}" class="od-note"><view class="od-label">配送备注</view><view wx:if="{{mail.MAIL_OBJ.desc}}">{{mail.MAIL_OBJ.desc}}</view></view>
@@ -39,6 +54,7 @@
 
   <view wx:if="{{ui.participant && ui.pickupProof}}" class="od-card">
    <view class="od-heading"><text class="od-section-title">取件凭证</text><text class="od-badge-green">骑手已拍照留证</text></view>
+   <view wx:if="{{ui.mediaPurge.text}}" class="od-caption">{{ui.mediaPurge.text}}</view>
    <view wx:if="{{ui.pickupProof.note}}" class="od-body-text">{{ui.pickupProof.note}}</view>
    <view wx:if="{{ui.pickupProof.images.length}}" class="od-media"><image wx:for="{{ui.pickupProof.images}}" wx:key="*this" class="od-photo" src="{{item}}" mode="aspectFill" data-url="{{item}}" data-group="pickupProof" bindtap="bindPreviewImageTap"/></view>
    <view wx:if="{{ui.pickupProof.video}}" class="od-video"><video class="od-video-player" src="{{ui.pickupProof.video}}" object-fit="cover" show-center-play-btn enable-progress-gesture="{{false}}"/><text class="od-caption">取件视频 · 最长15秒</text></view>
@@ -47,6 +63,7 @@
 
   <view wx:if="{{ui.participant && mail.MAIL_DELIVERY_PROOF}}" class="od-card">
    <view class="od-heading"><text class="od-section-title">送达凭证</text><view class="od-proof-actions"><text class="od-badge-green">{{ui.deliveryModeLabel || '骑手已提交'}}</text><button wx:if="{{ui.canUpdateProof}}" class="od-proof-update" bindtap="bindUpdateProofTap" disabled="{{actionDisabled}}" aria-label="更新送达凭证">更新</button></view></view>
+   <view wx:if="{{ui.mediaPurge.text}}" class="od-caption">{{ui.mediaPurge.text}}</view>
    <view class="od-body-text">{{mail.MAIL_DELIVERY_PROOF.note || (ui.deliveryMode === 'face' ? '已当面交付给收件人' : '请核对物品是否已送达')}}</view>
    <view wx:if="{{mail.MAIL_MEDIA.proof.length}}" class="od-media"><image wx:for="{{mail.MAIL_MEDIA.proof}}" wx:key="*this" class="od-photo" src="{{item}}" mode="aspectFill" data-url="{{item}}" data-group="proof" bindtap="bindPreviewImageTap"/></view>
    <view wx:if="{{ui.proofVideo}}" class="od-video"><video class="od-video-player" src="{{ui.proofVideo}}" object-fit="cover" show-center-play-btn enable-progress-gesture="{{false}}"/><text class="od-caption">送达视频 · 最长15秒</text></view>

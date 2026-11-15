@@ -98,7 +98,17 @@ function createStore(state) {
 			return job;
 		},
 		limitInTransaction: async () => { },
-		limit: async () => { },
+		// 用户发消息的限流：默认只记录调用；enforceLimit 打开后按真实额度拒绝。
+		limit: async (pid, identity, action, max) => {
+			state.limitCalls = state.limitCalls || [];
+			state.limitCalls.push({ identity, action, max });
+			if (!state.enforceLimit) return;
+			const counts = state.limitCounts || (state.limitCounts = new Map());
+			const key = action + '|' + identity;
+			const count = (counts.get(key) || 0) + 1;
+			counts.set(key, count);
+			if (count > max) throw new Error('操作过于频繁，请稍后再试');
+		},
 		async get(_, name, id) {
 			return (state[name] || []).find(row => row._id === id) || null;
 		},
@@ -134,6 +144,12 @@ function loadService(file, state, extra = {}) {
 		'./admin_roles.js': require(path.join(project, 'service/admin/admin_roles.js')),
 		'./delivery_address.js': require(path.join(project, 'service/delivery_address.js')),
 		'./account_service.js': { guardRelated: async () => state.guardRelated !== false },
+		'../../../framework/validate/content_check.js': {
+			checkTextMultiClient: async input => {
+				state.auditCalls.push(input);
+				if (state.auditReject) throw new Error('内容审核未通过，请修改后重试');
+			}
+		},
 		...extra
 	};
 	const module = { exports: {} };
@@ -164,7 +180,11 @@ function chatFixture({ messages = [], mail = [], user = {} } = {}) {
 		mail,
 		notification: [],
 		admin: [{ _id: 'admin', _pid: 'crun', ADMIN_NAME: '客服A', ADMIN_STATUS: 1, ADMIN_TYPE: 0, ADMIN_ROLE: 'service' }],
-		guardRelated: true
+		guardRelated: true,
+		auditCalls: [],
+		limitCalls: [],
+		enforceLimit: false,
+		auditReject: false
 	};
 	const Service = loadService('service/customer_service_service.js', state);
 	return { service: new Service(), state };
@@ -228,6 +248,57 @@ test('staff replies carry the real operator and notify the user', async () => {
 	assert.equal(notice.chat, true);
 	assert.equal(notice.userId, 'poster');
 	assert.equal(notice.title, '客服回复了你');
+});
+
+test('user messages are moderated after the rate limit and rejected text never reaches the database', async () => {
+	const { service, state } = chatFixture();
+	state.auditReject = true;
+	await assert.rejects(service.sendMessage('poster', '违规内容', 'chat_audit_0000000001'), /审核/);
+	assert.equal(state.campus_service_message.length, 0);
+	assert.deepEqual(state.auditCalls.map(item => item.content), ['违规内容']);
+	// 先限流、后检测：限流额度为每分钟 20 条。
+	assert.deepEqual(state.limitCalls.map(item => [item.identity, item.action, item.max]), [['poster', 'chat_send', 20]]);
+});
+
+test('the 21st message in a minute is rejected before moderation is called', async () => {
+	const { service, state } = chatFixture({ messages: [message('poster', 'admin')] });
+	state.enforceLimit = true;
+	for (let index = 0; index < 20; index++) {
+		await service.sendMessage('poster', '第' + index + '条', 'chat_limit_00000000' + String(index).padStart(2, '0'));
+	}
+	assert.equal(state.auditCalls.length, 20);
+	const stored = state.campus_service_message.length;
+	await assert.rejects(service.sendMessage('poster', '第21条', 'chat_limit_0000000021'), /频繁/);
+	assert.equal(state.auditCalls.length, 20, '被限流的消息不应调用审核接口');
+	assert.equal(state.campus_service_message.length, stored, '被限流的消息不入库');
+	assert.equal(state.auditCalls.some(item => item.content === '第21条'), false);
+});
+
+test('normal messages are still delivered and order cards do not consume moderation', async () => {
+	const { service, state } = chatFixture({
+		messages: [message('poster', 'user')],
+		mail: [orderRow('mail000001')]
+	});
+	await service.sendMessage('poster', '请问到哪了', 'chat_ok_0000000000001');
+	const saved = state.campus_service_message.at(-1);
+	assert.equal(saved.CSM_CONTENT, '请问到哪了');
+	assert.equal(saved.CSM_SENDER, 'user');
+	assert.deepEqual(state.auditCalls.map(item => item.content), ['请问到哪了']);
+
+	// 只发订单卡片时没有用户文字，不额外送审。
+	await service.sendMessage('poster', '', 'chat_card_000000000001', 'mail000001');
+	assert.equal(state.auditCalls.length, 1);
+	assert.equal(state.campus_service_message.at(-1).CSM_TYPE, 'order');
+});
+
+test('staff replies keep the original path without extra moderation', async () => {
+	const { service, state } = chatFixture({ messages: [message('poster', 'user')] });
+	await service.reply(key('crun', 'customer_service', 'poster'), '已帮你联系骑手', 'chat_reply_0000000003', 'admin');
+	assert.equal(state.auditCalls.length, 0, '后台回复不新增审核');
+	assert.deepEqual(state.limitCalls, [], '后台回复沿用事务内的原有限流');
+	const reply = state.campus_service_message.at(-1);
+	assert.equal(reply.CSM_SENDER, 'admin');
+	assert.equal(reply.CSM_CONTENT, '已帮你联系骑手');
 });
 
 test('a delayed reply cannot resurrect a conversation that is being erased', async () => {
