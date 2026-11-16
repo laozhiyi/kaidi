@@ -8,47 +8,77 @@ const InviteBiz = require('../../../biz/invite_biz.js');
 const Notifications = require('../../../biz/notification_biz.js');
 const accountActions = require('../account_actions.js');
 
+function profileFromToken(token) {
+  if (!token) return null;
+  return {
+    USER_NAME: token.name,
+    USER_PIC: token.pic || '',
+    USER_ROLE: token.role,
+    USER_STATUS: token.status,
+    USER_MOBILE_VERIFIED: token.phoneVerified,
+    USER_PROFILE_COMPLETE: token.profileComplete,
+    allowManualRegistration: token.allowManualRegistration,
+    profilePhoneRequired: token.profilePhoneRequired
+  };
+}
+
 Page(Object.assign({
   data: { user: null, hasSession: false, loggingOut: false, cancellingAccount: false, loading: false, userError: '', settingsVisible: false, unreadCount: 0, messageBadge: '', serviceBadge: '' },
   onLoad() {
     ProjectBiz.initPage(this);
-    this.setData({ hasSession: !!PassportBiz.getToken() });
-    if (PassportBiz.getToken()) {
-      const token = PassportBiz.getToken();
-      this.setData({ user: { USER_NAME: token.name, USER_PIC: token.pic || '', USER_STATUS: token.status, USER_MOBILE_VERIFIED: token.phoneVerified, USER_PROFILE_COMPLETE: token.profileComplete, allowManualRegistration: token.allowManualRegistration } });
-    }
+    this._showSavedProfile();
+  },
+  _showSavedProfile() {
+    const token = PassportBiz.getToken();
+    this.setData({ user: profileFromToken(token), hasSession: !!token });
   },
   async onShow() {
     this._visible = true;
+    const visit = this._visit = (this._visit || 0) + 1;
+    // Saving updates the session snapshot before returning to this tab.
+    this._userRequest = null;
+    this._showSavedProfile();
     if (this._stopMessages) this._stopMessages();
     this._stopMessages = Notifications.subscribe(summary => this.setData({ unreadCount: summary.unreadCount, messageBadge: summary.badge }));
     const tabBar = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
     if (tabBar) tabBar.setData({ selected: 2 });
     await PassportBiz.loginSilenceMust(this);
-    if (!this._unloaded) this.setData({ hasSession: !!PassportBiz.getToken() });
+    if (this._unloaded || !this._visible || this._visit !== visit) return;
+    this._showSavedProfile();
     this._loadServiceBadge();
-    if (this._visible && PassportBiz.isLogin()) Notifications.refresh(true);
-    if (!this._unloaded) await this._loadUser();
+    if (PassportBiz.isLogin()) Notifications.refresh(true);
+    await this._loadUser();
   },
   onHide() { this._visible = false; if (this._stopMessages) this._stopMessages(); this._stopMessages = null; this.setData({ settingsVisible: false }); },
   onUnload() { this._unloaded = true; this.onHide(); },
   _loadUser() {
     if (this._userRequest) return this._userRequest;
+    const credential = PassportBiz.getToken()?.sessionToken;
+    const scope = cloudHelper.scopeKey?.();
     this.setData({ loading: true, userError: '' });
-    this._userRequest = (async () => {
-      try {
-        const user = await profileMethods.getProfileUser({ hint: false }, true);
-        if (this._unloaded) return;
-        this.setData({ user: user || null, hasSession: !!PassportBiz.getToken() });
-        if (user && user.USER_STATUS === 1 && profileMethods.isProfileReady(user)) InviteBiz.acceptPending().catch(() => {});
-      } catch (error) {
-        if (!this._unloaded) this.setData({ userError: '资料加载失败，点击重试' });
-      } finally {
-        this._userRequest = null;
-        if (!this._unloaded) this.setData({ loading: false });
+    const isCurrent = () => !this._unloaded && this._userRequest === request;
+    const sameSession = token => token?.sessionToken === credential && cloudHelper.scopeKey?.() === scope;
+    const request = Promise.resolve().then(() => profileMethods.getProfileUser({ hint: false }, true)).then(user => {
+      if (!isCurrent()) return;
+      const token = PassportBiz.getToken();
+      if (!token || !sameSession(token) || !user) {
+        this._showSavedProfile();
+        return;
       }
-    })();
-    return this._userRequest;
+      this.setData({ user, hasSession: true });
+      if (user.USER_STATUS === 1 && profileMethods.isProfileReady(user)) InviteBiz.acceptPending().catch(() => {});
+    }).catch(() => {
+      if (!isCurrent()) return;
+      const token = PassportBiz.getToken();
+      if (!token || !sameSession(token)) this._showSavedProfile();
+      else this.setData({ userError: '资料加载失败，点击重试' });
+    }).finally(() => {
+      if (!isCurrent()) return;
+      this._userRequest = null;
+      this.setData({ loading: false });
+    });
+    this._userRequest = request;
+    return request;
   },
   async onPullDownRefresh() {
     try { await Promise.all([this._loadUser(), Notifications.refresh(true), this._loadServiceBadge()]); } finally { wx.stopPullDownRefresh(); }

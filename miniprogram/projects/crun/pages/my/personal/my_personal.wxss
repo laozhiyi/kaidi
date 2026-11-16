@@ -12,6 +12,21 @@ page { background: #f3f6fb; }
 .profile-field-label { flex-shrink:0; color:#52647c; font-size:26rpx; line-height:1.4; }
 .profile-field > .profile-field-label { width:138rpx; }
 .profile-field-input { flex:1; min-width:0; height:76rpx; color:#243b5b; font-size:26rpx; text-align:right; }
+.profile-education-control { padding:12rpx 0; box-sizing:border-box; }
+.profile-education-pressed { background:#f5f8fc; }
+.profile-education-value { flex:1; min-width:0; color:#243b5b; font-size:26rpx; line-height:1.45; text-align:right; overflow-wrap:anywhere; }
+.profile-education-placeholder { color:#8494a9; }
+.profile-education-arrow { flex-shrink:0; width:24rpx; margin-left:12rpx; color:#9cabbc; font-size:21rpx; text-align:right; }
+.profile-education-sheet .profile-campus-sheet-head { margin-bottom:18rpx; }
+.profile-education-search { height:76rpx; margin-bottom:12rpx; padding:0 22rpx; border:1rpx solid #dce6f2; border-radius:12rpx; color:#243b5b; background:#f8fafd; font-size:26rpx; }
+.profile-education-options { height:40vh; max-height:500rpx; }
+.profile-education-option { display:flex; align-items:center; justify-content:space-between; gap:16rpx; min-height:84rpx; padding:14rpx 18rpx; border-bottom:1rpx solid #edf1f6; box-sizing:border-box; color:#243b5b; font-size:26rpx; line-height:1.45; }
+.profile-education-option-text { flex:1; min-width:0; overflow-wrap:anywhere; }
+.profile-education-option-selected { border-radius:10rpx; color:#2f6ab3; background:#edf5ff; }
+.profile-education-check { flex-shrink:0; font-size:23rpx; }
+.profile-education-empty { padding:44rpx 20rpx; color:#71839a; font-size:26rpx; text-align:center; }
+.profile-education-manual::after { border:0; }
+.profile-education-manual { width:100%; margin:0; padding:18rpx; border-radius:12rpx; color:#2f6ab3; background:#edf5ff; font-size:26rpx; line-height:1.45; }
 .profile-phone-field > .profile-field-label { width:112rpx; }
 .profile-phone-value { flex:1; min-width:0; color:#243b5b; font-size:26rpx; text-align:right; word-break:break-all; }
 .profile-phone-authorize { flex-shrink:0; margin:0 0 0 16rpx; padding:12rpx 16rpx; border-radius:10rpx; background:#edf5ff; color:#397bc8; font-size:23rpx; line-height:1.4; }

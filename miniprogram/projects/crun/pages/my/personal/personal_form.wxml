@@ -21,8 +21,21 @@
       </block>
     </view>
     <view class="profile-choice-field"><view class="profile-field-label">性别</view><view class="profile-choice-group"><view wx:for="{{genderOptions}}" wx:key="*this" class="profile-choice {{profileSex === item ? 'profile-choice-selected' : ''}}" data-value="{{item}}" bindtap="bindGenderTap"><text class="profile-choice-dot"></text>{{item}}</view></view></view>
-    <view class="profile-field"><text class="profile-field-label">学院</text><input class="profile-field-input" value="{{profileCollege}}" maxlength="80" placeholder="请输入所在学院" bindinput="bindProfileFieldInput" data-field="profileCollege" /></view>
-    <view class="profile-field"><text class="profile-field-label">专业</text><input class="profile-field-input" value="{{profileSub}}" maxlength="80" placeholder="请输入所学专业" bindinput="bindProfileFieldInput" data-field="profileSub" /></view>
+    <view class="profile-field profile-education-control" data-kind="college" bindtap="bindOpenEducationPicker" hover-class="profile-education-pressed" role="button" aria-label="{{profileCollege ? '学院，' + profileCollege : '请选择学院'}}">
+      <text class="profile-field-label">学院</text>
+      <view class="profile-education-value {{profileCollege ? '' : 'profile-education-placeholder'}}">{{profileCollege || '请选择学院'}}</view>
+      <text class="profile-education-arrow icon-right" aria-hidden="true"></text>
+    </view>
+    <view class="profile-field profile-education-control" data-kind="major" bindtap="bindOpenEducationPicker" hover-class="{{profileCollege ? 'profile-education-pressed' : 'none'}}" role="button" aria-disabled="{{!profileCollege}}" aria-label="{{profileSub && !profileMajorManual ? '专业，' + profileSub : profileCollege ? '选择专业' : '请先选择学院'}}">
+      <text class="profile-field-label">专业</text>
+      <view class="profile-education-value {{profileSub && !profileMajorManual ? '' : 'profile-education-placeholder'}}">{{profileMajorManual ? '从列表选择' : profileSub || (profileCollege ? '请选择专业' : '请先选择学院')}}</view>
+      <text wx:if="{{profileCollege}}" class="profile-education-arrow icon-right" aria-hidden="true"></text>
+      <view wx:else class="profile-education-arrow"></view>
+    </view>
+    <view wx:if="{{profileMajorManual}}" class="profile-field">
+      <text class="profile-field-label">专业名称</text>
+      <input class="profile-field-input" value="{{profileSub}}" maxlength="80" placeholder="请输入专业名称" bindinput="bindProfileFieldInput" data-field="profileSub" />
+    </view>
     <view class="profile-field"><text class="profile-field-label">学号</text><input class="profile-field-input" value="{{profileStudentId}}" maxlength="20" placeholder="请输入学号（6-20位字母或数字）" bindinput="bindProfileFieldInput" data-field="profileStudentId" disabled="{{studentProofLocked}}" /></view>
     <view class="profile-card-field">
       <view class="profile-card-head"><text class="profile-field-label">学生证</text><text class="profile-card-required">必填，用于身份核验</text></view>
@@ -42,6 +55,29 @@
   <view wx:if="{{inviteBound}}" class="profile-field"><text class="profile-field-label">已填写邀请码 {{inviteBoundCode}}</text></view>
   <view wx:else class="profile-field"><text class="profile-field-label">邀请码（选填）</text><input class="profile-field-input" value="{{inviteCode}}" maxlength="6" placeholder="输入好友的6位邀请码" bindinput="bindInviteCodeInput" /></view>
   <view wx:if="{{myInviteCode}}" class="profile-field"><text class="profile-field-label">我的邀请码</text><text class="profile-invite-mine" user-select>{{myInviteCode}}</text><text class="profile-invite-copy" bindtap="bindCopyMyInviteCode">复制</text></view>
+</view>
+<view wx:if="{{educationPicker}}" class="profile-campus-overlay">
+  <view class="profile-campus-mask" catchtap="bindCloseEducationPicker" catchtouchmove="bindProfileSheetTouchMove"></view>
+  <view class="profile-campus-sheet profile-education-sheet">
+    <view class="profile-campus-sheet-head">
+      <view>
+        <view class="profile-campus-sheet-title">{{educationPicker === 'college' ? '选择学院' : '选择专业'}}</view>
+        <view wx:if="{{educationPicker === 'major'}}" class="profile-campus-sheet-desc">{{profileCollege}}</view>
+      </view>
+      <button class="profile-campus-close" bindtap="bindCloseEducationPicker" aria-label="关闭选项"><text class="icon-close"></text></button>
+    </view>
+    <input class="profile-education-search" value="{{educationSearch}}" placeholder="{{educationPicker === 'college' ? '搜索学院' : '搜索专业'}}" bindinput="bindEducationSearch" confirm-type="search" maxlength="80" />
+    <scroll-view wx:if="{{educationOptions.length}}" class="profile-education-options" scroll-y>
+      <view wx:for="{{educationOptions}}" wx:key="*this" class="profile-education-option {{item === (educationPicker === 'college' ? profileCollege : profileSub) ? 'profile-education-option-selected' : ''}}" data-value="{{item}}" bindtap="bindSelectEducation" hover-class="profile-education-pressed" role="button">
+        <text class="profile-education-option-text">{{item}}</text>
+        <text wx:if="{{item === (educationPicker === 'college' ? profileCollege : profileSub)}}" class="icon-check profile-education-check" aria-label="已选"></text>
+      </view>
+    </scroll-view>
+    <view wx:else class="profile-education-empty">{{educationSearch ? '没有找到匹配项' : '暂无该学院的专业选项'}}</view>
+    <view wx:if="{{educationPicker === 'major'}}" class="profile-campus-sheet-actions">
+      <button class="profile-education-manual" bindtap="bindEnterMajorManually">找不到专业？手动填写</button>
+    </view>
+  </view>
 </view>
 <view wx:if="{{campusPickerVisible}}" class="profile-campus-overlay">
   <view class="profile-campus-mask" catchtap="bindCloseCampusPicker" catchtouchmove="bindProfileSheetTouchMove"></view>

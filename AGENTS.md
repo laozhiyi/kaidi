@@ -2,27 +2,27 @@
 
 ## Project Structure
 
-云速取 is a native WeChat Mini Program backed by WeChat Cloud Development. Client pages and feature logic live under `miniprogram/projects/crun/`, with shared components, helpers, templates, and images under `miniprogram/`. Register pages and subpackages in `miniprogram/app.json`.
+云速取 is a native WeChat Mini Program backed by WeChat Cloud Development. Feature pages, components, and client business logic live under `miniprogram/projects/crun/`. Shared components, helpers, templates, and assets live in `miniprogram/cmpts/`, `miniprogram/helper/`, `miniprogram/tpls/`, and `miniprogram/images/`. Register new pages in `miniprogram/app.json`.
 
-`cloudfunctions/mcloud/` hosts the API and scheduled jobs. Within `project/crun/`, `public/route.js` maps API routes to controllers. Business logic lives in `service/` and data models in `model/`. `scripts/tests/` holds regression tests, `scripts/test-support/` holds shared fixtures, and `deployment/` contains database rules, indexes, and rollout instructions.
+`cloudfunctions/mcloud/` runs the API and scheduled jobs. Under `cloudfunctions/mcloud/project/crun/`, `public/route.js` maps routes to controllers, `service/` holds business rules, and `model/` defines persistence. Regression tests and their fixtures live in `scripts/tests/` and `scripts/test-support/`. See `deployment/` for database rules, indexes, and rollout steps.
 
 ## Build and Development
 
-Import the repository root into WeChat Developer Tools. Confirm the AppID, base library, and development cloud environment, then use **Compile** for simulator testing or **Preview** for device testing.
+Import the repository root into WeChat Developer Tools. Confirm the AppID and target cloud environment, then use **Compile** for simulator checks and **Preview** for device checks.
 
-- `npm ci --prefix cloudfunctions/mcloud --ignore-scripts --no-audit --no-fund` installs locked cloud-function dependencies.
-- `npm test --prefix cloudfunctions/mcloud` runs the full Node.js test suite. Use `npm.cmd` in PowerShell if script execution policy blocks `npm`.
-- `node scripts/check-architecture-source.cjs` validates source wiring after dependencies are installed.
-- `node scripts/check-miniprogram-pages.cjs --wcc "<path to wcc.exe>" --wcsc "<path to wcsc.exe>"` checks templates and styles using the WeChat compilers.
+- `npm ci --prefix cloudfunctions/mcloud --ignore-scripts --no-audit --no-fund` installs locked cloud dependencies.
+- `npm test --prefix cloudfunctions/mcloud` runs the regression suite. Use `npm.cmd` if PowerShell blocks the npm script shim.
+- `node scripts/check-architecture-source.cjs` checks source wiring after dependencies are installed.
+- `node scripts/check-miniprogram-pages.cjs` checks page registration and imports. Pass `--wcc "<path to wcc.exe>" --wcsc "<path to wcsc.exe>"` to compile templates and styles.
 
-## Coding Style and Naming
+## Coding Style
 
-Use CommonJS for JavaScript modules and keep page files together with matching `.js`, `.json`, `.wxml`, and `.wxss` basenames. Follow surrounding indentation. WeChat Developer Tools is configured for tabs with a width of four. Use existing names such as `customer_service`, `order_sync_biz.js`, and `tenant_service.js` as patterns.
+Use CommonJS and match surrounding indentation. WeChat Developer Tools uses four-column tabs. Keep each page’s `.js`, `.json`, `.wxml`, and `.wxss` files on the same basename. Follow existing names such as `mail_service.js` and `order_sync_biz.js`. Preserve school and campus scoping when changing database queries.
 
 ## Testing
 
-Name regression files `*.test.js` and use `node:test` with `node:assert/strict`. Run an individual file with `node --test scripts/tests/tenant-services.test.js`. Reuse existing fixtures for cloud calls and verify affected WeChat APIs and user flows on a device when applicable.
+Write focused regressions in `*.test.js` using `node:test` and `node:assert/strict`. Run a single file with `node --test scripts/tests/tenant-services.test.js`. Reuse cloud fixtures and test changes to native authorization on a device.
 
 ## Commits and Pull Requests
 
-Use short, descriptive commit subjects. In a PR, explain the affected flow, link the relevant issue if available, and list the checks run. Include screenshots for visible changes and call out required cloud-function, database rule, or index updates. Keep credentials and `project.private.config.json` local. Follow `deployment/MULTI_TENANT_ROLLOUT.md` for deployment and migration changes.
+Use concise Chinese commit subjects that describe the change, as in `完善微信登录、手机号验证与雁山校区内测`. In PRs, explain the affected flow, list checks run, link relevant issues, and include screenshots for visible changes. Call out cloud deployment or database changes and follow `deployment/MULTI_TENANT_ROLLOUT.md`. Keep credentials and `project.private.config.json` local.

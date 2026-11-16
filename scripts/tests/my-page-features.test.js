@@ -7,6 +7,7 @@ const vm = require('node:vm');
 const { notificationStub } = require('../test-support/notification-client-harness.cjs');
 const root = path.resolve(__dirname, '../..');
 const pages = 'miniprogram/projects/crun/pages/';
+const computingCollege = '计算机科学与工程学院／软件学院／人工智能学院';
 const event = (dataset = {}, value) => ({ currentTarget: { dataset }, detail: { value } });
 const deferred = () => { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; };
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -15,7 +16,7 @@ function harness(options = {}) {
   const storage = options.storage || new Map(), calls = [], navigation = [], messages = [], modals = [], images = [], modules = new Map(), definitions = new Map();
   let app, token = options.guest ? null : { id: 'poster', sessionToken: 'b'.repeat(64), name: '小周', pic: 'cloud://avatar', status: 1, phoneVerified: true, profileComplete: true }, stopped = 0;
   const user = { USER_NAME: '小周', USER_MOBILE: '13800000000', USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: true, USER_PIC: 'cloud://avatar', USER_STATUS: 1, USER_FORMS: [
-    { mark: 'campus', val: '育才校区' }, { mark: 'sex', val: '男' }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' },
+    { mark: 'campus', val: '育才校区' }, { mark: 'sex', val: '男' }, { mark: 'college', val: computingCollege }, { mark: 'sub', val: '软件工程' },
     { mark: 'studentId', val: '20240001' }, { mark: 'studentCard', val: ['cloud://test/student-card.png'] }, { mark: 'disclaimer', val: true },
     { mark: 'contacts', val: [{ name: '甲', phone: '13800000001', isDefault: false }, { name: '乙', phone: '13800000002', isDefault: true }] },
     { mark: 'addresses', val: [{ label: '宿舍', detail: '一栋', isDefault: false }, { label: '学院', detail: '二栋', isDefault: true }] }
@@ -134,6 +135,34 @@ test('an authenticated account with incomplete contact details stays on My witho
   await page._loadUser();
   assert.equal(page.data.user.USER_NAME, '小周');
   assert.equal(h.navigation.length, 0);
+});
+
+test('My displays the saved avatar and nickname immediately when returning from personal settings', async () => {
+  const h = harness({ realPassport: true }), page = h.page('my/index/my_index.js');
+  const staleProfile = deferred(), sessionRefresh = deferred();
+  page.onLoad();
+  h.responses['passport/my_detail'] = () => staleProfile.promise;
+  const staleRequest = page._loadUser();
+  await tick();
+
+  const saved = { ...h.token, name: '我的新昵称', pic: 'cloud://test/my-new-avatar.jpg' };
+  h.passport.setToken(saved);
+  h.responses['passport/login'] = () => sessionRefresh.promise;
+  h.responses['passport/my_detail'] = null;
+  const showing = page.onShow();
+  assert.equal(page.data.user.USER_NAME, saved.name);
+  assert.equal(page.data.user.USER_PIC, saved.pic);
+
+  staleProfile.resolve({ USER_NAME: '', USER_PIC: '', USER_PROFILE_COMPLETE: false });
+  await staleRequest;
+  assert.equal(page.data.user.USER_NAME, saved.name);
+  assert.equal(page.data.user.USER_PIC, saved.pic);
+
+  sessionRefresh.resolve({ token: saved });
+  await showing;
+  assert.equal(page.data.user.USER_NAME, saved.name);
+  assert.equal(page.data.user.USER_PIC, saved.pic);
+  assert.equal(page.data.user.USER_PROFILE_COMPLETE, true);
 });
 
 test('incomplete accounts can open personal settings and reach logout without being redirected', async () => {
@@ -457,12 +486,13 @@ test('a legacy account verifies its read-only contact phone in personal settings
   await page.bindPersonalSubmit();
   assert.match(page.data.saveError, /验证联系电话/);
   assert.equal(h.calls.filter(call => call.route === 'passport/edit_base').length, 0);
-  page.bindProfileFieldInput(event({ field: 'profileCollege' }, '保留我的编辑'));
+  page.bindOpenEducationPicker(event({ kind: 'college' }));
+  page.bindSelectEducation(event({ value: '外国语学院' }));
   const token = { ...h.token, phoneVerified: true };
   h.responses['passport/verify_profile_phone'] = { token, user: { USER_MOBILE: '13912345678', USER_MOBILE_VERIFIED: true } };
   await page.bindWechatPhone({ detail: { errMsg: 'getPhoneNumber:ok', code: 'phone-proof' } });
   assert.equal(page.data.formMobile, '13912345678');
-  assert.equal(page.data.profileCollege, '保留我的编辑');
+  assert.equal(page.data.profileCollege, '外国语学院');
   assert.equal(page.data.phoneVerified, true);
   assert.equal(h.token.sessionToken, token.sessionToken);
   assert.equal(h.navigation.length, 0);
@@ -471,6 +501,36 @@ test('a legacy account verifies its read-only contact phone in personal settings
   assert.equal(page.data.phoneVerified, true);
   assert.deepEqual(h.calls.filter(call => /passport\/.*(?:login|phone)/.test(call.route)),
     [{ route: 'passport/verify_profile_phone', params: { code: 'phone-proof' } }]);
+});
+
+test('profile education selection filters by college and saves a manual major', async () => {
+  const h = harness(), page = h.page('my/personal/my_personal.js');
+  const savedCollege = h.user.USER_FORMS.find(item => item.mark === 'college');
+  savedCollege.val = '软件学院';
+  await page.onLoad();
+  assert.equal(page.data.profileCollege, computingCollege);
+  assert.equal(page.data.profileSub, '软件工程');
+
+  page.bindOpenEducationPicker(event({ kind: 'major' }));
+  page.bindEducationSearch(event({}, '软件'));
+  assert.deepEqual(Array.from(page.data.educationOptions), ['软件工程']);
+  page.bindSelectEducation(event({ value: '英语' }));
+  assert.equal(page.data.educationPicker, 'major');
+
+  page.bindOpenEducationPicker(event({ kind: 'college' }));
+  page.bindEducationSearch(event({}, '外国语'));
+  assert.deepEqual(Array.from(page.data.educationOptions), ['外国语学院']);
+  page.bindSelectEducation(event({ value: '外国语学院' }));
+  assert.equal(page.data.profileSub, '');
+  page.bindOpenEducationPicker(event({ kind: 'major' }));
+  assert.equal(page.data.educationOptions.filter(name => name === '英语').length, 1);
+  assert.ok(page.data.educationOptions.includes('英语笔译'));
+  page.bindEnterMajorManually();
+  page.bindProfileFieldInput(event({ field: 'profileSub' }, '  学校新增专业  '));
+  await page.bindPersonalSubmit();
+  const forms = h.calls.find(call => call.route === 'passport/edit_base').params.forms;
+  assert.equal(forms.find(form => form.mark === 'college').val, '外国语学院');
+  assert.equal(forms.find(form => form.mark === 'sub').val, '学校新增专业');
 });
 
 test('the Yanshan rollout shows other campuses without allowing them to be selected', async () => {
@@ -713,7 +773,7 @@ for (const message of ['「学院」未通过微信文字审核，请修改该�
     h.responses['passport/register'] = () => { throw { code: 1600, msg: message }; };
     await page.bindSubmitTap();
     assert.equal(page.data.saveError, message); assert.ok(h.messages.includes(message));
-    assert.equal(page.data.formName, h.user.USER_NAME); assert.equal(page.data.profileCollege, '计算机学院');
+    assert.equal(page.data.formName, h.user.USER_NAME); assert.equal(page.data.profileCollege, computingCollege);
     assert.equal(page.data.saving, false); assert.equal(h.navigation.length, 0); assert.equal(h.token.profileComplete, false);
   });
 }
@@ -741,8 +801,10 @@ test('unsupported profile capabilities still allow profile completion after expl
   assert.equal(typeof page.bindChooseAvatar, 'function');
   page.bindChooseAvatar();
   page.bindGenderTap(event({ value: '女' }));
-  page.bindProfileFieldInput(event({ field: 'profileCollege' }, '计算机学院'));
-  page.bindProfileFieldInput(event({ field: 'profileSub' }, '软件工程'));
+  page.bindOpenEducationPicker(event({ kind: 'college' }));
+  page.bindSelectEducation(event({ value: computingCollege }));
+  page.bindOpenEducationPicker(event({ kind: 'major' }));
+  page.bindSelectEducation(event({ value: '软件工程' }));
   page.bindProfileFieldInput(event({ field: 'profileStudentId' }, '20240001'));
   page.bindChooseStudentCard();
   assert.equal(page.data.profileStudentCard[0], 'temp/new');
