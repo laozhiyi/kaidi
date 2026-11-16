@@ -1,6 +1,7 @@
 'use strict';
 const Base = require('./base_project_service.js');
 const store = require('./operation_store.js');
+const PaymentService = require('./payment_service.js');
 const DEFAULTS = Object.freeze({ enabled: true, paymentMode: 'offline', smallPrice: 2, mediumPrice: 4, largePrice: 8, maxPackages: 20, maxActiveOrders: 3, maxOpenOrders: 10, deliveryMinutes: 120, urgentMinutes: 60, urgentEnabled: false, enforceBusinessHours: false, openHour: 8, closeHour: 22, registrationReview: false, campuses: ['育才校区', '王城校区', '雁山校区'], offlineNotice: '费用由双方线下协商结算，平台不代收、不担保；请勿提前向陌生人转账。' });
 const SECTIONS = {
  service: ['enabled', 'enforceBusinessHours', 'openHour', 'closeHour', 'campuses'],
@@ -16,7 +17,7 @@ class OperationConfigService extends Base {
   return { ...DEFAULTS, ...(row && row.value || {}),
    enabled: row ? !!(row.value && row.value.enabled === true) : scope ? false : DEFAULTS.enabled,
    enforceBusinessHours: !!(row && row.value && row.value.enforceBusinessHours === true),
-   configured: !!row, paymentMode: 'offline', version: row && row.version || 0,
+   configured: !!row, paymentMode: PaymentService.enabled() ? 'wechat' : 'offline', paymentNotice: '发布时微信支付跑腿费，支付确认后订单才会发布；代买商品款另行结算。接单前取消或无人接单超时原路退款。', version: row && row.version || 0,
    ...(scope ? { schoolId: scope.schoolId, campusId: scope.campusId, schoolName: scope.schoolName, campusName: scope.campusName,
     ...(scope.school ? {registrationReview:scope.school.registrationReview===true} : {}),
     campuses: [scope.campusName], locations: scope.campus.locations || { phases: [], pickupStations: [] } } : {}) };

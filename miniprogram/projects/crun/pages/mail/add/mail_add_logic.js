@@ -165,7 +165,7 @@ module.exports = {
   try {
    const config = await Ops.get('operations/config');
    const prices = config && [config.smallPrice, config.mediumPrice, config.largePrice];
-   if (!config || typeof config.enabled !== 'boolean' || config.paymentMode !== 'offline'
+   if (!config || typeof config.enabled !== 'boolean' || !['offline','wechat'].includes(config.paymentMode)
     || !prices.every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 100)
     || !Number.isInteger(config.maxPackages) || config.maxPackages < 1
     || !Array.isArray(config.campuses) || !config.campuses.length
@@ -212,7 +212,7 @@ module.exports = {
   },
  bindCampusChange(e) { const campusIndex = Number(e.detail.value); this._campusEdited = true; this.setData({ campusIndex, campus: this.data.campuses[campusIndex] }); },
  bindServiceHelpTap() { wx.navigateTo({ url: '/projects/crun/pages/customer_service/chat/customer_service_chat' }); },
- bindSettlementTap() { wx.showModal({ title: '关于线下结算', content: this.data.config.offlineNotice, showCancel: false, confirmText: '我知道了' }); },
+ bindSettlementTap() { wx.showModal({ title: this.data.config.paymentMode === 'wechat' ? '微信支付说明' : '关于线下结算', content: this.data.config.paymentMode === 'wechat' ? this.data.config.paymentNotice : this.data.config.offlineNotice, showCancel: false, confirmText: '我知道了' }); },
  _packageRows(previous = this.data.packageItems, types = this.data.packageTypes) {
   const rows = [], old = Array.isArray(previous) ? previous : [], used = new Set();
   for (const type of types) {
@@ -862,7 +862,12 @@ module.exports = {
    const params={forms,cateId:data.cateId,price:String(this.data.totalFee)};if(this.data.editId)params.id=this.data.editId;
    const result=await Ops.command(this.data.editId?'mail/edit':'mail/insert',params);
    this.setData({mailId:result._id||result.id});wx.hideLoading();PublicBiz.removeCacheList('mail-list');
-   wx.showModal({title:this.data.editId?'保存成功':'发布成功',content:this.data.config.offlineNotice,showCancel:false,success:()=>this._showMailList()});
+   if (!this.data.editId && result.paymentMode === 'wechat') {
+    const id=result._id || result.id;
+    try { await require('../../../biz/payment_biz.js').pay(id); pageHelper.showSuccToast('支付成功，订单已发布'); }
+    catch(error) { Ops.error(error); }
+    wx.navigateTo({url:pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id='+encodeURIComponent(id))});
+   } else wx.showModal({title:this.data.editId?'保存成功':'发布成功',content:this.data.config.offlineNotice,showCancel:false,success:()=>this._showMailList()});
   }catch(e){wx.hideLoading();Ops.error(e);}finally{this._submitting=false;this.setData({submitting:false});this._refreshPendingSubmission();}
  },
 };

@@ -57,12 +57,12 @@ class BaseProjectService extends BaseService {
  async _initSetupSteps(setStep) {
 		let F = (c) => 'bx_' + c;
 		const INSTALL_CL = 'setup_crun';
-		const SCHEMA_CL = 'setup_crun_20261116_points';
+		const SCHEMA_CL = 'setup_crun_20261116_payment';
 		setStep('marker');
 		// A versioned marker is created only after every required collection is
 		// available. Warm-up of a new instance then needs one lookup, not 28.
 		if (await dbUtil.isExistCollection(F(SCHEMA_CL))) return;
-		const COLLECTIONS = ['account_session', 'account_media', 'account_cleanup_file', 'export_file', 'school', 'campus', 'tenant_migration', 'request_scope', 'admin_limit', 'news_manifest', 'news_unread', 'worker_state', 'identity_unique', 'operation_config', 'operation_audit', 'operation_limit', 'order_quota', 'order_event', 'order_request', 'order_feed', 'notification', 'news_read', 'subscription', 'feedback_request','setup', 'admin', 'log', 'news', 'mail', 'fav', 'user', 'campus_service', 'campus_service_message', 'staff_invite', 'feedback', 'invite', 'order_review', 'review_request', 'point_log'];
+		const COLLECTIONS = ['payment','account_session', 'account_media', 'account_cleanup_file', 'export_file', 'school', 'campus', 'tenant_migration', 'request_scope', 'admin_limit', 'news_manifest', 'news_unread', 'worker_state', 'identity_unique', 'operation_config', 'operation_audit', 'operation_limit', 'order_quota', 'order_event', 'order_request', 'order_feed', 'notification', 'news_read', 'subscription', 'feedback_request','setup', 'admin', 'log', 'news', 'mail', 'fav', 'user', 'campus_service', 'campus_service_message', 'staff_invite', 'feedback', 'invite', 'order_review', 'review_request', 'point_log'];
 
 
 

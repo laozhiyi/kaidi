@@ -3,7 +3,7 @@ const AppError = require('../../../framework/core/app_error.js');
 const deliveryAddress = require('./delivery_address.js');
 const fail = message => { throw new AppError(message); };
 const ACTIVE = [1, 2, 3, 4];
-const LABELS = { 0: '待接单', 1: '已接单', 2: '待收货', 3: '异常处理中', 4: '已取件', 9: '已完成', 99: '已取消' };
+const LABELS = { '-1':'待支付', 0: '待接单', 1: '已接单', 2: '待收货', 3: '异常处理中', 4: '已取件', 9: '已完成', 99: '已取消' };
 const plugins = require('./order_plugins/index.js');
 const SERVICES = plugins.services;
 // All evidence uploads share one ceiling: up to 10 photos and one short video.
@@ -108,8 +108,8 @@ function project(mail, userId, admin = false) {
  const mypost = !!userId && mail.MAIL_USER_ID === userId;
  const myaccept = !!userId && mail.MAIL_ACCEPT_USER_ID === userId;
  const privateAccess = admin || mypost || myaccept;
- const keys = ['_id','MAIL_ID','MAIL_STATUS','MAIL_END_TIME','MAIL_EXPECT_TIME','MAIL_EXPECT_START','MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_PICKUP_TIME','MAIL_OVER_TIME','MAIL_END_AT','MAIL_MEDIA_PURGED_AT','MAIL_TOTAL_FEE','MAIL_PAYMENT_MODE','MAIL_CATE_ID','MAIL_CATE_NAME','MAIL_DUE_TIME','MAIL_DELIVERED_TIME','MAIL_AUTO_CONFIRM_AT','MAIL_AUTO_CONFIRMED','MAIL_VERSION','MAIL_SCHEMA_VERSION','schoolId','campusId'];
- if (privateAccess) keys.push('MAIL_PRICE_ADJUST','MAIL_RULE_SNAPSHOT','MAIL_FORMS','MAIL_EXCEPTION','MAIL_DELIVERY_PROOF','MAIL_PICKUP_PROOF','MAIL_PAY_STATUS','MAIL_CAN_REVIEW','MAIL_REVIEWED');
+ const keys = ['_id','MAIL_ID','MAIL_STATUS','MAIL_END_TIME','MAIL_EXPECT_TIME','MAIL_EXPECT_START','MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_PICKUP_TIME','MAIL_OVER_TIME','MAIL_END_AT','MAIL_MEDIA_PURGED_AT','MAIL_TOTAL_FEE','MAIL_PAYMENT_MODE','MAIL_PAY_STATUS','MAIL_CATE_ID','MAIL_CATE_NAME','MAIL_DUE_TIME','MAIL_DELIVERED_TIME','MAIL_AUTO_CONFIRM_AT','MAIL_AUTO_CONFIRMED','MAIL_VERSION','MAIL_SCHEMA_VERSION','schoolId','campusId'];
+ if (privateAccess) keys.push('MAIL_PRICE_ADJUST','MAIL_RULE_SNAPSHOT','MAIL_FORMS','MAIL_EXCEPTION','MAIL_DELIVERY_PROOF','MAIL_PICKUP_PROOF','MAIL_PAY_STATUS','MAIL_REFUND_STATUS','MAIL_CAN_REVIEW','MAIL_REVIEWED');
  if (admin || mypost) keys.push('MAIL_HISTORY');
  const out = {}; keys.forEach(k => { if (mail[k] !== undefined) out[k] = mail[k]; });
  // Preserve safe milestone times before private history is removed. Projection

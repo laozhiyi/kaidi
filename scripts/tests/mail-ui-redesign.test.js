@@ -84,7 +84,8 @@ test('detail presentation calculates fees, package tags and safe Beijing times',
  assert.equal(UI.detail({ ...base, MAIL_OBJ: { price: 'bad' } }, now).fee, '—');
  assert.equal(UI.time('invalid'), ''); assert.equal(UI.time(String(now)), '2026-09-07 10:00');
  assert.equal(UI.detail({ ...base, MAIL_STATUS: null }, now).step, -1);
- assert.equal(UI.detail({ ...base, MAIL_PAYMENT_MODE: 'wechat' }, now).legacyPayment, true);
+ assert.equal(UI.detail({ ...base, MAIL_PAYMENT_MODE: 'wechat' }, now).legacyPayment, false);
+ assert.equal(UI.detail({ ...base, MAIL_PAYMENT_MODE: 'wechat', MAIL_STATUS: -1, mypost: true }, now).primary, 'pay');
 });
 test('detail primary actions depend on actual order role and status, never on page entry', () => {
  const cases = [[0, 'poster', 'edit'], [1, 'rider', 'pickup'], [4, 'rider', 'deliver'], [4, 'poster', 'contact'], [2, 'poster', 'confirm'], [2, 'rider', 'remind'], [3, 'rider', 'contact'], [9, 'poster', 'done'], [9, 'rider', 'done'], [99, 'public', 'orders']];

@@ -22,6 +22,7 @@ class MaintenanceService extends Base {
   };
   return tenant.system(async()=>{
    const db=store.database(),cmd=db.command;
+   if(kind==='orders') { await new (require('./payment_service.js'))().sweep(); }
    if(kind==='orders')result.accounts=await new (require('./account_service.js'))().sweep({budgetMs:Math.min(8000,Math.max(1,deadline-Date.now()))});
    const stateId=store.key('scheduled',kind,shard===undefined?'all':shard);
    const previous=await store.get(db,'worker_state',stateId);
@@ -32,7 +33,7 @@ class MaintenanceService extends Base {
     const queries=kind==='notifications'
      ? [['notification',{delivery:cmd.in(['pending','retry','sending']),nextAttemptAt:cmd.lte(now)},'nextAttemptAt']]
      : kind==='media_purge' ? []
-     : [['mail',{MAIL_STATUS:0,MAIL_PAYMENT_MODE:'offline',MAIL_END_TIME:cmd.lt(now)},'MAIL_END_TIME','expire'],
+     : [['mail',{MAIL_STATUS:cmd.in([-1,0]),MAIL_END_TIME:cmd.lt(now)},'MAIL_END_TIME','expire'],
         ['mail',cmd.and([{MAIL_STATUS:cmd.in([1,2,3,4]),MAIL_DUE_TIME:cmd.lt(now),MAIL_OVERDUE_NOTIFIED:cmd.neq(true)},{MAIL_DUE_TIME:cmd.gt(0)}]),'MAIL_DUE_TIME','overdue'],
         // 送达后 8 小时未确认收货：自动确认，订单双方都收到一次状态更新。
         ['mail',cmd.and([{MAIL_STATUS:2,MAIL_DELIVERED_TIME:cmd.lt(now-Mail.AUTO_CONFIRM_MS)},{MAIL_DELIVERED_TIME:cmd.gt(0)}]),'MAIL_DELIVERED_TIME','auto_confirm']];
@@ -111,7 +112,7 @@ class MaintenanceService extends Base {
    const row=await store.get(tx,'mail',id),now=Date.now();if(!row||row.MAIL_ADMIN_DELETED===true)return;
   const svc=new Mail();row._id=id;
   if(action==='expire'){
-   if(row.MAIL_STATUS!==0||row.MAIL_PAYMENT_MODE!=='offline'||row.MAIL_END_TIME>=now)return;
+   if(![-1,0].includes(row.MAIL_STATUS)||row.MAIL_END_TIME>=now)return;
    row.MAIL_STATUS=99;row.MAIL_END_AT=now;await svc._quota(tx,row.MAIL_USER_ID,'poster',id,false,0);
   }else if(action==='auto_confirm'){
    // 送达满 8 小时仍未确认收货，视为收货，避免订单长期挂在待收货。
@@ -136,9 +137,10 @@ class MaintenanceService extends Base {
   return failed;
  }
  async run() {
+  await new (require('./payment_service.js'))().sweep();
   const db=store.database(),pid=this.getProjectId(),now=Date.now(),cmd=db.command;
-  const expired=await db.collection(store.collection('mail')).where({_pid:pid,MAIL_ADMIN_DELETED:cmd.neq(true),MAIL_STATUS:0,MAIL_PAYMENT_MODE:'offline',MAIL_END_TIME:cmd.lt(now)}).orderBy('MAIL_END_TIME','asc').limit(30).get();
-  const expiredFailed=await this._batch(expired.data,item=>store.transaction(async tx=>{const row=await store.get(tx,'mail',item._id);if(!row||row._pid!==pid||row.MAIL_ADMIN_DELETED===true||row.MAIL_STATUS!==0||row.MAIL_END_TIME>=Date.now())return;row._id=item._id;row.MAIL_STATUS=99;row.MAIL_END_AT=Date.now();const svc=new Mail();await svc._quota(tx,row.MAIL_USER_ID,'poster',row._id,false,0);await svc._record(tx,row,{userId:row.MAIL_USER_ID},'expire',store.key('expire',row._id),'超过接单截止时间，自动关闭');}));
+  const expired=await db.collection(store.collection('mail')).where({_pid:pid,MAIL_ADMIN_DELETED:cmd.neq(true),MAIL_STATUS:cmd.in([-1,0]),MAIL_END_TIME:cmd.lt(now)}).orderBy('MAIL_END_TIME','asc').limit(30).get();
+  const expiredFailed=await this._batch(expired.data,item=>store.transaction(async tx=>{const row=await store.get(tx,'mail',item._id);if(!row||row._pid!==pid||row.MAIL_ADMIN_DELETED===true||![-1,0].includes(row.MAIL_STATUS)||row.MAIL_END_TIME>=Date.now())return;row._id=item._id;row.MAIL_STATUS=99;row.MAIL_END_AT=Date.now();const svc=new Mail();await svc._quota(tx,row.MAIL_USER_ID,'poster',row._id,false,0);await svc._record(tx,row,{userId:row.MAIL_USER_ID},'expire',store.key('expire',row._id),'超过接单截止时间，自动关闭');}));
   const overdue=await db.collection(store.collection('mail')).where({_pid:pid,MAIL_ADMIN_DELETED:cmd.neq(true),MAIL_STATUS:cmd.in([1,2,3,4]),MAIL_DUE_TIME:cmd.lt(now),MAIL_OVERDUE_NOTIFIED:cmd.neq(true)}).orderBy('MAIL_DUE_TIME','asc').limit(30).get();
   const overdueFailed=await this._batch(overdue.data,item=>store.transaction(async tx=>{const row=await store.get(tx,'mail',item._id);if(!row||row._pid!==pid||row.MAIL_ADMIN_DELETED===true||![1,2,3,4].includes(row.MAIL_STATUS)||row.MAIL_OVERDUE_NOTIFIED||!(row.MAIL_DUE_TIME>0&&row.MAIL_DUE_TIME<Date.now()))return;row._id=item._id;row.MAIL_OVERDUE_NOTIFIED=true;await new Mail()._record(tx,row,{userId:row.MAIL_USER_ID},'overdue',store.key('overdue',row._id),'订单已超过预计履约时限，请联系对方或提交异常');}));
   // 手动维护入口与定时任务保持一致：送达满 8 小时也自动确认收货。

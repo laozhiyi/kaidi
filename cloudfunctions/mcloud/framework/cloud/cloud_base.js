@@ -16,14 +16,15 @@ function getCloud() {
 	cloud.init({
 		env: process.env.CLOUD_ENV_ID || config.CLOUD_ID || cloud.DYNAMIC_CURRENT_ENV
 	});
- const wrap = require('../tenancy/tenant_database.js').wrap;
- instance = new Proxy(cloud, { get(target, property) {
-  if (property === 'database') return options => wrap(target.database(options));
-  // OpenAPI is a callable namespace; its .bind would invoke a remote API.
-  if (property === 'openapi') return target.openapi;
-  const value = target[property];
-  return typeof value === 'function' ? value.bind(target) : value;
- }});
+	const wrap = require('../tenancy/tenant_database.js').wrap;
+	instance = new Proxy(cloud, { get(target, property) {
+		if (property === 'database') return options => wrap(target.database(options));
+		// openapi 与 cloudPay 是可调用的命名空间代理：成员由它们自己的 get 拦截器解析。
+		// 若在此处 bind 到根实例，会丢掉这层代理，cloudPay.queryOrder 就变成 undefined。
+		if (property === 'openapi' || property === 'cloudPay') return target[property];
+		const value = target[property];
+		return typeof value === 'function' ? value.bind(target) : value;
+	}});
 	return instance;
 }
 

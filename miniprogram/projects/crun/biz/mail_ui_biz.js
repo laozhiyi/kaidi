@@ -127,7 +127,7 @@ function priceAdjust(mail) {
  const obj = mail && mail.MAIL_OBJ || {}, adjust = mail && mail.MAIL_PRICE_ADJUST || null;
  const status = mail ? Number(mail.MAIL_STATUS) : -1;
  const empty = { visible: false, pending: false, canPropose: false, canRespond: false };
- if (!mail || (obj.serviceType || 'take') !== 'take' || !(mail.mypost || mail.myaccept)) return empty;
+ if (!mail || mail.MAIL_PAYMENT_MODE === 'wechat' || (obj.serviceType || 'take') !== 'take' || !(mail.mypost || mail.myaccept)) return empty;
  const money = cents => (Number(cents) / 100).toFixed(2);
  const used = Number(adjust && adjust.count || 0);
  const pending = !!adjust && adjust.status === 'pending' && status === 1;
@@ -165,7 +165,7 @@ function detail(mail, now = Date.now()) {
  const serviceType = obj.serviceType || 'take';
  const serviceName = { take: '快递代取', send: '物品代送', buy: '商品代买' }[serviceType] || '快递代取';
  const participant = !!(mail.mypost || mail.myaccept);
- const legacyPayment = mail.MAIL_PAYMENT_MODE !== 'offline';
+ const legacyPayment = !['offline','wechat'].includes(mail.MAIL_PAYMENT_MODE);
  const expired = status === 0 && Number(mail.MAIL_END_TIME) > 0 && Number(mail.MAIL_END_TIME) <= now;
  // 已完成：顶栏整体转灰，并按角色显示发布人 / 骑手各自看到的结果。
  const done = status === 9 ? { title: mail.mypost ? '已收货' : mail.myaccept ? '已送达' : '订单已完成',
@@ -184,7 +184,8 @@ function detail(mail, now = Date.now()) {
  const phone = participant ? (mail.mypost ? mail.acceptUser && mail.acceptUser.USER_MOBILE : obj.tel) : '';
  const contactName = participant ? (mail.mypost ? mail.acceptUser && mail.acceptUser.USER_NAME : obj.poster) : '';
  let primary = 'orders', primaryLabel = '返回订单列表';
- if (participant && mail.mypost && status === 0 && !expired && !legacyPayment) { primary = 'edit'; primaryLabel = '编辑订单'; }
+ if (participant && mail.mypost && status === -1) { primary = 'pay'; primaryLabel = '微信支付并发布'; }
+ else if (participant && mail.mypost && status === 0 && !expired && mail.MAIL_PAYMENT_MODE === 'offline') { primary = 'edit'; primaryLabel = '编辑订单'; }
  else if (participant && mail.myaccept && status === 1) { primary = 'pickup'; primaryLabel = serviceType === 'buy' ? '已购齐' : '已取件'; }
  else if (participant && mail.myaccept && status === 4) { primary = 'deliver'; primaryLabel = '已送达'; }
  else if (participant && mail.myaccept && status === 2) { primary = 'remind'; primaryLabel = '提醒发布人收货'; }
@@ -199,6 +200,8 @@ function detail(mail, now = Date.now()) {
  })).reverse() : [];
  let title = mail.myaccept && status === 1 ? '请前往快递点取件' : mail.myaccept && status === 4 ? '配送进行中' : mail.myaccept && status === 2 ? '等待发布者确认' : state.title;
  let note = !participant && status === 0 && !expired ? '接单后可查看联系人信息、取件码和截图' : mail.myaccept && status === 1 ? '取齐本单包裹后，上传凭证（照片或视频）并点击“已取件”开始配送' : mail.myaccept && status === 4 ? '送到收件地址后，选择放置指定位置或当面交付，并提交凭证' : mail.myaccept && status === 2 ? '已通知发布者核对，可提醒对方确认收货；送达满8小时自动确认' : state.note;
+ if (status === -1) {title='待支付，尚未发布';note='微信支付确认后订单才会出现在接单列表';}
+ if (mail.MAIL_REFUND_STATUS) note=mail.MAIL_REFUND_STATUS === 'success' ? '款项已原路退回' : '退款处理中，请留意微信支付通知';
  if (orderProgress.adminCompleted) { title = '管理员已完结订单'; note = '本单由管理员处理完结，具体情况请查看处理记录'; }
  if (serviceType !== 'take') {
   if (status === 1) { title = serviceType === 'buy' ? (mail.myaccept ? '请前往购买商品' : '等待骑手购买') : (mail.myaccept ? '请前往取件地址' : '等待骑手取件'); note = serviceType === 'buy' ? '请按要求购买，超出预算先联系发布者；购齐后开始配送' : '请按填写的取件位置交接物品，取齐后开始配送'; }
@@ -219,7 +222,7 @@ function detail(mail, now = Date.now()) {
   // 已送达待确认时不再暴露发布人电话，改为站内提醒。
   hideContactCall: !!(mail.myaccept && status === 2),
   canUpdateProof: !!mail.myaccept && status === 2 && !!mail.MAIL_DELIVERY_PROOF, proofUpdatedAt: time(mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.updatedAt),
-  primary, primaryLabel, receipt: receipt(mail, now), history, canException: participant && [1, 2, 4].includes(status), canCancel: !!mail.mypost && status === 0
+  primary, primaryLabel, receipt: receipt(mail, now), history, canException: participant && [1, 2, 4].includes(status), canCancel: !!mail.mypost && [-1,0].includes(status)
  };
 }
 module.exports = { time, service, receipt, progress, detail, requirementText, requirementTags, priceAdjust, mediaPurgeNotice, deliveryAddress: Address.formatOrderAddress };

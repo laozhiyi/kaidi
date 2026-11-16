@@ -53,7 +53,7 @@ class MailService extends Base {
  }
  async _seed(userId, role) {
   if (await store.get(store.database(), 'order_quota', store.scopeKey(this.getProjectId(), userId, role))) return [];
-  const rows = await MailModel.getAll({ [role === 'rider' ? 'MAIL_ACCEPT_USER_ID' : 'MAIL_USER_ID']:userId, MAIL_ADMIN_DELETED:['<>',true], MAIL_STATUS:['in',role === 'rider' ? rules.ACTIVE : [0,...rules.ACTIVE]] },'_id',{},1000);
+  const rows = await MailModel.getAll({ [role === 'rider' ? 'MAIL_ACCEPT_USER_ID' : 'MAIL_USER_ID']:userId, MAIL_ADMIN_DELETED:['<>',true], MAIL_STATUS:['in',role === 'rider' ? rules.ACTIVE : [-1,0,...rules.ACTIVE]] },'_id',{},1000);
   if (rows.length >= 1000) this.AppError('历史在途订单数量异常，请先完成配额核验');
   return rows.map(x => x._id);
  }
@@ -68,7 +68,7 @@ class MailService extends Base {
    for (const candidate of active) {
     const row = await store.get(tx, 'mail', candidate);
     if (row && row.MAIL_ADMIN_DELETED !== true && row._pid === this.getProjectId() && row[role === 'rider' ? 'MAIL_ACCEPT_USER_ID' : 'MAIL_USER_ID'] === userId
-     && (rules.ACTIVE.includes(row.MAIL_STATUS) || role === 'poster' && row.MAIL_STATUS === 0 && row.MAIL_END_TIME > Date.now())) current.push(candidate);
+     && (rules.ACTIVE.includes(row.MAIL_STATUS) || role === 'poster' && [-1,0].includes(row.MAIL_STATUS) && row.MAIL_END_TIME > Date.now())) current.push(candidate);
    }
    active = current;
   }
@@ -113,10 +113,10 @@ class MailService extends Base {
    const config = await new ConfigService().getConfig(tx);
    const normalized=rules.validateForms(input.forms,config,Date.now());rules.requireOpen(config,Date.now());
    await this._quota(tx,userId,'poster',id,true,config.maxOpenOrders,seed);
-   const mail = { _id:id,_pid:this.getProjectId(),MAIL_ID:'MAIL'+id.slice(0,28),MAIL_PUBLISH_FINGERPRINT:fingerprint,MAIL_STATUS:0,MAIL_USER_ID:userId,MAIL_USER_NAME:user.USER_NAME,MAIL_ACCEPT_USER_ID:'',MAIL_ORDER:9999,MAIL_CATE_ID:rules.SERVICES[normalized.obj.serviceType].id,MAIL_CATE_NAME:rules.SERVICES[normalized.obj.serviceType].name,MAIL_OBJ:normalized.obj,MAIL_FORMS:normalized.forms,MAIL_END_TIME:normalized.endTime,MAIL_EXPECT_START:normalized.expectStart,MAIL_EXPECT_TIME:normalized.expectTime || normalized.endTime,MAIL_TOTAL_FEE:normalized.totalFee,MAIL_PAYMENT_MODE:'offline',MAIL_PAY_STATUS:0,MAIL_ADD_TIME:now,MAIL_ACCEPT_TIME:0,MAIL_OVER_TIME:0,MAIL_DELIVERY_MINUTES:normalized.obj.urgent ? config.urgentMinutes : config.deliveryMinutes };
+   const mail = { _id:id,_pid:this.getProjectId(),MAIL_ID:'MAIL'+id.slice(0,28),MAIL_PUBLISH_FINGERPRINT:fingerprint,MAIL_STATUS:config.paymentMode === 'wechat' ? -1 : 0,MAIL_USER_ID:userId,MAIL_USER_NAME:user.USER_NAME,MAIL_ACCEPT_USER_ID:'',MAIL_ORDER:9999,MAIL_CATE_ID:rules.SERVICES[normalized.obj.serviceType].id,MAIL_CATE_NAME:rules.SERVICES[normalized.obj.serviceType].name,MAIL_OBJ:normalized.obj,MAIL_FORMS:normalized.forms,MAIL_END_TIME:normalized.endTime,MAIL_EXPECT_START:normalized.expectStart,MAIL_EXPECT_TIME:normalized.expectTime || normalized.endTime,MAIL_TOTAL_FEE:normalized.totalFee,MAIL_PAYMENT_MODE:config.paymentMode,MAIL_PAY_NO:config.paymentMode === 'wechat' ? store.key('wxpay',id) : '',MAIL_PAY_STATUS:0,MAIL_ADD_TIME:now,MAIL_ACCEPT_TIME:0,MAIL_OVER_TIME:0,MAIL_DELIVERY_MINUTES:normalized.obj.urgent ? config.urgentMinutes : config.deliveryMinutes };
    mail.MAIL_SCHEMA_VERSION=normalized.schemaVersion; mail.MAIL_RULE_SNAPSHOT=normalized.ruleSnapshot;
-   await this._record(tx,mail,{userId},'publish',input.requestId,'发布订单；线下结算',fingerprint,input._sourceFingerprint || '');
-   return {id:mail.MAIL_ID,_id:id,fee:normalized.totalFee/100,paymentMode:'offline'};
+   await this._record(tx,mail,{userId},'publish',input.requestId,config.paymentMode === 'wechat' ? '待支付，尚未发布' : '发布订单；线下结算',fingerprint,input._sourceFingerprint || '');
+   return {id:mail.MAIL_ID,_id:id,fee:normalized.totalFee/100,paymentMode:config.paymentMode};
   });
  }
  async _change(userId, id, action, input = {}, adminId = '') {
@@ -143,7 +143,7 @@ class MailService extends Base {
     if (poster) this.AppError('不能接取自己发布的订单');
     if ((mail.MAIL_RELEASED_RIDERS || []).includes(userId)) this.AppError('你已放弃过这个订单，不能再次接单');
     if (mail.MAIL_END_TIME <= now) this.AppError('该订单已超过接单截止时间');
-    if (mail.MAIL_PAYMENT_MODE !== 'offline') this.AppError('旧支付订单须先由管理员核对，不能直接接单');
+    if (!(mail.MAIL_PAYMENT_MODE === 'offline' || mail.MAIL_PAYMENT_MODE === 'wechat' && mail.MAIL_PAY_STATUS === 1)) this.AppError('订单尚未确认付款，不能接单');
     if (!store.scope() && !config.campuses.includes(mail.MAIL_OBJ.campus)) this.AppError('该订单校区暂不在服务范围');
     if (!adminId) {
      const required = (mail.MAIL_OBJ || {}).riderGender;
@@ -166,6 +166,7 @@ class MailService extends Base {
     mail.MAIL_PICKUP_PROOF = {images:proof, video, note:rules.text(input.note || '','取件说明',300,false), at:now};
     mail.MAIL_STATUS = 4; mail.MAIL_PICKUP_TIME = now;
    } else if (action === 'price_propose') {
+    if (mail.MAIL_PAYMENT_MODE === 'wechat') this.AppError('微信支付订单暂不支持协商调价');
     if (!rider || state !== 1) this.AppError('仅已接单、尚未提交取件凭证的骑手可申请调价');
     if ((mail.MAIL_OBJ.serviceType || 'take') !== 'take') this.AppError('仅快递代取订单可申请调价');
     const old = mail.MAIL_PRICE_ADJUST || null;
@@ -209,7 +210,7 @@ class MailService extends Base {
     const expired = !(mail.MAIL_END_TIME > now);
     message = { only:'poster', title:'骑手已放弃接单', content:expired ? '调价未达成，骑手已放弃接单；订单已过接单截止时间，请编辑后重新发布' : '调价未达成，骑手已放弃接单，订单已按原价 ¥' + fee + ' 重新发布，等待其他骑手接单' };
    } else if (action === 'cancel') {
-    if (!poster || state !== 0) this.AppError('只有发布者可取消待接单订单；已接单请提交异常申请'); mail.MAIL_STATUS = 99; note = rules.text(input.note || '发布者取消','取消原因',300,true);
+    if (!poster || ![-1,0].includes(state)) this.AppError('只有发布者可取消待支付或待接单订单；已接单请提交异常申请'); mail.MAIL_STATUS = 99; note = rules.text(input.note || '发布者取消','取消原因',300,true);
    } else if (action === 'deliver') {
     if (!rider || state !== 4) this.AppError('仅配送中的接单人可提交送达');
     // 两种送达方式：放置指定位置（须凭证）/ 当面交付（由发布人确认收货）。
@@ -267,6 +268,7 @@ class MailService extends Base {
    if (action === 'confirm' && mail.MAIL_STATUS === 9 && state !== 9) {
     await new (require('./point_service.js'))().awardOrderCompleted(tx, mail, now);
    }
+   if (mail.MAIL_STATUS === 99 && mail.MAIL_PAYMENT_MODE === 'wechat' && mail.MAIL_PAY_STATUS === 1) mail.MAIL_REFUND_STATUS='pending';
    await this._record(tx,mail,actor,action,input.requestId,note,store.key(input),input._sourceFingerprint || '',message);
    return {id,statusDesc:this.getStatusDesc(mail)};
   });
@@ -358,6 +360,7 @@ class MailService extends Base {
  async updateMailForms() { this.AppError('请在提交订单前上传图片，并通过编辑订单更新，禁止独立覆盖表单'); }
  async viewMail(userId,id) {
   const mail = await MailModel.getOne(id); if (!mail || mail.MAIL_ADMIN_DELETED === true) return null;
+  if (mail.MAIL_STATUS === -1 && mail.MAIL_USER_ID !== userId) return null;
   await new (require('./review_service.js'))().decorateOrders(userId, [mail]);
   const result = rules.project(mail,userId);
   if (result.mypost || result.myaccept) { await this._user(userId, { allowPending: result.mypost && !result.myaccept }); if (mail.MAIL_ACCEPT_USER_ID) result.acceptUser = await UserModel.getOne({USER_MINI_OPENID:mail.MAIL_ACCEPT_USER_ID},'USER_NAME,USER_MOBILE'); }
@@ -386,12 +389,12 @@ class MailService extends Base {
    if (sortType === 'my_accept') { where.and.MAIL_ACCEPT_USER_ID = userId; where.and.MAIL_RIDER_ARCHIVED = ['<>',true]; }
    if (['my_post','my_accept'].includes(sortType)) {
     // 已完成订单仅在完成后的 12 小时内显示；其他状态保持原有可见性。
-    where.or = [{ MAIL_STATUS: ['in', rules.ACTIVE] }, { MAIL_STATUS: ['in', [0, 99]], MAIL_END_TIME: ['>=', now] }, { MAIL_STATUS: 9, MAIL_OVER_TIME: ['>=', completedSince] }];
+    where.or = [{ MAIL_STATUS: ['in', rules.ACTIVE] }, { MAIL_STATUS: ['in', [-1, 0, 99]], MAIL_END_TIME: ['>=', now] }, { MAIL_STATUS: 9, MAIL_OVER_TIME: ['>=', completedSince] }];
    }
    // 申诉、客服咨询常常发生在订单结束很久之后：这里覆盖本人全部历史订单，不做时间窗裁剪。
    if (sortType === 'my_all') where.or = [{ MAIL_USER_ID: userId }, { MAIL_ACCEPT_USER_ID: userId }];
    if (['my_done','status','timeout'].includes(sortType)) { where.or = [{MAIL_USER_ID:userId},{MAIL_ACCEPT_USER_ID:userId}]; const state = sortType === 'my_done' ? 9 : sortType === 'timeout' ? 0 : Number(sortVal); if (![0,1,2,3,4,9,99].includes(state)) this.AppError('该订单校区暂不在服务范围'); where.and.MAIL_STATUS = state; if (sortType === 'my_done') where.and.MAIL_OVER_TIME = ['>=', completedSince]; if (sortType === 'timeout') where.and.MAIL_END_TIME = ['<',now]; }
-  } else { where.and.MAIL_STATUS = 0; where.and.MAIL_PAYMENT_MODE = 'offline'; where.and.MAIL_END_TIME = ['>',now]; if (sortType === 'wait') where.and.MAIL_USER_ID = ['<>',userId]; }
+  } else { where.and.MAIL_STATUS = 0; where.or = [{MAIL_PAYMENT_MODE:'offline'},{MAIL_PAYMENT_MODE:'wechat',MAIL_PAY_STATUS:1}]; where.and.MAIL_END_TIME = ['>',now]; if (sortType === 'wait') where.and.MAIL_USER_ID = ['<>',userId]; }
   if (search && !['我的发布','我的接单'].includes(search)) { const q = rules.text(search,'搜索关键词',30,true); where.and['MAIL_OBJ.title'] = ['like',q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')]; }
   // 同一维度多选是「或」，不同维度之间继续走 where.and 的「且」，因此多选条件
   // 不能直接塞进 where.and，要单独收集成 or 分组，最后与基础条件合并。
@@ -451,7 +454,7 @@ class MailService extends Base {
   order = { ...order, _id: 'desc' };
   // Resolve submitted addresses and legacy milestone times before removing
   // private forms and event history from the response below.
-  const fields = '_id,_pid,MAIL_ID,MAIL_USER_ID,MAIL_ACCEPT_USER_ID,MAIL_STATUS,MAIL_END_TIME,MAIL_EXPECT_TIME,MAIL_ADD_TIME,MAIL_ACCEPT_TIME,MAIL_PICKUP_TIME,MAIL_OVER_TIME,MAIL_TOTAL_FEE,MAIL_PAYMENT_MODE,MAIL_CATE_ID,MAIL_CATE_NAME,MAIL_DUE_TIME,MAIL_DELIVERED_TIME,MAIL_OBJ,MAIL_FORMS,MAIL_HISTORY,MAIL_VERSION,MAIL_PRICE_ADJUST';
+  const fields = '_id,_pid,MAIL_ID,MAIL_USER_ID,MAIL_ACCEPT_USER_ID,MAIL_STATUS,MAIL_END_TIME,MAIL_EXPECT_TIME,MAIL_ADD_TIME,MAIL_ACCEPT_TIME,MAIL_PICKUP_TIME,MAIL_OVER_TIME,MAIL_TOTAL_FEE,MAIL_PAYMENT_MODE,MAIL_PAY_STATUS,MAIL_REFUND_STATUS,MAIL_CATE_ID,MAIL_CATE_NAME,MAIL_DUE_TIME,MAIL_DELIVERED_TIME,MAIL_OBJ,MAIL_FORMS,MAIL_HISTORY,MAIL_VERSION,MAIL_PRICE_ADJUST';
   const field = Object.keys(order)[0], direction = order[field];
   const cursor = input.cursor;
   if (cursor && (typeof cursor !== 'object' || cursor.field !== field || cursor.direction !== direction

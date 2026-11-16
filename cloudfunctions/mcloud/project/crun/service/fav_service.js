@@ -26,7 +26,7 @@ class FavService extends Base {
   }
   _available(order, userId) {
     return !!order && order._pid === this.getProjectId() && order.MAIL_ADMIN_DELETED !== true && order.MAIL_STATUS === 0
-      && order.MAIL_PAYMENT_MODE === 'offline' && !order.MAIL_ACCEPT_USER_ID
+      && (order.MAIL_PAYMENT_MODE === 'offline' || order.MAIL_PAYMENT_MODE === 'wechat' && order.MAIL_PAY_STATUS === 1) && !order.MAIL_ACCEPT_USER_ID
       && order.MAIL_USER_ID !== userId && Number(order.MAIL_END_TIME) > Date.now();
   }
   // Read the actual favorite records so historical favorites and removals never
@@ -38,7 +38,7 @@ class FavService extends Base {
     const db = store.database(), types = db.command.in(['mail', TYPES.mail.title]);
     const targets = orders || (await db.collection(store.collection('mail')).where({
       _pid: this.getProjectId(), _id: db.command.in(ids)
-    }).field({ _id: true, _pid: true, MAIL_ADMIN_DELETED: true, MAIL_STATUS: true, MAIL_PAYMENT_MODE: true,
+    }).field({ _id: true, _pid: true, MAIL_ADMIN_DELETED: true, MAIL_STATUS: true, MAIL_PAYMENT_MODE: true, MAIL_PAY_STATUS: true,
       MAIL_USER_ID: true, MAIL_ACCEPT_USER_ID: true, MAIL_END_TIME: true }).limit(50).get()).data;
     const valid = new Map(targets.filter(row => row && row._pid === this.getProjectId() && row.MAIL_ADMIN_DELETED !== true).map(row => [row._id, row]));
     const [mine, counts] = await Promise.all([
