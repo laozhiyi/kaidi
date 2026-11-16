@@ -4,16 +4,16 @@
 
 云速取 is a native WeChat Mini Program backed by WeChat Cloud Development. Feature pages, components, and client business logic live under `miniprogram/projects/crun/`. Shared components, helpers, templates, and assets live in `miniprogram/cmpts/`, `miniprogram/helper/`, `miniprogram/tpls/`, and `miniprogram/images/`. Register new pages in `miniprogram/app.json`.
 
-`cloudfunctions/mcloud/` runs the API and scheduled jobs. Under `cloudfunctions/mcloud/project/crun/`, `public/route.js` maps routes to controllers, `service/` holds business rules, and `model/` defines persistence. Regression tests and their fixtures live in `scripts/tests/` and `scripts/test-support/`. See `deployment/` for database rules, indexes, and rollout steps.
+`cloudfunctions/mcloud/` contains the main API and scheduled-job source. `cloudfunctions/payNotify/` handles WeChat Pay callbacks. Under `cloudfunctions/mcloud/project/crun/`, `public/route.js` maps routes to controllers, `service/` holds business rules, and `model/` defines persistence. Regression tests and their fixtures live in `scripts/tests/` and `scripts/test-support/`. See `deployment/` for database rules, indexes, and rollout steps.
 
 ## Build and Development
 
 Import the repository root into WeChat Developer Tools. Confirm the AppID and target cloud environment, then use **Compile** for simulator checks and **Preview** for device checks.
 
-- `npm ci --prefix cloudfunctions/mcloud --ignore-scripts --no-audit --no-fund` installs locked cloud dependencies.
+- `npm install --prefix cloudfunctions/mcloud --no-package-lock --ignore-scripts --no-audit --no-fund` installs the cloud dependencies declared in `package.json`.
 - `npm test --prefix cloudfunctions/mcloud` runs the regression suite. Use `npm.cmd` if PowerShell blocks the npm script shim.
 - `node scripts/check-architecture-source.cjs` checks source wiring after dependencies are installed.
-- `node scripts/check-miniprogram-pages.cjs` checks page registration and imports. Pass `--wcc "<path to wcc.exe>" --wcsc "<path to wcsc.exe>"` to compile templates and styles.
+- `node scripts/check-miniprogram-pages.cjs` checks page registration, component references, and imports. Pass `--wcc "<path to wcc.exe>" --wcsc "<path to wcsc.exe>"` to compile templates and styles.
 
 ## Coding Style
 
@@ -21,7 +21,7 @@ Use CommonJS and match surrounding indentation. WeChat Developer Tools uses four
 
 ## Testing
 
-Write focused regressions in `*.test.js` using `node:test` and `node:assert/strict`. Run a single file with `node --test scripts/tests/tenant-services.test.js`. Reuse cloud fixtures and test changes to native authorization on a device.
+Write focused regressions in `*.test.js` using `node:test` and `node:assert/strict`. Run a single file with `node --test scripts/tests/tenant-services.test.js`. Reuse the fixtures in `scripts/test-support/` for cloud services. Cover the changed behavior and its failure paths. Check changes to native authorization, payment, or other WeChat platform APIs on a device in the target cloud environment.
 
 ## Commits and Pull Requests
 

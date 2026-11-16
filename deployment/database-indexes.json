@@ -9,6 +9,9 @@
     "system": [["_pid", "asc"]]
   },
   "indexes": [
+    {"collection":"bx_payment","name":"payment_due","scope":"system","fields":[["state","asc"],["nextCheckAt","asc"]],"purpose":"定时核对支付、退款与商家转账结果"},
+    {"collection":"bx_mail","name":"account_pending_earnings","scope":"system","access":"account_lifecycle","fields":[["MAIL_ACCEPT_USER_ID","asc"],["MAIL_STATUS","asc"],["MAIL_EARNINGS_STATUS","asc"]],"purpose":"注销前核对未领取的跑腿报酬"},
+    {"collection":"bx_mail","name":"account_pending_refund","scope":"system","access":"account_lifecycle","fields":[["MAIL_USER_ID","asc"],["MAIL_STATUS","asc"],["MAIL_PAY_STATUS","asc"]],"purpose":"注销前核对取消订单的退款状态"},
     {"collection":"bx_school","name":"school_directory","scope":"system","fields":[["_id","asc"]],"purpose":"公开与后台学校元数据目录"},
     {"collection":"bx_campus","name":"campus_directory","scope":"system","fields":[["_id","asc"]],"purpose":"公开与后台校区元数据目录"},
     {"collection":"bx_admin","name":"admin_directory","scope":"system","fields":[["_id","asc"]],"purpose":"平台管理员目录摘要"},

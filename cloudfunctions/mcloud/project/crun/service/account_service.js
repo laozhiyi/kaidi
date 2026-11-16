@@ -109,7 +109,11 @@ class AccountService {
         ])).limit(1).get();
         if (result.data.length) return true;
       }
-      return false;
+      const mail = tx.collection(store.collection('mail'));
+      const earnings = await mail.where({ _pid:'crun', MAIL_ACCEPT_USER_ID:userId, MAIL_STATUS:9, MAIL_EARNINGS_STATUS:'pending' }).limit(1).get();
+      if (earnings.data.length) return true;
+      const refund = await mail.where({ _pid:'crun', MAIL_USER_ID:userId, MAIL_STATUS:99, MAIL_PAY_STATUS:1 }).limit(1).get();
+      return refund.data.length > 0;
     });
   }
 
@@ -121,7 +125,7 @@ class AccountService {
         return { requestedAt: row.requestedAt, cancelAt: row.cancelAt };
       }
       if (!matches(row, userId, token)) signedOut();
-      if (await this.hasUnfinishedOrders(tx, userId)) throw new AppError('还有未完成的发单或接单，请先完成或取消订单后再注销账户');
+      if (await this.hasUnfinishedOrders(tx, userId)) throw new AppError('还有未完成的发单或接单，或报酬及退款尚未结清，请处理后再注销账户');
       const now = Date.now(), cancelId = crypto.randomBytes(16).toString('hex');
       await store.set(tx, 'account_session', id, { ...row, status: 'pending', sessionHash: '', expiresAt: 0,
         cancelSessionHash: digest(token), requestedAt: now, cancelAt: now + CANCELLATION_MS, cancelId, updatedAt: now });

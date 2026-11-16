@@ -1,148 +1,63 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { fixture } = require('../test-support/operations-fixture.cjs');
+const crypto = require('node:crypto');
+const vm = require('node:vm');
+const fs = require('node:fs');
+const path = require('node:path');
 
-/**
- * 测试微信支付和订单发布完整流程
- * 验证：
- * 1. 支付配置是否完整
- * 2. 支付准备（prepay）是否成功
- * 3. 支付结果查询和订单发布是否成功
- * 4. 并发场景下的正确性
- */
+const root = path.join(__dirname,'../../cloudfunctions/mcloud/project/crun');
+function load(file, scope) {
+ const module = { exports:{} };
+ vm.runInNewContext(fs.readFileSync(path.join(root,file),'utf8'),{module,Buffer,URL,...scope});
+ return module.exports;
+}
+const pair = crypto.generateKeyPairSync('rsa',{modulusLength:2048});
+const privateKey = pair.privateKey.export({type:'pkcs8',format:'pem'});
+const publicKey = pair.publicKey.export({type:'spki',format:'pem'});
+const credentials = {
+ WECHAT_APP_ID:'wx0123456789abcdef', WECHAT_PAY_MCH_ID:'1234567890', WECHAT_PAY_PRIVATE_KEY:privateKey,
+ WECHAT_PAY_CERT_SERIAL:'ABCDEF1234', WECHAT_PAY_PUBLIC_KEY:publicKey, WECHAT_PAY_PUBLIC_KEY_ID:'PUB_KEY_ID_123456',
+ WECHAT_PAY_API_V3_KEY:'a'.repeat(32), WECHAT_PAY_NOTIFY_URL:'https://example.test/payment'
+};
+const config = env => load('config/pay_config.js',{process:{env},require});
 
-test('支付模块已正确启用', () => {
-  const PaymentService = require('../../cloudfunctions/mcloud/project/crun/service/payment_service.js');
-  assert.equal(typeof PaymentService.enabled, 'function', '支付服务应该导出 enabled 方法');
-  assert.equal(PaymentService.enabled(), true, '支付应该启用（配置完整）');
+test('new payments require the switch and complete configuration',()=>{
+ assert.equal(config({}).enabled(),false);
+ assert.equal(config(credentials).ready(),true);
+ assert.equal(config(credentials).enabled(),false);
+ assert.equal(config({...credentials,WECHAT_PAY_ENABLED:'true'}).enabled(),true);
+ assert.equal(config({...credentials,WECHAT_PAY_ENABLED:'true',WECHAT_PAY_PRIVATE_KEY:'invalid'}).enabled(),false);
 });
 
-test('支付配置包含必要的字段', () => {
-  const payConfig = require('../../cloudfunctions/mcloud/project/crun/config/pay_config.js');
-  assert.ok(payConfig.appid, 'APPID 必须配置');
-  assert.ok(payConfig.mchid, '商户号必须配置');
-  assert.ok(payConfig.key, 'API Key 必须配置');
-  assert.equal(typeof payConfig.appid, 'string', 'APPID 必须是字符串');
-  assert.equal(typeof payConfig.mchid, 'string', '商户号必须是字符串');
-  assert.equal(typeof payConfig.key, 'string', 'API Key 必须是字符串');
+test('requested payments with bad fields block offline publishing and report only field names',()=>{
+ const logs = [];
+ const cfg = config({...credentials,WECHAT_PAY_ENABLED:'true',WECHAT_PAY_CERT_SERIAL:'invalid',WECHAT_PAY_PUBLIC_KEY:'not a public key'});
+ const service = load('service/payment_service.js', {
+  require:id=>id.includes('pay_config')?cfg:{},
+  console:{warn:(message, data)=>logs.push([message, Array.from(data.invalidFields)])}
+ });
+ assert.equal(service.newOrderMode(),'unavailable');
+ assert.equal(service.newOrderMode(),'unavailable');
+ assert.deepEqual(logs,[['[payment] invalid config',['WECHAT_PAY_CERT_SERIAL','WECHAT_PAY_PUBLIC_KEY']]]);
 });
 
-test('支付准备流程返回正确的结构', async () => {
-  const f = fixture();
-  const Service = f.load('payment_service.js');
-  const service = new Service();
-  
-  // 创建一个待支付订单
-  const orderId = await f.publish({ 
-    paymentMode: 'wechat',
-    totalFee: 600  // 6.00 元
-  });
-  
-  // 验证订单状态
-  const mail = f.table('mail').get(orderId);
-  assert.equal(mail.MAIL_PAYMENT_MODE, 'wechat', '订单应该是微信支付模式');
-  assert.equal(mail.MAIL_STATUS, -1, '待支付订单状态应该是 -1');
-  assert.equal(mail.MAIL_PAY_STATUS, 0, '支付状态应该是未支付');
-  assert.ok(mail.MAIL_PAY_NO, '应该生成支付订单号');
-});
-
-test('支付结果查询能正确处理支付成功状态', async () => {
-  const f = fixture();
-  const Service = f.load('payment_service.js');
-  const service = new Service();
-  
-  // 创建订单
-  const orderId = await f.publish({
-    paymentMode: 'wechat',
-    totalFee: 600
-  });
-  
-  const mail = f.table('mail').get(orderId);
-  const paymentRecord = f.table('payment').get(mail.MAIL_PAY_NO);
-  
-  // 验证支付记录已创建
-  assert.ok(paymentRecord, '应该创建支付记录');
-  assert.equal(paymentRecord.state, 'pending', '支付状态应该是 pending');
-  assert.equal(paymentRecord.amount, 600, '支付金额应该正确');
-});
-
-test('并发支付场景下订单发布仅执行一次', async () => {
-  const f = fixture();
-  const Service = f.load('payment_service.js');
-  const service = new Service();
-  
-  // 创建订单
-  const orderId = await f.publish({
-    paymentMode: 'wechat',
-    totalFee: 600
-  });
-  
-  const mail = f.table('mail').get(orderId);
-  assert.equal(mail.MAIL_PAYMENT_MODE, 'wechat', '订单应该配置微信支付');
-  assert.equal(mail.MAIL_STATUS, -1, '未支付前订单应该保持待支付状态');
-});
-
-test('支付失败情况下订单不发布', async () => {
-  const f = fixture();
-  // 虽然这个场景需要实际的微信 API 调用，但我们可以验证错误处理逻辑
-  // 确保支付服务能正确捕获和报告错误
-  const Service = f.load('payment_service.js');
-  assert.ok(Service, '支付服务应该能正常加载');
-});
-
-test('支付订单号应该保持唯一', async () => {
-  const f = fixture();
-  
-  // 发布两个订单
-  const order1 = await f.publish({
-    paymentMode: 'wechat',
-    totalFee: 600
-  });
-  
-  const order2 = await f.publish({
-    paymentMode: 'wechat',
-    totalFee: 800
-  });
-  
-  const mail1 = f.table('mail').get(order1);
-  const mail2 = f.table('mail').get(order2);
-  
-  // 支付订单号应该不同
-  assert.notEqual(
-    mail1.MAIL_PAY_NO,
-    mail2.MAIL_PAY_NO,
-    '不同订单的支付订单号应该不同'
-  );
-});
-
-test('支付模式为非微信时不应该调用微信支付', async () => {
-  const f = fixture();
-  
-  // 发布离线支付的订单
-  const orderId = await f.publish({
-    paymentMode: 'offline',
-    totalFee: 600
-  });
-  
-  const mail = f.table('mail').get(orderId);
-  assert.equal(mail.MAIL_PAYMENT_MODE, 'offline', '订单应该是离线支付模式');
-  // 离线支付订单不应该有支付订单号
-  assert.ok(!mail.MAIL_PAY_NO || mail.MAIL_PAY_NO === '', '离线支付不应该生成支付订单号');
-});
-
-test('金额和费用计算正确', () => {
-  // 测试金额转换
-  const testCases = [
-    { cents: 100, expected: '1.00' },  // 1 元
-    { cents: 600, expected: '6.00' },  // 6 元
-    { cents: 1, expected: '0.01' },    // 1 分
-    { cents: 999, expected: '9.99' }   // 9.99 元
-  ];
-  
-  const yuan = cents => (cents / 100).toFixed(2);
-  
-  for (const { cents, expected } of testCases) {
-    assert.equal(yuan(cents), expected, `${cents} 分应该转换为 ${expected} 元`);
-  }
+test('RSA signs checkout and payment notifications require a valid signature and authenticated ciphertext',()=>{
+ const cfg=config(credentials);
+ const api=load('service/wechat_pay_api.js',{require:id=>id.includes('config')?cfg:require(id)});
+ const message='wx-app\n123\nnonce\nprepay_id=test\n';
+ assert(crypto.verify('RSA-SHA256',Buffer.from(message),publicKey,Buffer.from(api.sign(message),'base64')));
+ const nonce='abcdefghijkl';
+ const cipher=crypto.createCipheriv('aes-256-gcm',Buffer.from(cfg.apiV3Key),Buffer.from(nonce));
+ cipher.setAAD(Buffer.from('transaction'));
+ const encrypted=Buffer.concat([cipher.update('{"trade_state":"SUCCESS"}'),cipher.final(),cipher.getAuthTag()]);
+ const body=JSON.stringify({event_type:'TRANSACTION.SUCCESS',resource:{
+  algorithm:'AEAD_AES_256_GCM',nonce,associated_data:'transaction',ciphertext:encrypted.toString('base64')
+ }});
+ const timestamp=String(Math.floor(Date.now()/1000));
+ const signature=crypto.sign('RSA-SHA256',Buffer.from([timestamp,nonce,body,''].join('\n')),privateKey).toString('base64');
+ const headers={'Wechatpay-Timestamp':timestamp,'Wechatpay-Nonce':nonce,'Wechatpay-Serial':cfg.publicKeyId,'Wechatpay-Signature':signature};
+ assert.equal(api.notification({body,headers}).data.trade_state,'SUCCESS');
+ assert.throws(()=>api.notification({body:body+' ',headers}),/INVALID_WECHAT_SIGNATURE/);
+ assert.throws(()=>api.notification({body,headers:{...headers,'Wechatpay-Serial':'PUB_KEY_ID_9'}}),/INVALID_WECHAT_SIGNATURE/);
 });

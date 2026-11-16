@@ -8,6 +8,8 @@
 module.exports = {
  'mail/payment_prepare':'mail_controller@preparePayment',
  'mail/payment_status':'mail_controller@paymentStatus',
+ 'mail/earnings_claim':'mail_controller@claimEarnings',
+ 'mail/earnings_status':'mail_controller@earningsStatus',
  'tenant/catalog': 'tenant_controller@catalog',
  'admin/tenant_directory': 'admin/admin_tenant_controller@directory',
  'admin/tenant_campus_detail': 'admin/admin_tenant_controller@campusDetail',

@@ -111,6 +111,7 @@ class MailService extends Base {
    await store.assertRequestOpen(tx,this.getProjectId(),userId,REQUEST_ROUTES.publish,input.requestId);
    await store.limitInTransaction(tx,this.getProjectId(),userId,'publish',10,60000);
    const config = await new ConfigService().getConfig(tx);
+   if (config.paymentMode === 'unavailable') this.AppError('微信支付暂不可用，订单未发布，请联系管理员');
    const normalized=rules.validateForms(input.forms,config,Date.now());rules.requireOpen(config,Date.now());
    await this._quota(tx,userId,'poster',id,true,config.maxOpenOrders,seed);
    const mail = { _id:id,_pid:this.getProjectId(),MAIL_ID:'MAIL'+id.slice(0,28),MAIL_PUBLISH_FINGERPRINT:fingerprint,MAIL_STATUS:config.paymentMode === 'wechat' ? -1 : 0,MAIL_USER_ID:userId,MAIL_USER_NAME:user.USER_NAME,MAIL_ACCEPT_USER_ID:'',MAIL_ORDER:9999,MAIL_CATE_ID:rules.SERVICES[normalized.obj.serviceType].id,MAIL_CATE_NAME:rules.SERVICES[normalized.obj.serviceType].name,MAIL_OBJ:normalized.obj,MAIL_FORMS:normalized.forms,MAIL_END_TIME:normalized.endTime,MAIL_EXPECT_START:normalized.expectStart,MAIL_EXPECT_TIME:normalized.expectTime || normalized.endTime,MAIL_TOTAL_FEE:normalized.totalFee,MAIL_PAYMENT_MODE:config.paymentMode,MAIL_PAY_NO:config.paymentMode === 'wechat' ? store.key('wxpay',id) : '',MAIL_PAY_STATUS:0,MAIL_ADD_TIME:now,MAIL_ACCEPT_TIME:0,MAIL_OVER_TIME:0,MAIL_DELIVERY_MINUTES:normalized.obj.urgent ? config.urgentMinutes : config.deliveryMinutes };
@@ -343,6 +344,10 @@ class MailService extends Base {
    if (mail.MAIL_ADMIN_DELETED === true) {
     await store.set(tx,'order_request',requestKey,{_pid:this.getProjectId(),orderId:id,action:'admin_delete',fingerprint,createdAt:Date.now()});
     return {id,deleted:true};
+   }
+   if (mail.MAIL_PAYMENT_MODE === 'wechat' && (mail.MAIL_STATUS === -1 ||
+      mail.MAIL_PAY_STATUS === 1 && mail.MAIL_EARNINGS_STATUS !== 'paid')) {
+    this.AppError('微信支付订单请先结清报酬或原路退款，再删除');
    }
    await store.limitInTransaction(tx,this.getProjectId(),adminId,'order_delete',30,60000);
    mail.MAIL_ADMIN_DELETED = true; mail.MAIL_ADMIN_DELETED_AT = Date.now(); mail.MAIL_ADMIN_DELETED_BY = adminId;

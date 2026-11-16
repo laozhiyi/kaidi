@@ -164,8 +164,11 @@ module.exports = {
   this.setData({ pageLoading: true, configError: false, loadError: '' });
   try {
    const config = await Ops.get('operations/config');
+   if (config && config.paymentMode === 'unavailable' && !this.data.editId) {
+    throw new Error('微信支付配置未通过校验，请联系管理员');
+   }
    const prices = config && [config.smallPrice, config.mediumPrice, config.largePrice];
-   if (!config || typeof config.enabled !== 'boolean' || !['offline','wechat'].includes(config.paymentMode)
+   if (!config || typeof config.enabled !== 'boolean' || !['offline','wechat','unavailable'].includes(config.paymentMode)
     || !prices.every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 100)
     || !Number.isInteger(config.maxPackages) || config.maxPackages < 1
     || !Array.isArray(config.campuses) || !config.campuses.length

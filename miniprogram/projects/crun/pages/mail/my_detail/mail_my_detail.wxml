@@ -4,6 +4,10 @@
  <view wx:if="{{error}}" class="od-state"><view class="od-state-icon"><text class="icon-info"></text></view><view class="od-state-title">{{notFound ? '订单暂不可用' : '暂时无法加载'}}</view><view class="od-state-note">{{errorMessage}}</view><button wx:if="{{id}}" class="od-primary" bindtap="load" disabled="{{loading}}" loading="{{loading}}">重新加载</button><view class="od-state-link" bindtap="bindBackOrders">返回订单列表</view></view>
  <block wx:if="{{mail}}">
   <template is="mailDetailContent" data="{{mail: mail, ui: detailUI, actionDisabled: busy || loading || error, priceActions: true}}"/>
+  <view wx:if="{{earnings}}" class="od-config-note">
+   <text>跑腿报酬 ¥{{earnings.amount / 100}}{{earnings.status === 'SUCCESS' ? ' · 已到账' : ''}}</text>
+   <button wx:if="{{earnings.status !== 'SUCCESS'}}" class="od-primary" bindtap="bindClaimEarnings" disabled="{{busy || loading || error}}">{{earnings.status === 'ACCEPTED' || earnings.status === 'PROCESSING' || earnings.status === 'TRANSFERING' ? '查询到账状态' : '领取报酬'}}</button>
+  </view>
   <view wx:if="{{configError}}" class="od-config-note">提醒配置暂不可用，不影响查看订单；下拉可重试。</view>
   <view class="od-footer od-footer-stack {{detailUI.status === 9 ? 'od-footer-done' : ''}}">
    <view wx:if="{{detailUI.receipt.visible}}" class="od-receipt-hint">{{detailUI.receipt.hint}}</view>

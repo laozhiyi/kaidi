@@ -22,6 +22,8 @@ class MailController extends Base {
  async _checkVideos(videos,allowed=[]) { const result=[];for (const id of require('../service/order_rules.js').videos(videos)) result.push(await check.checkCloudVideo(id,allowed));return result; }
  async _checkImages(images,allowed=[]) { const result=[];for (const id of require('../service/order_rules.js').images(images)) result.push(await check.checkCloudImage(id,allowed));return result; }
  async preparePayment() {const p=this.validateData({id:'must|id'});return new (require('../service/payment_service.js'))().prepare(this._userId,p.id);}
+ async claimEarnings() {const p=this.validateData({id:'must|id'});return new (require('../service/earnings_service.js'))().claim(this._userId,p.id,true);}
+ async earningsStatus() {const p=this.validateData({id:'must|id'});return new (require('../service/earnings_service.js'))().claim(this._userId,p.id,false);}
  async paymentStatus() {const p=this.validateData({id:'must|id'});return new (require('../service/payment_service.js'))().status(this._userId,p.id);}
  async acceptMail() {return this._action('acceptMail');}
  async pickupMail() {return this._action('pickupMail',{note:'string|max:300',images:'array',videos:'array'},true);}
