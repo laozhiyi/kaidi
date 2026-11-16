@@ -37,7 +37,7 @@ function phoneFailure(error, native) {
  const text = String(error && (error.errMsg || error.message || error.msg) || '');
  if (native) {
   if (/privacy|隐私/i.test(text)) return { reason: 'privacy', message: '手机号授权被微信隐私设置拦截，请联系管理员' };
-  if (/user\s*(deny|denied|cancel)|cancel/i.test(text)) return { reason: 'cancelled', message: '已取消手机号授权，可再次点击登录' };
+  if (/user\s*(deny|denied|cancel)|cancel/i.test(text)) return { reason: 'cancelled', message: '已取消手机号授权，可再次点击授权' };
   if (phoneErrorCode(error) === 102 || /no permission|permission denied|not authorized|access denied/i.test(text)) return { reason: 'permission_denied', message: '当前小程序暂无手机号获取权限，请联系管理员检查服务开通状态' };
   if (/not support/i.test(text)) return { reason: 'unsupported', message: '当前微信不支持手机号授权，请更新微信后重试' };
   if (/not available/i.test(text)) return { reason: 'unavailable', message: '微信手机号服务暂不可用，请联系管理员检查服务状态' };
@@ -146,7 +146,7 @@ class PassportBiz extends BaseBiz {
 	}
 
  static isProfileReady(token) {
-  return !!(token && token.profileComplete === true && (token.phoneVerified === true || token.allowManualRegistration === true));
+  return !!(token && token.profileComplete === true && (token.phoneVerified === true || token.profilePhoneRequired !== true && token.allowManualRegistration === true));
  }
 
 	static loginStatusHandler(method, status) {
@@ -209,10 +209,10 @@ class PassportBiz extends BaseBiz {
   if (allowed || !mustLogin) return allowed;
   // 工作人员（客服等）不参与学生注册流程：不弹「完善资料」，从后台入口登录即可。
   if (token && token.staff) return false;
-  if (!allowPending && token && (token.status === 9 || PassportBiz.isProfileReady(token) && [0, 8].includes(token.status))) {
+  if (token && (token.status === 9 || PassportBiz.isProfileReady(token) && (token.status === 8 || !allowPending && token.status === 0))) {
    return PassportBiz.loginStatusHandler(method, token.status);
   }
-  const completing = !!(token && (token.phoneVerified || token.allowManualRegistration));
+  const completing = !!(token && (token.profilePhoneRequired || token.phoneVerified || token.allowManualRegistration));
   wx.showModal({
    title: completing ? '完善联系资料' : '微信登录',
    content: completing ? '发布或接单前，请先完善联系资料。' : '请先使用微信登录。',
@@ -220,7 +220,8 @@ class PassportBiz extends BaseBiz {
    success(result) {
     if (result.confirm) {
      const retUrl = method === 'back' ? encodeURIComponent(pageHelper.getCurrentPageUrlWithArgs()) : 'back';
-     const url = pageHelper.fmtURLByPID('/pages/my/reg/my_reg') + '?retUrl=' + retUrl;
+     const page = token && token.profilePhoneRequired ? '/pages/my/personal/my_personal' : '/pages/my/reg/my_reg';
+     const url = pageHelper.fmtURLByPID(page) + '?retUrl=' + retUrl + (allowPending ? '&returnToPublish=1' : '');
      if (method === 'back') wx.redirectTo({ url }); else wx.navigateTo({ url });
     } else if (result.cancel && method === 'back') {
      if (getCurrentPages().length > 1) wx.navigateBack();
@@ -236,6 +237,17 @@ class PassportBiz extends BaseBiz {
  }
 
  static async loginByWechatPhone(event) {
+  return PassportBiz._requestWechatPhone(event, 'passport/wechat_login');
+ }
+
+ static async verifyProfilePhone(event) {
+  return PassportBiz._requestWechatPhone(event, 'passport/verify_profile_phone');
+ }
+
+ static async _requestWechatPhone(event, route) {
+  const verifying = route === 'passport/verify_profile_phone';
+  const session = verifying && PassportBiz.getToken();
+  if (verifying && (!session || !session.sessionToken)) throw new Error('请先点击微信登录');
   const detail = event && event.detail || {};
   if (typeof detail.code !== 'string' || !detail.code.trim() || detail.errMsg && detail.errMsg !== 'getPhoneNumber:ok') {
    const failure = phoneFailure(detail, true);
@@ -249,7 +261,7 @@ class PassportBiz extends BaseBiz {
   const version = logoutVersion;
   tracePhoneLogin('cloud_request');
   try {
-   response = await cloudHelper.callCloudSumbit('passport/wechat_login', { code: detail.code }, { title: '微信登录中', hint: false });
+   response = await cloudHelper.callCloudSumbit(route, { code: detail.code }, { title: verifying ? '验证手机号中' : '微信登录中', hint: false });
   } catch (error) {
    const failure = phoneFailure(error, false);
    tracePhoneLogin('cloud_failure', failure.reason, error);
@@ -257,9 +269,14 @@ class PassportBiz extends BaseBiz {
   }
   const data = response && response.data;
   if (version !== logoutVersion) throw new Error('登录状态已更新，请重新登录');
+  if (verifying && PassportBiz.getToken()?.sessionToken !== session.sessionToken) throw new Error('登录状态已更新，请重新登录');
   if (!data || !data.token || !data.token.id || !data.token.sessionToken || data.token.phoneVerified !== true) {
    tracePhoneLogin('invalid_response');
    throw new Error('微信登录未完成，请重新授权');
+  }
+  if (verifying && (data.token.id !== session.id || data.token.sessionToken !== session.sessionToken
+    || !data.user || data.user.USER_MOBILE_VERIFIED !== true || !/^1[3-9][0-9]{9}$/.test(data.user.USER_MOBILE || ''))) {
+   throw new Error('手机号验证结果无效，请重新授权');
   }
   PassportBiz.setToken(data.token);
   tracePhoneLogin('cloud_success');

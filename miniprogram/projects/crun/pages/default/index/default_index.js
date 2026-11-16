@@ -26,9 +26,11 @@ Page({
     if (this._stopMessages) this._stopMessages();
     this._stopMessages = Notifications.subscribe(summary => this.setData({ featuredNews: summary.featuredNews,
       unreadCount: summary.unreadCount, messageBadge: summary.badge, noticeLoaded: summary.loaded, noticeError: summary.error }));
-    Notifications.refresh(true);
-    this._loadList();
-    this._loadTenant();
+    this._loadTenant().then(() => {
+      if (!this._visible) return;
+      Notifications.refresh(true);
+      this._loadList();
+    });
   },
   onHide() { this._visible = false; if (this._stopMessages) this._stopMessages(); this._stopMessages = null; },
   onUnload() { this.onHide(); },
@@ -79,10 +81,10 @@ Page({
     try {
       const directory = await Tenant.directory(async () => (await cloudHelper.callCloudSumbit('tenant/catalog', {}, { hint: false })).data);
       if (!this._visible) return;
-      const scope = Tenant.snapshot() || await Tenant.ensure(async () => directory);
+      const scope = await Tenant.ensure(async () => directory);
       if (!this._visible) return;
       const schools = directory.schools.filter(school => school.enabled !== false
-        && directory.campuses.some(campus => campus.schoolId === school.schoolId && campus.enabled !== false));
+        && directory.campuses.some(campus => campus.schoolId === school.schoolId && campus.enabled !== false && campus.selectable !== false));
       this._directory = directory;
       const activeSchoolId = scope ? scope.schoolId : (schools[0] && schools[0].schoolId) || '';
       this.setData({
@@ -96,7 +98,7 @@ Page({
   },
   _syncCampusOptions(schoolId) {
     const rows = (this._directory && this._directory.campuses || [])
-      .filter(campus => campus.schoolId === schoolId && campus.enabled !== false);
+      .filter(campus => campus.schoolId === schoolId && campus.enabled !== false && campus.selectable !== false);
     this.setData({ campusOptions: rows.map(campus => ({ campusId: campus.campusId, name: campus.name })) });
   },
   bindCampusTap() { this.setData({ campusSheet: true }); },

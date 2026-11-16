@@ -16,6 +16,12 @@ page { background: #f3f6fb; }
 .profile-phone-value { flex:1; min-width:0; color:#243b5b; font-size:26rpx; text-align:right; word-break:break-all; }
 .profile-phone-authorize { flex-shrink:0; margin:0 0 0 16rpx; padding:12rpx 16rpx; border-radius:10rpx; background:#edf5ff; color:#397bc8; font-size:23rpx; line-height:1.4; }
 .profile-phone-authorize::after { border:0; }
+.profile-phone-inline { display:flex; align-items:center; justify-content:flex-end; }
+.profile-phone-number { white-space:nowrap; font-variant-numeric:tabular-nums; }
+.profile-phone-status { flex-shrink:0; margin-left:16rpx; }
+.profile-phone-verified { display:flex; align-items:center; justify-content:center; width:34rpx; height:34rpx; border-radius:50%; background:#edf7f1; line-height:0; }
+.profile-phone-pending { color:#71839a; font-size:21rpx; white-space:nowrap; }
+.profile-phone-authorize.profile-phone-change { display:flex; align-items:center; justify-content:center; min-width:80rpx; min-height:68rpx; margin-left:20rpx; padding:0 12rpx; background:transparent; }
 .profile-avatar-button { display:flex; align-items:center; width:100%; min-height:112rpx; padding:16rpx 0; border:0; border-bottom:1rpx solid #edf1f6; border-radius:0; background:transparent; text-align:left; }
 .profile-avatar-button::after, .profile-save::after, .profile-logout::after { border:0; }
 .profile-avatar-button > view:first-child { flex:1; min-width:0; }
@@ -47,7 +53,11 @@ page { background: #f3f6fb; }
 .profile-campus-close { display:flex; align-items:center; justify-content:center; flex-shrink:0; width:60rpx; height:60rpx; margin:0; padding:0; border-radius:50%; color:#8190a5; background:#f3f6fa; font-size:28rpx; }
 .profile-campus-close::after, .profile-campus-sheet-actions button::after { border:0; }
 .profile-campus-options { max-height:52vh; }
-.profile-campus-option { display:flex; align-items:center; min-height:112rpx; padding:20rpx; margin-bottom:16rpx; border:2rpx solid #edf1f6; border-radius:18rpx; background:#f8fafd; box-sizing:border-box; }
+.profile-campus-option { display:flex; align-items:center; width:100%; min-height:112rpx; padding:20rpx; margin:0 0 16rpx; border:2rpx solid #edf1f6; border-radius:18rpx; background:#f8fafd; box-sizing:border-box; line-height:1.4; text-align:left; }
+.profile-campus-option::after { border:0; }
+.profile-campus-option[disabled] { border-color:#edf1f6; background:#f7f8fa; }
+.profile-campus-option[disabled] .profile-campus-option-name, .profile-campus-option[disabled] .profile-campus-current { color:#687589; }
+.profile-campus-option[disabled] .profile-campus-option-icon { color:#768497; background:#edf0f4; }
 .profile-campus-option-selected { border-color:#91b9e6; background:#edf5ff; }
 .profile-campus-option-icon { display:flex; align-items:center; justify-content:center; flex-shrink:0; width:64rpx; height:64rpx; margin-right:18rpx; border-radius:16rpx; color:#6a89ad; background:#edf1f6; font-size:32rpx; }
 .profile-campus-option-selected .profile-campus-option-icon { color:#397bc8; background:#dcecff; }
@@ -55,10 +65,8 @@ page { background: #f3f6fb; }
 .profile-campus-current { flex-shrink:0; margin-left:12rpx; color:#8294ab; font-size:22rpx; }
 .profile-campus-radio { display:flex; align-items:center; justify-content:center; flex-shrink:0; width:36rpx; height:36rpx; margin-left:20rpx; border:2rpx solid #c8d5e5; border-radius:50%; color:#fff; font-size:24rpx; box-sizing:border-box; }
 .profile-campus-option-selected .profile-campus-radio { border-color:#397bc8; background:#397bc8; }
-.profile-campus-sheet-actions { display:flex; gap:18rpx; margin-top:16rpx; }
-.profile-campus-sheet-actions button { display:flex; align-items:center; justify-content:center; flex:1; min-width:0; height:88rpx; margin:0; padding:0 24rpx; border-radius:16rpx; font-size:28rpx; font-weight:500; line-height:1; }
-.profile-campus-cancel { color:#62748b; background:#f0f4f9; }
-.profile-campus-sheet-actions .profile-campus-confirm { flex:1.6; color:#fff; background:#397bc8; font-weight:600; }
+.profile-campus-sheet-actions { margin-top:16rpx; }
+.profile-campus-sheet-actions .profile-campus-confirm { display:flex; align-items:center; justify-content:center; width:100%; height:88rpx; margin:0; padding:0 24rpx; border-radius:16rpx; color:#fff; background:#397bc8; font-size:28rpx; font-weight:600; line-height:1; }
 .profile-campus-sheet-actions .profile-campus-confirm[disabled] { color:#94a4b8; background:#e8edf4; }
 .profile-required-hint, .profile-save-error { color:#c27b42; font-size:22rpx; line-height:1.5; }
 .profile-required-hint { margin-top:14rpx; }

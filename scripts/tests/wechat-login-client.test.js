@@ -246,6 +246,16 @@ test('partial accounts are sent to the completion page while keeping the origina
   assert.ok(f.navigation[0].url.includes(encodeURIComponent('/projects/crun/pages/mail/add/mail_add')));
 });
 
+test('only the publish guard marks the return path as available before review', async () => {
+  const f = client({ ...ready, profilePhoneRequired: true, profileComplete: false });
+  await f.passport.loginForPublish();
+  f.modals[0].success({ confirm: true });
+  assert.match(f.navigation[0].url, /my\/personal\/my_personal\?retUrl=.*&returnToPublish=1$/);
+  await f.passport.loginMustBackWin();
+  f.modals[1].success({ confirm: true });
+  assert.doesNotMatch(f.navigation[1].url, /returnToPublish/);
+});
+
 test('server-enabled manual accounts can use features without claiming a verified phone', async () => {
   const manual = { ...ready, phoneVerified: false, allowManualRegistration: true };
   const f = client(manual); f.responses.set('passport/login', { token: manual });

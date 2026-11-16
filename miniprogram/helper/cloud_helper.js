@@ -100,7 +100,8 @@ async function callCloud(route, params = {}, options = {}) {
  const epoch = sessionEpoch;
  const current = () => !userRequest || options.ignoreSessionChange === true || epoch === sessionEpoch;
  params = JSON.parse(JSON.stringify(params));
- const scope = route === 'tenant/catalog' || globalAccount ? null : options.scope || Tenant.snapshot() || await ensureScope({ allowDisabled: route.startsWith('admin/') });
+ const admin = route.startsWith('admin/');
+ const scope = route === 'tenant/catalog' || globalAccount ? null : options.scope || (admin ? Tenant.snapshot() : Tenant.publicSnapshot()) || await ensureScope({ allowDisabled: admin });
  let token = '';
  const cache = cacheHelper.get(route.startsWith('admin/') ? constants.CACHE_ADMIN : route.startsWith('work/') ? constants.CACHE_WORK : constants.CACHE_TOKEN);
  if (!current()) throw staleSession();

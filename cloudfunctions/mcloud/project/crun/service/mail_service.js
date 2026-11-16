@@ -7,6 +7,7 @@ const store = require('./operation_store.js');
 const rules = require('./order_rules.js');
 const profileRules = require('./profile_rules.js');
 const media = require('./private_media_service.js');
+const TenantService = require('./tenant_service.js');
 const REQUEST_ROUTES = {publish:'mail/insert',edit:'mail/edit',accept:'mail/accept',pickup:'mail/pickup',cancel:'mail/cancel',deliver:'mail/deliver',update_proof:'mail/update_proof',price_propose:'mail/price_propose',price_respond:'mail/price_respond',release:'mail/release',confirm:'mail/finish',exception:'mail/exception',remind:'mail/remind',auto_confirm:'mail/auto_confirm',archive:'mail/del',hold:'admin/operations_hold',resolve:'admin/operations_resolve',admin_delete:'admin/operations_delete_order'};
 // 送达后 8 小时内未确认收货，由订单维护任务自动确认。
 const AUTO_CONFIRM_MS = 8 * 3600000;
@@ -105,6 +106,7 @@ class MailService extends Base {
   return store.transaction(async tx => {
    await this._actor(tx,{userId,user,allowPending:true}); const old = await store.get(tx,'mail',id);
    if (old) { if (old.MAIL_PUBLISH_FINGERPRINT!==fingerprint) this.AppError('相同请求标识不能提交不同内容'); if (old._pid !== this.getProjectId() || old.MAIL_USER_ID !== userId) this.AppError('订单标识冲突'); return {id:old.MAIL_ID,_id:id,fee:old.MAIL_TOTAL_FEE/100,paymentMode:old.MAIL_PAYMENT_MODE}; }
+   if (!TenantService.isPublicCampus(store.scope() || {})) this.AppError('该校区暂未开放发单');
    if(await store.get(tx,'order_request',store.key(this.getProjectId(),userId,input.requestId)))this.AppError('请求标识已被使用');
    await store.assertRequestOpen(tx,this.getProjectId(),userId,REQUEST_ROUTES.publish,input.requestId);
    await store.limitInTransaction(tx,this.getProjectId(),userId,'publish',10,60000);
@@ -135,6 +137,7 @@ class MailService extends Base {
    const state = mail.MAIL_STATUS, now = Date.now(); let note = '', message = null;
    if (action !== 'accept' && !adminId && !poster && !rider) this.AppError('无权限操作该订单');
    if (action === 'accept') {
+    if (!TenantService.isPublicCampus(store.scope() || {})) this.AppError('该校区暂未开放接单');
     rules.requireOpen(config,now);
     if (state !== 0 || mail.MAIL_ACCEPT_USER_ID) this.AppError('该订单已被接取或状态已变化，请查看其他订单');
     if (poster) this.AppError('不能接取自己发布的订单');

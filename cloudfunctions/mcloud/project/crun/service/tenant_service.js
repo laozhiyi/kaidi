@@ -3,10 +3,15 @@ const store = require('./operation_store.js');
 const context = require('../../../framework/tenancy/tenant_context.js');
 const AppError = require('../../../framework/core/app_error.js');
 const seed = require('./tenant_defaults.js');
+const config = require('../../../config/config.js');
 const id = (value, label) => { if (typeof value !== 'string' || !context.ID.test(value)) throw new AppError(label + '须为2至48位小写字母、数字、下划线或连字符，以字母开头'); return value; };
 const name = (value, label, max = 30) => { if (typeof value !== 'string' || !value.trim() || value.trim().length > max) throw new AppError(label + '不能为空且不能超过' + max + '字'); return value.trim(); };
 const campusKey = (schoolId, campusId) => store.key('campus', schoolId, campusId);
 class TenantService {
+  static isPublicCampus({ schoolId, campusId } = {}) {
+    const active = config.PUBLIC_CAMPUS_SCOPE;
+    return !active || schoolId === active.schoolId && campusId === active.campusId;
+  }
   async seed() {
     return context.system(() => store.transaction(async tx => {
       if (await store.get(tx, 'school', seed.schoolId)) return;
@@ -35,7 +40,7 @@ class TenantService {
     // lets an administrator log in and reopen the final disabled campus.
     const schoolIds = new Set(schools.map(row => row.schoolId));
     return { schools: schools.map(row => ({ schoolId: row.schoolId, name: row.name, enabled: row.enabled === true })),
-      campuses: campuses.filter(row => schoolIds.has(row.schoolId)).map(row => ({ schoolId: row.schoolId, campusId: row.campusId, name: row.name, enabled: row.enabled === true, version: row.version })),
+      campuses: campuses.filter(row => schoolIds.has(row.schoolId)).map(row => ({ schoolId: row.schoolId, campusId: row.campusId, name: row.name, enabled: row.enabled === true, selectable: TenantService.isPublicCampus(row), version: row.version })),
       version: Math.max(0, ...schools.map(row => row.updatedAt || 0), ...campuses.map(row => row.updatedAt || 0)) };
   }
   // 同一学校下所有开放校区的名称，按「当前校区优先」排序。
@@ -44,7 +49,7 @@ class TenantService {
     const db = store.database();
     const rows = await db.collection(store.collection('campus')).where({ _pid: 'crun', schoolId })
       .field({ campusId: true, name: true, enabled: true }).limit(50).get();
-    const list = rows.data.filter(row => row && row.enabled === true && typeof row.name === 'string' && row.name.trim());
+    const list = rows.data.filter(row => row && row.enabled === true && TenantService.isPublicCampus({ schoolId, campusId: row.campusId }) && typeof row.name === 'string' && row.name.trim());
     list.sort((a, b) => (b.campusId === currentCampusId) - (a.campusId === currentCampusId) || String(a._id).localeCompare(String(b._id)));
     return list.map(row => row.name.trim());
   }

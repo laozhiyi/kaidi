@@ -23,7 +23,7 @@ Component({
     available() {
       const all = this._directory || { schools: [], campuses: [] };
       const schools = all.schools.filter(row => this.data.admin || row.enabled !== false);
-      const campuses = all.campuses.filter(row => (this.data.admin || row.enabled !== false) && schools.some(school => school.schoolId === row.schoolId));
+      const campuses = all.campuses.filter(row => (this.data.admin || row.enabled !== false && row.selectable !== false) && schools.some(school => school.schoolId === row.schoolId));
       return { schools: schools.filter(row => campuses.some(campus => campus.schoolId === row.schoolId)), campuses };
     },
     sync() {

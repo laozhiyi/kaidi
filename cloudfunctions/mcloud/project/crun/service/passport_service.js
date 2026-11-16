@@ -12,6 +12,24 @@ const store = require('./operation_store.js');
 const rules = require('./order_rules.js');
 const profileRules = require('./profile_rules.js');
 const AccountService = require('./account_service.js');
+const config = require('../../../config/config.js');
+
+function studentProof(forms) {
+ const cards = profileRules.formValue(forms, 'studentCard');
+ return [profileRules.formValue(forms, 'studentId'), (Array.isArray(cards) ? cards[0] : cards) || ''];
+}
+
+function sameStudentProof(a, b) {
+ return a[0] === b[0] && a[1] === b[1];
+}
+
+function isArchivedStudentCard(fileId) {
+ return /^cloud:\/\/[^/]+\/private-evidence\//.test(fileId);
+}
+
+function studentProofLocked(user, proof = studentProof(user.USER_FORMS)) {
+ return user.USER_STATUS === 1 && Boolean(proof[0]) && isArchivedStudentCard(proof[1]);
+}
 
 function newUser(projectId, userId, id, now) {
  return { _pid: projectId, USER_ID: 'USER' + id.slice(0, 28), USER_MINI_OPENID: userId,
@@ -39,27 +57,45 @@ class PassportService extends BaseProjectService {
   const previous = await UserModel.getOne({ USER_MINI_OPENID: userId });
   if (!previous) this.AppError('请先点击微信登录，再完善个人资料');
   if (previous && previous.USER_STATUS === 9) this.AppError('账号已停用，请联系客服');
-  if (!profileRules.allowsManualRegistration() && (!previous || previous.USER_MOBILE_VERIFIED !== true)) this.AppError('请先使用微信手机号授权登录');
+  const strictPhone = profileRules.requiresProfilePhoneVerification();
+  if (!profileRules.allowsManualRegistration() && previous.USER_MOBILE_VERIFIED !== true) this.AppError('请先授权验证微信手机号');
   const name = rules.text(input.name, '昵称', 30, true), mobile = rules.text(input.mobile, '手机', 11, true);
-  if (profileRules.isPhoneLoginEnabled() && previous && previous.USER_MOBILE_VERIFIED === true && mobile !== previous.USER_MOBILE) this.AppError('手机号已变化，请重新授权微信手机号后保存');
-  const pic = rules.text(input.pic, '头像', 500, true), forms = input.forms || [];
+  if ((strictPhone || profileRules.isPhoneLoginEnabled()) && previous.USER_MOBILE_VERIFIED === true && mobile !== previous.USER_MOBILE) this.AppError('手机号已变化，请重新授权微信手机号后保存');
+  const pic = rules.text(input.pic, '头像', 500, true);
+  let forms = input.forms || [];
   checkAvatar(userId, pic, previous);
   const error = profileRules.validationError({ name, mobile, pic, forms });
   if (error) this.AppError(error);
-  // First-time completion must carry a student ID and the disclaimer consent;
-  // legacy accounts editing their profile are only format-checked above.
-  if (registering && (!previous || previous.USER_PROFILE_COMPLETE === false)) {
+  const firstCompletion = !profileRules.isComplete(previous);
+  const previousProof = studentProof(previous.USER_FORMS);
+  const submittedProof = studentProof(forms);
+  const proofChanged = !sameStudentProof(submittedProof, previousProof);
+  const updatingProof = strictPhone && !registering && proofChanged;
+  if (updatingProof && studentProofLocked(previous, previousProof)) {
+   this.AppError('学号和学生证审核通过后不能自行修改，如需更正请联系客服');
+  }
+  if (firstCompletion || updatingProof) {
    const requiredError = profileRules.requiredForRegistration(forms);
    if (requiredError) this.AppError(requiredError);
+  }
+  const keepsArchivedCard = submittedProof[1] === previousProof[1] && isArchivedStudentCard(submittedProof[1]);
+  if (strictPhone && (firstCompletion || updatingProof) && !keepsArchivedCard) {
+   const fileId = submittedProof[1];
+   const environment = config.CLOUD_ID;
+   if (!environment || !fileId.startsWith('cloud://' + environment + '/') && !fileId.startsWith('cloud://' + environment + '.')) {
+    this.AppError('请上传当前小程序的学生证照片');
+   }
+   const archived = await require('../../../framework/validate/content_check.js').checkCloudImage(fileId);
+   forms = forms.map(item => item.mark === 'studentCard' ? { ...item, type: 'image', val: [archived] } : item);
   }
   const cfg = await new (require('./operation_config_service.js'))().getConfig();
   const campus = profileRules.formValue(forms, 'campus');
   // 所在校区取全校开放校区，不再局限当前服务校区。
   const campusScope = store.scope();
   const allowedCampuses = campusScope ? await new (require('./tenant_service.js'))().campusNames(campusScope.schoolId, campusScope.campusId) : [];
-  const campusList = allowedCampuses.length ? allowedCampuses : cfg.campuses;
+  const campusList = campusScope ? allowedCampuses : cfg.campuses;
   if (!campusList.includes(campus) && campus !== profileRules.formValue(previous && previous.USER_FORMS, 'campus')) this.AppError('请选择有效的所在校区');
-  const conflict = await UserModel.getOne({ USER_MOBILE: mobile, USER_MINI_OPENID: ['<>', userId] }, '_id');
+  const conflict = await this._findPhoneConflict(mobile, userId);
   if (conflict) this.AppError('该联系电话已登记，请联系客服核实');
   await store.limit(this.getProjectId(), userId, 'profile', 10, 3600000);
   const id = previous._id;
@@ -72,12 +108,19 @@ class PassportService extends BaseProjectService {
    if (!current) this.AppError('账号状态已变化，请重新微信登录');
    const oldSex = profileRules.formValue(current.USER_FORMS, 'sex');
    if (current.USER_STATUS === 1 && ['男', '女'].includes(oldSex) && profileRules.formValue(forms, 'sex') !== oldSex) this.AppError('性别审核通过后不能自行修改，如需更正请联系客服');
-   if (!profileRules.allowsManualRegistration() && (!current || current.USER_MOBILE_VERIFIED !== true)) this.AppError('请先使用微信手机号授权登录');
-   if (profileRules.isPhoneLoginEnabled() && current && current.USER_MOBILE_VERIFIED === true && current.USER_MOBILE !== mobile) this.AppError('手机号已变化，请重新授权微信手机号后保存');
-   if (registering && profileRules.isComplete(current)) return;
+   if (!profileRules.allowsManualRegistration() && current.USER_MOBILE_VERIFIED !== true) this.AppError('请先授权验证微信手机号');
+   if ((strictPhone || profileRules.isPhoneLoginEnabled()) && current.USER_MOBILE_VERIFIED === true && current.USER_MOBILE !== mobile) this.AppError('手机号已变化，请重新授权微信手机号后保存');
+   const completing = !profileRules.isComplete(current);
+   if (registering && !completing) return;
+   if (strictPhone && !sameStudentProof(studentProof(current.USER_FORMS), previousProof)) this.AppError('学生身份资料已更新，请刷新后再保存');
+   if (strictPhone && proofChanged && studentProofLocked(current, previousProof)) this.AppError('学号和学生证审核通过后不能自行修改，如需更正请联系客服');
+   if (completing) {
+    const requiredError = profileRules.requiredForRegistration(forms);
+    if (requiredError) this.AppError(requiredError);
+   }
    if (current && previous && current.USER_MOBILE !== previous.USER_MOBILE && current.USER_MOBILE !== mobile) this.AppError('手机号已变化，请刷新资料后再保存');
    const phoneKey = store.schoolKey(this.getProjectId(), 'phone', mobile), phone = await store.get(tx, 'identity_unique', phoneKey);
-   if (phone && phone.userId !== userId) this.AppError('该联系电话已登记，请联系客服核实');
+   if (phone && phone.userId !== userId && (!strictPhone || phone.verified === true)) this.AppError('该联系电话已登记，请联系客服核实');
    if (current && current.USER_MOBILE && current.USER_MOBILE !== mobile) {
     const oldKey = store.schoolKey(this.getProjectId(), 'phone', current.USER_MOBILE), old = await store.get(tx, 'identity_unique', oldKey);
     if (old && old.userId === userId) await tx.collection(store.collection('identity_unique')).doc(oldKey).remove();
@@ -85,11 +128,11 @@ class PassportService extends BaseProjectService {
    const now = Date.now(), data = current;
    // Only first completion chooses the school's review policy. Editing an
    // existing pending/rejected account must not approve it implicitly.
-   if (data.USER_STATUS === 8) data.USER_STATUS = 0;
-   else if (data.USER_PROFILE_COMPLETE === false) data.USER_STATUS = registrationReview ? 0 : 1;
+   if (data.USER_STATUS === 8 || updatingProof && !completing && data.USER_STATUS === 1) data.USER_STATUS = 0;
+   else if (completing) data.USER_STATUS = registrationReview ? 0 : 1;
    Object.assign(data, { USER_NAME: name, USER_MOBILE: mobile, USER_MOBILE_VERIFIED: data.USER_MOBILE_VERIFIED === true && data.USER_MOBILE === mobile,
     USER_PIC: pic, USER_FORMS: forms, USER_OBJ: dataUtil.dbForms2Obj(forms), USER_PROFILE_COMPLETE: true, USER_EDIT_TIME: now });
-   await store.set(tx, 'identity_unique', phoneKey, { _pid: this.getProjectId(), userId, updatedAt: now });
+   await store.set(tx, 'identity_unique', phoneKey, { _pid: this.getProjectId(), userId, verified: data.USER_MOBILE_VERIFIED, updatedAt: now });
    await AccountService.recordMedia(tx, userId, [previous.USER_PIC, pic, forms]);
    await store.set(tx, 'user', id, data);
   });
@@ -156,8 +199,26 @@ class PassportService extends BaseProjectService {
   if (!profileRules.isPhoneLoginEnabled()) this.AppError('微信手机号登录已停用，请使用微信账号登录');
   if (!userId) this.AppError('请重新打开小程序登录');
   await new AccountService().prepareLogin(userId);
+  await this._bindWechatPhone(userId, input, true);
+  return this.wechatIdentityLogin(userId);
+ }
+
+ async verifyProfilePhone(userId, input) {
+  if (!profileRules.requiresProfilePhoneVerification() || !AccountService.credential()) this.AppError('请先点击微信登录');
+  const mobile = await this._bindWechatPhone(userId, input, false);
+  return { ...await this.login(userId), user: { USER_MOBILE: mobile, USER_MOBILE_VERIFIED: true } };
+ }
+
+ async _findPhoneConflict(mobile, userId) {
+  const where = { USER_MOBILE: mobile, USER_MINI_OPENID: ['<>', userId] };
+  if (profileRules.requiresProfilePhoneVerification()) where.USER_MOBILE_VERIFIED = true;
+  return UserModel.getOne(where, '_id');
+ }
+
+ async _bindWechatPhone(userId, input, createAccount) {
   const code = rules.text(input && input.code, '微信手机号授权', 200, true);
   const previous = await UserModel.getOne({ USER_MINI_OPENID: userId });
+  if (!previous && !createAccount) this.AppError('请先点击微信登录');
   if (previous && previous.USER_STATUS === 9) this.AppError('账号已停用，请联系客服');
   await store.limit(this.getProjectId(), userId, 'wechat-phone', 10, 3600000);
   const cloud = cloudBase.getCloud();
@@ -177,14 +238,18 @@ class PassportService extends BaseProjectService {
     || !info.watermark || info.watermark.appid !== appId) this.AppError('微信手机号授权已失效，请重新授权');
   const mobile = info.purePhoneNumber || info.pure_phone_number;
   if (String(info.countryCode || info.country_code) !== '86' || typeof mobile !== 'string' || !/^1[3-9][0-9]{9}$/.test(mobile)) this.AppError('请授权有效的中国大陆手机号');
-  const conflict = await UserModel.getOne({ USER_MOBILE: mobile, USER_MINI_OPENID: ['<>', userId] }, '_id');
+  const conflict = await this._findPhoneConflict(mobile, userId);
   if (conflict) this.AppError('该手机号已登记其他账号，请联系客服核实');
   const id = previous ? previous._id : store.schoolKey(this.getProjectId(), 'user', userId);
   await store.transaction(async tx => {
    const current = await store.get(tx, 'user', id);
+   if (!current && !createAccount) this.AppError('账号状态已变化，请重新登录');
    if (current && current.USER_STATUS === 9) this.AppError('账号已停用，请联系客服');
+   if (!createAccount && current.USER_MOBILE !== previous.USER_MOBILE && current.USER_MOBILE !== mobile) {
+    this.AppError('联系电话已更新，请刷新资料后再试');
+   }
    const phoneKey = store.schoolKey(this.getProjectId(), 'phone', mobile), owner = await store.get(tx, 'identity_unique', phoneKey);
-   if (owner && owner.userId !== userId) this.AppError('该手机号已登记其他账号，请联系客服核实');
+   if (owner && owner.userId !== userId && (createAccount || owner.verified === true)) this.AppError('该手机号已登记其他账号，请联系客服核实');
    if (current && current.USER_MOBILE && current.USER_MOBILE !== mobile) {
     const oldKey = store.schoolKey(this.getProjectId(), 'phone', current.USER_MOBILE), old = await store.get(tx, 'identity_unique', oldKey);
     if (old && old.userId === userId) await tx.collection(store.collection('identity_unique')).doc(oldKey).remove();
@@ -192,10 +257,10 @@ class PassportService extends BaseProjectService {
    const now = Date.now();
    const data = current || newUser(this.getProjectId(), userId, id, now);
    Object.assign(data, { USER_MOBILE: mobile, USER_MOBILE_VERIFIED: true, USER_EDIT_TIME: now });
-   await store.set(tx, 'identity_unique', phoneKey, { _pid: this.getProjectId(), userId, updatedAt: now });
+   await store.set(tx, 'identity_unique', phoneKey, { _pid: this.getProjectId(), userId, verified: true, updatedAt: now });
    await store.set(tx, 'user', id, data);
   });
-  return this.wechatIdentityLogin(userId);
+  return mobile;
  }
 	/** 获取手机号码 */
 	async getPhone(cloudID) {
@@ -220,7 +285,7 @@ class PassportService extends BaseProjectService {
 		}
 		let fields = 'USER_PIC,USER_MOBILE,USER_MOBILE_VERIFIED,USER_PROFILE_COMPLETE,USER_NAME,USER_FORMS,USER_OBJ,USER_STATUS,USER_CHECK_REASON,USER_PAY_PIC,USER_ROLE'
 		const user = await UserModel.getOne(where, fields);
-  return user ? { ...user, USER_MOBILE_VERIFIED: user.USER_MOBILE_VERIFIED === true, USER_PROFILE_COMPLETE: profileRules.isComplete(user), allowManualRegistration: profileRules.allowsManualRegistration(), phoneLoginEnabled: profileRules.isPhoneLoginEnabled() } : null;
+  return user ? { ...user, USER_MOBILE_VERIFIED: user.USER_MOBILE_VERIFIED === true, USER_PROFILE_COMPLETE: profileRules.isComplete(user), allowManualRegistration: profileRules.allowsManualRegistration(), phoneLoginEnabled: profileRules.isPhoneLoginEnabled(), profilePhoneRequired: profileRules.requiresProfilePhoneVerification(), studentProofLocked: profileRules.requiresProfilePhoneVerification() && studentProofLocked(user) } : null;
 	}
 
  async editBase(userId,input){await this._saveProfile(userId,input,false);return {ok:true,...await this.login(userId)};}
@@ -262,6 +327,7 @@ class PassportService extends BaseProjectService {
    token.profileComplete = profileRules.isComplete(user);
    token.allowManualRegistration = profileRules.allowsManualRegistration();
    token.phoneLoginEnabled = profileRules.isPhoneLoginEnabled();
+   token.profilePhoneRequired = profileRules.requiresProfilePhoneVerification();
    // 后台角色随登录下发：工作人员（客服等）不需要完成学生注册资料，
    // 前端据此跳过「完善资料」并引导到对应的后台入口。
    token.role = require('./admin/admin_roles.js').normalize(user.USER_ROLE);

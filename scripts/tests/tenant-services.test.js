@@ -24,6 +24,24 @@ test('publishing and recovering a request in another campus cannot create a seco
   const result=await tenant.run(A,()=>new Recovery().recover('poster',{route:'mail/insert',requestId:req('same')}));
   assert.equal(result.state,'committed');assert.equal(result.result._id,id._id);assert.equal(f.table('mail').size,1);
 });
+test('the public campus limit filters profile choices and blocks new orders in other campuses', async () => {
+  const f = await setup();
+  const existing = await publish(f, B, 'previous');
+  f.load('config/config.js').PUBLIC_CAMPUS_SCOPE = { schoolId: A.schoolId, campusId: A.campusId };
+  const Tenant = f.service('tenant_service');
+  const catalog = await new Tenant().catalog();
+  assert.deepEqual(Array.from(catalog.campuses.filter(row => row.selectable), row => row.campusId), [A.campusId]);
+  assert.equal(catalog.campuses.find(row => row.schoolId === B.schoolId && row.campusId === B.campusId).enabled, true);
+  const config = await tenant.run(B, () => new (f.service('operations_service'))().config('poster'));
+  assert.deepEqual(Array.from(config.campuses), [A.campusName]);
+  assert.equal(config.enabled, false);
+  await assert.rejects(publish(f, B, 'new'), /暂未开放发单/);
+  const Mail = f.service('mail_service');
+  await assert.rejects(tenant.run(B, () => new Mail().acceptMail('rider', existing._id, { requestId: req('closed-accept') })), /暂未开放接单/);
+  assert.equal((await publish(f, B, 'previous'))._id, existing._id);
+  await tenant.run(B, () => new Mail().cancelMail('poster', existing._id, { requestId: req('cancel-previous') }));
+  assert.ok((await publish(f, A, 'allowed'))._id);
+});
 test('simultaneous acceptance has one winner and foreign-campus riders cannot participate',async()=>{
   const f=await setup(),published=await publish(f),Mail=f.service('mail_service');
   const jobs=Array.from({length:20},(_,i)=>tenant.run(i%3===0?B:A,()=>new Mail().acceptMail(i%2?'rider':'rider2',published._id,{requestId:req('claim'+i)})));

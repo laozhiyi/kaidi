@@ -53,6 +53,25 @@ test('a WeChat identity with no user record can open service access in one reque
 	assert.equal(f.table('staff_invite').get('inv-live').INVITE_STATUS, 0, '邀请码仍然一次性');
 });
 
+test('staff activation through the cloud routes establishes a user session before redeeming', async () => {
+	const f = await setup();
+	f.cloud.getWXContext = () => ({ OPENID: 'staff-new' });
+	f.load('framework/validate/data_check.js').check = require('../../cloudfunctions/mcloud/framework/validate/data_check.js').check;
+	const app = f.load('framework/core/application.js');
+	const call = (route, token, params = {}) => app.app({ route, token, PID: 'crun', scope: A, params }, {});
+	const params = { code: 'K3M7QT2X' };
+	const rejected = await call('passport/staff_invite_redeem', '', params);
+	assert.equal(rejected.code, 2301);
+	assert.equal(f.table('staff_invite').get('inv-live').INVITE_STATUS, 1);
+	const login = await call('passport/wechat_identity_login');
+	assert.equal(login.code, 200, login.msg);
+	const verified = await call('passport/staff_invite_redeem', login.data.token.sessionToken, params);
+	assert.equal(verified.code, 200, verified.msg);
+	assert.equal(verified.data.admin.role, 'service');
+	assert.equal(verified.data.token.phoneVerified, false);
+	assert.equal(f.table('staff_invite').get('inv-live').INVITE_STATUS, 0);
+});
+
 test('an empty name still produces a readable staff display name', async () => {
 	const f = await setup();
 	const result = await f.redeem('staff-nameless', '');

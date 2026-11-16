@@ -150,11 +150,7 @@ Page({
 		});
 	},
 
-	/**
-	 * 客服开通：一次请求完成「建号 → 授权 → 开后台会话」。
-	 * 服务端认的是云调用上下文里的 OpenID，所以客服没在用户端注册过也能直接开通，
-	 * 不需要手机号授权、学生资料或额外同意步骤，同意协议后微信即静默绑定。
-	 */
+	/** 点击开通后建立微信会话，再兑换客服邀请码。 */
 	bindInviteActivate: async function (e) {
 		if (this._busy()) return;
 		const code = String(this.data.inviteCode || '').trim();
@@ -164,6 +160,8 @@ Page({
 		this._activateBusy = true;
 		this.setData({ activateBusy: true, inviteError: '' });
 		try {
+			await Passport.loginByUser();
+			if (this._unloaded) return false;
 			const res = await cloudHelper.callCloudSumbit('passport/staff_invite_redeem',
 				{ code, name: String(this.data.staffName || '').trim() }, { hint: false });
 			const data = res && res.data;

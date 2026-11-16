@@ -51,6 +51,7 @@ function client({ unselected = false, admin = false } = {}) {
           isAdmin(page) { if (admin) page.setData({ isAdmin: true, isSuperAdmin: true }); return admin; },
           setContentDesc: page => load('comm/biz/admin_biz.js').setContentDesc(page) };
         if (name.endsWith('/project_biz.js')) return { initPage() {} };
+        if (name.endsWith('/project_setting.js')) return { ...load('projects/crun/public/project_setting.js'), PUBLIC_PROFILE_CAMPUS: '' };
         if (name.endsWith('/order_fav_biz.js')) return { watch: () => ({ stop() {}, invalidate() {}, refresh: async () => {} }) };
         // Coordinator tests drive signals deterministically; transport polling
         // and cloud scoping have their own tests using the real feed module.

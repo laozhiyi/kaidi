@@ -33,13 +33,13 @@ class OperationsService extends Base {
  async config(userId) {
   const generation = require('./account_service.js').mediaGeneration();
   const config = await new Config().getConfig(), scope = store.scope();
-  // 校区别名/名录统一以学校目录为准：经营范围仍是当前校区，但「可选的校区」
-  // 必须是全校开放的校区，否则个人资料只剩当前一个校区可选。
+  // 可选校区按学校目录与内测范围计算，营业状态仍按当前校区配置。
   if (scope) {
-   const names = await new (require('./tenant_service.js'))().campusNames(scope.schoolId, scope.campusId);
-   config.campuses = names.length ? names : [scope.campusName];
+   const TenantService = require('./tenant_service.js');
+   config.campuses = await new TenantService().campusNames(scope.schoolId, scope.campusId);
+   if (!TenantService.isPublicCampus(scope)) config.enabled = false;
   }
-  return {...config,allowManualRegistration:profileRules.allowsManualRegistration(),phoneLoginEnabled:profileRules.isPhoneLoginEnabled(),templateId:process.env.ORDER_SUBSCRIBE_TEMPLATE_ID || '',
+  return {...config,allowManualRegistration:profileRules.allowsManualRegistration(),phoneLoginEnabled:profileRules.isPhoneLoginEnabled(),profilePhoneRequired:profileRules.requiresProfilePhoneVerification(),templateId:process.env.ORDER_SUBSCRIBE_TEMPLATE_ID || '',
    chatTemplateId:process.env.CHAT_SUBSCRIBE_TEMPLATE_ID || '',
    uploadPrefix:userId ? 'private/'+userId.split('^^^').pop()+'/'+(generation ? generation+'/' : '') : ''};
  }

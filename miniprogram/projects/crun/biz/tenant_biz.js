@@ -4,6 +4,10 @@ let catalog = null, pending = null, busy = 0, generation = 0;
 const valid = value => value && /^[a-z][a-z0-9_-]{1,47}$/.test(value.schoolId || '') && /^[a-z][a-z0-9_-]{1,47}$/.test(value.campusId || '');
 function snapshot() { const saved = wx.getStorageSync(STORAGE); return valid(saved) ? { ...saved } : null; }
 function key(value = snapshot()) { return value ? value.schoolId + '/' + value.campusId : ''; }
+function publicSnapshot() {
+  const saved = snapshot();
+  return saved && !catalog?.campuses.some(row => row.schoolId === saved.schoolId && row.campusId === saved.campusId && row.selectable === false) ? saved : null;
+}
 async function directory(loader, force = false) {
   if (catalog && !force) return catalog;
   if (pending) return pending;
@@ -21,6 +25,7 @@ function select(value, { reload = true, allowDisabled = false } = {}) {
   const campus = catalog && catalog.campuses.find(row => row.schoolId === value.schoolId && row.campusId === value.campusId);
   if (!school || !campus) throw new Error('请选择有效的学校和校区');
   if (!allowDisabled && (school.enabled === false || campus.enabled === false)) throw new Error('学校或校区已停用，请重新选择');
+  if (!allowDisabled && campus.selectable === false) throw new Error('学校或校区暂未开放，请重新选择');
   const next = { schoolId: school.schoolId, campusId: campus.campusId, schoolName: school.name, campusName: campus.name };
   wx.setStorageSync(STORAGE, next);
   if (key(previous) !== key(next)) {
@@ -42,13 +47,13 @@ function select(value, { reload = true, allowDisabled = false } = {}) {
   return next;
 }
 async function ensure(loader, { allowDisabled = false } = {}) {
-  const saved = snapshot();
+  const saved = allowDisabled ? snapshot() : publicSnapshot();
   if (saved) return saved;
   const rows = await directory(loader);
-  const first = rows.campuses.find(campus => allowDisabled || campus.enabled !== false && rows.schools.some(school => school.schoolId === campus.schoolId && school.enabled !== false));
+  const first = rows.campuses.find(campus => allowDisabled || campus.selectable !== false && campus.enabled !== false && rows.schools.some(school => school.schoolId === campus.schoolId && school.enabled !== false));
   if (!first) throw new Error('暂无开放的学校和校区，请稍后重试');
   return select(first, { reload: false, allowDisabled });
 }
 function lock() { busy++; let released = false; return () => { if (!released) { released = true; busy--; } }; }
-module.exports = { snapshot, key, directory, ensure, select, lock, generation: () => generation,
+module.exports = { snapshot, publicSnapshot, key, directory, ensure, select, lock, generation: () => generation,
   subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); } };

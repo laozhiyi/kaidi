@@ -13,29 +13,45 @@ Page(Object.assign({
     let retUrl = '';
     try { retUrl = decodeURIComponent(options.retUrl || ''); } catch (_) {}
     if (options.inviteCode) InviteBiz.capture(options.inviteCode);
-    this.setData({ retUrl, showContactProfile: !!retUrl, inviteCode: InviteBiz.getPendingCode() });
-    await Promise.all([profileMethods.loadCampuses(this, true), this._loadDetail()]);
-    this._updateTitle();
+    this.setData({ retUrl, returnToPublish: options.returnToPublish === '1', showContactProfile: !!retUrl, inviteCode: InviteBiz.getPendingCode() });
+    await this._loadLoginState();
   },
   onUnload() { this._unloaded = true; },
+  async _loadLoginState() {
+    if (this._unloaded || this._loadingLoginState || this.data.phoneAuthorizing || this.data.identityLoggingIn || this.data.saving) return;
+    this._loadingLoginState = true;
+    this.setData({ isLoad: false, loadError: '' });
+    try {
+      const campuses = await profileMethods.loadCampuses(this, true, { notifyFailure: false });
+      if (this._unloaded) return;
+      if (!campuses.length) this.setData({ phoneLoginEnabled: false, allowManualRegistration: false });
+      await this._loadDetail();
+    } finally {
+      this._loadingLoginState = false;
+    }
+  },
   _updateTitle() {
     if (!this._unloaded) wx.setNavigationBarTitle({ title: this.data.phoneLoginEnabled !== true
       ? (this.data.hasSession ? (this.data.showContactProfile ? '完善联系资料' : '头像和昵称') : '云速取')
       : this.data.phoneVerified ? '完善个人资料' : '登录 / 注册' });
   },
+  _showLogin() {
+    this._profileLoginResult = null;
+    this.setData({ hasSession: false, isLoad: true, phoneVerified: false, loadError: '', loginError: '' });
+    this._updateTitle();
+  },
   async _loadDetail() {
     if (this.data.phoneAuthorizing || this.data.identityLoggingIn || this.data.saving) return;
     const version = this._detailVersion = (this._detailVersion || 0) + 1;
-    const isCurrent = () => !this._unloaded && version === this._detailVersion && !this.data.phoneAuthorizing && !this.data.identityLoggingIn && !this.data.saving;
+    const logoutEpoch = PassportBiz.logoutEpoch?.();
+    const isCurrent = () => !this._unloaded && version === this._detailVersion && logoutEpoch === PassportBiz.logoutEpoch?.()
+      && !this.data.phoneAuthorizing && !this.data.identityLoggingIn && !this.data.saving;
     this.setData({ loadError: '' });
-    if (PassportBiz.isLoggedOut() || this.data.phoneLoginEnabled !== true && !PassportBiz.getUserId()) {
-      this.setData({ hasSession: false, isLoad: true, phoneVerified: false });
-      this._updateTitle();
-      return;
-    }
+    if (!PassportBiz.getUserId()) return this._showLogin();
     try {
       const user = await profileMethods.getProfileUser({ hint: false }, true);
-      if (!isCurrent() || PassportBiz.isLoggedOut()) return;
+      if (!isCurrent()) return;
+      if (!PassportBiz.getUserId()) return this._showLogin();
       if (user && user.USER_STATUS === 9) return wx.switchTab({ url: '/projects/crun/pages/my/index/my_index' });
       profileMethods.applyUser(this, user || { USER_NAME: '', USER_MOBILE: '', USER_PIC: '', USER_FORMS: [] });
       this.setData({ isLoad: true, hasSession: !!PassportBiz.getUserId() });
@@ -44,6 +60,7 @@ Page(Object.assign({
         const ready = profileMethods.isProfileReady(user);
         if (ready) await PassportBiz.loginSilenceMust();
         if (!isCurrent()) return;
+        if (!PassportBiz.getUserId()) return this._showLogin();
         if (ready && PassportBiz.isProfileReady(PassportBiz.getToken())) return profileMethods.finishProfile(this);
         return this._openPersonal();
       }
@@ -53,19 +70,22 @@ Page(Object.assign({
         await PassportBiz.loginSilenceMust();
         if (!isCurrent()) return;
         const token = PassportBiz.getToken();
-        if (!token || !token.id || !PassportBiz.isProfileReady(token)) throw new Error('登录状态暂未同步，请重试');
+        if (!token || !token.id) return this._showLogin();
+        if (!PassportBiz.isProfileReady(token)) throw new Error('登录状态暂未同步，请重试');
         this.setData({ accountStatus: token.status });
         return profileMethods.finishProfile(this);
       }
       this._updateTitle();
     } catch (error) {
-      if (isCurrent()) this.setData({ loadError: '登录信息加载失败，请重试' });
+      if (!isCurrent()) return;
+      if (!PassportBiz.getUserId()) return this._showLogin();
+      this.setData({ loadError: '登录信息加载失败，请重试' });
     }
   },
   _openPersonal() {
     if (this._unloaded || this._navigating || PassportBiz.isLoggedOut() || !PassportBiz.getUserId()) return;
     this._navigating = true;
-    const suffix = this.data.retUrl ? '?retUrl=' + encodeURIComponent(this.data.retUrl) : '';
+    const suffix = this.data.retUrl ? '?retUrl=' + encodeURIComponent(this.data.retUrl) + (this.data.returnToPublish ? '&returnToPublish=1' : '') : '';
     wx.redirectTo({ url: '/projects/crun/pages/my/personal/my_personal' + suffix,
       fail: () => { this._navigating = false; this.setData({ loginError: '页面打开失败，请重试' }); } });
   },
@@ -74,7 +94,7 @@ Page(Object.assign({
     return this.bindWechatAccountLogin();
   },
   async bindWechatAccountLogin() {
-    if (this._unloaded || this._navigating || this.data.phoneLoginEnabled === true || this.data.identityLoggingIn || this.data.phoneAuthorizing || this.data.saving) return;
+    if (this._unloaded || this._navigating || this._loadingLoginState || this.data.phoneLoginEnabled === true || this.data.identityLoggingIn || this.data.phoneAuthorizing || this.data.saving) return;
     const version = this._detailVersion = (this._detailVersion || 0) + 1;
     const isCurrent = () => !this._unloaded && version === this._detailVersion;
     this.setData({ identityLoggingIn: true, loginError: '', loadError: '' });
@@ -92,7 +112,8 @@ Page(Object.assign({
       // 已填好资料的账号登录成功即进入“我的”；资料未完成的才去个人资料页补全。
       if (profileMethods.isProfileReady(result.user)) {
         await PassportBiz.loginSilenceMust();
-        if (!isCurrent() || PassportBiz.isLoggedOut()) return;
+        if (!isCurrent()) return;
+        if (!PassportBiz.getUserId()) return this._showLogin();
         if (PassportBiz.isProfileReady(PassportBiz.getToken())) return profileMethods.finishProfile(this);
       }
       return this._openPersonal();
@@ -105,7 +126,7 @@ Page(Object.assign({
     } finally { if (isCurrent()) this.setData({ identityLoggingIn: false }); }
   },
   async bindWechatLogin(e) {
-    if (this.data.phoneLoginEnabled !== true || this.data.phoneAuthorizing || this.data.identityLoggingIn || this.data.saving) return;
+    if (this._unloaded || this._loadingLoginState || this.data.phoneLoginEnabled !== true || this.data.phoneAuthorizing || this.data.identityLoggingIn || this.data.saving) return;
     this._detailVersion = (this._detailVersion || 0) + 1;
     this.setData({ phoneAuthorizing: true, loginError: '' });
     try {
@@ -127,7 +148,7 @@ Page(Object.assign({
     } finally { if (!this._unloaded) this.setData({ phoneAuthorizing: false }); }
   },
   async onPullDownRefresh() {
-    try { await Promise.all([profileMethods.loadCampuses(this, true), this._loadDetail()]); this._updateTitle(); }
+    try { await this._loadLoginState(); }
     finally { wx.stopPullDownRefresh(); }
   },
   bindInviteCodeInput(e) { this.setData({ inviteCode: InviteBiz.normalize(e.detail.value) }); },

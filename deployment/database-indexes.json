@@ -38,6 +38,7 @@
     {"collection":"bx_invite","name":"account_inviter_cleanup","scope":"system","fields":[["INV_USER_ID","asc"]],"purpose":"注销移除邀请码并保留对方的匿名历史"},
     {"collection":"bx_invite","name":"account_invitee_cleanup","scope":"system","fields":[["INV_ACCEPT_USER_ID","asc"]],"purpose":"注销释放旧受邀记录的稳定键"},
     {"collection":"bx_user","name":"school_user","scope":"school","fields":[["USER_MINI_OPENID","asc"]],"purpose":"学校共享账号读取及关联查询"},
+    {"collection":"bx_user","name":"school_verified_phone","scope":"school","fields":[["USER_MOBILE","asc"],["USER_MOBILE_VERIFIED","asc"],["USER_MINI_OPENID","asc"]],"purpose":"手机号授权时查询同校历史已验证号码"},
     {"collection":"bx_user","name":"school_users_recent","scope":"school","fields":[["USER_ADD_TIME","desc"],["_id","desc"]],"purpose":"学校管理员用户列表与导出"},
     {"collection":"bx_user","name":"school_users_status","scope":"school","fields":[["USER_STATUS","asc"],["USER_ADD_TIME","desc"],["_id","desc"]],"purpose":"账号审核状态筛选"},
     {"collection":"bx_mail","name":"campus_wait_recent","scope":"campus","fields":[["MAIL_STATUS","asc"],["MAIL_PAYMENT_MODE","asc"],["MAIL_ADD_TIME","desc"],["_id","desc"],["MAIL_END_TIME","asc"]],"purpose":"可接单与首页最新订单；截止时间为范围条件，须验证扫描量"},

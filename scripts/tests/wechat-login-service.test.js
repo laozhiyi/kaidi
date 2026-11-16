@@ -471,6 +471,100 @@ test('disabled phone endpoints make no provider request and public policy permit
   assert.equal(config.allowManualRegistration, true);
 });
 
+test('profile phone binding requires a session, supersedes manual claims and protects verified owners', async () => {
+  const f = await setup({ profilePhoneRequired: true, allowManualRegistration: true });
+  const Account = f.service('account_service');
+  const bind = (id, token) => tenant.run(A, () => Account.runRequest('passport/verify_profile_phone', id, token,
+    userId => f.passport().verifyProfilePhone(userId, { code: 'phone-code' })));
+  const signIn = id => tenant.run(A, () => f.passport().wechatIdentityLogin(id));
+  const config = await tenant.run(A, () => new (f.service('operations_service'))().config('new-user'));
+  assert.equal(config.phoneLoginEnabled, false);
+  assert.equal(config.allowManualRegistration, false);
+  assert.equal(config.profilePhoneRequired, true);
+  await assert.rejects(bind('new-user', ''), /登录/);
+  assert.equal(f.phoneCalls.length, 0);
+  await f.put(A, 'user', 'legacy-manual', { ...readyUser(), USER_MINI_OPENID: 'other', USER_MOBILE_VERIFIED: false });
+  const phoneKey = tenant.run(A, () => f.store.schoolKey('crun', 'phone', mobile));
+  await f.put(A, 'identity_unique', phoneKey, { userId: 'other' });
+  const { token } = await signIn('new-user');
+  const verified = await bind('new-user', token.sessionToken);
+  assert.equal(verified.token.sessionToken, token.sessionToken);
+  assert.equal(verified.token.profileComplete, false);
+  assert.equal(verified.user.USER_MOBILE, mobile);
+  assert.equal(f.table('identity_unique').get(phoneKey).userId, 'new-user');
+  assert.equal(f.table('identity_unique').get(phoneKey).verified, true);
+  const { token: second } = await signIn('second-user');
+  await assert.rejects(bind('second-user', second.sessionToken), /其他账号/);
+
+  // An older verified record remains protected even without a binding index.
+  f.table('identity_unique').delete(phoneKey);
+  await assert.rejects(bind('second-user', second.sessionToken), /其他账号/);
+
+  let finish, started;
+  const requestStarted = new Promise(resolve => { started = resolve; });
+  f.cloud.openapi.phonenumber.getPhoneNumber = () => new Promise(resolve => { finish = resolve; started(); });
+  const late = bind('new-user', token.sessionToken);
+  await requestStarted;
+  await tenant.run(A, () => new Account().logout('new-user', token.sessionToken));
+  finish({ phoneInfo: { purePhoneNumber: '13812345678', countryCode: '86', watermark: { appid: APPID } } });
+  await assert.rejects(late, /登录已失效/);
+  assert.equal(f.row().USER_MOBILE, mobile);
+});
+
+test('a new account can verify its phone through the cloud route before completing its profile', async () => {
+  const f = await setup({ profilePhoneRequired: true });
+  f.load('framework/validate/data_check.js').check = require('../../cloudfunctions/mcloud/framework/validate/data_check.js').check;
+  const app = f.load('framework/core/application.js');
+  const call = (route, token, params = {}) => app.app({ route, token, PID: 'crun', scope: A, params }, {});
+  const { data: { token } } = await call('passport/wechat_identity_login');
+  const result = await call('passport/verify_profile_phone', token.sessionToken, { code: 'phone-code', userId: 'somebody-else' });
+  assert.equal(result.code, 200, result.msg);
+  assert.equal(result.data.token.id, 'crun^^^new-user');
+  assert.equal(result.data.token.sessionToken, token.sessionToken);
+  assert.equal(result.data.user.USER_MOBILE, mobile);
+  assert.equal(result.data.token.profileComplete, false);
+});
+
+test('both profile save routes enforce first registration and protect archived student proof', async () => {
+  const f = await setup({ profilePhoneRequired: true });
+  const Account = f.service('account_service');
+  const cloudConfig = f.load('config/config.js');
+  const { CLIENT_CHECK_CONTENT, ADMIN_CHECK_CONTENT } = cloudConfig;
+  cloudConfig.CLIENT_CHECK_CONTENT = cloudConfig.ADMIN_CHECK_CONTENT = false;
+  try {
+    const { token } = await tenant.run(A, () => f.passport().wechatIdentityLogin('new-user'));
+    const call = (method, input) => tenant.run(A, () => Account.runRequest('passport/' + method, 'new-user', token.sessionToken,
+      userId => f.passport()[method](userId, input)));
+    const input = profile();
+    const owned = 'cloud://' + cloudConfig.CLOUD_ID + '/private/new-user/' + token.mediaGeneration + '/';
+    input.pic = owned + 'avatar.jpg';
+    await assert.rejects(call('editBase', input), /手机号/);
+    await call('verifyProfilePhone', { code: 'phone-code' });
+    const incomplete = { ...input, forms: input.forms.filter(item => !['studentId', 'studentCard', 'disclaimer'].includes(item.mark)) };
+    for (const method of ['register', 'editBase']) await assert.rejects(call(method, incomplete), /学号/);
+    const card = input.forms.find(item => item.mark === 'studentCard');
+    card.val = ['https://example.test/invalid.jpg'];
+    await assert.rejects(call('editBase', input), /当前小程序/);
+    card.val = ['cloud://' + cloudConfig.CLOUD_ID + '/private/other/' + token.mediaGeneration + '/card.jpg'];
+    await assert.rejects(call('register', input), /其他账户/);
+    card.val = [owned + 'student.jpg'];
+    f.cloud.downloadFile = async () => ({ fileContent: Buffer.from([255, 216, 255, 217]) });
+    f.cloud.uploadFile = async ({ cloudPath }) => ({ fileID: 'cloud://' + cloudConfig.CLOUD_ID + '/' + cloudPath });
+    const saved = await call('register', input);
+    assert.equal(saved.token.profileComplete, true);
+    assert.equal(saved.token.status, 1);
+    const archived = f.row().USER_FORMS.find(item => item.mark === 'studentCard').val[0];
+    assert.match(archived, /\/private-evidence\/new-user\//);
+    assert.equal((await call('register', input)).token.profileComplete, true);
+    await assert.rejects(call('editBase', incomplete), /审核/);
+    card.val = [archived];
+    await assert.rejects(call('editBase', { ...input, mobile: '13812345678' }), /手机号已变化/);
+    assert.equal((await call('editBase', { ...input, name: '新昵称' })).token.status, 1);
+  } finally {
+    Object.assign(cloudConfig, { CLIENT_CHECK_CONTENT, ADMIN_CHECK_CONTENT });
+  }
+});
+
 test('basic mode can update a verified contact number without falsely preserving verification', async () => {
   const f = await setup({ phoneLoginEnabled: false, allowManualRegistration: false });
   await f.putUser();

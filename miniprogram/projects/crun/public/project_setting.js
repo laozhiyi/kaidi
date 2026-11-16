@@ -12,6 +12,7 @@ module.exports = { //crun
 	],
 
 	// 用户
+	PUBLIC_PROFILE_CAMPUS: '雁山校区',
 	USER_REG_CHECK: false,
 	USER_FIELDS: [
 		{ mark: 'sex', title: '性别', type: 'select', selectOptions: ['男', '女'], must: true },

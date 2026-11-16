@@ -47,6 +47,7 @@ module.exports = {
  'passport/wechat_identity_login': 'passport_controller@wechatIdentityLogin',
  'passport/wechat_profile': 'passport_controller@saveWechatProfile',
  'passport/wechat_login': 'passport_controller@wechatLogin',
+ 'passport/verify_profile_phone': 'passport_controller@verifyProfilePhone',
 	'passport/phone': 'passport_controller@getPhone',
 	'passport/my_detail': 'passport_controller@getMyDetail',
 	'passport/register': 'passport_controller@register',

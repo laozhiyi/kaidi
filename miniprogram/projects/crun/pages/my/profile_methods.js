@@ -7,7 +7,8 @@ const ProfileBiz = require('../../biz/profile_biz.js');
 const Address = require('../../biz/address_biz.js');
 const PassportBiz = require('../../../../comm/biz/passport_biz.js');
 const InviteBiz = require('../../biz/invite_biz.js');
-const DEFAULT_CAMPUSES = [];
+const Tenant = require('../../biz/tenant_biz.js');
+const fixedCampus = projectSetting.PUBLIC_PROFILE_CAMPUS;
 const PERSONAL_MARKS = new Set(['sex', 'college', 'sub', 'studentId', 'studentCard', 'disclaimer']);
 const STUDENT_ID_RE = /^[A-Za-z0-9]{6,20}$/;
 let campusCache = null;
@@ -15,10 +16,11 @@ let campusRequest = null;
 let campusCacheVersion = 0;
 let manualRegistrationAllowed = false;
 let phoneLoginEnabled = false;
+let profilePhoneRequired = false;
 const REQUEST_TIMEOUT = 12000;
 const PROFILE_CACHE_TTL = 30000;
 const DISK_CACHE_TTL = 6 * 60 * 60 * 1000;
-const CAMPUS_CACHE_KEY = 'crun-profile-campuses-v2';
+const CAMPUS_CACHE_KEY = 'crun-profile-campuses-v4';
 const PROFILE_CACHE_KEY = 'crun-profile-user-v1';
 const scopeKey = () => Ops.scopeKey ? Ops.scopeKey() : '';
 const sessionEpoch = () => cloudHelper.getSessionEpoch ? cloudHelper.getSessionEpoch() : PassportBiz.logoutEpoch ? PassportBiz.logoutEpoch() : 0;
@@ -26,7 +28,7 @@ let cacheScope = '';
 function checkScope() {
   const next = scopeKey();
   if (next !== cacheScope) {
-    cacheScope = next; campusCacheVersion++; campusCache=null; campusRequest=null; manualRegistrationAllowed=false; phoneLoginEnabled=false;
+    cacheScope = next; campusCacheVersion++; campusCache=null; campusRequest=null; manualRegistrationAllowed=false; phoneLoginEnabled=false; profilePhoneRequired=false;
     profileCacheVersion++; profileCache=null; profileRequest=null; profileCacheUserId=''; profileCachedAt=0;
     Address.configure({phases:[],pickupStations:[]});
   }
@@ -49,82 +51,87 @@ function supportsNative(capability) {
 }
 function initProfileCapabilities(page) {
   page.setData({ canGetWechatPhone: supportsNative('button.open-type.getPhoneNumber'),
-    canChooseWechatAvatar: supportsNative('button.open-type.chooseAvatar'), canUseWechatNickname: supportsNative('input.type.nickname') });
+    canChooseWechatAvatar: supportsNative('button.open-type.chooseAvatar'), canUseWechatNickname: supportsNative('input.type.nickname'),
+    profileCampusFixed: !!fixedCampus, ...(fixedCampus ? { campus: fixedCampus } : {}) });
 }
-function applyRegistrationPolicy(page, allowed, phoneEnabled = page.data.phoneLoginEnabled) {
+function applyRegistrationPolicy(page, allowed, phoneEnabled = page.data.phoneLoginEnabled, required = page.data.profilePhoneRequired) {
   if (page._unloaded) return;
-  phoneEnabled = phoneEnabled === true;
-  allowed = !phoneEnabled || allowed === true;
-  page.setData({ phoneLoginEnabled: phoneEnabled, allowManualRegistration: allowed });
+  phoneEnabled = required !== true && phoneEnabled === true;
+  allowed = required !== true && (!phoneEnabled || allowed === true);
+  page.setData({ phoneLoginEnabled: phoneEnabled, allowManualRegistration: allowed, profilePhoneRequired: required === true });
 }
 function isProfileReady(user) {
-  return !!(user && user.USER_PROFILE_COMPLETE === true && (user.USER_MOBILE_VERIFIED === true || user.allowManualRegistration === true));
+  return !!(user && user.USER_PROFILE_COMPLETE === true && (user.USER_MOBILE_VERIFIED === true || user.profilePhoneRequired !== true && user.allowManualRegistration === true));
 }
-async function loadCampuses(page, force = false) {
+async function loadCampuses(page, force = false, { notifyFailure = true } = {}) {
   checkScope();
   const requestScope = scopeKey(), version = campusCacheVersion;
   if (!campusCache) {
     const saved = readDiskCache(CAMPUS_CACHE_KEY, 'shared');
-    if (saved && Array.isArray(saved.campuses) && saved.locations) {
-      campusCache = saved.campuses; manualRegistrationAllowed = saved.allowManualRegistration === true;
-      phoneLoginEnabled = saved.phoneLoginEnabled === true; Address.configure(saved.locations);
+    if (saved && Array.isArray(saved.campuses) && saved.locations && (!fixedCampus || saved.campuses.includes(fixedCampus))) {
+      campusCache = fixedCampus ? [fixedCampus] : saved.campuses;
+      manualRegistrationAllowed = saved.allowManualRegistration === true;
+      phoneLoginEnabled = saved.phoneLoginEnabled === true; profilePhoneRequired = saved.profilePhoneRequired === true; Address.configure(saved.locations);
     }
   }
   if (!force && campusCache) {
     if (!page._unloaded) {
       page.setData({ campuses: campusCache, addressPhaseOptions:Address.PHASES.slice(), placeGroups: Address.placeGroups() });
-      applyRegistrationPolicy(page, manualRegistrationAllowed, phoneLoginEnabled);
+      applyRegistrationPolicy(page, manualRegistrationAllowed, phoneLoginEnabled, profilePhoneRequired);
     }
     return campusCache;
   }
   if (!campusRequest) {
     const pending = withTimeout(Ops.get('operations/config')).then(config => {
       const values = config && Array.isArray(config.campuses) ? config.campuses : [];
-      const clean = Array.from(new Set(values.filter(value => typeof value === 'string' && value.trim()).map(value => value.trim())));
-      if (!clean.length) throw new Error('校区配置尚未完成，请稍后重试');
-      const campuses = clean;
+      const names = Array.from(new Set(values.filter(value => typeof value === 'string' && value.trim()).map(value => value.trim())));
+      const campuses = fixedCampus ? names.filter(name => name === fixedCampus) : names;
+      if (!campuses.length) throw new Error('校区配置尚未完成，请稍后重试');
       if (version === campusCacheVersion && requestScope === scopeKey()) {
         Address.configure(config.locations || {phases:[],pickupStations:[]});
         campusCache = campuses;
         manualRegistrationAllowed = config.allowManualRegistration === true;
         phoneLoginEnabled = config.phoneLoginEnabled === true;
-        writeDiskCache(CAMPUS_CACHE_KEY, {campuses, allowManualRegistration:manualRegistrationAllowed, phoneLoginEnabled, locations:config.locations || {phases:[],pickupStations:[]}}, 'shared');
+        profilePhoneRequired = config.profilePhoneRequired === true;
+        writeDiskCache(CAMPUS_CACHE_KEY, {campuses, allowManualRegistration:manualRegistrationAllowed, phoneLoginEnabled, profilePhoneRequired, locations:config.locations || {phases:[],pickupStations:[]}}, 'shared');
       }
-      return { campuses, allowManualRegistration: config.allowManualRegistration === true, phoneLoginEnabled: config.phoneLoginEnabled === true };
+      return { campuses, allowManualRegistration: config.allowManualRegistration === true, phoneLoginEnabled: config.phoneLoginEnabled === true, profilePhoneRequired: config.profilePhoneRequired === true };
     }).finally(() => { if (campusRequest === pending) campusRequest = null; });
     campusRequest = pending;
   }
   try {
-    const { campuses, allowManualRegistration, phoneLoginEnabled } = await campusRequest;
+    const { campuses, allowManualRegistration, phoneLoginEnabled, profilePhoneRequired } = await campusRequest;
     if (requestScope !== scopeKey() || version !== campusCacheVersion) return [];
     if (!page._unloaded) {
       page.setData({ campuses, campusError:'', addressPhaseOptions:Address.PHASES.slice(), placeGroups: Address.placeGroups() });
-      applyRegistrationPolicy(page, allowManualRegistration, phoneLoginEnabled);
+      applyRegistrationPolicy(page, allowManualRegistration, phoneLoginEnabled, profilePhoneRequired);
     }
     return campuses;
   } catch (error) {
     if (!page._unloaded && requestScope === scopeKey() && version === campusCacheVersion) {
       page.setData({ campuses:[], addressPhaseOptions:[], campusError:error.message || '校区加载失败' });
       applyRegistrationPolicy(page, false);
-      pageHelper.showNoneToast(error.message || '校区加载失败，请重试');
+      if (notifyFailure) pageHelper.showNoneToast(error.message || '校区加载失败，请重试');
     }
     return [];
   }
 }
 function applyUser(page, user) {
-  if (typeof user.allowManualRegistration === 'boolean' || typeof user.phoneLoginEnabled === 'boolean') {
+  if (typeof user.allowManualRegistration === 'boolean' || typeof user.phoneLoginEnabled === 'boolean' || typeof user.profilePhoneRequired === 'boolean') {
     applyRegistrationPolicy(page, typeof user.allowManualRegistration === 'boolean' ? user.allowManualRegistration : page.data.allowManualRegistration,
-      typeof user.phoneLoginEnabled === 'boolean' ? user.phoneLoginEnabled : page.data.phoneLoginEnabled);
+      typeof user.phoneLoginEnabled === 'boolean' ? user.phoneLoginEnabled : page.data.phoneLoginEnabled,
+      typeof user.profilePhoneRequired === 'boolean' ? user.profilePhoneRequired : page.data.profilePhoneRequired);
   }
   if (page._profileDirty || page.data.campusPickerVisible || page.data.contactEditorVisible || page.data.addressEditorVisible || page.data.collectionSaving) return;
   const p = ProfileBiz.readProfile(user);
-  const campuses = page.data.campuses && page.data.campuses.length ? page.data.campuses : DEFAULT_CAMPUSES;
+  const campuses = page.data.campuses || [];
+  const campus = fixedCampus || p.campus;
   const forms = Array.isArray(user.USER_FORMS) ? user.USER_FORMS : [];
   page.setData(Object.assign({ phoneVerified: user.USER_MOBILE_VERIFIED === true, accountStatus: typeof user.USER_STATUS === 'number' ? user.USER_STATUS : -1, formName: user.USER_NAME || '', formMobile: user.USER_MOBILE || '', formPic: user.USER_PIC || '', formForms: forms, fields: projectSetting.USER_FIELDS, genderOptions: ['男', '女'], profileSex: String(ProfileBiz.formValue(forms, 'sex') || ''), profileCollege: String(ProfileBiz.formValue(forms, 'college') || ''), profileSub: String(ProfileBiz.formValue(forms, 'sub') || ''),
-    profileStudentId: String(ProfileBiz.formValue(forms, 'studentId') || ''),
+    profileStudentId: String(ProfileBiz.formValue(forms, 'studentId') || ''), studentProofLocked: user.studentProofLocked === true,
     profileStudentCard: [].concat(ProfileBiz.formValue(forms, 'studentCard') || []).filter(value => typeof value === 'string' && value).slice(0, 1),
     profileDisclaimer: ProfileBiz.formValue(forms, 'disclaimer') === true }, p, {
-    campuses, campusIndex: campuses.indexOf(p.campus), campusPickerVisible: false, campusDraft: '', contactEditorVisible: false, addressEditorVisible: false, placePickerVisible: false, placeDraft: '', editingContactIndex: -1, editingAddressIndex: -1, contactDraft: { name: '', phone: '' }, addressDraft: { label: '', detail: '', note: '' }
+    campuses, campus, campusIndex: campuses.indexOf(campus), campusPickerVisible: false, campusDraft: '', contactEditorVisible: false, addressEditorVisible: false, placePickerVisible: false, placeDraft: '', editingContactIndex: -1, editingAddressIndex: -1, contactDraft: { name: '', phone: '' }, addressDraft: { label: '', detail: '', note: '' }
   }));
 }
 function profileBusy(page) {
@@ -149,7 +156,7 @@ function bindPicTap(e) {
   this._profileDirty = true; this.setData({ formPic: pic });
 }
 function bindProfileMobileInput(e) {
-  if (this.data.phoneLoginEnabled === true && (this.data.phoneVerified || !this.data.allowManualRegistration)) return;
+  if (this.data.profilePhoneRequired || this.data.phoneLoginEnabled === true && (this.data.phoneVerified || !this.data.allowManualRegistration)) return;
   this._profileDirty = true; this.setData({ formMobile: e.detail.value });
 }
 function bindChooseAvatar() {
@@ -168,48 +175,72 @@ function bindChooseAvatar() {
   else pageHelper.showNoneToast('当前微信无法选择图片，请更新微信后重试');
 }
 function bindWechatPhoneTap() {
-  if (this.data.phoneLoginEnabled !== true || this.data.phoneAuthorizing || this.data.saving || this.data.collectionSaving || this.data.loggingOut) return;
+  if (!(this.data.profilePhoneRequired || this.data.phoneLoginEnabled) || profileBusy(this)) return;
   // The native button still needs to open its sheet; do not disable it on tap.
   PassportBiz.traceWechatPhoneTap();
 }
 async function bindWechatPhone(e) {
-  if (this.data.phoneLoginEnabled !== true || this.data.phoneAuthorizing || this.data.saving || this.data.collectionSaving || this.data.loggingOut) return;
+  if (!(this.data.profilePhoneRequired || this.data.phoneLoginEnabled) || profileBusy(this)) return;
+  const verifying = this.data.profilePhoneRequired === true;
+  const requestScope = scopeKey(), epoch = sessionEpoch();
+  const isCurrent = () => !this._unloaded && (!verifying || requestScope === scopeKey() && epoch === sessionEpoch());
   this.setData({ phoneAuthorizing: true, saveError: '' });
   try {
-    const result = await PassportBiz.loginByWechatPhone(e);
+    const result = verifying ? await PassportBiz.verifyProfilePhone(e) : await PassportBiz.loginByWechatPhone(e);
     invalidateProfileCache();
-    if (this._unloaded) return;
+    if (!isCurrent()) return;
     if (!result.user || result.user.USER_MOBILE_VERIFIED !== true) throw new Error('手机号授权未完成，请重试');
     // Keep unsaved edits to all other fields when rebinding the phone.
     this.setData({ formMobile: result.user.USER_MOBILE, phoneVerified: true });
     this._profileDirty = true;
   } catch (error) {
-    if (!this._unloaded) {
+    if (isCurrent()) {
       const message = error && (error.msg || error.message) || '手机号授权失败，请重试';
       this.setData({ saveError: message }); pageHelper.showNoneToast(message);
     }
   } finally { if (!this._unloaded) this.setData({ phoneAuthorizing: false }); }
 }
-function bindOpenCampusPicker() {
-  if (this.data.saving) return;
+async function bindOpenCampusPicker() {
+  if (this.data.saving || this.data.campusPickerVisible) return;
   const campuses = this.data.campuses || [];
-  if (!campuses.length) return pageHelper.showNoneToast('校区加载中，请稍后重试');
-  this.setData({ campusPickerVisible: true, campusDraft: campuses.includes(this.data.campus) ? this.data.campus : '' });
+  if (!campuses.length && !fixedCampus) return pageHelper.showNoneToast('校区加载中，请稍后重试');
+  const names = fixedCampus ? [fixedCampus] : campuses;
+  const retryDirectory = this.data.campusDirectoryError === true;
+  this.setData({ campusPickerVisible: true, campusDraft: campuses.includes(this.data.campus) ? this.data.campus : '',
+    campusOptions: names.map(name => ({ name, selectable: campuses.includes(name) })), campusDirectoryError: false, campusDirectoryLoading: !!fixedCampus });
   if (wx.hideKeyboard) wx.hideKeyboard();
+  if (!fixedCampus) return;
+  try {
+    const directory = await Tenant.directory(() => withTimeout(Ops.get('tenant/catalog')), retryDirectory);
+    if (this._unloaded || !this.data.campusPickerVisible) return;
+    const current = directory.campuses.find(row => row.name === fixedCampus && row.selectable === true)
+      || directory.campuses.find(row => row.name === fixedCampus);
+    if (!current) throw new Error('校区目录暂不可用');
+    const otherNames = directory.campuses.filter(row => row.schoolId === current.schoolId && row.name && row.name !== fixedCampus).map(row => row.name);
+    this.setData({ campusOptions: [fixedCampus, ...new Set(otherNames)].map(name => ({
+      name, selectable: name === fixedCampus && (this.data.campuses || []).includes(name)
+    })) });
+  } catch (error) {
+    if (!this._unloaded && this.data.campusPickerVisible) this.setData({ campusDirectoryError: true });
+  } finally {
+    if (!this._unloaded && this.data.campusPickerVisible) this.setData({ campusDirectoryLoading: false });
+  }
 }
 function bindSelectCampus(e) {
   const value = e.currentTarget.dataset.value;
-  if ((this.data.campuses || []).includes(value)) this.setData({ campusDraft: value });
+  if ((!fixedCampus || value === fixedCampus) && (this.data.campuses || []).includes(value)) this.setData({ campusDraft: value });
 }
 function bindConfirmCampus() {
-  const campusIndex = (this.data.campuses || []).indexOf(this.data.campusDraft);
-  if (campusIndex < 0) return pageHelper.showNoneToast('请选择所在校区');
+  const { campusDraft } = this.data;
+  const campusIndex = (this.data.campuses || []).indexOf(campusDraft);
+  if (campusIndex < 0 || fixedCampus && campusDraft !== fixedCampus) return pageHelper.showNoneToast('请选择所在校区');
   this._profileDirty = true;
-  this.setData({ campus: this.data.campusDraft, campusIndex, campusPickerVisible: false, campusDraft: '' });
+  this.setData({ campus: campusDraft, campusIndex, campusPickerVisible: false, campusDraft: '' });
 }
 function bindCloseCampusPicker() { this.setData({ campusPickerVisible: false, campusDraft: '' }); }
 function bindProfileSheetTouchMove() {}
 function bindCampusChange(e) {
+  if (fixedCampus) return;
   const i = Number(e.detail.value);
   if (!Number.isInteger(i) || !(this.data.campuses || [])[i]) return;
   this._profileDirty = true;
@@ -219,6 +250,7 @@ function bindGenderTap(e) { this._profileDirty = true; this.setData({ profileSex
 function bindProfileFieldInput(e) {
   const field = e.currentTarget.dataset.field;
   if (!['profileCollege', 'profileSub', 'profileStudentId'].includes(field)) return;
+  if (field === 'profileStudentId' && this.data.studentProofLocked) return;
   this._profileDirty = true;
   this.setData({ [field]: e.detail.value });
 }
@@ -230,11 +262,11 @@ function bindViewDisclaimer() {
   wx.navigateTo({ url: '/projects/crun/pages/about/index/about_index?key=SETUP_CONTENT_DISCLAIMER' });
 }
 function bindChooseStudentCard() {
-  if (profileBusy(this)) return;
+  if (profileBusy(this) || this.data.studentProofLocked) return;
   const success = result => {
     const file = result.tempFiles && result.tempFiles[0];
     const path = file && file.tempFilePath || result.tempFilePaths && result.tempFilePaths[0];
-    if (profileBusy(this) || !path) return;
+    if (profileBusy(this) || this.data.studentProofLocked || !path) return;
     this._profileDirty = true; this.setData({ profileStudentCard: [path] });
   };
   const fail = error => { if (!this._unloaded && !/cancel/i.test(error && error.errMsg || '')) pageHelper.showNoneToast('图片选择失败，请重试'); };
@@ -247,7 +279,7 @@ function bindPreviewStudentCard() {
   if (url) wx.previewImage({ current: url, urls: [url] });
 }
 function bindDeleteStudentCard() {
-  if (profileBusy(this)) return;
+  if (profileBusy(this) || this.data.studentProofLocked) return;
   this._profileDirty = true; this.setData({ profileStudentCard: [] });
 }
 function getCachedProfileUser() { checkScope(); const userId = PassportBiz.getUserId(); return userId ? readDiskCache(PROFILE_CACHE_KEY, userId) : null; }
@@ -278,7 +310,7 @@ function invalidateProfileCache() {
   try { const userId = PassportBiz.getUserId(); if (userId) wx.removeStorageSync(PROFILE_CACHE_KEY + ':' + userId + ':' + scopeKey()); } catch (_) {}
 }
 function clearLocalCaches() {
-  campusCacheVersion++; campusCache = null; campusRequest = null; manualRegistrationAllowed = false; phoneLoginEnabled = false;
+  campusCacheVersion++; campusCache = null; campusRequest = null; manualRegistrationAllowed = false; phoneLoginEnabled = false; profilePhoneRequired = false;
   invalidateProfileCache();
   for (const key of wx.getStorageInfoSync().keys) {
     if (key.startsWith(CAMPUS_CACHE_KEY + ':') || key.startsWith(PROFILE_CACHE_KEY + ':')) wx.removeStorageSync(key);
@@ -426,7 +458,8 @@ function bindSaveAddress() {
 }
 function finishProfile(page) {
   const myPage = '/projects/crun/pages/my/index/my_index';
-  if (page.data.accountStatus !== undefined && page.data.accountStatus !== 1) return wx.switchTab({ url: myPage });
+  const { accountStatus, returnToPublish } = page.data;
+  if (accountStatus !== undefined && accountStatus !== 1 && !(accountStatus === 0 && returnToPublish)) return wx.switchTab({ url: myPage });
   const returnUrl = page.data.retUrl;
   if (returnUrl === 'back' && getCurrentPages().length > 1) return wx.navigateBack();
   if (returnUrl && returnUrl !== 'back') {
@@ -482,9 +515,9 @@ async function bindSubmitTap(e) {
   this.setData({ saving: true, saveError: '' });
   try {
     if (!PassportBiz.getUserId()) throw new Error('请先点击微信登录');
-    if (this.data.phoneLoginEnabled === true && this.data.phoneVerified !== true && this.data.allowManualRegistration !== true) throw new Error('请先授权微信手机号');
+    if ((this.data.profilePhoneRequired || this.data.phoneLoginEnabled === true && !this.data.allowManualRegistration) && this.data.phoneVerified !== true) throw new Error('请先验证联系电话');
     if (!/^1[3-9][0-9]{9}$/.test(this.data.formMobile || '')) throw new Error('请填写正确的手机号');
-    if (!(this.data.campuses || []).includes(this.data.campus)) throw new Error('请选择所在校区');
+    if (!(this.data.campuses || []).includes(this.data.campus) || fixedCampus && this.data.campus !== fixedCampus) throw new Error('请选择所在校区');
     if (!['男', '女'].includes(this.data.profileSex)) throw new Error('请选择性别');
     if (!String(this.data.profileCollege || '').trim()) throw new Error('请填写所在学院');
     if (!String(this.data.profileSub || '').trim()) throw new Error('请填写所学专业');
@@ -513,7 +546,10 @@ async function bindSubmitTap(e) {
     if (!data) return;
     const pic = await cloudHelper.transTempPicOne(this.data.formPic, 'user/', '', false);
     if (!isCurrent()) return;
-    for (const item of forms) if (item.type === 'image' && Array.isArray(item.val)) item.val = await cloudHelper.transTempPics(item.val, 'user/');
+    for (const item of forms) if (item.type === 'image' && Array.isArray(item.val)) {
+      item.val = this.data.profilePhoneRequired && item.mark === 'studentCard' && item.val.some(path => !path.startsWith('cloud://'))
+        ? await Ops.upload(item.val) : await cloudHelper.transTempPics(item.val, 'user/');
+    }
     if (!isCurrent()) return;
     const isRegister = !this.data.isEdit;
     const result = await withTimeout(cloudHelper.callCloudSumbit(isRegister ? 'passport/register' : 'passport/edit_base', {

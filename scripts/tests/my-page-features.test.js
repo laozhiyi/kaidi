@@ -82,11 +82,14 @@ function harness(options = {}) {
         if (name.endsWith('/operations_biz.js')) return ops;
         if (name.endsWith('/notification_biz.js')) return notificationStub(request);
         if (name.endsWith('/project_biz.js')) return { initPage() {} };
+        if (name.endsWith('/project_setting.js') && !options.usePublicProfileCampus) {
+          return { ...load('miniprogram/projects/crun/public/project_setting.js'), PUBLIC_PROFILE_CAMPUS: '' };
+        }
         if (name.endsWith('/passport_biz.js')) return passport;
         if (name.endsWith('/cloud_helper.js')) return cloud;
         if (name.endsWith('/page_helper.js')) return pageHelper;
         if (name.endsWith('/validate.js')) return { check: data => data };
-        if (name.endsWith('/admin_biz.js')) return { getAdminToken: () => options.admin ? { token: 'admin' } : null };
+        if (name.endsWith('/admin_biz.js')) return { getAdminToken: () => options.admin ? { token: 'admin' } : null, applySession: options.applyAdminSession };
         return load(path.resolve(path.dirname(filename), name));
       }
     }, { filename });
@@ -354,7 +357,7 @@ test('basic WeChat login accepts a new account without native phone capability',
   assert.deepEqual(h.calls.filter(call => /^passport\//.test(call.route)).map(call => call.route), ['passport/wechat_identity_login']);
 });
 
-test('optional campus configuration failure does not block explicit basic login', async () => {
+test('basic WeChat login remains available when optional campus configuration fails', async () => {
   const h = harness({ guest: true, realPassport: true, phoneLoginEnabled: false });
   h.responses['operations/config'] = () => { throw Error('校区加载失败'); };
   h.responses['passport/wechat_identity_login'] = {
@@ -365,8 +368,9 @@ test('optional campus configuration failure does not block explicit basic login'
   h.passport.logout();
   const page = h.page('my/reg/my_reg.js'); await page.onLoad();
   assert.equal(page.data.isLoad, true);
+  assert.equal(page.data.phoneLoginEnabled, false);
+  assert.equal(page.data.loadError, '');
   assert.equal(page.data.hasSession, false);
-  assert.ok(page.data.campusError);
   assert.equal(h.calls.filter(call => /^passport\//.test(call.route)).length, 0);
   await page.bindWechatAccountLogin();
   assert.equal(page.data.hasSession, true);
@@ -375,15 +379,146 @@ test('optional campus configuration failure does not block explicit basic login'
   assert.deepEqual(h.calls.filter(call => /^passport\//.test(call.route)).map(call => call.route), ['passport/wechat_identity_login']);
 });
 
+test('an expired session shows login immediately and retains the original publish destination', async () => {
+  const h = harness({ realPassport: true, phoneLoginEnabled: false });
+  const retUrl = '/projects/crun/pages/mail/add/mail_add?serviceType=pickup';
+  const params = { retUrl: encodeURIComponent(retUrl), returnToPublish: '1' };
+  const expired = () => {
+    h.wx.setStorageSync('CACHE_LOGGED_OUT', true);
+    h.passport.clearToken();
+    throw { code: 2301, msg: '登录已失效' };
+  };
+  h.responses['passport/my_detail'] = expired;
+  const token = h.token;
+  await h.page('my/personal/my_personal.js').onLoad(params);
+  assert.equal(h.navigation.at(-1).url, '../reg/my_reg?retUrl=' + params.retUrl + '&returnToPublish=1');
+
+  h.passport.setToken(token);
+  const page = h.page('my/reg/my_reg.js');
+  await page.onLoad(params);
+  assert.equal(page.data.isLoad, true);
+  assert.equal(page.data.hasSession, false);
+  assert.equal(page.data.loadError, '');
+  assert.equal(page.data.phoneLoginEnabled, false);
+
+  const pending = { ...token, status: 0, profileComplete: true, profilePhoneRequired: true };
+  h.responses['passport/wechat_identity_login'] = { token: pending, user: { ...h.user, USER_STATUS: 0, profilePhoneRequired: true } };
+  h.responses['passport/login'] = { token: pending };
+  await page.bindWechatAccountLogin();
+  assert.equal(h.navigation.at(-1).url, retUrl);
+});
+
+test('a pending account returns to publish after saving its profile, but not to an accept action', async () => {
+  const h = harness({ realPassport: true, phoneLoginEnabled: false });
+  const policy = { profilePhoneRequired: true, phoneLoginEnabled: false, allowManualRegistration: false };
+  Object.assign(h.responses['operations/config'], policy);
+  Object.assign(h.user, policy, { USER_STATUS: 0, USER_PROFILE_COMPLETE: false });
+  h.passport.setToken({ ...h.token, ...policy, status: 0, profileComplete: false });
+  h.responses['passport/register'] = { token: { ...h.token, profileComplete: true } };
+  const publish = '/projects/crun/pages/mail/add/mail_add';
+  const page = h.page('my/personal/my_personal.js');
+  await page.onLoad({ retUrl: encodeURIComponent(publish), returnToPublish: '1' });
+  await page.bindPersonalSubmit();
+  assert.equal(h.navigation.at(-1).url, publish);
+  const methods = h.load('miniprogram/projects/crun/pages/my/profile_methods.js');
+  methods.finishProfile({ data: { accountStatus: 0, retUrl: '/projects/crun/pages/mail/detail/mail_detail' } });
+  assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/my/index/my_index');
+});
+
+test('staff invite activation signs in with WeChat before redeeming the invite', async () => {
+  let adminSession;
+  const h = harness({ guest: true, realPassport: true, applyAdminSession: value => { adminSession = value; return true; } });
+  const token = { id: 'poster', sessionToken: 'b'.repeat(64), status: 0, phoneVerified: false, profileComplete: false };
+  h.responses['passport/wechat_identity_login'] = { token, user: { USER_STATUS: 0 } };
+  h.responses['passport/staff_invite_redeem'] = () => {
+    assert.equal(h.token.sessionToken, token.sessionToken);
+    return { ok: true, token: { ...token, staff: true, status: 1 }, admin: { role: 'service' } };
+  };
+  const page = h.page('admin/index/login/admin_login.js');
+  page.setData({ inviteCode: 'K3M7QT2X', agreed: true });
+  assert.equal(await page.bindInviteActivate(), true);
+  assert.deepEqual(h.calls.map(call => call.route), ['passport/wechat_identity_login', 'passport/staff_invite_redeem']);
+  assert.equal(adminSession.role, 'service');
+  assert.equal(page.data.activateBusy, false);
+});
+
+test('a legacy account verifies its read-only contact phone in personal settings without restarting login', async () => {
+  const h = harness({ realPassport: true, phoneLoginEnabled: false });
+  const policy = { profilePhoneRequired: true, phoneLoginEnabled: false, allowManualRegistration: false };
+  Object.assign(h.responses['operations/config'], policy);
+  Object.assign(h.user, policy, { USER_MOBILE_VERIFIED: false });
+  h.passport.setToken({ ...h.token, ...policy, phoneVerified: false });
+  const page = h.page('my/personal/my_personal.js');
+  await page.onLoad();
+  assert.equal(page.data.isEdit, true);
+  assert.equal(page.data.phoneVerified, false);
+  page.bindProfileMobileInput(event({}, '13999999999'));
+  assert.equal(page.data.formMobile, '13800000000');
+  await page.bindPersonalSubmit();
+  assert.match(page.data.saveError, /验证联系电话/);
+  assert.equal(h.calls.filter(call => call.route === 'passport/edit_base').length, 0);
+  page.bindProfileFieldInput(event({ field: 'profileCollege' }, '保留我的编辑'));
+  const token = { ...h.token, phoneVerified: true };
+  h.responses['passport/verify_profile_phone'] = { token, user: { USER_MOBILE: '13912345678', USER_MOBILE_VERIFIED: true } };
+  await page.bindWechatPhone({ detail: { errMsg: 'getPhoneNumber:ok', code: 'phone-proof' } });
+  assert.equal(page.data.formMobile, '13912345678');
+  assert.equal(page.data.profileCollege, '保留我的编辑');
+  assert.equal(page.data.phoneVerified, true);
+  assert.equal(h.token.sessionToken, token.sessionToken);
+  assert.equal(h.navigation.length, 0);
+  await page.bindWechatPhone({ detail: { errMsg: 'getPhoneNumber:fail user deny' } });
+  assert.equal(page.data.formMobile, '13912345678');
+  assert.equal(page.data.phoneVerified, true);
+  assert.deepEqual(h.calls.filter(call => /passport\/.*(?:login|phone)/.test(call.route)),
+    [{ route: 'passport/verify_profile_phone', params: { code: 'phone-proof' } }]);
+});
+
+test('the Yanshan rollout shows other campuses without allowing them to be selected', async () => {
+  const h = harness({ usePublicProfileCampus: true });
+  h.storage.set('crun-profile-campuses-v4:shared:', {
+    savedAt: Date.now(), value: { campuses: ['育才校区', '王城校区', '雁山校区'], locations: { phases: [], pickupStations: [] } }
+  });
+  h.responses['tenant/catalog'] = {
+    schools: [{ schoolId: 'gxnu', name: '广西师范大学' }],
+    campuses: [
+      { schoolId: 'gxnu', campusId: 'yucai', name: '育才校区', selectable: false },
+      { schoolId: 'gxnu', campusId: 'wangcheng', name: '王城校区', selectable: false },
+      { schoolId: 'gxnu', campusId: 'yanshan', name: '雁山校区', selectable: true }
+    ]
+  };
+  const page = h.page('my/personal/my_personal.js');
+  await page.onLoad();
+  assert.equal(page.data.profileCampusFixed, true);
+  assert.equal(page.data.campus, '雁山校区');
+  assert.deepEqual(Array.from(page.data.campuses), ['雁山校区']);
+  await page.bindOpenCampusPicker();
+  assert.deepEqual(JSON.parse(JSON.stringify(page.data.campusOptions)), [
+    { name: '雁山校区', selectable: true }, { name: '育才校区', selectable: false }, { name: '王城校区', selectable: false }
+  ]);
+  page.bindSelectCampus(event({ value: '育才校区' }));
+  page.bindCampusChange(event({}, '0'));
+  assert.equal(page.data.campusPickerVisible, true);
+  assert.equal(page.data.campusDraft, '雁山校区');
+  page.bindConfirmCampus();
+  assert.equal(page.data.campusPickerVisible, false);
+  assert.equal(page.data.campus, '雁山校区');
+  assert.equal(h.calls.some(call => call.route === 'passport/edit_base'), false);
+  await page.onPullDownRefresh();
+  assert.deepEqual(Array.from(page.data.campuses), ['雁山校区']);
+  await page.bindPersonalSubmit();
+  const saved = h.calls.find(call => call.route === 'passport/edit_base');
+  assert.equal(saved.params.forms.find(item => item.mark === 'campus').val, '雁山校区');
+});
+
 test('delayed legacy configuration cannot enable manual signup from the default login screen', async () => {
   const h = harness({ guest: true, realPassport: true, manualRegistration: true }), config = deferred();
   const configured = structuredClone(h.responses['operations/config']);
   h.responses['operations/config'] = () => config.promise;
   const page = h.page('my/reg/my_reg.js');
-  // A fresh production page defaults to basic login before fetching policy.
+  // A fresh page receives the policy after its initial render.
   page.data.phoneLoginEnabled = false;
   const loading = page.onLoad(); await tick();
-  assert.equal(page.data.isLoad, true);
+  assert.equal(page.data.isLoad, false);
   assert.equal(h.calls.filter(call => /^passport\//.test(call.route)).length, 0);
   config.resolve(configured); await loading;
   assert.notEqual(page.data.manualRegistration, true);
@@ -685,12 +820,16 @@ for (const allowed of [true, false]) {
     const h = harness({ guest: true, realPassport: true, manualRegistration: allowed });
     const pending = deferred(), config = h.responses['operations/config'];
     h.responses['operations/config'] = () => pending.promise; h.responses['passport/my_detail'] = null;
-    const page = h.page('my/reg/my_reg.js'), loading = page.onLoad({}); await tick();
-    assert.equal(page.data.isLoad, true);
-    assert.equal(page.data.allowManualRegistration, false);
-    await page.bindWechatLogin({ detail: { errMsg: 'getPhoneNumber:fail no permission', errno: 102 } });
-    assert.notEqual(page.data.manualRegistration, true);
+    const page = h.page('my/reg/my_reg.js');
+    page.setData({ phoneLoginEnabled: false });
+    const loading = page.onLoad({}); await tick();
+    assert.equal(page.data.isLoad, false);
+    await page.bindOpenWechatProfile();
+    assert.deepEqual(h.calls.map(call => call.route), ['operations/config']);
     pending.resolve(config); await loading;
+    assert.equal(page.data.isLoad, true);
+    assert.equal(page.data.phoneLoginEnabled, true);
+    await page.bindWechatLogin({ detail: { errMsg: 'getPhoneNumber:fail no permission', errno: 102 } });
     assert.notEqual(page.data.manualRegistration, true);
     assert.equal(page.data.hasSession, false);
     assert.equal(page.data.phoneVerified, false);
@@ -869,17 +1008,25 @@ test('a failed session refresh after profile completion stays retryable instead 
 });
 
 for (const failed of [false, true]) {
-  test('an older account profile ' + (failed ? 'failure' : 'response') + ' cannot overwrite a successful phone login', async () => {
+  test('phone login is unavailable while refreshing an account profile that ' + (failed ? 'fails' : 'loads'), async () => {
     const h = harness({ guest: true, realPassport: true }), page = h.page('my/reg/my_reg.js');
     h.responses['passport/my_detail'] = null; await page.onLoad({});
     h.passport.setToken({ id: 'poster', sessionToken: 'b'.repeat(64), status: 0, phoneVerified: false, profileComplete: false });
     const pending = deferred(); h.responses['passport/my_detail'] = () => pending.promise;
-    const refresh = page.onPullDownRefresh();
+    const refresh = page.onPullDownRefresh(); await tick();
     h.responses['passport/wechat_login'] = { token: { id: 'poster', sessionToken: 'b'.repeat(64), status: 0, phoneVerified: true, profileComplete: false },
       user: { USER_MOBILE: '13912345678', USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: false, USER_STATUS: 0, USER_FORMS: [] } };
     await page.bindWechatLogin({ detail: { errMsg: 'getPhoneNumber:ok', code: 'fresh-phone-code' } });
+    assert.equal(h.calls.filter(call => call.route === 'passport/wechat_login').length, 0);
+    assert.equal(page.data.isLoad, false);
     if (failed) pending.reject(Error('旧请求超时')); else pending.resolve(null);
     await refresh;
+    if (failed) {
+      assert.match(page.data.loadError, /登录信息加载失败/);
+      h.responses['passport/my_detail'] = null;
+      await page._loadLoginState();
+    }
+    await page.bindWechatLogin({ detail: { errMsg: 'getPhoneNumber:ok', code: 'fresh-phone-code' } });
     assert.equal(page.data.phoneVerified, true); assert.equal(page.data.formMobile, '13912345678');
     assert.equal(page.data.loadError, ''); assert.equal(h.token.phoneVerified, true);
     assert.equal(h.navigation.length, 0);

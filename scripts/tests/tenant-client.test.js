@@ -51,6 +51,21 @@ test('a disabled saved campus offers valid alternatives, while admins can reopen
   assert.equal(admin.cloud.scopeKey(),'gxnu/yucai');
   const guest=client({unselected:true}),blocked=guest.cloud.ensureScope();const rejected=assert.rejects(blocked,/暂无开放/);await tick();guest.respond(0,closed);await rejected;
 });
+test('a saved campus outside the public rollout switches to the only selectable campus', async () => {
+  const f = client();
+  const tenant = f.load('projects/crun/biz/tenant_biz.js');
+  const restricted = structuredClone(directory);
+  restricted.campuses.forEach(row => { row.selectable = false; });
+  const available = { schoolId: 'gxnu', campusId: 'yanshan', name: '雁山校区', enabled: true, selectable: true };
+  restricted.campuses.push(available);
+  await tenant.directory(async () => restricted);
+  const blocked = restricted.campuses[0];
+  assert.throws(() => tenant.select(blocked, { reload: false }), /暂未开放/);
+  assert.equal((await tenant.ensure(async () => restricted)).campusId, available.campusId);
+  assert.equal(f.cloud.scopeKey(), 'gxnu/yanshan');
+  tenant.select(blocked, { reload: false, allowDisabled: true });
+  assert.equal((await tenant.ensure(async () => restricted, { allowDisabled: true })).campusId, blocked.campusId);
+});
 test('late profile configuration cannot replace the next campus location choices',async()=>{
   const f=await prepare(),profile=f.load('projects/crun/pages/my/profile_methods.js');
   const page=()=>({data:{},setData(value){Object.assign(this.data,value);}}),a=page(),b=page();

@@ -17,7 +17,10 @@ module.exports = {
 	CLIENT_CHECK_CONTENT: process.env.CONTENT_CHECK_DISABLED !== 'true', //前台图片文字是否校验
 	ADMIN_CHECK_CONTENT: process.env.CONTENT_CHECK_DISABLED !== 'true', //后台图片文字是否校验
 
+	// ### 内测开放校区
+	PUBLIC_CAMPUS_SCOPE: { schoolId: 'gxnu', campusId: 'yanshan' },
 	// ### 内测注册
+	PROFILE_PHONE_VERIFICATION_REQUIRED: true,
 	WECHAT_PHONE_LOGIN_ENABLED: process.env.WECHAT_PHONE_LOGIN_ENABLED === 'true', // 默认停用手机号识别，使用微信身份登录
 	ALLOW_MANUAL_REGISTRATION: process.env.ALLOW_MANUAL_REGISTRATION !== 'false', // 兼容已登录账号的手填联系电话策略；不允许表单直接建号
 

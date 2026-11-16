@@ -1,6 +1,6 @@
-<view wx:if="{{!isLoad && !loadError}}" class="profile-load-state">正在加载登录信息…</view>
-<view wx:if="{{loadError}}" class="profile-load-state"><view>{{loadError}}</view><button class="profile-save" bindtap="_loadDetail">重新加载</button></view>
-<view wx:if="{{isLoad}}" class="profile-page account-login-page{{phoneLoginEnabled ? '' : ' account-login-page--guest'}}">
+<view wx:if="{{loadError}}" class="profile-load-state"><view>{{loadError}}</view><button class="profile-save" bindtap="_loadLoginState">重新加载</button></view>
+<view wx:elif="{{!isLoad}}" class="profile-load-state">正在加载登录信息…</view>
+<view wx:else class="profile-page account-login-page{{phoneLoginEnabled ? '' : ' account-login-page--guest'}}">
   <block wx:if="{{!phoneLoginEnabled}}">
     <view class="login-brand">
       <view class="login-brand-mark"><text class="icon-cardboard"></text></view>

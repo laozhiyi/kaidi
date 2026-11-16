@@ -92,7 +92,8 @@ function isComplete(user) {
   return !!user && user.USER_PROFILE_COMPLETE !== false && !validationError({ name: user.USER_NAME,
     mobile: user.USER_MOBILE, pic: user.USER_PIC, forms: user.USER_FORMS });
 }
-function isPhoneLoginEnabled() { return config.WECHAT_PHONE_LOGIN_ENABLED === true; }
-function allowsManualRegistration() { return !isPhoneLoginEnabled() || config.ALLOW_MANUAL_REGISTRATION === true; }
+function requiresProfilePhoneVerification() { return config.PROFILE_PHONE_VERIFICATION_REQUIRED === true; }
+function isPhoneLoginEnabled() { return !requiresProfilePhoneVerification() && config.WECHAT_PHONE_LOGIN_ENABLED === true; }
+function allowsManualRegistration() { return !requiresProfilePhoneVerification() && (!isPhoneLoginEnabled() || config.ALLOW_MANUAL_REGISTRATION === true); }
 function isReady(user) { return !!user && (user.USER_MOBILE_VERIFIED === true || allowsManualRegistration()) && isComplete(user); }
-module.exports = { formValue, validationError, requiredForRegistration, textForAudit, isComplete, isReady, allowsManualRegistration, isPhoneLoginEnabled };
+module.exports = { formValue, validationError, requiredForRegistration, textForAudit, isComplete, isReady, requiresProfilePhoneVerification, allowsManualRegistration, isPhoneLoginEnabled };

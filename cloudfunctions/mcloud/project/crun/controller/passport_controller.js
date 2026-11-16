@@ -51,6 +51,11 @@ class PassportController extends BaseProjectController {
   return new PassportService().wechatLogin(this._userId, input);
  }
 
+ async verifyProfilePhone() {
+  const input = this.validateData({ code: 'must|string|min:1|max:200|name=微信手机号授权' });
+  return new PassportService().verifyProfilePhone(this._userId, input);
+ }
+
 	/** 激活客服邀请码（工作人员免学生注册） */
 	async redeemStaffInvite() {
 		const input = this.validateData({

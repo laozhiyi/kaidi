@@ -1,20 +1,39 @@
 <view class="profile-section profile-personal">
   <view class="profile-section-head"><view><view class="profile-section-title">联系资料</view><view class="profile-section-subtitle">发布或接单前完善，方便校园互助</view></view><view class="profile-section-tag">必填</view></view>
   <view class="profile-field-list">
-    <view class="profile-field profile-phone-field"><text class="profile-field-label">{{phoneLoginEnabled ? '手机号' : '联系电话'}}</text><input wx:if="{{!phoneLoginEnabled || allowManualRegistration && !phoneVerified}}" class="profile-field-input" type="number" value="{{formMobile}}" maxlength="11" placeholder="填写常用联系电话" bindinput="bindProfileMobileInput" disabled="{{phoneAuthorizing || saving || collectionSaving}}" /><view wx:else class="profile-phone-value">{{phoneVerified ? formMobile : '请授权微信手机号'}}</view><button wx:if="{{phoneLoginEnabled && canGetWechatPhone && (phoneVerified || !allowManualRegistration)}}" class="profile-phone-authorize" open-type="getPhoneNumber" bindtap="bindWechatPhoneTap" bindgetphonenumber="bindWechatPhone" loading="{{phoneAuthorizing}}" disabled="{{phoneAuthorizing || saving || collectionSaving}}">{{phoneVerified ? '更换' : '授权'}}</button></view>
+    <view class="profile-field profile-phone-field">
+      <text class="profile-field-label">{{phoneLoginEnabled ? '手机号' : '联系电话'}}</text>
+      <block wx:if="{{profilePhoneRequired}}">
+        <view class="profile-phone-value profile-phone-inline">
+          <text wx:if="{{formMobile}}" class="profile-phone-number">{{formMobile}}</text>
+          <view wx:if="{{phoneVerified}}" class="profile-phone-status profile-phone-verified">
+            <icon type="success_no_circle" size="10" color="#287a57" aria-label="已验证" />
+          </view>
+          <text wx:elif="{{formMobile}}" class="profile-phone-status profile-phone-pending">待验证</text>
+        </view>
+        <button wx:if="{{canGetWechatPhone}}" class="profile-phone-authorize {{phoneVerified ? 'profile-phone-change' : ''}}" aria-label="{{phoneVerified ? '更换手机号' : '获取微信手机号'}}" open-type="getPhoneNumber" bindtap="bindWechatPhoneTap" bindgetphonenumber="bindWechatPhone" loading="{{phoneAuthorizing}}" disabled="{{phoneAuthorizing || saving || collectionSaving || loggingOut || cancellingAccount}}">{{phoneVerified ? '更换' : '获取微信手机号'}}</button>
+        <text wx:else class="profile-phone-authorize">请更新微信后验证</text>
+      </block>
+      <block wx:else>
+        <input wx:if="{{!phoneLoginEnabled || allowManualRegistration && !phoneVerified}}" class="profile-field-input" type="number" value="{{formMobile}}" maxlength="11" placeholder="填写常用联系电话" bindinput="bindProfileMobileInput" disabled="{{phoneAuthorizing || saving || collectionSaving}}" />
+        <view wx:else class="profile-phone-value">{{phoneVerified ? formMobile : '请授权微信手机号'}}</view>
+        <button wx:if="{{phoneLoginEnabled && canGetWechatPhone && (phoneVerified || !allowManualRegistration)}}" class="profile-phone-authorize" open-type="getPhoneNumber" bindtap="bindWechatPhoneTap" bindgetphonenumber="bindWechatPhone" loading="{{phoneAuthorizing}}" disabled="{{phoneAuthorizing || saving || collectionSaving}}">{{phoneVerified ? '更换' : '授权'}}</button>
+      </block>
+    </view>
     <view class="profile-choice-field"><view class="profile-field-label">性别</view><view class="profile-choice-group"><view wx:for="{{genderOptions}}" wx:key="*this" class="profile-choice {{profileSex === item ? 'profile-choice-selected' : ''}}" data-value="{{item}}" bindtap="bindGenderTap"><text class="profile-choice-dot"></text>{{item}}</view></view></view>
     <view class="profile-field"><text class="profile-field-label">学院</text><input class="profile-field-input" value="{{profileCollege}}" maxlength="80" placeholder="请输入所在学院" bindinput="bindProfileFieldInput" data-field="profileCollege" /></view>
     <view class="profile-field"><text class="profile-field-label">专业</text><input class="profile-field-input" value="{{profileSub}}" maxlength="80" placeholder="请输入所学专业" bindinput="bindProfileFieldInput" data-field="profileSub" /></view>
-    <view class="profile-field"><text class="profile-field-label">学号</text><input class="profile-field-input" value="{{profileStudentId}}" maxlength="20" placeholder="请输入学号（6-20位字母或数字）" bindinput="bindProfileFieldInput" data-field="profileStudentId" /></view>
+    <view class="profile-field"><text class="profile-field-label">学号</text><input class="profile-field-input" value="{{profileStudentId}}" maxlength="20" placeholder="请输入学号（6-20位字母或数字）" bindinput="bindProfileFieldInput" data-field="profileStudentId" disabled="{{studentProofLocked}}" /></view>
     <view class="profile-card-field">
       <view class="profile-card-head"><text class="profile-field-label">学生证</text><text class="profile-card-required">必填，用于身份核验</text></view>
       <view class="profile-card-body">
-        <view wx:if="{{profileStudentCard.length}}" class="profile-card-preview"><image class="profile-card-image" src="{{profileStudentCard[0]}}" mode="aspectFill" bindtap="bindPreviewStudentCard" aria-label="预览学生证" /><view class="profile-card-delete" bindtap="bindDeleteStudentCard" role="button" aria-label="删除学生证图片"><text class="icon-close"></text></view></view>
+        <view wx:if="{{profileStudentCard.length}}" class="profile-card-preview"><image class="profile-card-image" src="{{profileStudentCard[0]}}" mode="aspectFill" bindtap="bindPreviewStudentCard" aria-label="预览学生证" /><view wx:if="{{!studentProofLocked}}" class="profile-card-delete" bindtap="bindDeleteStudentCard" role="button" aria-label="删除学生证图片"><text class="icon-close"></text></view></view>
         <view wx:else class="profile-card-add" bindtap="bindChooseStudentCard" role="button" aria-label="上传学生证"><text class="icon-add"></text><text class="profile-card-add-text">上传</text></view>
       </view>
       <view wx:if="{{!isEdit && !profileStudentCard.length}}" class="profile-required-hint">请上传学生证照片后再保存</view>
+      <view wx:if="{{studentProofLocked}}" class="profile-required-hint">已审核，如需更正请联系客服</view>
     </view>
-    <view class="profile-campus-control {{campus ? 'profile-campus-selected' : ''}}" bindtap="bindOpenCampusPicker" hover-class="profile-campus-pressed" role="button" aria-label="选择所在校区"><view><view class="profile-field-label">所在校区</view><view class="profile-campus-value">{{campus || '请选择所在校区'}}</view></view><view class="profile-campus-action">{{campus ? '更换' : '选择'}}<text class="icon-right"></text></view></view>
+    <view class="profile-campus-control {{campus ? 'profile-campus-selected' : ''}}" bindtap="bindOpenCampusPicker" hover-class="profile-campus-pressed" role="button" aria-label="{{profileCampusFixed ? '查看校区' : '选择所在校区'}}"><view><view class="profile-field-label">所在校区</view><view class="profile-campus-value">{{campus || '请选择所在校区'}}</view></view><view class="profile-campus-action">{{profileCampusFixed ? '查看校区' : campus ? '更换' : '选择'}}<text class="icon-right"></text></view></view>
   </view>
   <view wx:if="{{!campus}}" class="profile-required-hint">请选择所在校区后再保存</view>
   <view class="profile-disclaimer"><view class="profile-disclaimer-check {{profileDisclaimer ? 'profile-disclaimer-on' : ''}}" bindtap="bindDisclaimerTap" role="checkbox" aria-checked="{{profileDisclaimer}}" aria-label="同意免责声明"><view class="profile-disclaimer-box"><text wx:if="{{profileDisclaimer}}" class="icon-check"></text></view><text class="profile-disclaimer-text">我已阅读并同意</text></view><text class="profile-disclaimer-link" bindtap="bindViewDisclaimer">《免责声明》</text></view>
@@ -22,12 +41,15 @@
 <view wx:if="{{campusPickerVisible}}" class="profile-campus-overlay">
   <view class="profile-campus-mask" catchtap="bindCloseCampusPicker" catchtouchmove="bindProfileSheetTouchMove"></view>
   <view class="profile-campus-sheet">
-    <view class="profile-campus-sheet-head"><view><view class="profile-campus-sheet-title">选择所在校区</view><view class="profile-campus-sheet-desc">选择你常用的校区，发布任务时自动带入</view></view><button class="profile-campus-close" bindtap="bindCloseCampusPicker" aria-label="关闭校区选择"><text class="icon-close"></text></button></view>
-    <scroll-view class="profile-campus-options" scroll-y style="height:{{campuses.length > 4 ? 512 : campuses.length * 128}}rpx;">
-      <view wx:for="{{campuses}}" wx:key="*this" class="profile-campus-option {{campusDraft === item ? 'profile-campus-option-selected' : ''}}" data-value="{{item}}" bindtap="bindSelectCampus" hover-class="profile-campus-pressed" role="button" aria-label="{{item}}">
-        <view class="profile-campus-option-icon"><text class="icon-location"></text></view><view class="profile-campus-option-name">{{item}}</view><text wx:if="{{campus === item}}" class="profile-campus-current">当前</text><view class="profile-campus-radio"><text wx:if="{{campusDraft === item}}" class="icon-check"></text></view>
-      </view>
+    <view class="profile-campus-sheet-head"><view><view class="profile-campus-sheet-title">选择所在校区</view><view class="profile-campus-sheet-desc">{{profileCampusFixed ? '目前仅开放' + campus : '选择你常用的校区，发布任务时自动带入'}}</view></view><button class="profile-campus-close" bindtap="bindCloseCampusPicker" aria-label="关闭校区选择"><text class="icon-close"></text></button></view>
+    <scroll-view class="profile-campus-options" scroll-y style="height:{{campusOptions.length > 4 ? 512 : campusOptions.length * 128}}rpx;">
+      <button wx:for="{{campusOptions}}" wx:key="name" class="profile-campus-option {{campusDraft === item.name ? 'profile-campus-option-selected' : ''}}" data-value="{{item.name}}" bindtap="bindSelectCampus" hover-class="profile-campus-pressed" disabled="{{!item.selectable}}" aria-label="{{item.selectable ? item.name : item.name + '，暂未开放'}}">
+        <view class="profile-campus-option-icon"><text class="icon-location"></text></view><view class="profile-campus-option-name">{{item.name}}</view>
+        <text wx:if="{{!item.selectable}}" class="profile-campus-current">暂未开放</text>
+        <block wx:else><text wx:if="{{campus === item.name}}" class="profile-campus-current">当前</text><view class="profile-campus-radio"><text wx:if="{{campusDraft === item.name}}" class="icon-check"></text></view></block>
+      </button>
     </scroll-view>
-    <view class="profile-campus-sheet-actions"><button class="profile-campus-cancel" bindtap="bindCloseCampusPicker">取消</button><button class="profile-campus-confirm" bindtap="bindConfirmCampus" disabled="{{!campusDraft}}">确认选择</button></view>
+    <view wx:if="{{campusDirectoryLoading || campusDirectoryError}}" class="profile-campus-sheet-desc">{{campusDirectoryLoading ? '正在加载其他校区…' : '其他校区暂时无法加载，请关闭后重试'}}</view>
+    <view class="profile-campus-sheet-actions"><button class="profile-campus-confirm" bindtap="bindConfirmCampus" disabled="{{!campusDraft}}">确认选择</button></view>
   </view>
 </view>
