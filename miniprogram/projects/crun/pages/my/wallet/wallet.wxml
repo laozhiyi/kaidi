@@ -7,7 +7,7 @@
       <view class="mall-hero-link" bindtap="bindOpenLogs"><text>积分明细</text><text class="icon-right"></text></view>
     </view>
     <view class="mall-points-value">{{points}}</view>
-    <view class="mall-hero-tip">积分可兑换下方商品，兑换后在「已兑换」查看券码</view>
+    <view class="mall-hero-tip">兑换后在「已兑换」里出示券码，使用时点「确认核销」</view>
   </view>
 
   <view class="mall-tabs">
@@ -17,10 +17,10 @@
 
   <block wx:if="{{tab === 'shop'}}">
     <view wx:for="{{items}}" wx:key="id" class="mall-card {{item.disabled ? 'mall-card-disabled' : ''}}" data-id="{{item.id}}" bindtap="bindRedeemTap">
-      <view class="mall-card-icon"><text class="icon-ticket"></text></view>
+      <view class="mall-card-icon mall-icon-{{item.iconKey}}"><image wx:if="{{item.iconSrc}}" class="mall-icon-img" src="{{item.iconSrc}}" mode="aspectFit"></image><text wx:else class="icon-ticket"></text></view>
       <view class="mall-card-copy">
         <view class="mall-card-name">{{item.name}}</view>
-        <view class="mall-card-desc">兑换后到店出示券码使用</view>
+        <view class="mall-card-desc">{{item.hint || '兑换后出示券码使用'}}</view>
         <view wx:if="{{item.disabled}}" class="mall-progress">
           <view class="mall-progress-bar"><view class="mall-progress-fill" style="width: {{(item.cost - item.lack) / item.cost * 100}}%"></view></view>
           <text class="mall-card-lack">还差 {{item.lack}} 积分</text>
@@ -35,13 +35,17 @@
   </block>
 
   <block wx:else>
-    <view wx:for="{{vouchers}}" wx:key="id" class="mall-ticket">
+    <view wx:for="{{vouchers}}" wx:key="id" class="mall-ticket {{item.status === 'used' ? 'mall-ticket-used' : ''}}" data-id="{{item.id}}" bindtap="bindViewVoucher">
+      <view class="mall-ticket-icon mall-icon-{{item.iconKey}}"><image wx:if="{{item.iconSrc}}" class="mall-icon-img" src="{{item.iconSrc}}" mode="aspectFit"></image><text wx:else class="icon-ticket"></text></view>
       <view class="mall-ticket-main">
         <view class="mall-ticket-name">{{item.itemName}}</view>
+        <view class="mall-ticket-code">券码 {{item.code}}</view>
         <view class="mall-ticket-time">兑换于 {{item.at}}</view>
+        <view wx:if="{{item.status === 'used'}}" class="mall-ticket-time">使用于 {{item.usedAt}}</view>
       </view>
       <view class="mall-ticket-side">
-        <button class="mall-view-btn" data-id="{{item.id}}" bindtap="bindViewVoucher">查看</button>
+        <text wx:if="{{item.status === 'used'}}" class="mall-used-tag">已使用</text>
+        <button wx:else class="mall-view-btn" data-id="{{item.id}}" catchtap="bindViewVoucher">查看</button>
       </view>
     </view>
     <view wx:if="{{voucherLoaded && !vouchers.length}}" class="mall-empty"><text class="icon-ticket mall-empty-icon"></text><text>还没有兑换记录</text></view>
@@ -74,9 +78,13 @@
         <view class="mall-sheet-copy" bindtap="bindCopyCode"><text class="icon-copy"></text><text>复制券码</text></view>
       </view>
       <view class="mall-sheet-row"><text class="mall-sheet-key">兑换时间</text><text>{{voucher.at}}</text></view>
-      <view class="mall-sheet-row"><text class="mall-sheet-key">状态</text><text class="mall-status">{{voucher.statusText}}</text></view>
-      <view class="mall-sheet-hint">{{voucher.hint}}</view>
-      <button class="mall-sheet-close" bindtap="bindCloseVoucher">知道了</button>
+      <view class="mall-sheet-row"><text class="mall-sheet-key">状态</text><text class="mall-status {{voucher.status === 'used' ? 'mall-status-used' : ''}}">{{voucher.statusText}}</text></view>
+      <view wx:if="{{voucher.status === 'used'}}" class="mall-sheet-row"><text class="mall-sheet-key">使用时间</text><text>{{voucher.usedAt}}</text></view>
+      <view wx:if="{{voucher.status !== 'used'}}" class="mall-sheet-hint">{{voucher.hint}}</view>
+      <view class="mall-sheet-actions">
+        <button class="mall-sheet-close" bindtap="bindCloseVoucher">关闭</button>
+        <button wx:if="{{voucher.status !== 'used'}}" class="mall-sheet-use" disabled="{{using}}" bindtap="bindUseVoucher">{{using ? '核销中…' : '确认核销'}}</button>
+      </view>
     </view>
   </view>
 

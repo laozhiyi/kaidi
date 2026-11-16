@@ -8,13 +8,17 @@ const PAGE_SIZE = 20;
 const REASONS = { post_complete: '订单完成收货', invite_first_order: '邀请好友首单', redeem: '兑换商品' };
 const PENDING_KEY = 'crun-point-redeem-pending';
 const PENDING_TTL = 10 * 60 * 1000;
+// 商品图标只认本地图片，不使用服务端返回的路径。
+const ICONS = { print: '/projects/crun/images/mall/print.svg', sto: '/projects/crun/images/mall/sto.svg', official: '/projects/crun/images/mall/official.svg' };
+const iconOf = key => ICONS[key] ? { iconKey: key, iconSrc: ICONS[key] } : { iconKey: 'default', iconSrc: '' };
+const decorateVoucher = voucher => voucher ? { ...voucher, ...iconOf(voucher.icon) } : voucher;
 const newRequestId = () => 'point_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
 
 function decorate(items, points) {
   return (items || []).map(item => {
     const cost = Number(item.cost) || 0;
     const lack = Math.max(0, cost - points);
-    return { id: item.id, name: item.name, cost, disabled: lack > 0, lack };
+    return { id: item.id, name: item.name, cost, disabled: lack > 0, lack, icon: item.icon, hint: item.hint || '', ...iconOf(item.icon) };
   });
 }
 
@@ -23,7 +27,7 @@ Page({
     isLoad: false, loading: false, error: '', points: 0, tab: 'shop',
     items: [], vouchers: [], voucherPage: 0, voucherMore: false, voucherLoading: false, voucherLoaded: false,
     logs: [], page: 0, hasMore: false, logsVisible: false,
-    voucherVisible: false, voucher: null, redeeming: false
+    voucherVisible: false, voucher: null, redeeming: false, using: false
   },
   onLoad() {
     ProjectBiz.initPage(this);
@@ -76,7 +80,7 @@ Page({
       if (!this._visible) return;
       if (!result || !Array.isArray(result.list)) throw new Error('已兑换加载失败');
       this.setData({
-        vouchers: reset ? result.list : this.data.vouchers.concat(result.list),
+        vouchers: (reset ? [] : this.data.vouchers).concat(result.list.map(decorateVoucher)),
         voucherPage: page, voucherMore: !!result.hasMore, voucherLoaded: true
       });
     } catch (error) {
@@ -111,13 +115,14 @@ Page({
     wx.showLoading({ title: '兑换中', mask: true });
     try {
       const result = await cloudHelper.callCloudSumbit('point/redeem', { itemId: item.id, requestId: this._requestFor(item.id) }, { hint: false });
-      const voucher = result && result.data;
+      const voucher = decorateVoucher(result && result.data);
       if (!voucher || !voucher.code) throw Object.assign(new Error('兑换结果未确认'), { retryable: true });
       wx.removeStorageSync(PENDING_KEY);
       const points = Number(voucher.points) || 0;
-      this.setData({ points, items: decorate(this.data.items, points), voucher, voucherVisible: true });
+      // 兑换成功后切到「已兑换」并直接弹出这张券。
+      this.setData({ points, items: decorate(this.data.items, points), tab: 'done', voucher, voucherVisible: true });
       wx.hideLoading();
-      if (this.data.tab === 'done') this.loadVouchers(true);
+      this.loadVouchers(true);
     } catch (error) {
       wx.hideLoading();
       const definite = error && typeof error.code === 'number' && !error.retryable;
@@ -136,6 +141,33 @@ Page({
     if (voucher) this.setData({ voucher, voucherVisible: true });
   },
   bindCloseVoucher() { this.setData({ voucherVisible: false }); },
+  // 核销：本人当面点击，核销后不能撤销。
+  bindUseVoucher() {
+    const voucher = this.data.voucher;
+    if (!voucher || voucher.status === 'used' || this.data.using) return;
+    wx.showModal({
+      title: '确认核销', content: '核销后此券即视为已使用，不能撤销。请在使用时当面点击。', confirmText: '确认核销',
+      success: result => { if (result.confirm) this._useVoucher(voucher.id); }
+    });
+  },
+  async _useVoucher(id) {
+    if (this.data.using) return;
+    this.setData({ using: true });
+    try {
+      const result = await cloudHelper.callCloudSumbit('point/use', { id }, { hint: false });
+      const used = decorateVoucher(result && result.data);
+      if (!used || used.status !== 'used') throw new Error('核销结果未确认');
+      const vouchers = this.data.vouchers.map(entry => entry.id === id ? used : entry);
+      const patch = { vouchers };
+      if (this.data.voucher && this.data.voucher.id === id) patch.voucher = used;
+      this.setData(patch);
+      wx.showToast({ title: used.alreadyUsed ? '此券已核销过' : '已核销', icon: used.alreadyUsed ? 'none' : 'success' });
+    } catch (error) {
+      wx.showModal({ title: '核销失败', showCancel: false, content: (error && (error.msg || error.message)) || '网络不稳定，请稍后重试' });
+    } finally {
+      this.setData({ using: false });
+    }
+  },
   bindCopyCode() {
     const code = this.data.voucher && this.data.voucher.code;
     if (!code) return;

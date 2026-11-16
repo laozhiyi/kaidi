@@ -173,6 +173,7 @@ module.exports = {
 	'point/items': 'point_controller@items',
 	'point/redeem': 'point_controller@redeem',
 	'point/vouchers': 'point_controller@vouchers',
+	'point/use': 'point_controller@use',
 
 	// ========== 后台反馈管理 ==========
 	'admin/feedback_list': 'admin/admin_feedback_controller@getAdminFeedbackList',

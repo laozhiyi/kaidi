@@ -20,11 +20,15 @@ const REASON_TEXT = {
 };
 // 商品目录只存在云端：价格由服务端决定，客户端只能展示，不能改价。
 const CATALOG = Object.freeze([
- Object.freeze({ id: 'print_free', name: '免费打印券', cost: 200 })
+ Object.freeze({ id: 'print_free', name: '免费打印券', cost: 100, icon: 'print', hint: '到打印店出示后点「确认核销」' }),
+ Object.freeze({ id: 'sto_minus3', name: '立减3元券', cost: 500, icon: 'sto', hint: '寄申通快递时出示后点「确认核销」' }),
+ Object.freeze({ id: 'free_order', name: '免单特权', cost: 1000, icon: 'official', hint: '联系云速取客服使用，使用时点「确认核销」' })
 ]);
+const DEFAULT_HINT = '出示后点「确认核销」';
 const REQUEST_ID_RE = /^[a-zA-Z0-9_-]{16,100}$/;
 const VOUCHER_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 const REDEEM_LIMIT = { max: 5, windowMs: 60000 };
+const USE_LIMIT = { max: 10, windowMs: 60000 };
 // 后台调整积分：单次 ±1000 以内，每个管理员每小时最多 30 次（防误操作和账号被盗后批量刷分）。
 const GRANT_MAX = 1000;
 const GRANT_LIMIT = { max: 30, windowMs: 3600000 };
@@ -131,11 +135,15 @@ class PointService extends Base {
   return { points: Number(user.USER_POINTS) || 0, items: CATALOG.map(item => ({ ...item })) };
  }
  _voucherView(row) {
+  const item = CATALOG.find(entry => entry.id === row.itemId);
+  const usedAt = Number(row.usedAt) || 0;
   return {
    id: row._id, itemId: row.itemId || '', itemName: row.itemName || '', code: row.code || '',
+   icon: row.icon || (item && item.icon) || '',
    cost: Math.abs(Number(row.change) || 0), at: timeUtil.timestamp2Time(row.at, 'Y-M-D h:m'),
-   // 核销待定：目前所有券都是「未使用」，核销流程上线后再扩展状态。
-   status: 'unused', statusText: '未使用', hint: '到店出示券码使用'
+   status: usedAt > 0 ? 'used' : 'unused', statusText: usedAt > 0 ? '已使用' : '未使用',
+   usedAt: usedAt > 0 ? timeUtil.timestamp2Time(usedAt, 'Y-M-D h:m') : '',
+   hint: row.hint || (item && item.hint) || DEFAULT_HINT
   };
  }
  /**
@@ -169,7 +177,7 @@ class PointService extends Base {
    if (balance < item.cost) this.AppError('积分不足，还差 ' + (item.cost - balance) + ' 积分');
    const at = Date.now(), row = {
     _pid: pid, userId, change: -item.cost, reason: 'redeem', orderId: '', relatedUserId: '',
-    itemId: item.id, itemName: item.name, code: newVoucherCode(), at
+    itemId: item.id, itemName: item.name, icon: item.icon, hint: item.hint, code: newVoucherCode(), usedAt: 0, at
    };
    await store.set(tx, 'point_log', id, row);
    await store.set(tx, 'user', user._id, { ...user, USER_POINTS: balance - item.cost, USER_POINTS_TIME: at });
@@ -182,6 +190,27 @@ class PointService extends Base {
   if (!user) this.AppError('请先完成注册并登录');
   const result = await new Operations().list('point_log', { userId, reason: 'redeem' }, Number(page), 'at', Number(size), { direction: 'desc' });
   return { list: result.list.map(row => this._voucherView(row)), page: result.page, size: result.size, total: result.total, hasMore: result.hasMore };
+ }
+ /**
+  * 核销：用户本人当面点「确认核销」，券标记为已使用，不改积分。
+  * 别人的券、不存在的 id、非兑换记录统一报「券不存在」，不暴露券归属。
+  * 重复核销返回 alreadyUsed，保留第一次的核销时间。事务内只按 _id 读写。
+  */
+ async useVoucher(userId, { id } = {}) {
+  if (typeof id !== 'string' || id.length < 1 || id.length > 200) this.AppError('券不存在');
+  const found = userId && await UserModel.getOne({ USER_MINI_OPENID: userId });
+  if (!found || found.USER_STATUS !== 1) this.AppError('请先完成注册并登录');
+  const pid = this.getProjectId();
+  await store.limit(pid, userId, 'point_use', USE_LIMIT.max, USE_LIMIT.windowMs);
+  return store.transaction(async tx => {
+   const row = await store.get(tx, 'point_log', id);
+   if (!row || row._pid !== pid || row.userId !== userId || row.reason !== 'redeem') this.AppError('券不存在');
+   if (Number(row.usedAt) > 0) return { ...this._voucherView({ ...row, _id: id }), alreadyUsed: true };
+   const next = { ...row, usedAt: Date.now() };
+   delete next._id;
+   await store.set(tx, 'point_log', id, next);
+   return { ...this._voucherView({ ...next, _id: id }), alreadyUsed: false };
+  });
  }
  /**
   * 后台调整积分（仅初始管理员 / 超级管理员，权限在控制器校验）。

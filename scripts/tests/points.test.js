@@ -190,55 +190,61 @@ const redeemSvc = f => new (f.load('point_service.js'))();
 const setPoints = (f, userId, points) => { f.table('user').get(userId).USER_POINTS = points; };
 const redeemRows = (f, userId) => logs(f, userId).filter(row => row.reason === 'redeem');
 
-test('兑换成功：扣 200 分、生成 8 位券码、写一条负数积分日志', async () => {
+test('兑换成功：扣 100 分、生成 8 位券码、写一条负数积分日志', async () => {
   const f = fixture(), service = redeemSvc(f);
   setPoints(f, 'poster', 1968);
   const result = await service.redeem('poster', { itemId: 'print_free', requestId: f.req('redeem-a') });
-  assert.equal(balance(f, 'poster'), 1768);
-  assert.equal(result.points, 1768);
+  assert.equal(balance(f, 'poster'), 1868);
+  assert.equal(result.points, 1868);
   assert.match(result.code, /^[A-Z0-9]{8}$/);
   assert.equal(result.statusText, '未使用');
-  assert.equal(result.hint, '到店出示券码使用');
+  assert.equal(result.hint, '到打印店出示后点「确认核销」');
+  assert.equal(result.icon, 'print');
+  assert.equal(result.usedAt, '');
   const rows = redeemRows(f, 'poster');
   assert.equal(rows.length, 1);
   assert.deepEqual({ change: rows[0].change, reason: rows[0].reason, itemId: rows[0].itemId, itemName: rows[0].itemName, code: rows[0].code },
-    { change: -200, reason: 'redeem', itemId: 'print_free', itemName: '免费打印券', code: result.code });
+    { change: -100, reason: 'redeem', itemId: 'print_free', itemName: '免费打印券', code: result.code });
   assert.equal(rows[0]._id, f.store.schoolKey('crun', 'point', 'redeem', f.req('redeem-a'), 'poster'));
 });
 
 test('积分不足时拒绝，余额与日志都不变；商品必须存在，价格只认云端目录', async () => {
   const f = fixture(), service = redeemSvc(f);
-  setPoints(f, 'poster', 199);
+  setPoints(f, 'poster', 99);
   await assert.rejects(() => service.redeem('poster', { itemId: 'print_free', requestId: f.req('poor') }), /积分不足，还差 1 积分/);
-  assert.equal(balance(f, 'poster'), 199);
+  assert.equal(balance(f, 'poster'), 99);
   assert.equal(redeemRows(f, 'poster').length, 0);
   await assert.rejects(() => service.redeem('poster', { itemId: 'nope', cost: 1, requestId: f.req('nope') }), /商品不存在/);
   await assert.rejects(() => service.redeem('poster', { itemId: 'print_free', requestId: 'short' }), /请求标识/);
-  assert.equal(JSON.stringify((await service.items('poster')).items), JSON.stringify([{ id: 'print_free', name: '免费打印券', cost: 200 }]));
+  assert.deepEqual(JSON.parse(JSON.stringify((await service.items('poster')).items.map(({ id, name, cost, icon }) => ({ id, name, cost, icon })))), [
+    { id: 'print_free', name: '免费打印券', cost: 100, icon: 'print' },
+    { id: 'sto_minus3', name: '立减3元券', cost: 500, icon: 'sto' },
+    { id: 'free_order', name: '免单特权', cost: 1000, icon: 'official' }
+  ]);
   await assert.rejects(() => service.redeem('ghost', { itemId: 'print_free', requestId: f.req('ghost') }), /注册/);
 });
 
 test('同一个 requestId 重复提交只扣一次分，返回同一张券', async () => {
   const f = fixture(), service = redeemSvc(f);
-  setPoints(f, 'poster', 500);
+  setPoints(f, 'poster', 250);
   const input = { itemId: 'print_free', requestId: f.req('same') };
   const first = await service.redeem('poster', input);
   const second = await service.redeem('poster', input);
   assert.equal(second.code, first.code);
   assert.equal(second.alreadyRedeemed, true);
-  assert.equal(second.points, 300);
-  assert.equal(balance(f, 'poster'), 300);
+  assert.equal(second.points, 150);
+  assert.equal(balance(f, 'poster'), 150);
   assert.equal(redeemRows(f, 'poster').length, 1);
   // 同一时刻并发提交同一个请求也只成功一次。
   const [a, b] = await Promise.all([1, 2].map(() => service.redeem('poster', { itemId: 'print_free', requestId: f.req('parallel') })));
   assert.equal(a.code, b.code);
-  assert.equal(balance(f, 'poster'), 100);
+  assert.equal(balance(f, 'poster'), 50);
   assert.equal(redeemRows(f, 'poster').length, 2);
 });
 
 test('不同请求并发兑换：余额只够一张时只成功一张，余额不会变负', async () => {
   const f = fixture(), service = redeemSvc(f);
-  setPoints(f, 'poster', 200);
+  setPoints(f, 'poster', 100);
   const results = await Promise.allSettled([1, 2, 3].map(i => service.redeem('poster', { itemId: 'print_free', requestId: f.req('race-' + i) })));
   assert.equal(results.filter(item => item.status === 'fulfilled').length, 1);
   assert.equal(results.filter(item => item.status === 'rejected').length, 2);
@@ -258,7 +264,7 @@ test('兑换对新请求限流、重放不占额度；限流触发时不扣分',
   assert.deepEqual(limited[0].slice(1), ['poster', 'point_redeem', 5, 60000]);
   f.store.limit = async () => { throw new Error('操作过于频繁，请稍后再试'); };
   await assert.rejects(() => service.redeem('poster', { itemId: 'print_free', requestId: f.req('limit-2') }), /频繁/);
-  assert.equal(balance(f, 'poster'), 200);
+  assert.equal(balance(f, 'poster'), 300);
 });
 
 test('point/vouchers 只返回本人的券，分页，且不接受客户端 userId', async () => {
@@ -283,15 +289,15 @@ test('point/vouchers 只返回本人的券，分页，且不接受客户端 user
   for (const route of ['point/items', 'point/redeem', 'point/vouchers']) assert.ok(routes.includes("'" + route + "'"), route);
 });
 
-test('积分明细里能看到兑换扣分：兑换免费打印券 -200', async () => {
+test('积分明细里能看到兑换扣分：兑换免费打印券 -100', async () => {
   const f = fixture(), service = redeemSvc(f);
   setPoints(f, 'poster', 0);
   await f.store.transaction(tx => service._award(tx, { userId: 'poster', change: 300, reason: 'invite_first_order', orderId: 'x', relatedUserId: 'other' }));
   await service.redeem('poster', { itemId: 'print_free', requestId: f.req('detail') });
   const mine = await service.my('poster');
-  assert.equal(mine.points, 100);
+  assert.equal(mine.points, 200);
   const row = mine.list.find(item => item.reason === 'redeem');
-  assert.equal(row.change, -200);
+  assert.equal(row.change, -100);
   assert.equal(row.reasonText, '兑换免费打印券');
   assert.ok(mine.list.some(item => item.change === 300));
 });
@@ -358,7 +364,7 @@ test('超管赠送积分：写审计日志、加余额，同一请求重复提�
   assert.deepEqual({ change: rows[0].change, reason: rows[0].reason, adminId: rows[0].adminId, note: rows[0].note }, { change: 500, reason: 'admin_grant', adminId: 'admin', note: '内测验证兑换' });
   // 赠送后能直接兑换，明细显示「平台赠送」。
   await service.redeem('poster', { itemId: 'print_free', requestId: f.req('redeem-after-grant') });
-  assert.equal(balance(f, 'poster'), 300);
+  assert.equal(balance(f, 'poster'), 400);
   const mine = await service.my('poster');
   assert.ok(mine.list.some(row => row.reasonText === '平台赠送' && row.change === 500));
   await assert.rejects(() => service.adminGrant(admin, { ...input, amount: 600 }), /相同请求标识/);
@@ -397,4 +403,48 @@ test('调整积分接口只给初始管理员和超管：控制器校验角色�
   assert.equal(roles.operatorRole({ ADMIN_ROLE: 'admin' }), 'admin');
   assert.equal(roles.operatorRole({ ADMIN_ROLE: 'service' }), 'service');
   assert.equal(roles.operatorRole({ ADMIN_ROLE: 'super' }), 'super');
+});
+
+// ---- 核销：本人当面确认，记录使用时间 ----
+test('核销：未使用 → 已使用并记录使用时间；重复核销返回 alreadyUsed 且保留第一次时间；不改余额', async () => {
+  const f = fixture(), service = redeemSvc(f);
+  setPoints(f, 'poster', 1600);
+  const sto = await service.redeem('poster', { itemId: 'sto_minus3', requestId: f.req('use-sto') });
+  const free = await service.redeem('poster', { itemId: 'free_order', requestId: f.req('use-free') });
+  assert.deepEqual([sto.icon, free.icon, sto.status, sto.usedAt], ['sto', 'official', 'unused', '']);
+  assert.equal(balance(f, 'poster'), 100);
+  const used = await service.useVoucher('poster', { id: sto.id });
+  assert.deepEqual([used.status, used.statusText, used.alreadyUsed], ['used', '已使用', false]);
+  assert.ok(used.usedAt, '核销后返回使用时间');
+  const firstAt = redeemRows(f, 'poster').find(row => row.itemId === 'sto_minus3').usedAt;
+  assert.ok(firstAt > 0);
+  const again = await service.useVoucher('poster', { id: sto.id });
+  assert.equal(again.alreadyUsed, true);
+  assert.equal(redeemRows(f, 'poster').find(row => row.itemId === 'sto_minus3').usedAt, firstAt);
+  assert.equal(balance(f, 'poster'), 100);
+  // 已兑换列表里能看到使用时间，另一张仍是未使用。
+  const list = (await service.vouchers('poster')).list;
+  const stoView = list.find(item => item.id === sto.id), freeView = list.find(item => item.id === free.id);
+  assert.deepEqual([stoView.status, stoView.usedAt], ['used', used.usedAt]);
+  assert.deepEqual([freeView.status, freeView.usedAt], ['unused', '']);
+});
+
+test('核销：别人的券、不存在的券、非兑换记录都报「券不存在」，且限流', async () => {
+  const f = fixture(), limited = [];
+  const service = redeemSvc(f);
+  setPoints(f, 'poster', 100); setPoints(f, 'other', 100);
+  const mine = await service.redeem('poster', { itemId: 'print_free', requestId: f.req('own') });
+  await f.store.transaction(tx => service._award(tx, { userId: 'other', change: 100, reason: 'post_complete', orderId: 'o9' }));
+  const awardId = logs(f, 'other').find(row => row.reason === 'post_complete')._id;
+  await assert.rejects(() => service.useVoucher('other', { id: mine.id }), /券不存在/);
+  await assert.rejects(() => service.useVoucher('poster', { id: 'missing' }), /券不存在/);
+  await assert.rejects(() => service.useVoucher('other', { id: awardId }), /券不存在/);
+  await assert.rejects(() => service.useVoucher('poster', { id: '' }), /券不存在/);
+  await assert.rejects(() => service.useVoucher('ghost', { id: mine.id }), /注册/);
+  assert.equal(redeemRows(f, 'poster')[0].usedAt, 0);
+  f.store.limit = async (...args) => { limited.push(args); };
+  await service.useVoucher('poster', { id: mine.id });
+  assert.deepEqual(limited[0].slice(1), ['poster', 'point_use', 10, 60000]);
+  const routes = fs.readFileSync(path.resolve(__dirname, '../../cloudfunctions/mcloud/project/crun/public/route.js'), 'utf8');
+  assert.ok(routes.includes("'point/use': 'point_controller@use'"));
 });

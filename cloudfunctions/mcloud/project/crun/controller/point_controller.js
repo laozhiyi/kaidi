@@ -44,6 +44,16 @@ class PointController extends BaseProjectController {
 		let input = this.validateData(rules);
 		return await new PointService().vouchers(this._userId, input);
 	}
+
+	/** 核销：本人当面确认，券标记为已使用 */
+	async use() {
+		let rules = {
+			id: 'must|string|min:1|max:200|name=券',
+		};
+
+		let input = this.validateData(rules);
+		return await new PointService().useVoucher(this._userId, input);
+	}
 }
 
 module.exports = PointController;

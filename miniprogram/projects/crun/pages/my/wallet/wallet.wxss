@@ -77,6 +77,26 @@
 .mall-sheet-hint { margin: 16rpx 0 24rpx; color: #7b8ca3; font-size: 24rpx; }
 .mall-sheet-close { background: #e8f1fc; color: #397bc8; font-size: 28rpx; border-radius: 14rpx; }
 .mall-sheet-close::after { border: 0; }
+.mall-status-used { background: #eef1f5; color: #8b9aae; }
+.mall-sheet-actions { display: flex; gap: 20rpx; margin-top: 8rpx; }
+.mall-sheet-actions .mall-sheet-close { flex: 1; margin: 0; }
+.mall-sheet-use { flex: 1.4; margin: 0; background: linear-gradient(135deg, #ff9a52, #ff6f3c); color: #fff; font-size: 28rpx; font-weight: 600; border-radius: 14rpx; }
+.mall-sheet-use::after { border: 0; }
+.mall-sheet-use[disabled] { background: #f3c3a6 !important; color: #fff !important; }
+
+/* 商品与券的图标底色 */
+.mall-icon-img { width: 64%; height: 64%; }
+.mall-icon-print { background: linear-gradient(135deg, #5aa2f0, #2f6fc2) !important; box-shadow: 0 8rpx 18rpx rgba(47, 111, 194, .28) !important; }
+.mall-icon-sto { background: linear-gradient(135deg, #ffb35c, #ff7a3a) !important; }
+.mall-icon-official { background: linear-gradient(135deg, #7b8cff, #4b5bd6) !important; box-shadow: 0 8rpx 18rpx rgba(75, 91, 214, .28) !important; }
+.mall-card-disabled .mall-card-icon { opacity: .55; }
+
+/* 已兑换券：图标 + 券码；已使用整张变灰 */
+.mall-ticket-icon { flex-shrink: 0; align-self: center; display: flex; align-items: center; justify-content: center; width: 84rpx; height: 84rpx; margin-left: 34rpx; border-radius: 20rpx; background: linear-gradient(135deg, #ffb35c, #ff7f45); color: #fff; font-size: 42rpx; }
+.mall-ticket-icon + .mall-ticket-main { padding-left: 22rpx; }
+.mall-ticket-code { margin-top: 6rpx; color: #5c6d85; font-size: 23rpx; letter-spacing: 1rpx; }
+.mall-used-tag { padding: 6rpx 20rpx; border-radius: 999rpx; background: #eef1f5; color: #9aa7b8; font-size: 23rpx; }
+.mall-ticket-used { filter: grayscale(1); opacity: .62; }
 .mall-log-scroll { height: 760rpx; }
 .mall-log-item { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding: 20rpx 0; border-top: 1rpx solid #f1f4fa; }
 .mall-log-copy { flex: 1; min-width: 0; }
