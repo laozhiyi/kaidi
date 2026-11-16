@@ -1,7 +1,9 @@
 const cloudHelper = require('../../../helper/cloud_helper.js');
+const Passport = require('../../../comm/biz/passport_biz.js');
 const CACHE_KEY = 'crun-pending-invite';
 const MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 let pendingRequest = null;
+let pendingRequestCode = '';
 
 function normalize(code) { return String(code || '').trim().toUpperCase(); }
 /**
@@ -37,13 +39,24 @@ function getPendingCode() {
 function acceptPending(code = getPendingCode()) {
   code = normalize(code);
   if (!code) return Promise.resolve(null);
-  if (pendingRequest) return pendingRequest;
+  if (pendingRequest && pendingRequestCode === code) return pendingRequest;
   capture(code);
-  pendingRequest = cloudHelper.callCloudData('invite/accept', { code }, { hint: false }).then(result => {
+  pendingRequestCode = code;
+  const request = pendingRequest = cloudHelper.callCloudData('invite/accept', { code }, { hint: false }).then(result => {
     if (!result || typeof result.accepted !== 'boolean') throw new Error('邀请信息暂未同步');
     if (getPendingCode() === code) wx.removeStorageSync(CACHE_KEY);
     return result;
-  }).finally(() => { pendingRequest = null; });
-  return pendingRequest;
+  }).finally(() => { if (pendingRequest === request) pendingRequest = null; });
+  return request;
 }
-module.exports = { capture, getPendingCode, acceptPending, normalize, parseScene };
+function clear() { wx.removeStorageSync(CACHE_KEY); }
+/**
+ * 落地处理（app.js 在每次进入小程序时调用一次，页面里不需要再加）：
+ * 未注册 / 未登录 -> 什么都不做，保留暂存，注册页自动预填；
+ * 已注册 -> 调一次绑定，服务端判定已绑定 / 码无效都会给出明确结果，随后清掉暂存；网络失败则保留，下次再试。
+ */
+function settle() {
+  if (!getPendingCode() || !Passport.isLogin()) return Promise.resolve(null);
+  return acceptPending().catch(() => null);
+}
+module.exports = { capture, getPendingCode, acceptPending, normalize, parseScene, clear, settle };

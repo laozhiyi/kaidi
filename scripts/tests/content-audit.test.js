@@ -265,7 +265,7 @@ for (const [section, value] of [['service', { enabled: true, openHour: 9, closeH
     for (const [key, expected] of Object.entries(value)) assert.equal(f.configRow().value[key], expected);
     assert.equal(f.table('operation_audit').size, 1);
     const other = await tenant.run(B, () => new (f.service('operation_config_service'))().getConfig());
-    assert.equal(other.smallPrice, 1.5);
+    assert.equal(other.smallPrice, 2);
   });
 }
 

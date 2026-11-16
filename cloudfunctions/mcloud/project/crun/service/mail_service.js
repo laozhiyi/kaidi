@@ -263,6 +263,10 @@ class MailService extends Base {
     await this._quota(tx,mail.MAIL_USER_ID,'poster',id,false,config.maxOpenOrders);
     if (oldRider) await this._quota(tx,oldRider,'rider',id,false,config.maxActiveOrders);
    }
+   // 发单人确认收货：与订单状态写在同一个事务里，记发单人 +100 与邀请首单 +300。
+   if (action === 'confirm' && mail.MAIL_STATUS === 9 && state !== 9) {
+    await new (require('./point_service.js'))().awardOrderCompleted(tx, mail, now);
+   }
    await this._record(tx,mail,actor,action,input.requestId,note,store.key(input),input._sourceFingerprint || '',message);
    return {id,statusDesc:this.getStatusDesc(mail)};
   });

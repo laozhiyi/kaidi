@@ -10,12 +10,13 @@ const crypto = require('crypto');
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function newCode() { return Array.from(crypto.randomBytes(6), value => CODE_CHARS[value % CODE_CHARS.length]).join(''); }
 
-// 扫码落地页：首页接收 scene 后把邀请码存进本地，注册时自动带上。
+// 扫码落地页：app.js 接收 scene 后把邀请码存进本地，注册时自动带上。
 const QR_PAGE = 'projects/crun/pages/default/index/default_index';
 const QR_MAX_AGE = 86400;
-// 线上还没有这一版时先给体验版码；体验版码只沿用 1 小时，之后重试正式版，
-// 避免正式发布后还在对外发只能体验成员打开的码。
-const QR_FALLBACK_TTL = 60 * 60 * 1000;
+// 小程序码版本：develop 开发版 / trial 体验版 / release 正式版。
+// 默认 trial（内测期）；正式上线前把云函数环境变量 INVITE_QR_ENV 设为 release，
+// 或改 config/config.js 的 INVITE_QR_ENV。缓存按版本区分，切换后会自动重新生成。
+const QR_ENVS = ['develop', 'trial', 'release'];
 const QR_ERROR_TEXT = {
   41030: '小程序码需要正式版页面，当前还没有线上版本，可先分享给好友',
   48001: '小程序码接口未开通云调用权限，请联系管理员',
@@ -71,6 +72,19 @@ class InviteService extends Base {
     }
     this.AppError('邀请码生成失败，请重试');
   }
+  /**
+   * 资料页用：我自己的邀请码（仅审核通过的账号才有）+ 我已绑定的邀请人的邀请码。
+   * 已绑定的人资料页只读展示，不能再改。
+   */
+  async getMyInviteInfo(userId) {
+    const user = await this._user(userId, true);
+    const pid = this.getProjectId();
+    const accepted = await store.get(store.database(), 'invite', store.scopeKey(pid, 'invite-accept', userId));
+    const legacy = accepted ? null : (await store.database().collection(store.collection('invite')).where({ _pid: pid, INV_ACCEPT_USER_ID: userId }).limit(1).get()).data[0];
+    const bound = accepted && accepted.INV_ACCEPT_USER_ID === userId ? accepted : legacy;
+    const code = user.USER_STATUS === 1 ? (await this.getOrCreateMyInviteCode(userId)).code : '';
+    return { code, bound: !!bound, boundCode: bound && bound.INV_CODE || '' };
+  }
   async acceptInvite(userId, inputCode) {
     const user = await this._user(userId, true);
     const code = String(inputCode || '').trim().toUpperCase();
@@ -85,9 +99,14 @@ class InviteService extends Base {
     const legacy = await store.database().collection(store.collection('invite')).where({ _pid: pid, INV_ACCEPT_USER_ID: userId }).limit(1).get();
     if (legacy.data.length) return { accepted: true, alreadyAccepted: true, inviter: legacy.data[0].INV_USER_ID };
     const id = store.scopeKey(pid, 'invite-accept', userId);
+    // 防刷：A 已经是被 B 邀请的，B 就不能再用 A 的码，否则两人互邀各拿两份首单奖励。
+    const reverseId = store.scopeKey(pid, 'invite-accept', invite.INV_USER_ID);
+    const mutual = row => !!row && row.INV_ACCEPT_USER_ID === invite.INV_USER_ID && row.INV_USER_ID === userId;
+    if (mutual(await store.get(store.database(), 'invite', reverseId))) return { accepted: false, reason: '不能和邀请你的好友互相邀请' };
     return store.transaction(async tx => {
       const old = await store.get(tx, 'invite', id);
       if (old && old.INV_ACCEPT_USER_ID === userId) return { accepted: true, alreadyAccepted: true, inviter: old.INV_USER_ID };
+      if (mutual(await store.get(tx, 'invite', reverseId))) return { accepted: false, reason: '不能和邀请你的好友互相邀请' };
       const current = await store.get(tx, 'user', user._id);
       if (!current || current._pid !== pid || current.USER_MINI_OPENID !== userId || current.USER_STATUS === 9) this.AppError('账号不可用');
       const source = await store.get(tx, 'invite', invite._id);
@@ -129,22 +148,20 @@ class InviteService extends Base {
    * 专属小程序码：scene 直接放 6 位邀请码，扫码进入首页即静默绑定。
    * 生成结果按「码 + 版本」缓存在邀请码文档上，同一用户只生成一次。
    */
+  _qrEnv() {
+    return QR_ENVS.includes(config.INVITE_QR_ENV) ? config.INVITE_QR_ENV : 'trial';
+  }
   async getMyInviteQr(userId) {
     const { code } = await this.getOrCreateMyInviteCode(userId);
     const pid = this.getProjectId();
     const id = store.scopeKey(pid, 'invite-code', userId);
     const row = await store.get(store.database(), 'invite', id);
-    const preferred = config.INVITE_QR_ENV === 'trial' ? 'trial' : 'release';
-    const cachedEnv = row && row.INV_QR_ENV || '';
-    const cachedUsable = !!(row && row.INV_QR_FILE && row.INV_QR_CODE === code
-      && (cachedEnv === preferred || Date.now() - Number(row.INV_QR_TIME || 0) < QR_FALLBACK_TTL));
-    let fileID = cachedUsable ? row.INV_QR_FILE : '';
-    let envVersion = cachedUsable ? cachedEnv : preferred;
+    const envVersion = this._qrEnv();
+    // 缓存命中：同一个码、同一个小程序版本只生成一次，之后只换临时链接。
+    let fileID = row && row.INV_QR_FILE && row.INV_QR_CODE === code && row.INV_QR_ENV === envVersion ? row.INV_QR_FILE : '';
     try {
       if (!fileID) {
-        const generated = await this._genInviteQr(pid, code, preferred);
-        fileID = generated.fileID;
-        envVersion = generated.envVersion;
+        fileID = (await this._genInviteQr(pid, code, envVersion)).fileID;
         if (row) await store.database().collection(store.collection('invite')).doc(id).update({ data: {
           INV_QR_FILE: fileID, INV_QR_CODE: code, INV_QR_ENV: envVersion, INV_QR_TIME: Date.now()
         } });
@@ -160,35 +177,64 @@ class InviteService extends Base {
       return { code, fileID: '', url: '', envVersion, error: qrErrorText(error) };
     }
   }
-  async _genInviteQr(pid, code, preferred) {
+  async _genInviteQr(pid, code, envVersion) {
     const cloud = cloudBase.getCloud();
-    const request = async envVersion => {
-      const result = await cloud.openapi.wxacode.getUnlimited({
-        scene: code, page: QR_PAGE, width: 430, checkPath: false, envVersion
-      });
-      if (!result || !result.buffer) throw new AppError('小程序码生成失败，请稍后重试');
-      return result.buffer;
-    };
-    let buffer;
-    let envVersion = preferred;
-    try {
-      buffer = await request(preferred);
-    } catch (error) {
-      // 线上还没发布该页面时会报 41030/85096；退到体验版，内测阶段也能扫码验证。
-      if (preferred !== 'release' || ![41030, 85096].includes(wxErrCode(error))) throw error;
-      envVersion = 'trial';
-      buffer = await request('trial');
-    }
-    const upload = await cloud.uploadFile({ cloudPath: 'public/invite/' + pid + '/' + code + '.png', fileContent: buffer });
+    // wx-server-sdk 的参数是驼峰：checkPath 即接口文档里的 check_path，envVersion 即 env_version。
+    // 还没上线，页面不在线上版本里，所以必须 checkPath:false。
+    const result = await cloud.openapi.wxacode.getUnlimited({
+      scene: code, page: QR_PAGE, width: 430, checkPath: false, envVersion
+    });
+    if (!result || !result.buffer) throw new AppError('小程序码生成失败，请稍后重试');
+    const buffer = result.buffer;
+    const upload = await cloud.uploadFile({ cloudPath: 'public/invite/' + pid + '/' + code + '-' + envVersion + '.png', fileContent: buffer });
     if (!upload || !upload.fileID) throw new AppError('小程序码保存失败，请稍后重试');
     return { fileID: upload.fileID, envVersion };
+  }
+  /**
+   * 受邀好友「已使用」= 对方至少下过一单（状态不限）。
+   * 按邮件集合反查，避免在发单链路里额外写标记；一次最多查 10 个好友。
+   */
+  async _usedIds(userIds) {
+    const ids = [...new Set((userIds || []).filter(Boolean))], used = new Set();
+    if (!ids.length) return used;
+    const db = store.database();
+    for (let i = 0; i < ids.length; i += 10) {
+      const rows = await db.collection(store.collection('mail'))
+        .where({ MAIL_USER_ID: db.command.in(ids.slice(i, i + 10)) })
+        .field({ MAIL_USER_ID: true }).limit(1000).get();
+      for (const row of rows.data || []) used.add(row.MAIL_USER_ID);
+    }
+    return used;
+  }
+  // 我的受邀记录：只含真正绑定过好友的行，按接受时间从新到旧分页读取。
+  async _acceptedRows(userId) {
+    const db = store.database(), rows = [];
+    for (let page = 0; page < 10; page++) {
+      const batch = await db.collection(store.collection('invite'))
+        .where({ INV_USER_ID: userId, INV_ACCEPT_USER_ID: db.command.neq('') })
+        .field({ INV_ACCEPT_USER_ID: true, INV_STATUS: true, INV_REWARD_STATUS: true })
+        .orderBy('INV_ADD_TIME', 'desc').skip(page * 500).limit(500).get();
+      rows.push(...(batch.data || []));
+      if ((batch.data || []).length < 500) break;
+    }
+    return rows;
+  }
+  // 好友状态：未通过 / 待审核 / 未使用 / 已使用 / 已得奖励
+  _inviteState(invite, used) {
+    const status = Number(invite.INV_STATUS);
+    if (Number(invite.INV_REWARD_STATUS) === 1) return { state: 'rewarded', stateText: '已得奖励' };
+    if (used) return { state: 'used', stateText: '已使用' };
+    if (status === 2) return { state: 'rejected', stateText: '未通过' };
+    if (status === 1) return { state: 'unused', stateText: '未使用' };
+    return { state: 'pending', stateText: '待审核' };
   }
   async getMyInviteList(userId, { page = 1, size = 20 } = {}) {
     await this._user(userId);
     const result = await new Operations().list('invite', {
       INV_USER_ID: userId, INV_ACCEPT_USER_ID: store.database().command.neq('')
     }, page, 'INV_ADD_TIME', size);
-    result.list = result.list.map(item => ({ ...item,
+    const used = await this._usedIds(result.list.map(item => item.INV_ACCEPT_USER_ID));
+    result.list = result.list.map(item => ({ ...item, ...this._inviteState(item, used.has(item.INV_ACCEPT_USER_ID)),
       INV_ADD_TIME: timeUtil.timestamp2Time(item.INV_ADD_TIME, 'Y-M-D h:m'),
       INV_ACCEPT_TIME: item.INV_ACCEPT_TIME ? timeUtil.timestamp2Time(item.INV_ACCEPT_TIME, 'Y-M-D h:m') : ''
     }));
@@ -196,11 +242,18 @@ class InviteService extends Base {
   }
   async getMyInviteStat(userId) {
     await this._user(userId);
-    const db = store.database();
-    const where = { _pid: this.getProjectId(), INV_USER_ID: userId, INV_ACCEPT_USER_ID: db.command.neq('') };
-    const count = async extra => (await db.collection(store.collection('invite')).where({ ...where, ...extra }).count()).total;
-    const [total, accepted, reward, pending] = await Promise.all([count({}), count({ INV_STATUS: 1 }), count({ INV_REWARD_STATUS: 1 }), count({ INV_STATUS: 0 })]);
-    return { total, accepted, reward, pending };
+    const rows = await this._acceptedRows(userId);
+    const accepted = rows.filter(item => Number(item.INV_STATUS) === 1);
+    const used = await this._usedIds(accepted.map(item => item.INV_ACCEPT_USER_ID));
+    return {
+      total: rows.length,
+      accepted: accepted.length,
+      // 已使用：绑定成功且至少下过一单的好友数。
+      used: used.size,
+      // 已得奖励：已完成首单并发放过积分的好友数。
+      rewarded: rows.filter(item => Number(item.INV_REWARD_STATUS) === 1).length,
+      pending: rows.filter(item => Number(item.INV_STATUS) === 0).length
+    };
   }
 }
 module.exports = InviteService;

@@ -115,11 +115,6 @@ Page({
  bindCopyCodeTap(e) { const mail = this.data.mail; if (!mail || !(mail.mypost || mail.myaccept)) return; const index = e && e.currentTarget.dataset.index; const item = index != null && this.data.detailUI && this.data.detailUI.pickupItems[index]; const code = index != null ? item && item.code : mail.MAIL_OBJ && mail.MAIL_OBJ.code; if (code) wx.setClipboardData({ data: String(code) }); },
  bindPreviewImageTap(e) { const mail = this.data.mail; if (!mail || !(mail.mypost || mail.myaccept)) return; const { url, group } = e.currentTarget.dataset; const urls = mail.MAIL_MEDIA && mail.MAIL_MEDIA[group] || []; if (url && urls.includes(url)) wx.previewImage({ urls, current: url }); },
  bindFeedbackTap() { wx.navigateTo({ url: '../../feedback/index/feedback_index?orderId=' + this.data.id }); },
- bindReviewTap() {
-  const mail = this.data.mail;
-  if (!mail || this.data.busy || this.data.loading || this.data.error || !(mail.MAIL_CAN_REVIEW || mail.MAIL_REVIEWED)) return;
-  wx.navigateTo({ url: '/projects/crun/pages/my/review_add/review_add?orderId=' + encodeURIComponent(this.data.id) });
- },
  bindSubscription() { Ops.subscribe(this.data.config || {}); },
  bindReceiptTap() {
   const ui = this.data.detailUI;
@@ -134,7 +129,8 @@ Page({
   if (this.data.busy || this.data.loading || this.data.error || !this.data.detailUI) return;
   const action = this.data.detailUI.primary;
   if (action === 'edit') return this.bindEditTap();
-  if (action === 'review') return this.bindReviewTap();
+  // 已完成只是状态展示，按钮已置灰，不再提供评价入口。
+  if (action === 'done') return;
   if (action === 'remind') return this.bindRemindTap();
   if (['pickup', 'deliver', 'confirm'].includes(action)) return this.bindConfirm({ currentTarget: { dataset: { action } } });
   if (action === 'contact') return this.bindCallTap();

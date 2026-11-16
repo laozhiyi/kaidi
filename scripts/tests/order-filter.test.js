@@ -25,6 +25,21 @@ test('delivery options are the same place groups used when saving an address', (
   assert.deepEqual(sources.pickup[1].items.map(item => item.value), ['知园 · 邮政']);
 });
 
+test('京东只挂在知园（五期）名下，面板、筛选与内置默认表一致', () => {
+  const defaults = require('../../cloudfunctions/mcloud/project/crun/service/tenant_defaults.js');
+  const Address = require('../../miniprogram/projects/crun/biz/address_biz.js');
+  Address.configure({}); // 重置为内置默认表，避免受前面用例的配置影响。
+  // 云端默认配置与客户端兜底表只有知园收京东。
+  assert.deepEqual(defaults.locations.pickupStations.filter(s => s.list.includes('京东')).map(s => s.name), ['知园']);
+  assert.deepEqual(Address.PICKUP_STATIONS.filter(s => s.list.includes('京东')).map(s => s.name), ['知园']);
+  // 知园对应五期，订单里两种写法都要能筛到。
+  assert.equal(Address.DORM_PHASES.find(item => item.name === '知园').label, '五期');
+  const sources = Filter.buildSources({ locations: { phases: defaults.locations.phases, pickupStations: defaults.locations.pickupStations } });
+  assert.deepEqual(sources.pickup.filter(group => group.items.some(item => item.label === '京东')).map(group => group.title), ['知园']);
+  assert.ok(sources.pickup.every(group => group.title !== '雅园' || group.items.every(item => item.label !== '京东')));
+  assert.deepEqual(Filter.buildParams({}, { pickup: ['知园 · 京东'] }).whereEx['MAIL_OBJ.pickupPoint'], ['like', ['知园 · 京东', '五期 · 京东']]);
+});
+
 test('an empty configuration still falls back to the built-in place table', () => {
   const sources = Filter.buildSources(null);
   assert.equal(sources.deliver[0].title, '宿舍区');

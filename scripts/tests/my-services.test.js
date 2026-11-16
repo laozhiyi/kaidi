@@ -87,7 +87,7 @@ test('an invite code stays stable and never appears as a fake invitation record'
   assert.equal(list.total, 2);
   assert.equal(new Set(list.list.map(item => item.INV_ACCEPT_USER_ID)).size, 2);
   assert.equal((await service.getMyInviteStat('poster')).accepted, 2);
-  assert.equal((await service.getMyInviteStat('poster')).reward, 0);
+  assert.equal((await service.getMyInviteStat('poster')).rewarded, 0);
 });
 
 test('concurrent invite acceptance binds each person once and retries preserve the first inviter', async () => {

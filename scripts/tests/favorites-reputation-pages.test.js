@@ -145,16 +145,25 @@ test('already-reviewed pages display the saved rating read-only, and missing ord
   assert.match(missing.data.error, /缺少订单/); assert.equal(h.calls.length, 1);
 });
 
-test('completed orders expose rating to publishers and riders and reviewed orders open the saved rating', () => {
-  const h = harness(), UI = h.load('projects/crun/biz/mail_ui_biz.js');
-  for (const role of ['mypost', 'myaccept']) {
+test('completed orders turn grey in detail and only the order list starts a rating', () => {
+  const h = harness(), UI = h.load('projects/crun/biz/mail_ui_biz.js'), page = h.page('mail/my_detail/mail_my_detail');
+  const read = file => fs.readFileSync(path.join(mini, 'projects/crun/pages', file), 'utf8');
+  const detail = read('mail/tpl/mail_detail_tpl.wxml'), myDetail = read('mail/my_detail/mail_my_detail.wxml');
+  const list = read('order/index/order_index.wxml');
+  // 详情页不再有「评价 / 查看评价」入口，评价只在订单列表「已完成」分组里发起。
+  assert.ok(!/评价/.test(detail)); assert.ok(!myDetail.includes('bindReviewTap'));
+  assert.match(list, /bindReviewTap/);
+  for (const [role, label] of [['mypost', '已收货'], ['myaccept', '已送达']]) {
     const mail = { _id: 'one', MAIL_STATUS: 9, MAIL_CAN_REVIEW: true, [role]: true, MAIL_OBJ: {} };
-    const page = h.page('mail/my_detail/mail_my_detail');
-    page.setData({ id: 'one', loading: false, mail, detailUI: UI.detail(mail) }); page.bindPrimaryAction();
-    assert.match(h.navigation.at(-1), /review_add\?orderId=one$/);
-    assert.equal(UI.detail({ ...mail, MAIL_CAN_REVIEW: false, MAIL_REVIEWED: true }).primaryLabel, '查看我的评价');
+    const ui = UI.detail(mail);
+    assert.equal(ui.primary, 'done'); assert.equal(ui.primaryLabel, label);
+    assert.equal(ui.tone, 'muted'); assert.equal(ui.title, label);
+    page.setData({ id: 'one', loading: false, mail, detailUI: ui }); page.bindPrimaryAction();
+    assert.equal(h.navigation.length, 0, '置灰按钮不再跳转评价');
   }
-  assert.notEqual(UI.detail({ MAIL_STATUS: 9, MAIL_OBJ: {}, MAIL_CAN_REVIEW: true }).primary, 'review');
+  assert.equal(UI.detail({ MAIL_STATUS: 9, MAIL_OBJ: {}, MAIL_CAN_REVIEW: true, MAIL_REVIEWED: true }).primary, 'orders');
+  assert.match(myDetail, /detailUI\.status === 9 \? 'od-footer-done'/);
+  assert.match(myDetail, /disabled="\{\{busy \|\| loading \|\| error \|\| detailUI\.status === 9\}\}"/);
 });
 
 test('order complaints identify either counterpart before submission and block unresolved order information', async () => {

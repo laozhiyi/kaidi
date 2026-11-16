@@ -154,7 +154,7 @@
 							<view class="price-block">
 								<text class="symbol">¥</text>
 								<text class="num">{{order.MAIL_OBJ.price}}</text>
-								<text wx:if="{{order.MAIL_OBJ.serviceType === 'buy'}}" class="tip">跑腿费</text><text wx:elif="{{order.MAIL_OBJ.tip > 0}}" class="tip tip-reward">含小费 ¥{{order.MAIL_OBJ.tip}}</text>
+								<text wx:if="{{order.MAIL_OBJ.serviceType === 'buy'}}" class="tip">跑腿费</text><text wx:elif="{{order.MAIL_OBJ.tip > 0}}" class="tip tip-reward">含上楼费 ¥{{order.MAIL_OBJ.tip}}</text>
 							</view>
 							<view class="actions" catchtap="bindStop">
 								<button class="btn-ghost btn-fav {{order.MAIL_IS_FAV ? 'saved' : ''}}" catchtap="bindFavoriteTap" data-id="{{order._id}}" disabled="{{!!favoriteBusyId || (!order.MAIL_IS_FAV && order.MAIL_CAN_FAV === false)}}" loading="{{favoriteBusyId === order._id}}" aria-label="{{order.MAIL_IS_FAV ? '取消收藏订单' : '收藏订单'}}">{{order.MAIL_IS_FAV ? '已收藏' : '收藏'}}({{order.MAIL_FAV_CNT || 0}})</button>

@@ -507,6 +507,26 @@ async function bindSaveWechatProfile(e, options = {}) {
     }
   } finally { if (!this._unloaded) this.setData({ saving: false }); }
 }
+// 邀请码：注册页与资料页共用这一套逻辑与 personal_form.wxml 里的字段。
+const INVITE_CODE_RE = /^[A-Z0-9]{6}$/;
+function bindInviteCodeInput(e) {
+  this.setData({ inviteCode: InviteBiz.normalize(String(e.detail.value || '').replace(/[^A-Za-z0-9]/g, '')) });
+}
+async function loadInviteInfo(page) {
+  let info = null;
+  try { info = await cloudHelper.callCloudData('invite/my_info', {}, { hint: false }); } catch (_) { /* 加载失败只是不显示邀请码区块内容，不影响资料编辑。 */ }
+  if (!info || page._unloaded) return;
+  page.setData({ myInviteCode: info.code || '', inviteBound: info.bound === true, inviteBoundCode: info.boundCode || '' });
+  if (info.bound) InviteBiz.clear();
+}
+function bindCopyMyInviteCode() {
+  if (!this.data.myInviteCode) return;
+  wx.setClipboardData({ data: this.data.myInviteCode, success: () => wx.showToast({ title: '已复制邀请码', icon: 'success' }),
+    fail: () => wx.showToast({ title: '复制失败，请重试', icon: 'none' }) });
+}
+function showInviteFailure(reason) {
+  return new Promise(resolve => wx.showModal({ title: '资料已保存', content: '邀请码未绑定：' + reason, showCancel: false, success: resolve, fail: resolve }));
+}
 async function bindSubmitTap(e) {
   if (profileBusy(this)) return;
   readSubmittedNickname(this, e);
@@ -529,8 +549,9 @@ async function bindSubmitTap(e) {
     const studentCard = (this.data.profileStudentCard || []).filter(value => typeof value === 'string' && value);
     if (!this.data.isEdit && !studentCard.length) throw new Error('请上传学生证照片');
     if (!this.data.isEdit && this.data.profileDisclaimer !== true) throw new Error('请阅读并同意免责声明');
-    const inviteCode = this.data.isEdit ? '' : InviteBiz.normalize(this.data.inviteCode);
-    if (inviteCode && !/^[A-Z0-9]{6}$/.test(inviteCode)) throw new Error('邀请码为6位字母或数字');
+    // 已绑定过邀请人的账号不能再改；其余情况（注册 / 资料编辑）填了就提交。
+    const inviteCode = this.data.inviteBound ? '' : InviteBiz.normalize(this.data.inviteCode);
+    if (inviteCode && !INVITE_CODE_RE.test(inviteCode)) throw new Error('邀请码为6位大写字母或数字');
     const personal = [
       { mark: 'sex', title: '性别', type: 'select', val: this.data.profileSex },
       { mark: 'college', title: '学院', type: 'text', val: this.data.profileCollege.trim() },
@@ -565,15 +586,30 @@ async function bindSubmitTap(e) {
       if (token.status !== 1) message = '资料已提交，等待审核';
     }
     if (token) { PassportBiz.setToken(token); this.setData({ accountStatus: token.status }); }
-    if (!this.data.isEdit) {
-      if (inviteCode) {
-        InviteBiz.capture(inviteCode);
-        if (token.status === 1) try {
+    // 资料已经保存成功；邀请码的结果单独处理，任何失败都只提示、不回滚资料。
+    let inviteFailure = '';
+    if (inviteCode) {
+      if (isRegister) {
+        // 注册时服务端已经在资料落库后尝试绑定，结果随 invite 字段返回。
+        const invite = result && result.data && result.data.invite;
+        if (invite) { if (!invite.accepted) inviteFailure = invite.reason || '邀请码未能绑定'; InviteBiz.clear(); }
+        else {
+          // 兼容没有返回 invite 字段的响应：沿用客户端绑定，失败时保留暂存等下次重试。
+          InviteBiz.capture(inviteCode);
+          if (token.status === 1) try {
+            const accepted = await InviteBiz.acceptPending(inviteCode);
+            if (accepted && !accepted.accepted) inviteFailure = accepted.reason || '邀请码未能绑定';
+          } catch (_) { /* 保留邀请码，下次进入个人中心时重试绑定。 */ }
+        }
+      } else {
+        try {
           const accepted = await InviteBiz.acceptPending(inviteCode);
-          if (accepted && !accepted.accepted) message = '资料已完善，邀请码未绑定';
-        } catch (_) { /* 保留邀请码，下次进入个人中心时重试绑定。 */ }
+          if (accepted && accepted.accepted) this.setData({ inviteBound: true, inviteBoundCode: inviteCode, inviteCode: '' });
+          else inviteFailure = accepted && accepted.reason || '邀请码未能绑定';
+        } catch (_) { inviteFailure = '网络异常，邀请码稍后会自动重试绑定'; }
       }
     }
+    if (inviteFailure && isCurrent()) await showInviteFailure(inviteFailure);
     invalidateProfileCache();
     this._profileDirty = false;
     pageHelper.showSuccToast(message, 1200, () => { if (isCurrent()) finishProfile(this); });
@@ -584,4 +620,4 @@ async function bindSubmitTap(e) {
     pageHelper.showNoneToast(message);
   } finally { if (!this._unloaded) this.setData({ saving: false }); }
 }
-module.exports = { initProfileCapabilities, applyRegistrationPolicy, isProfileReady, loadCampuses, getCachedProfileUser, getProfileUser, invalidateProfileCache, clearLocalCaches, applyUser, finishProfile, bindProfileNameInput, bindProfileMobileInput, bindPicTap, bindChooseAvatar, bindWechatPhoneTap, bindWechatPhone, bindCampusChange, bindOpenCampusPicker, bindSelectCampus, bindConfirmCampus, bindCloseCampusPicker, bindProfileSheetTouchMove, bindGenderTap, bindProfileFieldInput, bindDisclaimerTap, bindViewDisclaimer, bindChooseStudentCard, bindPreviewStudentCard, bindDeleteStudentCard, bindContactInput, bindAddressInput, bindOpenPlacePicker, bindSelectPlace, bindConfirmPlace, bindClearPlace, bindClosePlacePicker, bindPlaceSheetStop, bindAddContact, bindEditContact, bindSetDefaultContact, bindDeleteContact, bindCancelContact, bindSaveContact, bindAddAddress, bindEditAddress, bindSetDefaultAddress, bindDeleteAddress, bindCancelAddress, bindSaveAddress, bindSaveWechatProfile, bindSubmitTap };
+module.exports = { initProfileCapabilities, applyRegistrationPolicy, isProfileReady, loadCampuses, getCachedProfileUser, getProfileUser, invalidateProfileCache, clearLocalCaches, applyUser, finishProfile, bindProfileNameInput, bindProfileMobileInput, bindPicTap, bindChooseAvatar, bindWechatPhoneTap, bindWechatPhone, bindCampusChange, bindOpenCampusPicker, bindSelectCampus, bindConfirmCampus, bindCloseCampusPicker, bindProfileSheetTouchMove, bindGenderTap, bindProfileFieldInput, bindDisclaimerTap, bindViewDisclaimer, bindChooseStudentCard, bindPreviewStudentCard, bindDeleteStudentCard, bindContactInput, bindAddressInput, bindOpenPlacePicker, bindSelectPlace, bindConfirmPlace, bindClearPlace, bindClosePlacePicker, bindPlaceSheetStop, bindAddContact, bindEditContact, bindSetDefaultContact, bindDeleteContact, bindCancelContact, bindSaveContact, bindAddAddress, bindEditAddress, bindSetDefaultAddress, bindDeleteAddress, bindCancelAddress, bindSaveAddress, bindSaveWechatProfile, bindSubmitTap, bindInviteCodeInput, bindCopyMyInviteCode, loadInviteInfo };

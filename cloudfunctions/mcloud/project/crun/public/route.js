@@ -88,6 +88,7 @@ module.exports = {
 	'admin/user_status': 'admin/admin_user_controller@statusUser#demo',
 	'admin/user_role': 'admin/admin_user_controller@userRole#demo',
 	'admin/user_leave': 'admin/admin_user_controller@userLeave#demo',
+	'admin/user_point_grant': 'admin/admin_user_controller@pointGrant#demo',
 
 	'admin/user_data_get': 'admin/admin_user_controller@userDataGet',
 	'admin/user_data_export': 'admin/admin_user_controller@userDataExport',
@@ -161,10 +162,17 @@ module.exports = {
 
 	// ========== 邀请好友 ==========
 	'invite/my_code': 'invite_controller@getMyInviteCode',
+	'invite/my_info': 'invite_controller@getMyInviteInfo',
 	'invite/my_qrcode': 'invite_controller@getMyInviteQr',
 	'invite/my_list': 'invite_controller@getMyInviteList',
 	'invite/my_stat': 'invite_controller@getMyInviteStat',
 	'invite/accept': 'invite_controller@acceptInvite',
+
+	// ========== 积分 ==========
+	'point/my': 'point_controller@my',
+	'point/items': 'point_controller@items',
+	'point/redeem': 'point_controller@redeem',
+	'point/vouchers': 'point_controller@vouchers',
 
 	// ========== 后台反馈管理 ==========
 	'admin/feedback_list': 'admin/admin_feedback_controller@getAdminFeedbackList',

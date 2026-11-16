@@ -47,13 +47,13 @@
 .publish-page .pub-parcel-take-medium::after { position: absolute; left: 3rpx; right: 3rpx; top: 21rpx; height: 2rpx; background: #b9cde6; content: ''; }
 .publish-page .pub-parcel-take-large::before { position: absolute; left: 5rpx; top: -7rpx; width: 22rpx; height: 6rpx; border: 2rpx solid #7194bc; border-radius: 3rpx; background: #cfdff2; transform: rotate(-18deg); transform-origin: left bottom; content: ''; }
 .publish-page .pub-parcel-take-large::after { position: absolute; right: 5rpx; top: -7rpx; width: 22rpx; height: 6rpx; border: 2rpx solid #7194bc; border-radius: 3rpx; background: #cfdff2; transform: rotate(18deg); transform-origin: right bottom; content: ''; }
-.publish-page .pub-size-guide { margin-top: 16rpx; }
-.publish-page .pub-size-guide-warning { padding: 12rpx 16rpx; border-radius: 12rpx; background: #fff4f4; color: #e5484d; font-size: 20rpx; line-height: 1.5; text-align: left; }
-/* 快递代取：标题与合计行收紧；件型卡片右上角「参考」角标 */
+.publish-page .pub-size-guide { margin-top: 10rpx; }
+.publish-page .pub-size-guide-warning { padding: 0 2rpx; background: transparent; color: #e5484d; font-size: 21rpx; line-height: 1.45; text-align: left; }
+/* 快递代取：标题与合计行收紧；件型卡片「参考」按钮放在名称与价格之间 */
 .publish-page .pub-card-take .pub-heading { margin-bottom: 12rpx; }
 .publish-page .pub-card-take .pub-price-editor { margin-bottom: 18rpx; }
 .publish-page .pub-package-take { position: relative; }
-.publish-page .pub-package-guide-tag { position: absolute; top: 0; right: 0; padding: 6rpx 14rpx; border-radius: 0 20rpx 0 14rpx; background: #e8f1fc; color: #397bc8; font-size: 20rpx; line-height: 1.5; }
+.publish-page .pub-package-guide-tag { display: inline-block; margin: 6rpx auto 0; padding: 2rpx 12rpx; border-radius: 999rpx; background: #e8f1fc; color: #397bc8; font-size: 20rpx; line-height: 1.5; }
 .publish-page .pub-size-guide-title { display: flex; align-items: center; }
 .publish-page .pub-size-guide-title .pub-parcel-take { flex-shrink: 0; margin: 0 14rpx 0 0; }
 .publish-page .pub-size-guide-line { margin-top: 6rpx; color: #94a3b8; font-size: 22rpx; line-height: 1.6; }

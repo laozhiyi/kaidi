@@ -151,7 +151,6 @@ Page(Object.assign({
     try { await this._loadLoginState(); }
     finally { wx.stopPullDownRefresh(); }
   },
-  bindInviteCodeInput(e) { this.setData({ inviteCode: InviteBiz.normalize(e.detail.value) }); },
   bindProfileFormSubmit(e) {
     if (!this.data.phoneLoginEnabled && !this.data.hasSession) return this.bindWechatAccountLogin(e);
     return this.data.phoneLoginEnabled || this.data.showContactProfile

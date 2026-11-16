@@ -15,6 +15,12 @@ class InviteController extends BaseProjectController {
 		return await service.getOrCreateMyInviteCode(this._userId);
 	}
 
+	/** 资料页：我的邀请码 + 已绑定的邀请码 */
+	async getMyInviteInfo() {
+		let service = new InviteService();
+		return await service.getMyInviteInfo(this._userId);
+	}
+
 	/** 我的专属小程序码（扫码直达首页并带上邀请码） */
 	async getMyInviteQr() {
 		let service = new InviteService();

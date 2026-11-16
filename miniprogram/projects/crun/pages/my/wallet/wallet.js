@@ -2,108 +2,179 @@ const ProjectBiz = require('../../../biz/project_biz.js');
 const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
 
-// 钱包：跑腿收益与邀请奖励两个账户。
-// 跑腿收益：1 元起提，提现抽取 10% 服务费。
-// 邀请奖励：每位好友注册成功 2 元，满 10 元可提现，不抽成。
-const ACCOUNTS = {
-  earn: { key: 'earn', name: '跑腿收益', min: 1, rate: 0.1, note: '每笔提现收取 10% 服务费，低于 1 元不可提现' },
-  invite: { key: 'invite', name: '邀请奖励', min: 10, rate: 0, note: '好友注册成功每人 2 元，满 10 元可提现，不抽成' }
-};
-const money = value => (Math.round((Number(value) || 0) * 100) / 100).toFixed(2);
+// 积分商城：我的积分 + 可兑换 / 已兑换两个 Tab；积分明细放在「明细」弹层里。
+// 商品目录与价格全部来自云端 point/items，客户端只展示，不能改价。
+const PAGE_SIZE = 20;
+const REASONS = { post_complete: '订单完成收货', invite_first_order: '邀请好友首单', redeem: '兑换商品' };
+const PENDING_KEY = 'crun-point-redeem-pending';
+const PENDING_TTL = 10 * 60 * 1000;
+const newRequestId = () => 'point_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+
+function decorate(items, points) {
+  return (items || []).map(item => {
+    const cost = Number(item.cost) || 0;
+    const lack = Math.max(0, cost - points);
+    return { id: item.id, name: item.name, cost, disabled: lack > 0, lack };
+  });
+}
 
 Page({
   data: {
-    isLoad: false, account: 'earn', accountName: '跑腿收益', balance: '0.00', min: 1, rateLabel: '10%', ruleNote: ACCOUNTS.earn.note,
-    inviteFriends: 0, inviteBalance: '0.00',
-    sheet: false, amount: '', fee: '0.00', arrive: '0.00', error: ''
+    isLoad: false, loading: false, error: '', points: 0, tab: 'shop',
+    items: [], vouchers: [], voucherPage: 0, voucherMore: false, voucherLoading: false, voucherLoaded: false,
+    logs: [], page: 0, hasMore: false, logsVisible: false,
+    voucherVisible: false, voucher: null, redeeming: false
   },
-  onLoad(options = {}) {
+  onLoad() {
     ProjectBiz.initPage(this);
-    const account = options.account === 'invite' ? 'invite' : 'earn';
-    this.setData({ account });
-    this._applyAccount(account);
+    if (wx.setNavigationBarTitle) wx.setNavigationBarTitle({ title: '积分商城' });
   },
   onShow() {
     this._visible = true;
-    if (!this.data.isLoad) this.load();
+    return this.refresh();
   },
   onHide() { this._visible = false; },
   onUnload() { this.onHide(); },
-  async onPullDownRefresh() { try { await this.load(true); } finally { wx.stopPullDownRefresh(); } },
-  _applyAccount(account) {
-    const config = ACCOUNTS[account] || ACCOUNTS.earn;
-    this.setData({
-      account: config.key, accountName: config.name, min: config.min,
-      rateLabel: config.rate ? Math.round(config.rate * 100) + '%' : '无抽成', ruleNote: config.note,
-      balance: config.key === 'invite' ? this.data.inviteBalance : '0.00'
-    });
+  async onPullDownRefresh() { try { await this.refresh(); } finally { wx.stopPullDownRefresh(); } },
+  onReachBottom() {
+    if (this.data.tab === 'done' && !this.data.logsVisible) return this.loadVouchers(false);
   },
-  async load(force) {
-    if (this._loadingSafely) return;
-    this._loadingSafely = true;
+  async refresh() {
+    if (!PassportBiz.isLogin()) { this.setData({ isLoad: true }); return; }
+    await this.loadItems();
+    if (this.data.tab === 'done') await this.loadVouchers(true);
+  },
+  async loadItems() {
+    this.setData({ loading: true, error: '' });
     try {
-      if (!PassportBiz.isLogin()) { this.setData({ isLoad: true }); return; }
-      const stat = await cloudHelper.callCloudData('invite/my_stat', {}, { hint: false }).catch(() => null);
-      if (!this._visible && !force) return;
-      const accepted = stat && Number.isFinite(Number(stat.accepted)) ? Number(stat.accepted) : 0;
-      // 每位成功注册的好友 2 元邀请奖励。
-      this.setData({ inviteFriends: accepted, inviteBalance: money(accepted * 2), isLoad: true });
-      this._applyAccount(this.data.account);
-    } finally { this._loadingSafely = false; }
-  },
-  bindSwitchAccount(e) {
-    const account = e.currentTarget.dataset.account === 'invite' ? 'invite' : 'earn';
-    if (account === this.data.account) return;
-    this.setData({ sheet: false, amount: '', fee: '0.00', arrive: '0.00', error: '' });
-    this._applyAccount(account);
-  },
-  bindOpenWithdraw() {
-    const min = Number(this.data.min) || 1;
-    if (Number(this.data.balance) < min) {
-      return wx.showModal({
-        title: '暂不可提现',
-        content: '当前' + this.data.accountName + '为 ¥' + this.data.balance + '，低于最低提现金额 ¥' + money(min) + '，暂时不能提现。',
-        showCancel: false, confirmText: '我知道了'
-      });
+      const result = await cloudHelper.callCloudData('point/items', {}, { hint: false });
+      if (!this._visible) return;
+      if (!result || !Array.isArray(result.items)) throw new Error('商品加载失败');
+      const points = Number(result.points) || 0;
+      this.setData({ points, items: decorate(result.items, points), isLoad: true });
+    } catch (error) {
+      if (this._visible) this.setData({ error: '商品加载失败，请下拉重试', isLoad: true });
+    } finally {
+      this.setData({ loading: false });
     }
-    if (typeof wx.hideKeyboard === 'function') wx.hideKeyboard();
-    this.setData({ sheet: true, amount: '', fee: '0.00', arrive: '0.00', error: '' });
   },
-  bindCloseSheet() { if (!this._submitting) this.setData({ sheet: false, error: '' }); },
-  bindAmountInput(e) {
-    const amount = String(e.detail.value || '').replace(/[^\d.]/g, '').replace(/^(\d*\.?\d{0,2}).*$/, '$1');
-    this.setData({ amount, ...this._calc(amount) });
+  bindTab(e) {
+    const tab = e.currentTarget.dataset.tab === 'done' ? 'done' : 'shop';
+    if (tab === this.data.tab) return;
+    this.setData({ tab });
+    if (tab === 'done') this.loadVouchers(true);
   },
-  bindAllAmount() {
-    const amount = money(this.data.balance);
-    this.setData({ amount, ...this._calc(amount) });
+  async loadVouchers(reset = true) {
+    if (this._voucherBusy) return;
+    if (!reset && !this.data.voucherMore) return;
+    if (!PassportBiz.isLogin()) return;
+    this._voucherBusy = true;
+    const page = reset ? 1 : this.data.voucherPage + 1;
+    this.setData({ voucherLoading: true });
+    try {
+      const result = await cloudHelper.callCloudData('point/vouchers', { page, size: PAGE_SIZE }, { hint: false });
+      if (!this._visible) return;
+      if (!result || !Array.isArray(result.list)) throw new Error('已兑换加载失败');
+      this.setData({
+        vouchers: reset ? result.list : this.data.vouchers.concat(result.list),
+        voucherPage: page, voucherMore: !!result.hasMore, voucherLoaded: true
+      });
+    } catch (error) {
+      if (this._visible) this.setData({ error: '已兑换加载失败，请下拉重试', voucherLoaded: true });
+    } finally {
+      this._voucherBusy = false;
+      this.setData({ voucherLoading: false });
+    }
   },
-  _calc(amount) {
-    const value = Number(amount) || 0;
-    const rate = ACCOUNTS[this.data.account] ? ACCOUNTS[this.data.account].rate : 0;
-    const fee = Math.round(value * rate * 100) / 100;
-    return { fee: money(fee), arrive: money(Math.max(0, value - fee)), error: '' };
+  bindMoreVouchers() { return this.loadVouchers(false); },
+  // 同一件商品的重试沿用同一个 requestId：网络超时后再点一次不会重复扣分。
+  _requestFor(itemId) {
+    const saved = wx.getStorageSync(PENDING_KEY);
+    if (saved && saved.itemId === itemId && saved.requestId && Date.now() - saved.at < PENDING_TTL) return saved.requestId;
+    const pending = { itemId, requestId: newRequestId(), at: Date.now() };
+    wx.setStorageSync(PENDING_KEY, pending);
+    return pending.requestId;
   },
-  bindSubmitWithdraw() {
-    if (this._submitting) return;
-    const value = Number(this.data.amount) || 0;
-    const min = Number(this.data.min) || 1;
-    const balance = Number(this.data.balance) || 0;
-    if (!value) return this.setData({ error: '请输入提现金额' });
-    if (value < min) return this.setData({ error: '最低提现金额为 ¥' + money(min) });
-    if (value > balance) return this.setData({ error: '提现金额不能超过可提现余额 ¥' + money(balance) });
-    this._submitting = true;
+  bindRedeemTap(e) {
+    if (this.data.redeeming) return;
+    const item = this.data.items.find(entry => entry.id === e.currentTarget.dataset.id);
+    if (!item) return;
+    if (item.disabled) return wx.showToast({ title: '还差 ' + item.lack + ' 积分', icon: 'none' });
     wx.showModal({
-      title: '确认提现',
-      content: '提现 ¥' + money(value) + (Number(this.data.fee) > 0 ? '，扣除服务费 ¥' + this.data.fee : '') + '，实际到账 ¥' + this.data.arrive + '。将在 1-3 个工作日内处理。',
-      confirmText: '确认提现', cancelText: '再想想',
-      success: res => {
-        if (!res.confirm) { this._submitting = false; return; }
-        this.setData({ sheet: false, amount: '', fee: '0.00', arrive: '0.00', error: '' });
-        wx.showToast({ title: '提现申请已提交', icon: 'success' });
-        this._submitting = false;
-      },
-      fail: () => { this._submitting = false; }
+      title: '兑换确认', content: '消耗 ' + item.cost + ' 积分兑换' + item.name + '？', confirmText: '兑换',
+      success: result => { if (result.confirm) this._redeem(item); }
     });
+  },
+  async _redeem(item) {
+    if (this.data.redeeming) return;
+    this.setData({ redeeming: true });
+    wx.showLoading({ title: '兑换中', mask: true });
+    try {
+      const result = await cloudHelper.callCloudSumbit('point/redeem', { itemId: item.id, requestId: this._requestFor(item.id) }, { hint: false });
+      const voucher = result && result.data;
+      if (!voucher || !voucher.code) throw Object.assign(new Error('兑换结果未确认'), { retryable: true });
+      wx.removeStorageSync(PENDING_KEY);
+      const points = Number(voucher.points) || 0;
+      this.setData({ points, items: decorate(this.data.items, points), voucher, voucherVisible: true });
+      wx.hideLoading();
+      if (this.data.tab === 'done') this.loadVouchers(true);
+    } catch (error) {
+      wx.hideLoading();
+      const definite = error && typeof error.code === 'number' && !error.retryable;
+      if (definite) wx.removeStorageSync(PENDING_KEY);
+      wx.showModal({
+        title: '兑换失败', showCancel: false,
+        content: definite ? (error.msg || error.message || '兑换失败') : '网络不稳定，结果未确认。请稍后再点一次兑换，不会重复扣分。'
+      });
+      if (definite) this.loadItems();
+    } finally {
+      this.setData({ redeeming: false });
+    }
+  },
+  bindViewVoucher(e) {
+    const voucher = this.data.vouchers.find(entry => entry.id === e.currentTarget.dataset.id);
+    if (voucher) this.setData({ voucher, voucherVisible: true });
+  },
+  bindCloseVoucher() { this.setData({ voucherVisible: false }); },
+  bindCopyCode() {
+    const code = this.data.voucher && this.data.voucher.code;
+    if (!code) return;
+    wx.setClipboardData({ data: code, success: () => wx.showToast({ title: '已复制券码', icon: 'success' }),
+      fail: () => wx.showToast({ title: '复制失败，请重试', icon: 'none' }) });
+  },
+  noop() {},
+  bindOpenLogs() {
+    this.setData({ logsVisible: true });
+    if (!this.data.logs.length) this.loadLogs(true);
+  },
+  bindCloseLogs() { this.setData({ logsVisible: false }); },
+  bindMoreLogs() { return this.loadLogs(false); },
+  async loadLogs(reset = true) {
+    if (this._logBusy) return;
+    if (!reset && !this.data.hasMore) return;
+    if (!PassportBiz.isLogin()) return;
+    this._logBusy = true;
+    const page = reset ? 1 : Number(this.data.page) + 1;
+    this.setData({ loading: true });
+    try {
+      const result = await cloudHelper.callCloudData('point/my', { page, size: PAGE_SIZE }, { hint: false });
+      if (!result) throw new Error('积分明细加载失败');
+      const list = (Array.isArray(result.list) ? result.list : []).map(item => {
+        const change = Number(item.change) || 0;
+        return {
+          id: item.id,
+          reasonText: item.reasonText || REASONS[item.reason] || '积分变动',
+          at: item.at || '',
+          change,
+          changeText: (change > 0 ? '+' : '') + change
+        };
+      });
+      this.setData({ logs: reset ? list : this.data.logs.concat(list), page, hasMore: !!result.hasMore });
+    } catch (error) {
+      wx.showToast({ title: '积分明细加载失败', icon: 'none' });
+    } finally {
+      this._logBusy = false;
+      this.setData({ loading: false });
+    }
   }
 });

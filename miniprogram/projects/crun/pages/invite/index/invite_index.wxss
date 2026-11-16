@@ -22,6 +22,7 @@
 	font-size: 44rpx;
 	font-weight: bold;
 	margin-bottom: 8rpx;
+	word-break: break-word;
 }
 
 .banner-sub {
@@ -29,6 +30,7 @@
 	opacity: 0.85;
 	margin-bottom: 30rpx;
 	letter-spacing: 4rpx;
+	word-break: break-word;
 }
 
 .stat-grid {
@@ -44,6 +46,7 @@
 
 .stat-cell {
 	flex: 1;
+	min-width: 0;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -53,13 +56,15 @@
 	font-size: 48rpx;
 	font-weight: bold;
 	color: #fff;
-	line-height: 1.1;
+	line-height: 1.15;
+	word-break: break-all;
 }
 
 .stat-label {
 	font-size: 24rpx;
 	color: rgba(255, 255, 255, 0.85);
 	margin-top: 8rpx;
+	white-space: nowrap;
 }
 
 .stat-divider {
@@ -96,11 +101,13 @@
 	color: #397bc8;
 	letter-spacing: 12rpx;
 	text-align: center;
-	padding: 30rpx 0;
+	padding: 30rpx 12rpx;
 	font-family: 'din', monospace;
 	background: linear-gradient(180deg, rgba(57, 123, 200, 0.05), rgba(57, 123, 200, 0.1));
 	border-radius: 16rpx;
 	margin-bottom: 16rpx;
+	line-height: 1.25;
+	word-break: break-all;
 }
 
 .code-tip {
@@ -108,11 +115,13 @@
 	color: #94a3b8;
 	text-align: center;
 	line-height: 36rpx;
+	word-break: break-word;
 }
 
 .code-btn-row {
 	display: flex;
 	flex-direction: row;
+	flex-wrap: wrap;
 	gap: 16rpx;
 	margin-top: 24rpx;
 }
@@ -161,6 +170,9 @@
 	text-align: center;
 	font-size: 28rpx;
 	border: none;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .btn-default {
@@ -174,20 +186,10 @@
 	color: #fff;
 }
 
-/* 邀请奖励 */
-.reward-card {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	justify-content: space-between;
-	gap: 20rpx;
-}
-
-.reward-copy { flex: 1; min-width: 0; }
-.reward-label { font-size: 24rpx; color: #7c8ba0; }
-.reward-amount { margin: 6rpx 0 8rpx; font-size: 48rpx; font-weight: 700; color: #c88934; line-height: 1.2; }
-.reward-note { font-size: 21rpx; color: #98a6b8; line-height: 1.6; }
-.reward-btn { flex: 0 0 190rpx; }
+/* 积分规则 */
+.points-title { font-size: 28rpx; font-weight: 600; color: #1f2a44; margin-bottom: 16rpx; }
+.points-rule { display: flex; align-items: flex-start; gap: 12rpx; margin-top: 12rpx; color: #7b8ca3; font-size: 23rpx; line-height: 1.7; }
+.points-dot { flex-shrink: 0; width: 10rpx; height: 10rpx; margin-top: 13rpx; border-radius: 50%; background: #b6c8de; }
 
 /* 列表 */
 .list-card {
@@ -197,8 +199,10 @@
 .list-title {
 	display: flex;
 	flex-direction: row;
+	flex-wrap: wrap;
 	justify-content: space-between;
 	align-items: baseline;
+	column-gap: 12rpx;
 	font-size: 30rpx;
 	font-weight: 600;
 	color: #1f2a44;
@@ -211,6 +215,7 @@
 	font-size: 24rpx;
 	color: #94a3b8;
 	font-weight: normal;
+	white-space: nowrap;
 }
 
 .list-item {
@@ -248,25 +253,41 @@
 	font-size: 28rpx;
 	color: #1f2a44;
 	margin-bottom: 6rpx;
+	word-break: break-word;
 }
 
 .list-time {
 	font-size: 22rpx;
 	color: #94a3b8;
+	word-break: break-word;
 }
 
 .status {
+	flex-shrink: 0;
 	font-size: 22rpx;
 	padding: 6rpx 18rpx;
 	border-radius: 20rpx;
+	white-space: nowrap;
 }
 
-.status-accept {
+.status-accept,
+.status-used {
 	color: #2dc87a;
 	background-color: rgba(45, 200, 122, 0.1);
 }
 
-.status-pending {
+.status-rewarded {
+	color: #397bc8;
+	background-color: rgba(57, 123, 200, 0.12);
+}
+
+.status-unused {
+	color: #7c8ba0;
+	background-color: #f1f4fa;
+}
+
+.status-pending,
+.status-rejected {
 	color: #f59e0b;
 	background-color: rgba(245, 158, 11, 0.1);
 }
@@ -306,3 +327,16 @@
 .invite-more { display:flex; width:100%; margin:0 0 24rpx; }
 .code-btn-row button { min-width:0; margin:0; padding:0 18rpx; }
 .code-btn-row button[disabled] { opacity:.5; }
+
+/* 窄屏（如 iPhone SE 320 宽）：收字号、缩间距，奖励按钮换行，避免文字挤在一起 */
+@media (max-width: 360px) {
+	.banner { padding: 40rpx 32rpx 76rpx; }
+	.banner-title { font-size: 40rpx; }
+	.banner-sub { font-size: 24rpx; letter-spacing: 2rpx; }
+	.stat-num { font-size: 42rpx; }
+	.stat-label { font-size: 22rpx; }
+	.code-value { font-size: 54rpx; letter-spacing: 6rpx; padding: 26rpx 8rpx; }
+	.code-tip { font-size: 22rpx; line-height: 34rpx; }
+	.points-rule { font-size: 22rpx; }
+	.rules-item { font-size: 22rpx; line-height: 38rpx; }
+}

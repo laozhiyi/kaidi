@@ -11,6 +11,8 @@ App({
 		// 分享卡片带 inviteCode；小程序码带 scene（可能是 %3D 编码过的参数串）。
 		const code = query.inviteCode || InviteBiz.parseScene(query.scene);
 		if (code) InviteBiz.capture(code);
+		// 已注册但还没绑定邀请人的老用户：在这里统一静默绑定一次；未注册用户由注册页预填。
+		InviteBiz.settle();
 		Notifications.resume();
 		OrderSync.resume();
 	},

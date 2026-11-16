@@ -124,7 +124,7 @@ test('failed oldest worker rows do not starve later rows across bounded runs',as
 });
 test('plugin quotes are versioned and explicitly enabled opening hours are enforced by the server',async()=>{
   const f=await setup(),id=(await publish(f))._id,row=f.table('mail').get(id),rules=f.service('order_rules');
-  assert.equal(row.MAIL_SCHEMA_VERSION,2);assert.equal(row.MAIL_RULE_SNAPSHOT.pluginVersion,1);assert.equal(row.MAIL_RULE_SNAPSHOT.totalFee,150);
+  assert.equal(row.MAIL_SCHEMA_VERSION,2);assert.equal(row.MAIL_RULE_SNAPSHOT.pluginVersion,1);assert.equal(row.MAIL_RULE_SNAPSHOT.totalFee,200);
   const config={enabled:true,enforceBusinessHours:true,openHour:8,closeHour:22};
   assert.throws(()=>rules.requireOpen(config,Date.parse('2026-09-21T23:00:00+08:00')),/营业时间/);
   assert.doesNotThrow(()=>rules.requireOpen(config,Date.parse('2026-09-21T09:00:00+08:00')));

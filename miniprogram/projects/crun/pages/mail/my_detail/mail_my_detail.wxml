@@ -5,12 +5,12 @@
  <block wx:if="{{mail}}">
   <template is="mailDetailContent" data="{{mail: mail, ui: detailUI, actionDisabled: busy || loading || error, priceActions: true}}"/>
   <view wx:if="{{configError}}" class="od-config-note">提醒配置暂不可用，不影响查看订单；下拉可重试。</view>
-  <view class="od-footer od-footer-stack">
+  <view class="od-footer od-footer-stack {{detailUI.status === 9 ? 'od-footer-done' : ''}}">
    <view wx:if="{{detailUI.receipt.visible}}" class="od-receipt-hint">{{detailUI.receipt.hint}}</view>
    <view class="od-footer-actions">
     <button class="od-footer-tool" bindtap="bindServiceHelpTap"><text class="icon-service"></text><text>客服</text></button>
     <button wx:if="{{detailUI.participant}}" class="od-footer-tool" bindtap="bindMoreTap" disabled="{{busy || loading || error}}"><text class="icon-more"></text><text>更多</text></button>
-    <button wx:if="{{!detailUI.receipt.visible || detailUI.primary !== 'confirm'}}" class="od-primary {{detailUI.receipt.visible ? 'od-secondary' : ''}}" bindtap="bindPrimaryAction" disabled="{{busy || loading || error}}" loading="{{busy}}">{{detailUI.primaryLabel}}</button>
+    <button wx:if="{{!detailUI.receipt.visible || detailUI.primary !== 'confirm'}}" class="od-primary {{detailUI.receipt.visible ? 'od-secondary' : ''}} {{detailUI.status === 9 ? 'od-done' : ''}}" bindtap="bindPrimaryAction" disabled="{{busy || loading || error || detailUI.status === 9}}" loading="{{busy}}">{{detailUI.primaryLabel}}</button>
     <button wx:if="{{detailUI.receipt.visible}}" class="od-primary" bindtap="bindReceiptTap" disabled="{{busy || loading || error}}" loading="{{busy}}">确认收货</button>
    </view>
   </view>

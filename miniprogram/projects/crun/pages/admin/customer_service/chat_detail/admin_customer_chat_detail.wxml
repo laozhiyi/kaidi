@@ -20,7 +20,7 @@
       </view>
     </scroll-view>
     <view wx:if="{{hasNewMessages}}" class="new-messages" bindtap="bindLatestTap">有新消息 · 查看最新</view>
-    <view class="composer"><view class="composer-field"><textarea class="composer-input" maxlength="500" auto-height placeholder="输入回复内容…" value="{{content}}" bindinput="bindContentInput" disabled="{{service.CS_STATUS!=1}}" cursor-spacing="20" /><view class="counter">{{content.length}} / 500</view></view><button class="send-btn" disabled="{{isSending || !content.length || service.CS_STATUS!=1}}" loading="{{isSending}}" bindtap="bindSendTap">{{isSending?'发送中':'回复'}}</button></view>
+    <view class="composer"><view class="composer-field"><textarea class="composer-input" maxlength="500" auto-height show-confirm-bar="{{false}}" placeholder="输入回复内容…" value="{{content}}" bindinput="bindContentInput" disabled="{{service.CS_STATUS!=1}}" cursor-spacing="20" /><view class="counter">{{content.length}} / 500</view></view><button class="send-btn" disabled="{{isSending || !content.length || service.CS_STATUS!=1}}" loading="{{isSending}}" bindtap="bindSendTap">{{isSending?'发送中':'回复'}}</button></view>
   </block>
   <view wx:if="{{isLoad && !service}}" class="ac-chat-state"><view class="ac-state-title">{{errorText || '会话暂不可用'}}</view><button class="ac-secondary" bindtap="bindRefreshTap" loading="{{loading}}">重新加载</button></view>
 </view>

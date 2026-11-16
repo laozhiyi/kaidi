@@ -141,12 +141,20 @@ class PassportService extends BaseProjectService {
   await this._saveProfile(userId,input,true);
   // 邀请关系在注册这一刻就在服务端落库：不再依赖注册成功后客户端再调一次，
   // 也不依赖被邀请人之后是否点开「我的」。审核通过时再由后台把状态转成已注册。
+  // 邀请码错误绝不能让注册失败：资料已保存，绑定结果单独放进 invite 字段返回给客户端提示。
   const inviteCode = String(input && input.inviteCode || '').trim();
+  let invite = null;
   if (inviteCode) {
-   try { await new (require('./invite_service.js'))().acceptInvite(userId, inviteCode); }
-   catch (error) { console.warn('[invite] bind failed', { code: error.code || 'INVITE_BIND_ERROR' }); }
+   try {
+    const result = await new (require('./invite_service.js'))().acceptInvite(userId, inviteCode);
+    invite = { accepted: result.accepted === true, reason: result.accepted ? '' : result.reason || '邀请码未能绑定' };
+   } catch (error) {
+    console.warn('[invite] bind failed', { code: error.code || 'INVITE_BIND_ERROR' });
+    invite = { accepted: false, reason: '邀请码暂时无法绑定，可稍后在个人资料里重试' };
+   }
   }
-  return this.login(userId);
+  const login = await this.login(userId);
+  return invite ? { ...login, invite } : login;
  }
 
  /** Avatar/nickname updates do not complete contact details or change review status. */

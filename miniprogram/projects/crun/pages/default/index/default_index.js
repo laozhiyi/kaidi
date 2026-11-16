@@ -8,7 +8,7 @@ const Tenant = require('../../../biz/tenant_biz.js');
 
 Page({
   data: {
-    isLoad: false, activeService: 'take', referencePrice: '1.50',
+    isLoad: false, activeService: 'take', referencePrice: '2.00',
     featuredNews: null, unreadCount: 0, messageBadge: '', noticeLoaded: false, noticeError: false,
     schoolName: '', campusName: '', schools: [], campusOptions: [], activeSchoolId: '', campusSheet: false,
     serviceOptions: [

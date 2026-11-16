@@ -1,48 +1,100 @@
-<view class="wallet-page">
-  <view class="wallet-tabs">
-    <view class="wallet-tab {{account === 'earn' ? 'wallet-tab-active' : ''}}" data-account="earn" bindtap="bindSwitchAccount">跑腿收益</view>
-    <view class="wallet-tab {{account === 'invite' ? 'wallet-tab-active' : ''}}" data-account="invite" bindtap="bindSwitchAccount">邀请奖励</view>
-  </view>
-
-  <view class="wallet-card">
-    <view class="wallet-card-label">{{accountName}} · 可提现余额（元）</view>
-    <view class="wallet-card-amount">{{balance}}</view>
-    <view class="wallet-card-meta">
-      <text wx:if="{{account === 'invite'}}">已邀请 {{inviteFriends}} 位好友 · 每人 2 元</text>
-      <text wx:else>订单为线下结算，收益到账后可在此提现</text>
+<view class="mall-page">
+  <view class="mall-hero">
+    <view class="mall-hero-glow mall-hero-glow-a"></view>
+    <view class="mall-hero-glow mall-hero-glow-b"></view>
+    <view class="mall-hero-top">
+      <view class="mall-hero-label"><text class="icon-coin"></text><text>我的积分</text></view>
+      <view class="mall-hero-link" bindtap="bindOpenLogs"><text>积分明细</text><text class="icon-right"></text></view>
     </view>
-    <button class="wallet-withdraw" bindtap="bindOpenWithdraw">提现</button>
+    <view class="mall-points-value">{{points}}</view>
+    <view class="mall-hero-tip">积分可兑换下方商品，兑换后在「已兑换」查看券码</view>
   </view>
 
-  <view class="wallet-card wallet-rules">
-    <view class="wallet-title">提现规则</view>
-    <view class="wallet-rule"><text class="wallet-dot"></text><text>最低提现金额 ¥{{min}}，低于该金额不可提现</text></view>
-    <view class="wallet-rule"><text class="wallet-dot"></text><text>{{account === 'earn' ? '每笔提现收取 10% 服务费，按提现金额扣除' : '邀请奖励提现不抽成，全额到账'}}</text></view>
-    <view class="wallet-rule"><text class="wallet-dot"></text><text>提现申请将在 1-3 个工作日内处理</text></view>
+  <view class="mall-tabs">
+    <view class="mall-tab {{tab === 'shop' ? 'mall-tab-on' : ''}}" data-tab="shop" bindtap="bindTab"><text class="icon-present"></text><text>可兑换</text></view>
+    <view class="mall-tab {{tab === 'done' ? 'mall-tab-on' : ''}}" data-tab="done" bindtap="bindTab"><text class="icon-ticket"></text><text>已兑换</text></view>
   </view>
 
-  <view class="wallet-card">
-    <view class="wallet-title">提现记录</view>
-    <view class="wallet-empty">{{isLoad ? '暂无提现记录' : '正在加载…'}}</view>
-  </view>
-  <view class="wallet-foot">如对金额有疑问，可通过「在线客服」联系管理员核对。</view>
-</view>
-
-<view wx:if="{{sheet}}" class="wallet-sheet-mask" catchtouchmove="bindStopTouch" bindtap="bindCloseSheet">
-  <view class="wallet-sheet" catchtap="bindStopTouch">
-    <view class="wallet-sheet-head"><text class="wallet-sheet-title">提现{{accountName}}</text><text class="wallet-sheet-close" bindtap="bindCloseSheet" aria-label="关闭">×</text></view>
-    <view class="wallet-sheet-balance">可提现余额 ¥{{balance}} · 最低提现 ¥{{min}}</view>
-    <view class="wallet-field">
-      <text class="wallet-field-label">提现金额</text>
-      <input class="wallet-field-input" type="digit" value="{{amount}}" bindinput="bindAmountInput" placeholder="0.00" placeholder-class="wallet-placeholder" />
-      <text class="wallet-field-all" bindtap="bindAllAmount">全部</text>
+  <block wx:if="{{tab === 'shop'}}">
+    <view wx:for="{{items}}" wx:key="id" class="mall-card {{item.disabled ? 'mall-card-disabled' : ''}}" data-id="{{item.id}}" bindtap="bindRedeemTap">
+      <view class="mall-card-icon"><text class="icon-ticket"></text></view>
+      <view class="mall-card-copy">
+        <view class="mall-card-name">{{item.name}}</view>
+        <view class="mall-card-desc">兑换后到店出示券码使用</view>
+        <view wx:if="{{item.disabled}}" class="mall-progress">
+          <view class="mall-progress-bar"><view class="mall-progress-fill" style="width: {{(item.cost - item.lack) / item.cost * 100}}%"></view></view>
+          <text class="mall-card-lack">还差 {{item.lack}} 积分</text>
+        </view>
+      </view>
+      <view class="mall-card-side">
+        <view class="mall-card-cost"><text class="mall-card-cost-num">{{item.cost}}</text><text class="mall-card-cost-unit">积分</text></view>
+        <view class="mall-card-btn">{{item.disabled ? '积分不足' : '立即兑换'}}</view>
+      </view>
     </view>
-    <view class="wallet-summary">
-      <view class="wallet-summary-row"><text>服务费{{account === 'invite' ? '（不抽成）' : '（10%）'}}</text><text>¥{{fee}}</text></view>
-      <view class="wallet-summary-row wallet-summary-strong"><text>预计到账</text><text>¥{{arrive}}</text></view>
+    <view wx:if="{{isLoad && !items.length && !error}}" class="mall-empty"><text class="icon-present mall-empty-icon"></text><text>暂无可兑换商品</text></view>
+  </block>
+
+  <block wx:else>
+    <view wx:for="{{vouchers}}" wx:key="id" class="mall-ticket">
+      <view class="mall-ticket-main">
+        <view class="mall-ticket-name">{{item.itemName}}</view>
+        <view class="mall-ticket-time">兑换于 {{item.at}}</view>
+      </view>
+      <view class="mall-ticket-side">
+        <button class="mall-view-btn" data-id="{{item.id}}" bindtap="bindViewVoucher">查看</button>
+      </view>
     </view>
-    <view wx:if="{{error}}" class="wallet-error">{{error}}</view>
-    <button class="wallet-submit" bindtap="bindSubmitWithdraw">确认提现</button>
-    <view class="wallet-sheet-note">{{ruleNote}}</view>
+    <view wx:if="{{voucherLoaded && !vouchers.length}}" class="mall-empty"><text class="icon-ticket mall-empty-icon"></text><text>还没有兑换记录</text></view>
+    <view wx:elif="{{!voucherLoaded}}" class="mall-empty"><text>正在加载…</text></view>
+    <view wx:if="{{voucherMore}}" class="mall-more" bindtap="bindMoreVouchers">{{voucherLoading ? '正在加载…' : '加载更多'}}</view>
+  </block>
+
+  <view wx:if="{{error}}" class="mall-error">{{error}}</view>
+
+  <view class="mall-rules">
+    <view class="mall-rules-title">如何获得积分</view>
+    <view class="mall-rule-row">
+      <view class="mall-rule-icon"><text class="icon-deliver"></text></view>
+      <view class="mall-rule-copy"><view class="mall-rule-name">发单完成收货</view><view class="mall-rule-desc">每笔订单确认收货后到账</view></view>
+      <text class="mall-rule-num">+100</text>
+    </view>
+    <view class="mall-rule-row">
+      <view class="mall-rule-icon mall-rule-icon-warm"><text class="icon-friendadd"></text></view>
+      <view class="mall-rule-copy"><view class="mall-rule-name">邀请好友完成首单</view><view class="mall-rule-desc">你和好友各得一次</view></view>
+      <text class="mall-rule-num">+300</text>
+    </view>
+  </view>
+
+  <view wx:if="{{voucherVisible && voucher}}" class="mall-mask" bindtap="bindCloseVoucher">
+    <view class="mall-sheet" catchtap="noop">
+      <view class="mall-sheet-title">{{voucher.itemName}}</view>
+      <view class="mall-code-box">
+        <view class="mall-code-label">券码</view>
+        <view class="mall-sheet-code" user-select>{{voucher.code}}</view>
+        <view class="mall-sheet-copy" bindtap="bindCopyCode"><text class="icon-copy"></text><text>复制券码</text></view>
+      </view>
+      <view class="mall-sheet-row"><text class="mall-sheet-key">兑换时间</text><text>{{voucher.at}}</text></view>
+      <view class="mall-sheet-row"><text class="mall-sheet-key">状态</text><text class="mall-status">{{voucher.statusText}}</text></view>
+      <view class="mall-sheet-hint">{{voucher.hint}}</view>
+      <button class="mall-sheet-close" bindtap="bindCloseVoucher">知道了</button>
+    </view>
+  </view>
+
+  <view wx:if="{{logsVisible}}" class="mall-mask" bindtap="bindCloseLogs">
+    <view class="mall-sheet mall-sheet-tall" catchtap="noop">
+      <view class="mall-sheet-title">积分明细</view>
+      <scroll-view scroll-y class="mall-log-scroll" bindscrolltolower="bindMoreLogs">
+        <view wx:for="{{logs}}" wx:key="id" class="mall-log-item">
+          <view class="mall-log-copy">
+            <view class="mall-log-title">{{item.reasonText}}</view>
+            <view class="mall-log-time">{{item.at}}</view>
+          </view>
+          <text class="mall-log-change {{item.change > 0 ? 'mall-plus' : ''}}">{{item.changeText}}</text>
+        </view>
+        <view wx:if="{{!logs.length}}" class="mall-empty">{{loading ? '正在加载…' : '还没有积分记录'}}</view>
+        <view wx:elif="{{!hasMore}}" class="mall-more">没有更多了</view>
+      </scroll-view>
+      <button class="mall-sheet-close" bindtap="bindCloseLogs">关闭</button>
+    </view>
   </view>
 </view>

@@ -3,8 +3,9 @@ const context = require('./tenant_context.js');
 const AppError = require('../core/app_error.js');
 
 // Account profiles are shared within a school. Operational data is campus scoped.
+// 积分挂在用户身上（user 是学校共享的），所以积分日志同样按学校隔离。
 // Administrator authentication and the directory use explicit service authorization.
-const SCHOOL = new Set(['user', 'identity_unique']);
+const SCHOOL = new Set(['user', 'identity_unique', 'point_log']);
 const GLOBAL = new Set(['admin', 'school', 'campus', 'tenant_migration', 'request_scope', 'admin_limit', 'operation_limit', 'account_session', 'account_media', 'account_cleanup_file', 'export_file']);
 function kind(name) {
   const short = name.replace(/^bx_/, '');

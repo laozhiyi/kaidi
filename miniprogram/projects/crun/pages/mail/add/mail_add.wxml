@@ -50,12 +50,12 @@
        <view class="pub-segment-item {{upstairs ? 'pub-segment-active' : ''}} pub-view" bindtap="bindUpstairsTap" data-value="true">需要</view>
       </view>
      </view>
-     <view class="pub-req-row pub-view">
-      <text class="pub-req-label pub-text">小费</text>
+     <view wx:if="{{upstairs}}" class="pub-req-row pub-view">
+      <text class="pub-req-label pub-text">上楼费</text>
       <view class="pub-tip-box pub-view"><text class="pub-text">¥</text><input class="pub-tip-input" type="digit" value="{{tipInput}}" maxlength="5" placeholder="选填，自定义金额" placeholder-class="pub-placeholder" bindinput="bindTipInput" disabled="{{submitting}}"/></view>
      </view>
      <view wx:if="{{tipError}}" class="pub-req-hint pub-req-error pub-view">{{tipError}}</view>
-     <view wx:elif="{{upstairs && !tip}}" class="pub-req-hint pub-view">送上楼建议加小费，骑手更愿意接单</view>
+     <view wx:elif="{{upstairs && !tip}}" class="pub-req-hint pub-view">送上楼建议加上楼费，骑手更愿意接单</view>
     </view>
    </view>
     <view class="pub-card pub-contact-card pub-view">

@@ -57,13 +57,13 @@ function validateForms(forms, config, now) {
  }
  const quote = plugins.get(obj.serviceType).normalize(input, obj, config, {text,images,fail});
  let totalFee = quote.totalFee;
- // 小费（快递代取）：下单时给骑手的额外费用，常用于送上楼；骑手接单前可见，计入订单总价。
- // 金额由发布人自定义，最多 20 元、两位小数（上限防止误填与刷单）。
+ // 上楼费（快递代取）：选了「需要送上楼」时才收，给骑手的额外费用；骑手接单前可见，计入订单总价。
+ // 金额由发布人自定义，最多 20 元、两位小数（上限防止误填与刷单）。没选送上楼时一律清零。
  if (obj.serviceType === 'take') {
-  const raw = input.tip == null || input.tip === '' ? '0' : String(input.tip).trim();
-  if (!/^\d{1,2}(?:\.\d{1,2})?$/.test(raw)) fail('小费须在0至20元之间，最多两位小数');
+  const raw = obj.upstairs === true ? (input.tip == null || input.tip === '' ? '0' : String(input.tip).trim()) : '0';
+  if (!/^\d{1,2}(?:\.\d{1,2})?$/.test(raw)) fail('上楼费须在0至20元之间，最多两位小数');
   const tipFee = Math.round(Number(raw) * 100);
-  if (!Number.isSafeInteger(tipFee) || tipFee < 0 || tipFee > 2000) fail('小费须在0至20元之间，最多两位小数');
+  if (!Number.isSafeInteger(tipFee) || tipFee < 0 || tipFee > 2000) fail('上楼费须在0至20元之间，最多两位小数');
   obj.tip = tipFee / 100;
   if (tipFee) { totalFee += tipFee; obj.price = totalFee / 100; }
  }

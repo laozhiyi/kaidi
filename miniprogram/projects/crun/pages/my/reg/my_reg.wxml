@@ -34,7 +34,6 @@
         <include src="../personal/wechat_profile_fields.wxml" />
         <block>
           <include src="../personal/personal_form.wxml" />
-          <view class="profile-section profile-invite"><view class="profile-field"><text class="profile-field-label">邀请码（选填）</text><input class="profile-field-input" value="{{inviteCode}}" maxlength="6" placeholder="输入好友的6位邀请码" bindinput="bindInviteCodeInput" /></view></view>
         </block>
         <button form-type="submit" loading="{{saving}}" disabled="{{saving || phoneAuthorizing}}" class="profile-save wechat-login-button">保存资料并继续</button>
       </block>

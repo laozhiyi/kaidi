@@ -31,6 +31,7 @@ test('absent operations config opens the default service, but saved false or mal
  const f = fixture(), Service = f.load('operation_config_service.js'), service = new Service(), id = f.store.key('crun', 'config');
  f.table('operation_config').delete(id);
  let config = await service.getConfig(); assert.equal(config.enabled, true); assert.equal(config.configured, false); assert.equal(config.openHour, 8); assert.equal(config.closeHour, 22);
+ assert.deepEqual([config.smallPrice, config.mediumPrice, config.largePrice], [2, 4, 8], '默认参考价为 2 / 4 / 8');
  for (const value of [{ enabled: false }, {}, null, { enabled: 'true' }, { enabled: 1 }]) {
   f.table('operation_config').set(id, { value }); config = await service.getConfig(); assert.equal(config.enabled, false); assert.equal(config.configured, true);
  }
@@ -86,10 +87,11 @@ test('detail presentation calculates fees, package tags and safe Beijing times',
  assert.equal(UI.detail({ ...base, MAIL_PAYMENT_MODE: 'wechat' }, now).legacyPayment, true);
 });
 test('detail primary actions depend on actual order role and status, never on page entry', () => {
- const cases = [[0, 'poster', 'edit'], [1, 'rider', 'pickup'], [4, 'rider', 'deliver'], [4, 'poster', 'contact'], [2, 'poster', 'confirm'], [2, 'rider', 'remind'], [3, 'rider', 'contact'], [9, 'poster', 'contact'], [99, 'public', 'orders']];
+ const cases = [[0, 'poster', 'edit'], [1, 'rider', 'pickup'], [4, 'rider', 'deliver'], [4, 'poster', 'contact'], [2, 'poster', 'confirm'], [2, 'rider', 'remind'], [3, 'rider', 'contact'], [9, 'poster', 'done'], [9, 'rider', 'done'], [99, 'public', 'orders']];
  for (const [status, role, action] of cases) {
   const mail = { ...base, MAIL_STATUS: status, mypost: role === 'poster', myaccept: role === 'rider', acceptUser: { USER_NAME: '小陈', USER_MOBILE: '13900000000' } };
   const ui = UI.detail(mail, now); assert.equal(ui.primary, action); assert.equal(ui.canCancel, role === 'poster' && status === 0); assert.equal(ui.canException, role !== 'public' && [1,2,4].includes(status));
+  if (status === 9 && role !== 'public') assert.equal(ui.primaryLabel, role === 'poster' ? '已收货' : '已送达');
  }
  const expired = UI.detail({ ...base, mypost: true, MAIL_END_TIME: now - 1 }, now); assert.equal(expired.expired, true); assert.equal(expired.step, -1); assert.notEqual(expired.primary, 'edit');
 });

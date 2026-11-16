@@ -38,6 +38,11 @@
   <view wx:if="{{!campus}}" class="profile-required-hint">请选择所在校区后再保存</view>
   <view class="profile-disclaimer"><view class="profile-disclaimer-check {{profileDisclaimer ? 'profile-disclaimer-on' : ''}}" bindtap="bindDisclaimerTap" role="checkbox" aria-checked="{{profileDisclaimer}}" aria-label="同意免责声明"><view class="profile-disclaimer-box"><text wx:if="{{profileDisclaimer}}" class="icon-check"></text></view><text class="profile-disclaimer-text">我已阅读并同意</text></view><text class="profile-disclaimer-link" bindtap="bindViewDisclaimer">《免责声明》</text></view>
 </view>
+<view class="profile-section profile-invite">
+  <view wx:if="{{inviteBound}}" class="profile-field"><text class="profile-field-label">已填写邀请码 {{inviteBoundCode}}</text></view>
+  <view wx:else class="profile-field"><text class="profile-field-label">邀请码（选填）</text><input class="profile-field-input" value="{{inviteCode}}" maxlength="6" placeholder="输入好友的6位邀请码" bindinput="bindInviteCodeInput" /></view>
+  <view wx:if="{{myInviteCode}}" class="profile-field"><text class="profile-field-label">我的邀请码</text><text class="profile-invite-mine" user-select>{{myInviteCode}}</text><text class="profile-invite-copy" bindtap="bindCopyMyInviteCode">复制</text></view>
+</view>
 <view wx:if="{{campusPickerVisible}}" class="profile-campus-overlay">
   <view class="profile-campus-mask" catchtap="bindCloseCampusPicker" catchtouchmove="bindProfileSheetTouchMove"></view>
   <view class="profile-campus-sheet">

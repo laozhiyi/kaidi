@@ -12,19 +12,19 @@
 <template name="parcel-fields">
    <view class="pub-card{{serviceType === 'take' ? ' pub-card-take' : ''}} pub-view">
     <view class="pub-heading pub-view"><view class="pub-view"><text class="pub-section-no pub-text">01</text><text class="pub-text">选择包裹</text></view><text class="pub-caption pub-text">按件计费</text></view>
-    <view class="pub-price-editor pub-view"><view class="pub-view"><view class="pub-price-title pub-view">参考价格与本单合计</view><view wx:if="{{serviceType !== 'take'}}" class="pub-price-tip pub-view">参考价会随件型显示；每件费用可在下方单独调整</view></view><view class="pub-price-total pub-view">¥{{payTotal}}<text wx:if="{{serviceType === 'take' && tip}}" class="pub-price-tip-fee pub-text">含小费 ¥{{tip}}</text></view></view>
+    <view class="pub-price-editor pub-view"><view class="pub-view"><view class="pub-price-title pub-view">参考价格与本单合计</view><view wx:if="{{serviceType !== 'take'}}" class="pub-price-tip pub-view">参考价会随件型显示；每件费用可在下方单独调整</view></view><view class="pub-price-total pub-view">¥{{payTotal}}<text wx:if="{{serviceType === 'take' && tip}}" class="pub-price-tip-fee pub-text">含上楼费 ¥{{tip}}</text></view></view>
     <view class="pub-packages pub-view">
      <view class="pub-package {{item.count > 0 ? 'pub-package-selected' : ''}}{{serviceType === 'take' ? ' pub-package-take' : ''}} pub-view" wx:for="{{packageTypes}}" wx:key="mark">
-      <view wx:if="{{serviceType === 'take'}}" class="pub-package-guide-tag pub-view" catchtap="bindOpenSizeGuide" data-mark="{{item.mark}}">参考</view>
       <view wx:if="{{serviceType === 'take'}}" class="pub-parcel-take pub-parcel-take-{{item.mark}} pub-view"></view>
       <view wx:else class="pub-parcel pub-parcel-{{item.mark}} pub-view"><view class="pub-view"></view></view>
       <view class="pub-package-name pub-view">{{item.label}}</view>
+      <view wx:if="{{serviceType === 'take'}}" class="pub-package-guide-tag pub-view" catchtap="bindOpenSizeGuide" data-mark="{{item.mark}}">参考</view>
       <view class="pub-package-price pub-view">¥<text class="pub-text">{{item.price}}</text><text class="pub-per-item pub-text"> /件</text></view>
       <view class="pub-counter pub-view"><button class="pub-counter-button pub-button-base {{item.count===0 ? 'pub-disabled' : ''}}" disabled="{{item.count===0}}" bindtap="bindPackageTap" data-index="{{index}}" data-step="-1">−</button><text class="pub-text">{{item.count}}</text><button class="pub-counter-button pub-counter-add pub-button-base {{(totalCount>=config.maxPackages) ? 'pub-disabled' : ''}}" disabled="{{totalCount>=config.maxPackages}}" bindtap="bindPackageTap" data-index="{{index}}" data-step="1">＋</button></view>
      </view>
     </view>
     <view wx:if="{{serviceType === 'take'}}" class="pub-size-guide pub-view">
-     <view class="pub-size-guide-warning pub-view">请如实选择大小。代取人到达驿站后，若发现实际包裹明显超出所选大小，有权要求发单人补差价或取消订单，由此产生的损失由发单人承担。</view>
+     <view class="pub-size-guide-warning pub-view">请按实际大小选择哦！若现场发现超大/超重，请双方协商补差价哦~~~</view>
     </view>
     <view wx:if="{{packageItems.length}}" class="pub-package-details pub-view">
      <view class="pub-detail-title pub-view">每件包裹信息 <text class="pub-text">{{serviceType === 'send' ? '价格独立设置，请填写取件位置和物品说明' : '价格独立设置，取件码和截图二选一，点截图可查看或删除'}}</text></view>

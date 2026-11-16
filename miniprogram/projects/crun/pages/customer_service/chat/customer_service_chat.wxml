@@ -69,7 +69,7 @@
 
 			<view class="composer">
 				<view class="composer-field">
-					<textarea class="composer-input" maxlength="500" auto-height placeholder="{{isAdminChat?'请输入回复内容':(pendingOrder?'补充说明（选填）':'请输入咨询内容')}}" value="{{content}}" bindinput="bindContentInput" disabled="{{service.CS_STATUS!=1}}" cursor-spacing="20"></textarea>
+					<textarea class="composer-input" maxlength="500" auto-height show-confirm-bar="{{false}}" placeholder="{{isAdminChat?'请输入回复内容':(pendingOrder?'补充说明（选填）':'请输入咨询内容')}}" value="{{content}}" bindinput="bindContentInput" disabled="{{service.CS_STATUS!=1}}" cursor-spacing="20"></textarea>
 					<view class="counter">{{content.length}}/500</view>
 				</view>
 				<button class="send-btn" disabled="{{isSending || (!content.length && !pendingOrder) || service.CS_STATUS!=1}}" loading="{{isSending}}" bindtap="bindSendTap">{{isSending?'发送中':(isAdminChat?'回复':'发送')}}</button>

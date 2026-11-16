@@ -5,7 +5,9 @@ Page({
   data: { id: '', user: null, profile: null, loading: false, error: '', notFound: false, busy: false, reason: '',
     // 权限管理按钮按「操作人 vs 目标账号」逐项判定：同级与上级一律不给入口。
     canManageTarget: false, staffTarget: false, isSelfTarget: false, canLeaveRole: false,
-    grantSuper: false, grantAdmin: false, grantService: false, canRevokeRole: false, roleNotice: '' },
+    grantSuper: false, grantAdmin: false, grantService: false, canRevokeRole: false, roleNotice: '',
+    // 积分调整：只有初始管理员 / 超级管理员看得到，后端同样校验。
+    canGrantPoints: false, points: 0, pointAmount: '', pointNote: '' },
   onLoad(options = {}) {
     if (!UI.start(this)) return;
     if (!options.id) { this.setData({ notFound: true }); return; }
@@ -26,12 +28,36 @@ Page({
       const user = data && (data._id || data.USER_MINI_OPENID || data.USER_ID) ? UI.user(data) : null;
       if (this._visible && seq === this._seq) {
         const profile = user ? UI.userProfile(data) : null;
-        this.setData({ user, profile, notFound: !user, ...this.roleFlags(profile && profile.role, user && user.userId) });
+        this.setData({ user, profile, notFound: !user, ...this.roleFlags(profile && profile.role, user && user.userId),
+          canGrantPoints: !!user && ['root', 'super'].includes(UI.adminRole()), points: Number(data && data.USER_POINTS) || 0 });
       }
     } catch (error) { if (this._visible && seq === this._seq) this.setData({ error: UI.message(error) }); }
     finally { if (this._visible && seq === this._seq) this.setData({ loading: false }); }
   },
   bindBack() { UI.back('users'); },
+  bindPointAmount(e) { if (!this.data.busy) this.setData({ pointAmount: e.detail.value }); },
+  bindPointNote(e) { if (!this.data.busy) this.setData({ pointNote: e.detail.value }); },
+  /** 调整积分：正数赠送、负数扣回；同一组参数重试沿用同一个请求标识，不会重复加分 */
+  async bindGrantPoints() {
+    if (!UI.authorize(this) || this.data.busy || this.data.loading || this.data.error || !this.data.user || !this.data.canGrantPoints) return;
+    const raw = String(this.data.pointAmount || '').trim();
+    const amount = Number(raw);
+    if (!/^-?\d{1,4}$/.test(raw) || !amount || Math.abs(amount) > 1000) { Ops.error(new Error('请输入 -1000 到 1000 之间的非零整数')); return; }
+    const note = this.data.pointNote.trim();
+    if (!note) { Ops.error(new Error('请填写调整原因')); return; }
+    if (amount < 0 && this.data.points + amount < 0) { Ops.error(new Error('扣减后余额不能为负，当前余额 ' + this.data.points)); return; }
+    if (!await UI.confirm(amount > 0 ? '赠送积分' : '扣回积分', (amount > 0 ? '给该用户增加 ' : '从该用户扣除 ') + Math.abs(amount) + ' 积分，操作会记入积分明细和后台日志。')) return;
+    if (!this._visible) return;
+    this.setData({ busy: true });
+    try {
+      const result = await Ops.command('admin/user_point_grant', { id: this.data.user.userId, amount: String(amount), note });
+      if (this._visible) {
+        this.setData({ points: Number(result && result.points) || 0, pointAmount: '', pointNote: '' });
+        wx.showToast({ title: result && result.alreadyApplied ? '已调整过' : '已调整' });
+      }
+    } catch (error) { if (this._visible) Ops.error(error); }
+    finally { if (!this._unloaded) this.setData({ busy: false }); }
+  },
   bindReason(e) { if (!this.data.busy) this.setData({ reason: e.detail.value }); },
   bindPhone() { if (this.data.user && this.data.user.USER_MOBILE) wx.makePhoneCall({ phoneNumber: this.data.user.USER_MOBILE }); },
   bindCall(e) { const phone = e.currentTarget.dataset.phone; if (phone && phone !== '无') wx.makePhoneCall({ phoneNumber: String(phone) }); },

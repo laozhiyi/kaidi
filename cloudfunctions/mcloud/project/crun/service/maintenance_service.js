@@ -119,6 +119,8 @@ class MaintenanceService extends Base {
    row.MAIL_STATUS=9;row.MAIL_END_AT=now;row.MAIL_OVER_TIME=now;row.MAIL_AUTO_CONFIRMED=true;row.MAIL_POSTER_ARCHIVED=true;row.MAIL_RIDER_ARCHIVED=true;
    await svc._quota(tx,row.MAIL_USER_ID,'poster',id,false,0);
    if(row.MAIL_ACCEPT_USER_ID)await svc._quota(tx,row.MAIL_ACCEPT_USER_ID,'rider',id,false,0);
+   // 自动确认同样算订单完成：与状态写在同一个事务里记积分。
+   await new (require('./point_service.js'))().awardOrderCompleted(tx,row,now);
   }else{
    if(![1,2,3,4].includes(row.MAIL_STATUS)||row.MAIL_OVERDUE_NOTIFIED||!(row.MAIL_DUE_TIME>0&&row.MAIL_DUE_TIME<now))return;
    row.MAIL_OVERDUE_NOTIFIED=true;

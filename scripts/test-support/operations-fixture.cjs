@@ -41,9 +41,21 @@ function fixture({ projectFields = false } = {}) {
   };return api;
  }
  const db={collection,command,RegExp:({regexp,options})=>new RegExp(regexp,options)};let tail=Promise.resolve();
+ // 真实云开发事务只能按 _id 读写单个文档：事务对象上没有 where 查询。
+ // 这里保持同样行为，事务里误用 where 会直接抛错，而不是被假实现悄悄放行。
+ const documentOnly = name => {
+  const base = collection(name);
+  return {
+   doc: id => base.doc(id),
+   where() { throw new Error('TRANSACTION_QUERY_UNSUPPORTED: 事务内只能按 _id 读写文档'); },
+   add() { throw new Error('TRANSACTION_QUERY_UNSUPPORTED: 事务内只能按 _id 读写文档'); },
+   count() { throw new Error('TRANSACTION_QUERY_UNSUPPORTED: 事务内只能按 _id 读写文档'); }
+  };
+ };
+ const tx = { collection: documentOnly, rollback: async () => {} };
  const store={key:(...parts)=>crypto.createHash('sha256').update(JSON.stringify(parts)).digest('hex').slice(0,32),collection:n=>'bx_'+n,database:()=>db,
   get:async(_,n,id)=>clone(table(n).get(id)||null),set:async(_,n,id,row)=>{table(n).set(id,{...clone(row),_id:id});},
-  transaction(fn){const job=tail.then(async()=>{const snapshot=clone(tables);try{return await fn(db);}catch(e){tables.clear();for(const [k,v] of snapshot)tables.set(k,v);throw e;}});tail=job.catch(()=>{});return job;},limit:async()=>{}};
+  transaction(fn){const job=tail.then(async()=>{const snapshot=clone(tables);try{return await fn(tx);}catch(e){tables.clear();for(const [k,v] of snapshot)tables.set(k,v);throw e;}});tail=job.catch(()=>{});return job;},limit:async()=>{}};
  // These fixtures isolate business invariants. Tenant enforcement is exercised
  // separately through the real database wrapper and request context.
  store.scope=()=>null; store.scopeKey=store.key; store.schoolKey=store.key;

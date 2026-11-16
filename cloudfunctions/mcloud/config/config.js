@@ -30,8 +30,9 @@ module.exports = {
 	ADMIN_LOGIN_EXPIRE: 86400, //管理员token过期时间 (秒) 
 
 	// ### 邀请小程序码
-	// release：优先正式版，线上版本还没发布该页面时自动退到体验版；trial：直接生成体验版码（内测验证用）。
-	INVITE_QR_ENV: process.env.INVITE_QR_ENV === 'trial' ? 'trial' : 'release',
+	// 小程序码的小程序版本：develop / trial / release，默认 trial（内测）。
+	// 正式上线时必须改成 release（云函数环境变量 INVITE_QR_ENV=release），否则外部用户扫码打不开。
+	INVITE_QR_ENV: ['develop', 'trial', 'release'].includes(process.env.INVITE_QR_ENV) ? process.env.INVITE_QR_ENV : 'trial',
 
 	// ### 服务者相关
 	WORK_LOGIN_EXPIRE: 86400, //服务者token过期时间 (秒) 

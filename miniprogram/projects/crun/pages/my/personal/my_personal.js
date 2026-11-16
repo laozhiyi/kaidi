@@ -39,6 +39,7 @@ Page(Object.assign({
       if (!PassportBiz.getUserId()) return this._openLogin();
       if (!user) return this._openLogin();
       profileMethods.applyUser(this, user);
+      profileMethods.loadInviteInfo(this);
       this.setData({ isLoad: true, user, ...(user.profilePhoneRequired ? { isEdit: user.USER_PROFILE_COMPLETE === true } : {}) });
     } catch (error) {
       if (!isCurrent()) return;
@@ -53,5 +54,4 @@ Page(Object.assign({
   bindPersonalSubmit(e) {
     return profileMethods.bindSubmitTap.call(this, e);
   },
-  bindInviteCodeInput(e) { this.setData({ inviteCode: InviteBiz.normalize(e.detail.value) }); }
 }, profileMethods, accountActions));

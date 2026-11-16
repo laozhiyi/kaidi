@@ -259,6 +259,28 @@ class AdminUserController extends BaseProjectAdminController {
 		await service.deleteUserDataExcel(this._adminId);
 		return { ok: true };
 	}
+
+	/** 调整用户积分：仅初始管理员 / 超级管理员；正数赠送、负数扣回，留审计日志 */
+	async pointGrant() {
+		await this.isAdmin();
+		const role = Roles.operatorRole(this._admin);
+		if (role !== 'root' && role !== 'super') this.AppError('只有超级管理员可以调整积分');
+
+		let rules = {
+			id: 'must|id',
+			amount: 'must|string|min:1|max:6|name=调整积分',
+			note: 'must|string|min:1|max:100|name=调整原因',
+			requestId: 'must|string|min:16|max:100|name=请求标识',
+		};
+		let input = this.validateData(rules);
+
+		const PointService = require('../../service/point_service.js');
+		const result = await new PointService().adminGrant(this._admin, {
+			userId: input.id, amount: Number(input.amount), note: input.note, requestId: input.requestId
+		});
+		if (!result.alreadyApplied) this.logUser('调整用户「' + input.id + '」积分 ' + (result.change > 0 ? '+' : '') + result.change + '：' + input.note);
+		return result;
+	}
 }
 
 module.exports = AdminUserController;

@@ -167,8 +167,12 @@ function detail(mail, now = Date.now()) {
  const participant = !!(mail.mypost || mail.myaccept);
  const legacyPayment = mail.MAIL_PAYMENT_MODE !== 'offline';
  const expired = status === 0 && Number(mail.MAIL_END_TIME) > 0 && Number(mail.MAIL_END_TIME) <= now;
+ // 已完成：顶栏整体转灰，并按角色显示发布人 / 骑手各自看到的结果。
+ const done = status === 9 ? { title: mail.mypost ? '已收货' : mail.myaccept ? '已送达' : '订单已完成',
+  note: mail.mypost ? '你已确认收货，订单已结束' : mail.myaccept ? '发布人已确认收货，本单已结束' : '订单已结束，可查看实际履约记录',
+  icon: 'roundcheck', tone: 'muted', step: 4 } : null;
  const state = expired ? { title: '订单已过期', note: '已超过接单截止时间，本单不再接受接取', icon: 'time', tone: 'muted', step: -1 }
-  : STATUS[status] || { title: '订单状态待确认', note: '请刷新订单或联系在线客服', icon: 'info', tone: 'muted', step: -1 };
+  : done || STATUS[status] || { title: '订单状态待确认', note: '请刷新订单或联系在线客服', icon: 'info', tone: 'muted', step: -1 };
  const orderProgress = progress(mail, now);
  const fee = obj.price == null ? Number(mail.MAIL_TOTAL_FEE) / 100 : Number(obj.price);
  const packages = ['small', 'medium', 'large'].map((key, i) => ({ key, label: ['小件', '中件', '大件'][i], count: Number(obj[key]) || 0 })).filter(x => x.count > 0);
@@ -185,7 +189,8 @@ function detail(mail, now = Date.now()) {
  else if (participant && mail.myaccept && status === 4) { primary = 'deliver'; primaryLabel = '已送达'; }
  else if (participant && mail.myaccept && status === 2) { primary = 'remind'; primaryLabel = '提醒发布人收货'; }
  else if (participant && mail.mypost && status === 2) { primary = 'confirm'; primaryLabel = '确认收货'; }
- else if (participant && status === 9 && (mail.MAIL_CAN_REVIEW || mail.MAIL_REVIEWED)) { primary = 'review'; primaryLabel = mail.MAIL_REVIEWED ? '查看我的评价' : '评价对方'; }
+ // 已完成订单不再在详情页提供评价入口；评价只在订单列表「已完成」分组里发起。
+ else if (participant && status === 9) { primary = 'done'; primaryLabel = mail.mypost ? '已收货' : mail.myaccept ? '已送达' : '订单已完成'; }
  else if (phone) { primary = 'contact'; primaryLabel = mail.mypost ? '联系骑手' : '联系发布者'; }
  const actions = { overdue: '已超过预计送达时间', archive: '订单已归档', expire: '已超过接单截止时间', hold: '管理员已介入', resume: '配送已恢复', admin_cancel: '管理员已取消订单', admin_finish: '管理员已完结订单', publish: '订单已发布', accept: '骑手已接单', pickup: '骑手已取件，开始配送', edit: '订单信息已更新', deliver: '骑手已提交送达凭证', update_proof: '骑手已更新送达凭证', price_propose: '骑手申请调整费用', price_respond: '发布人已处理调价申请', release: '骑手放弃接单，订单已重新发布', finish: '已确认收货', confirm: '已确认收货', cancel: '订单已取消', exception: '已提交配送异常', resolve: '异常处理已更新', media_purge: '凭证照片和视频已清理' };
  const history = mail.mypost && Array.isArray(mail.MAIL_HISTORY) ? mail.MAIL_HISTORY.filter(x => x && typeof x === 'object').map((x, i) => ({
@@ -206,7 +211,7 @@ function detail(mail, now = Date.now()) {
   step: orderProgress.step, showProgress: orderProgress.visible, steps: orderProgress.steps, deliveryAddress: Address.formatOrderAddress(mail),
   phone: phone || '', phoneDisplay: maskPhone(phone), contactName: contactName || (mail.mypost ? (status === 0 && !expired ? '等待骑手接单' : '暂无骑手信息') : '发布者'), contactRole: mail.mypost ? '接单骑手' : '订单发布者',
   createdAt: time(mail.MAIL_ADD_TIME), endAt: time(mail.MAIL_END_TIME) || time(mail.end2), expectAt: expectSpan(mail), dueAt: time(mail.MAIL_DUE_TIME), deliveredAt: time(mail.MAIL_DELIVERED_TIME),
-  requirementText: requirementText(mail), mediaPurge: mediaPurgeNotice(mail), priceAdjust: priceAdjust(mail), tipText: serviceType === 'take' && Number(obj.tip) > 0 ? '含小费 ¥' + Number(obj.tip) : '',
+  requirementText: requirementText(mail), mediaPurge: mediaPurgeNotice(mail), priceAdjust: priceAdjust(mail), tipText: serviceType === 'take' && Number(obj.tip) > 0 ? '含上楼费 ¥' + Number(obj.tip) : '',
   autoConfirmAt: time(mail.MAIL_AUTO_CONFIRM_AT), autoConfirmed: mail.MAIL_AUTO_CONFIRMED === true,
   deliveryMode: mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.mode || '', deliveryModeLabel: mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.mode === 'face' ? '当面交付' : mail.MAIL_DELIVERY_PROOF ? '放置指定位置' : '',
   proofVideo: mail.MAIL_MEDIA && mail.MAIL_MEDIA.proofVideo && mail.MAIL_MEDIA.proofVideo[0] || '',

@@ -18,7 +18,7 @@
 
   <view class="my-card my-wallet" bindtap="bindWalletTap" hover-class="my-tap">
     <view class="my-wallet-icon"><text class="icon-moneybag"></text></view>
-    <view class="my-wallet-copy"><view class="my-link-title">我的钱包</view><view class="my-link-desc">跑腿收益 · 邀请奖励 · 提现</view></view>
+    <view class="my-wallet-copy"><view class="my-link-title">积分商城</view><view class="my-link-desc">下单得积分 · 邀请好友得积分</view></view>
     <text class="my-arrow icon-right"></text>
   </view>
 

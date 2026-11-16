@@ -124,6 +124,10 @@ page { background: #f3f6fb; }
 .delivery-page .od-footer-actions { display: flex; align-items: center; gap: 16rpx; }
 .delivery-page .od-receipt-hint { color: #7b8da8; font-size: 22rpx; line-height: 1.5; text-align: left; }
 .delivery-page .od-secondary { background: #edf3fb; color: #397bc8; box-shadow: none; }
+/* 订单已完成（状态 9）：主按钮区整体转灰，只作结果展示。 */
+.delivery-page .od-footer-done { border-top-color: #e7ebf1; background: #f2f4f7; box-shadow: none; }
+.delivery-page .od-footer-done .od-footer-tool, .delivery-page .od-footer-done .od-footer-tool text:first-child { color: #9aa3b0; }
+.delivery-page .od-primary.od-done, .delivery-page .od-footer-done .od-primary { background: #cbd3de; color: #fff; box-shadow: none; }
 .delivery-page .od-footer-fee { flex-shrink: 0; max-width: 32%; margin-right: 8rpx; }
 .delivery-page .od-footer-fee view { color: #397bc8; font-family: Arial, sans-serif; font-size: 37rpx; line-height: 1.2; word-break: break-all; }
 .delivery-page .od-footer-fee view text { margin-right: 4rpx; font-size: 25rpx; }

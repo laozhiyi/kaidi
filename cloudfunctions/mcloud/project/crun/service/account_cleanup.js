@@ -13,6 +13,8 @@ const ANONYMIZE = [
   ['mail', ['MAIL_USER_ID', 'MAIL_ACCEPT_USER_ID']], ['order_event', ['actorId']],
   ['feedback', ['FB_USER_ID', 'FB_TARGET_USER_ID']], ['order_review', ['REVIEW_FROM_USER_ID', 'REVIEW_TO_USER_ID']],
   ['invite', ['INV_USER_ID', 'INV_ACCEPT_USER_ID']],
+  // 积分流水保留金额与单号，注销后不再指认本人。
+  ['point_log', ['userId', 'relatedUserId']],
   // 客服邀请码的审计价值归管理员，但使用人不该在注销后继续被 openid 指认。
   ['staff_invite', ['INVITE_USED_BY']]
 ];
@@ -43,6 +45,10 @@ function anonymize(name, row, userId, replacement) {
   if (name === 'invite') {
     if (own('INV_USER_ID')) { next.INV_USER_NAME = '已注销用户'; next.INV_CODE = ''; }
     if (own('INV_ACCEPT_USER_ID')) next.INV_ACCEPT_USER_NAME = '已注销用户';
+  }
+  if (name === 'point_log') {
+    if (own('userId')) next.userId = replacement;
+    if (own('relatedUserId')) next.relatedUserId = replacement;
   }
   if (name === 'order_review') {
     if (own('REVIEW_FROM_USER_ID')) next.REVIEW_FROM_NAME = '已注销用户';

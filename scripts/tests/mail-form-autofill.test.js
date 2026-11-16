@@ -279,7 +279,7 @@ test('the size guide keeps the reference copy verbatim and never shows prices', 
   for (const item of h.page.data.sizeGuide) {
     for (const text of [item.title, item.size, item.examples, item.scene || '']) assert.ok(!/[¥￥]|元/.test(text), text);
   }
-  assert.ok(parcelTemplate.includes('请如实选择大小。代取人到达驿站后，若发现实际包裹明显超出所选大小，有权要求发单人补差价或取消订单，由此产生的损失由发单人承担。'));
+  assert.ok(parcelTemplate.includes('请按实际大小选择哦！若现场发现超大/超重，请双方协商补差价哦~~~'));
   assert.ok(sizeGuideWxml.includes('尺寸重量：{{sizeGuideItem.size}}'));
   assert.ok(sizeGuideWxml.includes('具象参照物：{{sizeGuideItem.examples}}'));
   assert.ok(sizeGuideWxml.includes('wx:if="{{sizeGuideItem.scene}}"'));
@@ -291,8 +291,12 @@ test('the size guide keeps the reference copy verbatim and never shows prices', 
 test('send keeps the original parcel cards and every addition stays behind the take guard', async () => {
   assert.ok(parcelTemplate.includes('wx:if="{{serviceType === \'take\'}}" class="pub-parcel-take pub-parcel-take-{{item.mark}}'));
   assert.ok(parcelTemplate.includes('wx:else class="pub-parcel pub-parcel-{{item.mark}}'));
-  // 「参考」是件型卡片右上角的角标；价格行恢复原样，不再夹按钮。
+  // 「参考」在件型名称与价格之间，不再是右上角角标。
   assert.ok(parcelTemplate.includes('<view wx:if="{{serviceType === \'take\'}}" class="pub-package-guide-tag pub-view" catchtap="bindOpenSizeGuide" data-mark="{{item.mark}}">参考</view>'));
+  const nameAt = parcelTemplate.indexOf('class="pub-package-name');
+  const tagAt = parcelTemplate.indexOf('pub-package-guide-tag');
+  const priceAt = parcelTemplate.indexOf('class="pub-package-price');
+  assert.ok(nameAt > 0 && nameAt < tagAt && tagAt < priceAt, '参考按钮位于名称与价格之间');
   assert.equal(parcelTemplate.split('pub-package-guide').length - 1, 1);
   assert.ok(parcelTemplate.includes('<view class="pub-package-price pub-view">¥<text class="pub-text">{{item.price}}</text><text class="pub-per-item pub-text"> /件</text></view>'));
   assert.ok(!parcelTemplate.includes('pub-package-price-take'));
@@ -305,7 +309,7 @@ test('send keeps the original parcel cards and every addition stays behind the t
   assert.ok(!parcelTemplate.includes('pub-size-guide-toggle'));
   assert.ok(!parcelTemplate.includes('pub-size-guide-body'));
   assert.ok(parcelTemplate.includes('wx:if="{{serviceType !== \'take\'}}" class="pub-price-tip'));
-  assert.ok(parcelTemplate.includes('请如实选择大小。代取人到达驿站后，若发现实际包裹明显超出所选大小，有权要求发单人补差价或取消订单，由此产生的损失由发单人承担。'));
+  assert.ok(parcelTemplate.includes('请按实际大小选择哦！若现场发现超大/超重，请双方协商补差价哦~~~'));
   assert.ok(parcelTemplate.indexOf('pub-size-guide-warning') > parcelTemplate.indexOf('pub-packages'));
   assert.ok(parcelTemplate.indexOf('pub-size-guide-warning') < parcelTemplate.indexOf('每件包裹信息'));
   assert.ok(sizeGuideWxml.includes('wx:if="{{serviceType === \'take\' && sizeGuideMark}}"'));
@@ -333,16 +337,21 @@ test('size hints and the size guide are never submitted', async () => {
   assert.ok(value(forms, 'packages').every(row => !Object.prototype.hasOwnProperty.call(row, 'hint')));
 });
 
-test('tip is a custom optional amount: it adds to the shown total, rejects invalid input and submits only with take orders', async () => {
+test('上楼费只在需要送上楼时出现：加进合计、校验输入，没选送上楼时清零', async () => {
   const h = harness(); await h.start();
   assert.equal(h.page.data.tip, 0); assert.equal(h.page.data.tipInput, '');
   const tipInput = text => h.page.bindTipInput({ detail: { value: text } });
+  const upstairs = value => h.page.bindUpstairsTap({ currentTarget: { dataset: { value } } });
   h.page.bindPackageTap({ currentTarget: { dataset: { index: 0, step: 1 } } });
   const base = Number(h.page.data.totalFee);
+  // 没选送上楼时填了金额也不计入合计，切换后清空。
+  tipInput('2.5');
+  assert.equal(h.page.data.payTotal, base.toFixed(2));
+  upstairs('true');
   tipInput('2.5');
   assert.equal(h.page.data.tip, 2.5); assert.equal(h.page.data.tipError, '');
   assert.equal(h.page.data.payTotal, (base + 2.5).toFixed(2));
-  assert.equal(h.page.data.totalFee, base.toFixed(2), 'package total stays separate from the tip');
+  assert.equal(h.page.data.totalFee, base.toFixed(2), 'package total stays separate from the upstairs fee');
   for (const bad of ['25', '1.234', 'abc']) {
     tipInput(bad);
     assert.equal(h.page.data.tip, 0); assert.match(h.page.data.tipError, /0至20元/);
@@ -351,8 +360,23 @@ test('tip is a custom optional amount: it adds to the shown total, rejects inval
   tipInput('');
   assert.equal(h.page.data.tipError, ''); assert.equal(h.page.data.tip, 0);
   tipInput('3');
+  // 改回不需要送上楼：上楼费与输入一起清零。
+  upstairs('false');
+  assert.equal(h.page.data.tip, 0); assert.equal(h.page.data.tipInput, '');
+  assert.equal(h.page.data.payTotal, base.toFixed(2));
+  upstairs('true');
+  tipInput('3');
   const forms = await submitTake(h);
   assert.deepEqual(h.errors, []);
   assert.equal(value(forms, 'tip'), '3.00');
+  assert.equal(value(forms, 'upstairs'), true);
   assert.equal(forms.filter(field => field.mark === 'tip').length, 1);
+});
+
+test('没选送上楼时提交的上楼费为 0', async () => {
+  const h = harness(); await h.start();
+  const forms = await submitTake(h);
+  assert.deepEqual(h.errors, []);
+  assert.equal(value(forms, 'upstairs'), false);
+  assert.equal(value(forms, 'tip'), '0');
 });

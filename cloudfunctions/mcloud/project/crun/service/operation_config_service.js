@@ -1,7 +1,7 @@
 'use strict';
 const Base = require('./base_project_service.js');
 const store = require('./operation_store.js');
-const DEFAULTS = Object.freeze({ enabled: true, paymentMode: 'offline', smallPrice: 1.5, mediumPrice: 3, largePrice: 5, maxPackages: 20, maxActiveOrders: 3, maxOpenOrders: 10, deliveryMinutes: 120, urgentMinutes: 60, urgentEnabled: false, enforceBusinessHours: false, openHour: 8, closeHour: 22, registrationReview: false, campuses: ['育才校区', '王城校区', '雁山校区'], offlineNotice: '费用由双方线下协商结算，平台不代收、不担保；请勿提前向陌生人转账。' });
+const DEFAULTS = Object.freeze({ enabled: true, paymentMode: 'offline', smallPrice: 2, mediumPrice: 4, largePrice: 8, maxPackages: 20, maxActiveOrders: 3, maxOpenOrders: 10, deliveryMinutes: 120, urgentMinutes: 60, urgentEnabled: false, enforceBusinessHours: false, openHour: 8, closeHour: 22, registrationReview: false, campuses: ['育才校区', '王城校区', '雁山校区'], offlineNotice: '费用由双方线下协商结算，平台不代收、不担保；请勿提前向陌生人转账。' });
 const SECTIONS = {
  service: ['enabled', 'enforceBusinessHours', 'openHour', 'closeHour', 'campuses'],
  pricing: ['smallPrice', 'mediumPrice', 'largePrice', 'maxPackages', 'offlineNotice'],

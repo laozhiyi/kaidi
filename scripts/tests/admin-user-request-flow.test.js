@@ -247,7 +247,7 @@ test('registration binds the invite immediately and every later review decision 
   f.table('user').get(userId).USER_STATUS = 0;
   await invites.syncAcceptedStatus('sample-user-openid', 0);
   assert.equal(f.table('invite').get(acceptId).INV_STATUS, 0);
-  assert.equal(JSON.stringify(await invites.getMyInviteStat('inviter-openid')), JSON.stringify({ total: 1, accepted: 0, reward: 0, pending: 1 }));
+  assert.equal(JSON.stringify(await invites.getMyInviteStat('inviter-openid')), JSON.stringify({ total: 1, accepted: 0, used: 0, rewarded: 0, pending: 1 }));
 
   const detail = f.page('user/detail/admin_user_detail.js');
   await detail.page.onLoad({ id: userId });
@@ -256,4 +256,57 @@ test('registration binds the invite immediately and every later review decision 
   detail.page.bindReason({ detail: { value: '学生证不清晰' } });
   await detail.page.bindStatus(tap({ status: 8 }));
   assert.equal(f.table('invite').get(acceptId).INV_STATUS, 2, '审核不通过不再计入邀请');
+});
+
+const profileForms = [{ mark: 'sex', val: '男' }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' },
+  { mark: 'studentId', val: '20240003' }, { mark: 'studentCard', val: ['cloud://test/card.png'] },
+  { mark: 'disclaimer', val: true }, { mark: 'campus', title: '校区', val: '育才校区' }];
+async function inviterCode(f, openid = 'inviter-openid') {
+  f.table('user').set(openid + '-doc', { _id: openid + '-doc', _pid: 'crun', USER_MINI_OPENID: openid, USER_NAME: openid,
+    USER_STATUS: 1, USER_MOBILE: '13900000009', USER_FORMS: [] });
+  return (await new (f.service('invite_service'))().getOrCreateMyInviteCode(openid)).code;
+}
+
+test('a wrong invite code at registration never blocks the profile; the reason is returned separately', async () => {
+  const f = requestFixture(), invites = new (f.service('invite_service'))();
+  await inviterCode(f);
+  await f.passport.wechatIdentityLogin('sample-user-openid');
+  const result = await f.passport.register('sample-user-openid', { name: '填错码的人', mobile: '13900000004', pic: 'cloud://test/avatar.png',
+    inviteCode: 'zzzzzz', forms: profileForms });
+  assert.equal(result.token.profileComplete, true, '资料照常保存');
+  assert.equal(result.invite.accepted, false);
+  assert.match(result.invite.reason, /邀请码无效/);
+  assert.equal(f.table('invite').get(f.store.key('crun', 'invite-accept', 'sample-user-openid')), undefined);
+  const info = await invites.getMyInviteInfo('sample-user-openid');
+  assert.equal(info.bound, false);
+  assert.match(info.code, /^[A-Z0-9]{6}$/, '资料页能拿到自己的邀请码');
+});
+
+test('a valid code typed at registration binds; the profile page then reports it as bound and read-only', async () => {
+  const f = requestFixture(), invites = new (f.service('invite_service'))();
+  const code = await inviterCode(f);
+  await f.passport.wechatIdentityLogin('sample-user-openid');
+  const result = await f.passport.register('sample-user-openid', { name: '填对码的人', mobile: '13900000005', pic: 'cloud://test/avatar.png',
+    inviteCode: code.toLowerCase(), forms: profileForms });
+  assert.equal(result.invite.accepted, true);
+  assert.equal(result.invite.reason, '');
+  const info = await invites.getMyInviteInfo('sample-user-openid');
+  assert.equal(info.bound, true);
+  assert.equal(info.boundCode, code);
+});
+
+test('editing the profile later can bind a code once; own code, bad code and a second bind are refused', async () => {
+  const f = requestFixture(), invites = new (f.service('invite_service'))();
+  const first = await inviterCode(f, 'inviter-openid'), second = await inviterCode(f, 'inviter2-openid');
+  const { token } = await registered(f);
+  const own = (await invites.getMyInviteInfo(token.id)).code;
+  assert.equal((await invites.getMyInviteInfo(token.id)).bound, false);
+  assert.match((await invites.acceptInvite(token.id, own)).reason, /不能使用自己的邀请码/);
+  assert.match((await invites.acceptInvite(token.id, 'zzzzzz')).reason, /邀请码无效/);
+  assert.equal((await invites.getMyInviteInfo(token.id)).bound, false, '失败不会留下绑定');
+  assert.equal((await invites.acceptInvite(token.id, first)).accepted, true);
+  const again = await invites.acceptInvite(token.id, second);
+  assert.equal(again.alreadyAccepted, true);
+  assert.equal(again.inviter, 'inviter-openid', '只能绑一次，仍是第一个邀请人');
+  assert.equal((await invites.getMyInviteInfo(token.id)).boundCode, first);
 });

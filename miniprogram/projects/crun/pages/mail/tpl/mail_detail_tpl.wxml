@@ -15,7 +15,7 @@
    <block wx:if="{{priceActions}}">
     <view wx:if="{{ui.priceAdjust.canRespond}}" class="od-price-actions"><button class="od-price-btn" bindtap="bindPriceRespond" data-decision="reject" disabled="{{actionDisabled}}">拒绝</button><button class="od-price-btn od-price-btn-main" bindtap="bindPriceRespond" data-decision="agree" disabled="{{actionDisabled}}">同意调价</button></view>
     <view wx:if="{{ui.priceAdjust.canRelease}}" class="od-price-actions"><button class="od-price-btn od-price-btn-warn" bindtap="bindReleaseOrder" disabled="{{actionDisabled}}">放弃接单</button></view>
-    <view wx:if="{{ui.priceAdjust.canPropose}}" class="od-price-propose {{ui.priceAdjust.hasRecord ? 'od-price-propose-line' : ''}}"><view class="od-price-propose-copy"><view class="od-price-propose-title">包裹比所选大小大？</view><view class="od-price-propose-note">取件前可向发布人申请调价，还可申请 {{ui.priceAdjust.left}} 次</view></view><button class="od-price-btn od-price-btn-main" bindtap="bindOpenPriceSheet" disabled="{{actionDisabled}}">申请调价</button></view>
+    <view wx:if="{{ui.priceAdjust.canPropose}}" class="od-price-propose {{ui.priceAdjust.hasRecord ? 'od-price-propose-line' : ''}}"><view class="od-price-propose-copy"><view class="od-price-propose-title">包裹比我想象中要大？</view><view class="od-price-propose-note">取件前可向发布人申请调价，还可申请 {{ui.priceAdjust.left}} 次</view></view><button class="od-price-btn od-price-btn-main" bindtap="bindOpenPriceSheet" disabled="{{actionDisabled}}">申请调价</button></view>
    </block>
    <view wx:elif="{{ui.priceAdjust.canRespond}}" class="od-price-actions"><button class="od-price-btn od-price-btn-main" bindtap="bindManageTap">前往处理</button></view>
   </view>

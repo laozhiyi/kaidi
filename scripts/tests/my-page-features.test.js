@@ -12,7 +12,7 @@ const deferred = () => { let resolve, reject; const promise = new Promise((a, b)
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
 function harness(options = {}) {
-  const storage = options.storage || new Map(), calls = [], navigation = [], messages = [], images = [], modules = new Map(), definitions = new Map();
+  const storage = options.storage || new Map(), calls = [], navigation = [], messages = [], modals = [], images = [], modules = new Map(), definitions = new Map();
   let app, token = options.guest ? null : { id: 'poster', sessionToken: 'b'.repeat(64), name: '小周', pic: 'cloud://avatar', status: 1, phoneVerified: true, profileComplete: true }, stopped = 0;
   const user = { USER_NAME: '小周', USER_MOBILE: '13800000000', USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: true, USER_PIC: 'cloud://avatar', USER_STATUS: 1, USER_FORMS: [
     { mark: 'campus', val: '育才校区' }, { mark: 'sex', val: '男' }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' },
@@ -25,9 +25,9 @@ function harness(options = {}) {
       allowManualRegistration: options.phoneLoginEnabled === false || options.manualRegistration === true, locations:require('../../cloudfunctions/mcloud/project/crun/service/tenant_defaults.js').locations },
     'passport/my_detail': user, 'passport/edit_base': { ok: true }, 'passport/logout': { ok: true },
     'passport/register': { token: { id: 'poster', sessionToken: 'b'.repeat(64), name: '小周', status: 1, phoneVerified: true, profileComplete: true } },
-    'invite/accept': { accepted: true }, 'invite/my_code': { code: 'ABCDEF' },
+    'invite/accept': { accepted: true }, 'invite/my_code': { code: 'ABCDEF' }, 'invite/my_info': { code: 'QWERTY', bound: false, boundCode: '' },
     'invite/my_qrcode': { code: 'ABCDEF', fileID: 'cloud://qr/ABCDEF.png', url: 'https://cdn.example/qr.png', envVersion: 'release' },
-    'invite/my_stat': { total: 0, accepted: 0, pending: 0, reward: 0 },
+    'invite/my_stat': { total: 0, accepted: 0, used: 0, rewarded: 0, pending: 0 },
     'invite/my_list': { list: [], hasMore: false },
     'fav/my_list': { list: [], total: 0, hasMore: false }, 'fav/del': { effect: 1 },
     'review/my_list': { list: [], hasMore: false }, 'feedback/my_list': { list: [], hasMore: false },
@@ -47,7 +47,7 @@ function harness(options = {}) {
     navigateTo: navigate('navigate'), redirectTo: navigate('redirect'), switchTab: navigate('tab'), navigateBack: navigate('back'),
     reLaunch: navigate('relaunch'), showToast: data => messages.push(data.title), hideKeyboard() {},
     stopPullDownRefresh: () => { stopped++; }, setNavigationBarTitle() {}, showLoading() {}, hideLoading() {},
-    showModal: data => { messages.push(data.title); if (data.success) data.success({ confirm: options.confirm !== false }); if (data.complete) data.complete(); },
+    showModal: data => { messages.push(data.title); modals.push(data); if (data.success) data.success({ confirm: options.confirm !== false }); if (data.complete) data.complete(); },
     chooseImage: data => { images.push(data); data.success({ tempFilePaths: ['temp/new'] }); },
     previewImage: data => images.push(data), setClipboardData: data => { storage.set('clipboard', data.data); if (data.success) data.success(); }
   };
@@ -117,7 +117,7 @@ function harness(options = {}) {
     passport = load('miniprogram/comm/biz/passport_biz.js');
     if (token) passport.setToken(token);
   }
-  return { page, load, user, responses, calls, navigation, messages, images, uploads, storage, wx, passport,
+  return { page, load, user, responses, calls, navigation, messages, modals, images, uploads, storage, wx, passport,
     get app() { return app; }, get token() { return passport.getToken(); }, get stopped() { return stopped; } };
 }
 
@@ -1058,9 +1058,14 @@ test('invitation links survive a warm app launch and network failure, then clear
   assert.equal(invites.parseScene(encodeURIComponent('code=ghijkl')), 'GHIJKL');
   assert.equal(invites.parseScene('mnopqr'), 'MNOPQR');
   assert.equal(invites.parseScene('not-a-code'), '');
-  h.storage.delete('crun-pending-invite');
-  h.app.onShow({ query: { scene: encodeURIComponent('code=ghijkl') } }); assert.equal(invites.getPendingCode(), 'GHIJKL');
+  // 已登录的用户进入小程序时，app.js 统一静默绑定一次，成功后清掉暂存。
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(h.calls.filter(call => call.route === 'invite/accept').length, 1);
+  assert.equal(invites.getPendingCode(), '');
   h.responses['invite/accept'] = () => { throw new Error('offline'); };
+  h.app.onShow({ query: { scene: encodeURIComponent('code=ghijkl') } }); assert.equal(invites.getPendingCode(), 'GHIJKL');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(invites.getPendingCode(), 'GHIJKL', '网络失败时保留暂存');
   await assert.rejects(invites.acceptPending(), /offline/); assert.equal(invites.getPendingCode(), 'GHIJKL');
   h.responses['invite/accept'] = { accepted: true }; await invites.acceptPending(); assert.equal(invites.getPendingCode(), '');
 });
@@ -1369,4 +1374,101 @@ test('shared profile templates and all personal-center pages bind existing event
     for (const match of source.matchAll(/<include\s+src=["']([^"']+)["']/g)) inspect(path.resolve(path.dirname(template), match[1]), page, seen);
   }
   for (const target of targets) inspect(path.join(root, pages, target + '.wxml'), h.page(target + '.js'));
+});
+
+test('a scanned scene or shared query is stashed, and the registration page pre-fills it', async () => {
+  const h = harness({ guest: true }); h.load('miniprogram/app.js');
+  const invites = h.load('miniprogram/projects/crun/biz/invite_biz.js');
+  // 小程序码：options.query.scene 是 URL 编码过的字符串（参数串或码本身）。
+  h.app.onShow({ query: { scene: encodeURIComponent('code=abcdef') } });
+  assert.equal(invites.getPendingCode(), 'ABCDEF');
+  h.storage.delete('crun-pending-invite');
+  h.app.onShow({ query: { scene: encodeURIComponent('ghijkl') } });
+  assert.equal(invites.getPendingCode(), 'GHIJKL');
+  h.storage.delete('crun-pending-invite');
+  // 分享卡片：query.inviteCode。
+  h.app.onShow({ query: { inviteCode: 'mnopqr' } });
+  assert.equal(invites.getPendingCode(), 'MNOPQR');
+  // 脏值不进缓存。
+  h.storage.delete('crun-pending-invite');
+  h.app.onShow({ query: { scene: 'x=1&y=2' } });
+  assert.equal(invites.getPendingCode(), '');
+  h.app.onShow({ query: { inviteCode: 'mnopqr' } });
+  await tick();
+  assert.equal(h.calls.filter(call => call.route === 'invite/accept').length, 0, '未注册用户不调绑定，留给注册页');
+  const page = h.page('my/reg/my_reg.js');
+  await page.onLoad({});
+  assert.equal(page.data.inviteCode, 'MNOPQR');
+});
+
+test('a registered user who has not bound an inviter is bound once on entry; bound users are left alone', async () => {
+  const h = harness(); h.load('miniprogram/app.js');
+  const invites = h.load('miniprogram/projects/crun/biz/invite_biz.js');
+  h.app.onShow({ query: { scene: encodeURIComponent('abcdef') } });
+  await tick();
+  const accepts = () => h.calls.filter(call => call.route === 'invite/accept');
+  assert.equal(accepts().length, 1);
+  assert.equal(accepts()[0].params.code, 'ABCDEF');
+  assert.equal(invites.getPendingCode(), '', '处理完清掉本地暂存');
+  h.app.onShow({});
+  await tick();
+  assert.equal(accepts().length, 1, '没有新的邀请码就不再请求');
+  // 已经绑定过邀请人：服务端返回 alreadyAccepted，同样清掉暂存且不改变任何东西。
+  h.responses['invite/accept'] = { accepted: true, alreadyAccepted: true, inviter: 'other' };
+  h.app.onShow({ query: { inviteCode: 'ghijkl' } });
+  await tick();
+  assert.equal(invites.getPendingCode(), '');
+});
+
+test('the profile page shows my code, uppercases input, and a wrong code never fails the profile save', async () => {
+  const h = harness(), page = h.page('my/personal/my_personal.js'); await page.onLoad(); await tick();
+  assert.equal(page.data.myInviteCode, 'QWERTY');
+  assert.equal(page.data.inviteBound, false);
+  page.bindCopyMyInviteCode();
+  assert.equal(h.storage.get('clipboard'), 'QWERTY');
+  page.bindInviteCodeInput(event({}, 'ab-c12 d'));
+  assert.equal(page.data.inviteCode, 'ABC12D');
+
+  h.responses['invite/accept'] = { accepted: false, reason: '邀请码无效' };
+  h.calls.length = 0; h.modals.length = 0;
+  await page.bindSubmitTap(event({}, { nickname: '小周' }));
+  assert.deepEqual(h.calls.map(call => call.route), ['passport/edit_base', 'invite/accept']);
+  assert.equal(h.calls[1].params.code, 'ABC12D');
+  assert.ok(h.messages.includes('保存成功'), '资料照常保存');
+  assert.match(h.modals.at(-1).content, /邀请码未绑定：邀请码无效/);
+
+  // 格式错误在提交前拦截，不会发出任何请求。
+  page.setData({ inviteCode: 'ABC' }); h.calls.length = 0;
+  await page.bindSubmitTap(event({}, { nickname: '小周' }));
+  assert.equal(h.calls.length, 0);
+  assert.match(page.data.saveError, /6位/);
+});
+
+test('an already-bound account sees a read-only inviter code and never sends one', async () => {
+  const h = harness(); h.responses['invite/my_info'] = { code: 'QWERTY', bound: true, boundCode: 'ZXCVBN' };
+  h.storage.set('crun-pending-invite', { code: 'ABCDEF', savedAt: Date.now() });
+  const page = h.page('my/personal/my_personal.js'); await page.onLoad(); await tick();
+  assert.equal(page.data.inviteBound, true);
+  assert.equal(page.data.inviteBoundCode, 'ZXCVBN');
+  assert.equal(h.storage.has('crun-pending-invite'), false, '已绑定时清掉暂存');
+  page.setData({ inviteCode: 'ABCDEF' }); h.calls.length = 0;
+  await page.bindSubmitTap(event({}, { nickname: '小周' }));
+  assert.deepEqual(h.calls.map(call => call.route), ['passport/edit_base']);
+  const wxml = fs.readFileSync(path.resolve(root, 'miniprogram/projects/crun/pages/my/personal/personal_form.wxml'), 'utf8');
+  assert.match(wxml, /已填写邀请码 {{inviteBoundCode}}/);
+  assert.match(wxml, /邀请码（选填）/);
+});
+
+test('registration carries the invite code and shows the server reason when binding fails', async () => {
+  const h = harness({ guest: true }), page = h.page('my/reg/my_reg.js');
+  h.passport.setToken({ id: 'poster', sessionToken: 'b'.repeat(64), status: 0, phoneVerified: true, profileComplete: false });
+  await readyProfile(h, page);
+  h.responses['passport/register'] = { token: { id: 'poster', sessionToken: 'b'.repeat(64), name: '小周', status: 1, phoneVerified: true, profileComplete: true }, invite: { accepted: false, reason: '邀请码无效' } };
+  page.applyUser(page, h.user); page.setData({ inviteCode: 'zzzzzz', retUrl: 'back' });
+  await page.bindSubmitTap();
+  assert.deepEqual(h.calls.map(call => call.route), ['passport/register']);
+  assert.equal(h.calls[0].params.inviteCode, 'ZZZZZZ');
+  assert.equal(h.token.id, 'poster', '资料保存成功，登录态建立');
+  assert.match(h.modals.at(-1).content, /邀请码无效/);
+  assert.equal(h.storage.has('crun-pending-invite'), false);
 });

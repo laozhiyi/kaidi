@@ -164,10 +164,11 @@ test('详情页：调价被拒后骑手才看到「放弃接单」', () => {
   assert.equal(MailUI.priceAdjust(base({ myaccept: false, mypost: true, MAIL_PRICE_ADJUST: record('rejected') })).canRelease, false);
 });
 
-// ---- 小费：下单时加，骑手接单前可见，计入总价 ----
-const withTip = (f, tip) => [...f.forms().filter(x => x.mark !== 'tip'), { mark: 'tip', title: '小费', type: 'int', val: tip }];
+// ---- 上楼费：选了「需要送上楼」才能填，下单时加，骑手接单前可见，计入总价 ----
+const withTip = (f, tip, upstairs = true) => [...f.forms().filter(x => x.mark !== 'tip' && x.mark !== 'upstairs'),
+ { mark: 'upstairs', val: upstairs }, { mark: 'tip', title: '上楼费', type: 'int', val: tip }];
 
-test('小费由发布人自定义金额，计入订单总价并对未接单骑手公开；0 到 20 元、最多两位小数', async () => {
+test('上楼费由发布人自定义金额，计入订单总价并对未接单骑手公开；0 到 20 元、最多两位小数', async () => {
   const f = fixture();
   const plainId = await f.publish();
   const plainFee = f.table('mail').get(plainId).MAIL_TOTAL_FEE;
@@ -178,19 +179,30 @@ test('小费由发布人自定义金额，计入订单总价并对未接单骑�
   assert.equal(mail.MAIL_OBJ.price, (plainFee + 300) / 100);
   assert.equal(f.table('mail').get(plainId).MAIL_OBJ.tip, 0);
   const view = f.load('order_rules.js').project(mail, 'rider');
-  assert.equal(view.MAIL_OBJ.tip, 3, '骑手接单前就能看到小费');
+  assert.equal(view.MAIL_OBJ.tip, 3, '骑手接单前就能看到上楼费');
   const custom = await f.service.insertMail('poster', { forms: withTip(f, '2.5'), requestId: f.req('tip-custom') }).then(r => r._id);
   assert.equal(f.table('mail').get(custom).MAIL_OBJ.tip, 2.5);
   assert.equal(f.table('mail').get(custom).MAIL_TOTAL_FEE, plainFee + 250);
   for (const [bad, key] of [[21, 'b1'], [-1, 'b2'], ['1.234', 'b3'], ['abc', 'b4'], ['20.01', 'b5']]) {
-    await assert.rejects(() => f.service.insertMail('poster', { forms: withTip(f, bad), requestId: f.req(key) }), /小费/);
+    await assert.rejects(() => f.service.insertMail('poster', { forms: withTip(f, bad), requestId: f.req(key) }), /上楼费/);
   }
 });
 
-test('详情页显示「含小费」，没有小费时不显示', () => {
+test('没选「需要送上楼」时上楼费一律清零，不进入订单总价', async () => {
+  const f = fixture();
+  const plainId = await f.publish();
+  const plainFee = f.table('mail').get(plainId).MAIL_TOTAL_FEE;
+  const id = await f.service.insertMail('poster', { forms: withTip(f, 5, false), requestId: f.req('no-upstairs') }).then(r => r._id);
+  const mail = f.table('mail').get(id);
+  assert.equal(mail.MAIL_OBJ.upstairs, false);
+  assert.equal(mail.MAIL_OBJ.tip, 0);
+  assert.equal(mail.MAIL_TOTAL_FEE, plainFee);
+});
+
+test('详情页显示「含上楼费」，没有上楼费时不显示', () => {
   const now = Date.now();
   const mail = tip => ({ MAIL_STATUS: 0, MAIL_END_TIME: now + 3600000, MAIL_OBJ: { serviceType: 'take', price: 5, tip }, MAIL_TOTAL_FEE: 500 });
-  assert.equal(MailUI.detail(mail(2), now).tipText, '含小费 ¥2');
+  assert.equal(MailUI.detail(mail(2), now).tipText, '含上楼费 ¥2');
   assert.equal(MailUI.detail(mail(0), now).tipText, '');
   assert.equal(MailUI.detail({ ...mail(2), MAIL_OBJ: { serviceType: 'send', price: 5, tip: 2 } }, now).tipText, '');
 });

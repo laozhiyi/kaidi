@@ -81,6 +81,18 @@
       </view>
     </view>
 
+    <view wx:if="{{canGrantPoints}}" class="ac-card">
+      <view class="ac-section-head"><text class="ac-section-title">积分</text><text class="ac-badge">当前 {{points}}</text></view>
+      <view class="ac-muted">仅超级管理员可用。正数赠送、负数扣回，单次不超过 1000；每次调整都会写入用户的积分明细和后台日志。</view>
+      <view class="ac-field-label">调整积分</view>
+      <input class="ac-input" type="text" value="{{pointAmount}}" bindinput="bindPointAmount" disabled="{{busy}}" maxlength="5" placeholder="例如 200 或 -200" />
+      <view class="ac-field-label">调整原因</view>
+      <input class="ac-input" type="text" value="{{pointNote}}" bindinput="bindPointNote" disabled="{{busy}}" maxlength="100" placeholder="例如：内测验证兑换" />
+      <view class="ac-form-actions">
+        <button class="ac-primary" bindtap="bindGrantPoints" disabled="{{busy || loading || error}}">确认调整</button>
+      </view>
+    </view>
+
     <!-- 本人账号：只能退出后台，不能改自己的角色，也不能停用自己 -->
     <view wx:if="{{canLeaveRole}}" class="ac-card">
       <view class="ac-section-head"><text class="ac-section-title">我的后台账号</text><text class="ac-badge">{{profile.roleLabel}}</text></view>
