@@ -112,7 +112,8 @@ test('automatic earnings only queue paid completed orders and use the stored amo
  assert.equal(h.rows.payment[transferId].amount,540);
  assert.equal(h.rows.payment[transferId].openid,'rider');
  assert.equal(await service.queue('order'),transferId);
- assert.equal(Object.keys(h.rows.payment).length,2);
+ // 转账记录与商户单号指针各一条，其余支付记录不变
+ assert.equal(Object.keys(h.rows.payment).filter(key=>h.rows.payment[key].kind!=='transfer_pointer').length,2);
  h.rows.mail.order.MAIL_PAY_STATUS=2;
  await assert.rejects(service.queue('order'),/不可结算/);
 });
@@ -128,7 +129,7 @@ test('automatic transfers query an unknown outcome and reuse the same bill only 
   }
   assert.equal(url,'/v3/fund-app/mch-transfer/transfer-bills/transfer');
   assert.equal(body.transfer_scene_id,'1005');assert.equal(body.transfer_amount,540);
-  assert.equal(body.openid,undefined);assert.equal(body.out_authorization_no,'authorization-one');
+  assert.equal(body.openid,'rider');assert.equal(body.out_authorization_no,undefined);
   if (++attempts===1) {firstBill=body.out_bill_no;throw Error('network timeout');}
   assert.equal(body.out_bill_no,firstBill);
   found=true;
@@ -157,8 +158,6 @@ test('a successful transfer with a lost response is queried and never paid a sec
 });
 
 test('unconfirmed authorization and mismatched transfer results cannot record earnings as paid',async()=>{
- const missing=harness(),service=missing.earnings();missing.setAuthorized(false);
- await assert.rejects(service.queue('order'),/尚未授权/);
  for(const mismatch of [{mch_id:'other'},{appid:'other'},{transfer_amount:1},{openid:'other'}]){
   const h=harness(),earnings=h.earnings(),transferId=await earnings.queue('order');
   const bill=h.rows.payment[transferId].billNo;
@@ -173,7 +172,7 @@ test('completion reconciliation automatically transfers once without a rider cla
  let transfers=0;
  h.api.request=async(method,url,body)=>{
   assert.equal(method,'POST');assert.equal(url,'/v3/fund-app/mch-transfer/transfer-bills/transfer');transfers++;
-  assert.equal(body.out_authorization_no,'authorization-one');assert.equal(body.openid,undefined);
+  assert.equal(body.openid,'rider');assert.equal(body.out_authorization_no,undefined);
   return {out_bill_no:body.out_bill_no,appid,mch_id:mchid,transfer_amount:540,state:'SUCCESS'};
  };
  const service=h.load('payment_service');

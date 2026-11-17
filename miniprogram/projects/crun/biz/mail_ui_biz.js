@@ -222,7 +222,7 @@ function detail(mail, now = Date.now()) {
   // 已送达待确认时不再暴露发布人电话，改为站内提醒。
   hideContactCall: !!(mail.myaccept && status === 2),
   canUpdateProof: !!mail.myaccept && status === 2 && !!mail.MAIL_DELIVERY_PROOF, proofUpdatedAt: time(mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.updatedAt),
-  primary, primaryLabel, receipt: receipt(mail, now), history, canException: participant && [1, 2, 4].includes(status), canCancel: !!mail.mypost && [-1,0].includes(status)
+  primary, primaryLabel, receipt: receipt(mail, now), history, canException: participant && [1, 2, 4].includes(status), canCancel: !!mail.mypost && [-1,0].includes(status), canConfirmEarnings: !!mail.myaccept && status === 9 && mail.MAIL_CAN_CONFIRM_EARNINGS === true
  };
 }
 module.exports = { time, service, receipt, progress, detail, requirementText, requirementTags, priceAdjust, mediaPurgeNotice, deliveryAddress: Address.formatOrderAddress };

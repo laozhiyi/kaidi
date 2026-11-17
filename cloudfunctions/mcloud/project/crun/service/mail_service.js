@@ -126,13 +126,6 @@ class MailService extends Base {
   const allowPending = ['edit','archive','cancel'].includes(action);
   const actor = adminId ? {adminId} : {userId,allowPending,user:await this._user(userId,{allowPending})};
   const seed = action === 'accept' ? await this._seed(userId,'rider') : [];
-  let earningsAuthorization = null;
-  if (action === 'accept') {
-   const order = await store.get(store.database(),'mail',id);
-   if (order && order.MAIL_PAYMENT_MODE === 'wechat' && order.MAIL_PAY_STATUS === 1) {
-    earningsAuthorization = await new (require('./earnings_authorization_service.js'))().require(userId);
-   }
-  }
   const result = await store.transaction(async tx => {
    const currentUser = await this._actor(tx,actor);
    const mail = await store.get(tx,'mail',id); if (!mail || mail.MAIL_ADMIN_DELETED === true || mail._pid !== this.getProjectId()) this.AppError('订单不存在'); mail._id = id;
@@ -152,11 +145,6 @@ class MailService extends Base {
     if ((mail.MAIL_RELEASED_RIDERS || []).includes(userId)) this.AppError('你已放弃过这个订单，不能再次接单');
     if (mail.MAIL_END_TIME <= now) this.AppError('该订单已超过接单截止时间');
     if (!(mail.MAIL_PAYMENT_MODE === 'offline' || mail.MAIL_PAYMENT_MODE === 'wechat' && mail.MAIL_PAY_STATUS === 1)) this.AppError('订单尚未确认付款，不能接单');
-    if (mail.MAIL_PAYMENT_MODE === 'wechat') {
-     if (!earningsAuthorization || earningsAuthorization.openid !== userId.split('^^^').pop()) this.AppError('请先授权自动收款后接单');
-     mail.MAIL_EARNINGS_AUTHORIZATION_NO = earningsAuthorization.outAuthorizationNo;
-     mail.MAIL_EARNINGS_AUTHORIZATION_ID = earningsAuthorization.authorizationId;
-    }
     if (!store.scope() && !config.campuses.includes(mail.MAIL_OBJ.campus)) this.AppError('该订单校区暂不在服务范围');
     if (!adminId) {
      const required = (mail.MAIL_OBJ || {}).riderGender;
@@ -397,6 +385,10 @@ class MailService extends Base {
   };
   const favorite = (await new (require('./fav_service.js'))().orderStats(userId, [id], [mail])).list[0];
   Object.assign(result, { MAIL_FAV_CNT: favorite.count, MAIL_IS_FAV: favorite.isFav, MAIL_CAN_FAV: favorite.available });
+  if (result.myaccept) {
+   const pending = await new (require('./earnings_service.js'))().confirmPackage(userId, id);
+   result.MAIL_CAN_CONFIRM_EARNINGS = !!(pending && pending.confirm);
+  }
   return media.order(result);
  }
  async getMailDetail(userId,id) {

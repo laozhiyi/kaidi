@@ -24,6 +24,7 @@ class MailController extends Base {
  async preparePayment() {const p=this.validateData({id:'must|id'});return new (require('../service/payment_service.js'))().prepare(this._userId,p.id);}
  async prepareEarningsAuthorization() {const p=this.validateData({id:'must|id'});return new (require('../service/earnings_authorization_service.js'))().prepare(this._userId,p.id);}
  async confirmEarningsAuthorization() {return new (require('../service/earnings_authorization_service.js'))().confirm(this._userId);}
+ async earningsConfirmPackage() {const p=this.validateData({id:'must|id'});return new (require('../service/earnings_service.js'))().confirmPackage(this._userId,p.id);}
  async paymentStatus() {const p=this.validateData({id:'must|id'});return new (require('../service/payment_service.js'))().status(this._userId,p.id);}
  async acceptMail() {return this._action('acceptMail');}
  async pickupMail() {return this._action('pickupMail',{note:'string|max:300',images:'array',videos:'array'},true);}

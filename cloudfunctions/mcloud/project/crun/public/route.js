@@ -10,6 +10,7 @@ module.exports = {
  'mail/payment_status':'mail_controller@paymentStatus',
  'mail/earnings_authorization_prepare':'mail_controller@prepareEarningsAuthorization',
  'mail/earnings_authorization_confirm':'mail_controller@confirmEarningsAuthorization',
+ 'mail/earnings_confirm_package':'mail_controller@earningsConfirmPackage',
  'tenant/catalog': 'tenant_controller@catalog',
  'admin/tenant_directory': 'admin/admin_tenant_controller@directory',
  'admin/tenant_campus_detail': 'admin/admin_tenant_controller@campusDetail',

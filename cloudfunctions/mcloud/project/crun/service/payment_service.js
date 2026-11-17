@@ -213,6 +213,13 @@ class PaymentService {
     await tenant.system(() => new (require('./earnings_authorization_service.js'))().notification(notice.data));
     return {statusCode:204,body:''};
    }
+   if (notice.type === 'MCHTRANSFER.BILL.FINISHED') {
+    if (!['SUCCESS','FAIL','CANCELLED'].includes(notice.data.state) || !/^[A-Za-z0-9]{5,32}$/.test(notice.data.out_bill_no || '')) return {statusCode:400,body:''};
+    const transfer = await tenant.system(async () => new (require('./earnings_service.js'))().locate(notice.data.out_bill_no));
+    if (!transfer) return {statusCode:204,body:''};
+    await tenant.run({schoolId:transfer.schoolId,campusId:transfer.campusId},() => new (require('./earnings_service.js'))().notification(notice.data));
+    return {statusCode:204,body:''};
+   }
    if (notice.type !== 'TRANSACTION.SUCCESS' || notice.data.trade_state !== 'SUCCESS' ||
        !/^[a-f0-9]{32}$/.test(notice.data.out_trade_no)) return {statusCode:400,body:''};
   } catch (_) { return {statusCode:401,body:''}; }
