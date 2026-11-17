@@ -9,7 +9,7 @@
    <view wx:if="{{detailUI.receipt.visible}}" class="od-receipt-hint">{{detailUI.receipt.hint}}</view>
    <view class="od-footer-actions">
     <button class="od-footer-tool" bindtap="bindServiceHelpTap"><text class="icon-service"></text><text>客服</text></button>
-    <button wx:if="{{detailUI.canConfirmEarnings}}" class="od-primary" bindtap="bindConfirmEarningsTap" disabled="{{busy || loading || error}}" loading="{{busy}}">确认收取报酬</button>
+    <button wx:if="{{detailUI.canConfirmEarnings}}" class="od-primary {{detailUI.earningsClaimed ? 'od-done' : ''}}" bindtap="bindConfirmEarningsTap" disabled="{{busy || loading || error || detailUI.earningsClaimed}}" loading="{{busy}}">{{detailUI.earningsLabel}}</button>
     <button wx:if="{{detailUI.participant}}" class="od-footer-tool" bindtap="bindMoreTap" disabled="{{busy || loading || error}}"><text class="icon-more"></text><text>更多</text></button>
     <button wx:if="{{!detailUI.receipt.visible || detailUI.primary !== 'confirm'}}" class="od-primary {{detailUI.receipt.visible ? 'od-secondary' : ''}} {{detailUI.status === 9 ? 'od-done' : ''}}" bindtap="bindPrimaryAction" disabled="{{busy || loading || error || detailUI.status === 9}}" loading="{{busy}}">{{detailUI.primaryLabel}}</button>
     <button wx:if="{{detailUI.receipt.visible}}" class="od-primary" bindtap="bindReceiptTap" disabled="{{busy || loading || error}}" loading="{{busy}}">确认收货</button>

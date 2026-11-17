@@ -154,7 +154,7 @@ Page({
   try {
    if (!await PassportBiz.loginMustCancelWin(this)) return;
    const result = await Ops.get('mail/earnings_confirm_package', { id: this.data.id });
-   if (!result || !result.confirm || !result.confirm.package) { wx.showToast({ title: '报酬暂未到达待确认状态', icon: 'none' }); return; }
+   if (!result || !result.confirm || !result.confirm.package) { wx.showToast({ title: '报酬尚未生成，请稍后再试', icon: 'none' }); return; }
    const outcome = await requestMerchantTransfer(result.confirm);
    if (outcome === 'cancel') { wx.showToast({ title: '已取消收款确认', icon: 'none' }); return; }
    wx.showToast({ title: '已发起收款确认，结果以微信为准', icon: 'none' });

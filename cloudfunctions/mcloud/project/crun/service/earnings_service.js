@@ -95,7 +95,8 @@ class EarningsService {
  // 骑手在「我的订单」详情页拉起确认收款所需的参数
  async confirmPackage(userId, orderId) {
   const order = await store.get(store.database(), 'mail', orderId);
-  if (!order || order.MAIL_ACCEPT_USER_ID !== userId || order.MAIL_STATUS !== 9) throw new AppError('此订单暂无待确认报酬');
+  if (!order || order.MAIL_ACCEPT_USER_ID !== userId) throw new AppError('此订单暂无待确认报酬');
+  if (order.MAIL_STATUS !== 9) throw new AppError('订单确认收货后，报酬将自动转入，请稍后再试');
   // 与 queue 使用同一 scopeKey：骑手请求处于订单所在校区上下文中，记录 id 一致
   const record = await read(store.scopeKey('transfer', orderId));
   if (!record || record.rider !== userId || record.mode !== 'confirm' || record.state !== 'transfer_pending' ||

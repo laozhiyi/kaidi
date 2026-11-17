@@ -109,7 +109,7 @@ function project(mail, userId, admin = false) {
  const myaccept = !!userId && mail.MAIL_ACCEPT_USER_ID === userId;
  const privateAccess = admin || mypost || myaccept;
  const keys = ['_id','MAIL_ID','MAIL_STATUS','MAIL_END_TIME','MAIL_EXPECT_TIME','MAIL_EXPECT_START','MAIL_ADD_TIME','MAIL_ACCEPT_TIME','MAIL_PICKUP_TIME','MAIL_OVER_TIME','MAIL_END_AT','MAIL_MEDIA_PURGED_AT','MAIL_TOTAL_FEE','MAIL_PAYMENT_MODE','MAIL_PAY_STATUS','MAIL_CATE_ID','MAIL_CATE_NAME','MAIL_DUE_TIME','MAIL_DELIVERED_TIME','MAIL_AUTO_CONFIRM_AT','MAIL_AUTO_CONFIRMED','MAIL_VERSION','MAIL_SCHEMA_VERSION','schoolId','campusId'];
- if (privateAccess) keys.push('MAIL_PRICE_ADJUST','MAIL_RULE_SNAPSHOT','MAIL_FORMS','MAIL_EXCEPTION','MAIL_DELIVERY_PROOF','MAIL_PICKUP_PROOF','MAIL_PAY_STATUS','MAIL_REFUND_STATUS','MAIL_CAN_REVIEW','MAIL_REVIEWED');
+ if (privateAccess) keys.push('MAIL_PRICE_ADJUST','MAIL_RULE_SNAPSHOT','MAIL_FORMS','MAIL_EXCEPTION','MAIL_DELIVERY_PROOF','MAIL_PICKUP_PROOF','MAIL_PAY_STATUS','MAIL_REFUND_STATUS','MAIL_CAN_REVIEW','MAIL_REVIEWED','MAIL_EARNINGS_STATUS');
  if (admin || mypost) keys.push('MAIL_HISTORY');
  const out = {}; keys.forEach(k => { if (mail[k] !== undefined) out[k] = mail[k]; });
  // Preserve safe milestone times before private history is removed. Projection
