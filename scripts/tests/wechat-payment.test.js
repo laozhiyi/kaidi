@@ -167,6 +167,29 @@ test('unconfirmed authorization and mismatched transfer results cannot record ea
  }
 });
 
+test('transfer response with only documented fields reaches WAIT_USER_CONFIRM and keeps the package',async()=>{
+ const h=harness();const service=h.earnings(),transferId=await service.queue('order');
+ const bill=h.rows.payment[transferId].billNo;
+ h.api.request=async(method,url,body)=>{
+  assert.equal(method,'POST');assert.equal(url,'/v3/fund-app/mch-transfer/transfer-bills/transfer');
+  return {out_bill_no:body.out_bill_no,transfer_bill_no:'1330000071100999991182020050700019480001',
+   create_time:'2026-11-17T22:00:00+08:00',state:'WAIT_USER_CONFIRM',package_info:'pkg-one'};
+ };
+ await service.reconcile(transferId);
+ const record=h.rows.payment[transferId];
+ assert.equal(record.billNo,bill);
+ assert.equal(record.status,'WAIT_USER_CONFIRM');
+ assert.equal(record.state,'transfer_pending');
+ assert.equal(record.packageInfo,'pkg-one');
+ assert.equal(h.rows.mail.order.MAIL_EARNINGS_STATUS,'pending');
+});
+
+test('WAIT_USER_CONFIRM without package_info is rejected instead of silently hiding the button',async()=>{
+ const h=harness();const service=h.earnings(),transferId=await service.queue('order');
+ h.api.request=async(method,url,body)=>({out_bill_no:body.out_bill_no,state:'WAIT_USER_CONFIRM'});
+ await assert.rejects(service.reconcile(transferId),/WECHAT_TRANSFER_PACKAGE_MISSING/);
+});
+
 test('completion reconciliation automatically transfers once without a rider claim request',async()=>{
  const h=harness();h.earnings();h.rows.payment[id].state='paid';
  let transfers=0;

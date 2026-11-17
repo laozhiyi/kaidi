@@ -5,6 +5,7 @@ const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
 const Notifications = require('../../../biz/notification_biz.js');
 const OrderSync = require('../../../biz/order_sync_biz.js');
 const Tenant = require('../../../biz/tenant_biz.js');
+const { requestMerchantTransfer } = require('../../../biz/merchant_transfer_biz.js');
 function invalidateOrderLists() {
  if (!wx.removeStorageSync) return;
  for (const key of ['order-mail-take', 'order-mail-mine', 'order-mail-posted', 'order-mail-done']) wx.removeStorageSync(key.toUpperCase() + '_LIST');
@@ -154,8 +155,8 @@ Page({
    if (!await PassportBiz.loginMustCancelWin(this)) return;
    const result = await Ops.get('mail/earnings_confirm_package', { id: this.data.id });
    if (!result || !result.confirm || !result.confirm.package) { wx.showToast({ title: '报酬暂未到达待确认状态', icon: 'none' }); return; }
-   if (typeof wx.requestMerchantTransfer !== 'function') throw new Error('请更新微信后确认收款');
-   await new Promise((resolve, reject) => wx.requestMerchantTransfer({ ...result.confirm, success: resolve, fail: reject }));
+   const outcome = await requestMerchantTransfer(result.confirm);
+   if (outcome === 'cancel') { wx.showToast({ title: '已取消收款确认', icon: 'none' }); return; }
    wx.showToast({ title: '已发起收款确认，结果以微信为准', icon: 'none' });
   } catch (e) {
    if (this._visible) Ops.error(e);

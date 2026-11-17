@@ -11,12 +11,22 @@ async function read(id) {
  return store.get(store.database(), 'payment', id);
 }
 
+// 微信文档「发起商家转账」应答仅含 out_bill_no、transfer_bill_no、create_time、state、package_info；
+// appid、mch_id、transfer_amount、openid 等字段仅在返回时比对，不要求必须存在。
+const transferStates = ['ACCEPTED', 'PROCESSING', 'WAIT_USER_CONFIRM', 'TRANSFERING', 'SUCCESS', 'FAIL', 'CANCELING', 'CANCELLED'];
+function sameIfPresent(value, expected) {
+ return value === undefined || value === expected;
+}
+
 async function update(id, record, response) {
- if (!response || response.out_bill_no !== record.billNo || !response.state ||
-     response.appid !== record.appid || response.mch_id !== record.merchant ||
-     response.transfer_amount !== record.amount ||
-     (response.openid !== undefined && response.openid !== record.openid)) {
+ if (!response || response.out_bill_no !== record.billNo || !transferStates.includes(response.state) ||
+     !sameIfPresent(response.appid, record.appid) || !sameIfPresent(response.mch_id, record.merchant) ||
+     !sameIfPresent(response.transfer_amount, record.amount) || !sameIfPresent(response.openid, record.openid)) {
   throw new Error('WECHAT_TRANSFER_MISMATCH');
+ }
+ // 待确认收款必须带 package_info，否则骑手端无法拉起收款页
+ if (response.state === 'WAIT_USER_CONFIRM' && (typeof response.package_info !== 'string' || !response.package_info)) {
+  throw new Error('WECHAT_TRANSFER_PACKAGE_MISSING');
  }
  return store.transaction(async tx => {
   const current = await store.get(tx, 'payment', id);
@@ -162,6 +172,8 @@ class EarningsService {
    return updated;
   });
   if (record) {
+   // 文档：转账金额 >= 2000 元时必须传收款用户真实姓名（需加密），当前报酬不会达到该额度
+   if (record.amount >= 200000) throw new Error('WECHAT_TRANSFER_NAME_REQUIRED');
    const response = await wxpay.request('POST', endpoint + '/transfer', {
     appid: record.appid, out_bill_no: record.billNo, transfer_scene_id: '1005', openid: record.openid,
     transfer_amount: record.amount, transfer_remark: '校园跑腿服务报酬', user_recv_perception: '劳务报酬',

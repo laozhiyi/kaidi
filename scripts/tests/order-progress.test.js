@@ -26,6 +26,14 @@ function controller(f, actor, params) {
  return new Controller();
 }
 
+test('a rider can open an accepted order before it is completed without the earnings check failing the view', async () => {
+ const f = fixture({ projectFields: true }), id = await f.publish();
+ await f.service.acceptMail('rider', id, { requestId: f.req('acceptMail') });
+ const mail = await f.service.viewMail('rider', id);
+ assert.equal(mail.MAIL_CAN_CONFIRM_EARNINGS, false);
+ assert.equal(mail.myaccept, true);
+});
+
 test('each real order operation lights exactly its own milestone in details and cards', async () => {
  const f = fixture({ projectFields: true }), id = await f.publish();
  const c = client(), page = c.mount('projects/crun/pages/order/index/order_index.js');

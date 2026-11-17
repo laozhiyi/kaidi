@@ -173,10 +173,6 @@ Page({
    const confirm = await pageHelper.showConfirm('确认接单后请按订单要求尽快取件或购买。费用由双方线下协商结算，是否继续？');
    if (!confirm) return;
    wx.showLoading({ title: '接单中...' }); loading = true;
-   if (mail.MAIL_PAYMENT_MODE === 'wechat') {
-    await require('../../../biz/earnings_authorization_biz.js').ensure(mail._id, () => this._visible);
-    if (!this._visible) return;
-   }
    const result = await Ops.command('mail/accept', { id: mail._id });
    wx.hideLoading(); loading = false;
    if (result && result.id) {

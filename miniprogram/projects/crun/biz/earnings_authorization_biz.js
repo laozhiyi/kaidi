@@ -1,5 +1,6 @@
 const Ops = require('./operations_biz.js');
 const Passport = require('../../../comm/biz/passport_biz.js');
+const { requestMerchantTransfer } = require('./merchant_transfer_biz.js');
 
 async function ensure(orderId, isCurrent = () => true) {
  const token = Passport.getToken();
@@ -17,13 +18,15 @@ async function ensure(orderId, isCurrent = () => true) {
  if (!result || result.authorized !== false || !result.confirm || !result.confirm.appId || !result.confirm.mchId || !result.confirm.package) {
   throw new Error('未收到有效的结算授权，请重新接单');
  }
- if (typeof wx.requestMerchantTransfer !== 'function') throw new Error('请更新微信后开通报酬自动到账');
+ let outcome;
  try {
-  await new Promise((resolve, reject) => wx.requestMerchantTransfer({ ...result.confirm, success: resolve, fail: reject }));
+  outcome = await requestMerchantTransfer(result.confirm);
  } catch (error) {
   check();
-  throw new Error(error && /cancel/i.test(error.errMsg || '') ? '已取消报酬自动到账授权，尚未接单' : '结算授权未完成，请重新接单');
+  throw new Error('结算授权未完成，请重新接单');
  }
+ check();
+ if (outcome === 'cancel') throw new Error('已取消报酬自动到账授权，尚未接单');
  check();
  // JSAPI success only means the authorization page opened. The signed server query decides whether to accept the order.
  const confirmed = await Ops.get('mail/earnings_authorization_confirm');

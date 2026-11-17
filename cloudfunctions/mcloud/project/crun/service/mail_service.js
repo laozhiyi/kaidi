@@ -385,9 +385,16 @@ class MailService extends Base {
   };
   const favorite = (await new (require('./fav_service.js'))().orderStats(userId, [id], [mail])).list[0];
   Object.assign(result, { MAIL_FAV_CNT: favorite.count, MAIL_IS_FAV: favorite.isFav, MAIL_CAN_FAV: favorite.available });
-  if (result.myaccept) {
-   const pending = await new (require('./earnings_service.js'))().confirmPackage(userId, id);
-   result.MAIL_CAN_CONFIRM_EARNINGS = !!(pending && pending.confirm);
+  // 仅已完成订单才可能有待确认报酬；未完成订单直接视为无，避免查看详情整体失败。
+  result.MAIL_CAN_CONFIRM_EARNINGS = false;
+  if (result.myaccept && mail.MAIL_STATUS === 9) {
+   try {
+    const pending = await new (require('./earnings_service.js'))().confirmPackage(userId, id);
+    result.MAIL_CAN_CONFIRM_EARNINGS = !!(pending && pending.confirm);
+   } catch (error) {
+    // 报酬状态不可用（如非微信支付、已退款）只隐藏确认入口，不影响查看订单。
+    console.warn('[earnings] confirm entry hidden', id, error && (error.code || error.message));
+   }
   }
   return media.order(result);
  }

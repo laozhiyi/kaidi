@@ -154,7 +154,7 @@ test('an expired unconfirmed transfer is queried, cancelled and the order marked
   const expiredAt = Date.now() - 25 * 3600000;
   const h = harness({ record: waitingRecord({ attemptedAt: expiredAt }), pointer, order,
     response: (method, url) => {
-      if (method === 'GET') return { out_bill_no: billNo, state: 'WAIT_USER_CONFIRM', appid: config.appid, mch_id: config.mchid, transfer_amount: 540, openid: 'rider' };
+      if (method === 'GET') return { out_bill_no: billNo, state: 'WAIT_USER_CONFIRM', package_info: 'pkg', appid: config.appid, mch_id: config.mchid, transfer_amount: 540, openid: 'rider' };
       if (method === 'POST') return { out_bill_no: billNo, state: 'CANCELLED', appid: config.appid, mch_id: config.mchid, transfer_amount: 540, openid: 'rider' };
       return null;
     } });
