@@ -108,7 +108,7 @@ class MaintenanceService extends Base {
   return {started,failed};
  }
  async _sweep(id,action){
-  return store.transaction(async tx=>{
+  const result=await store.transaction(async tx=>{
    const row=await store.get(tx,'mail',id),now=Date.now();if(!row||row.MAIL_ADMIN_DELETED===true)return;
   const svc=new Mail();row._id=id;
   if(action==='expire'){
@@ -128,6 +128,8 @@ class MaintenanceService extends Base {
   }
   await svc._record(tx,row,{userId:row.MAIL_USER_ID},action,store.key(action,id),action==='expire'?'超过接单截止时间，自动关闭':action==='auto_confirm'?'送达超过8小时未确认，系统已自动确认收货':'订单已超过预计履约时限，请联系对方或提交异常');
   });
+  if(action==='auto_confirm')await new Mail()._settleCompletedOrder(id);
+  return result;
  }
  async _batch(rows, work) {
   let cursor=0,failed=0;

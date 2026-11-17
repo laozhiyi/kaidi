@@ -112,7 +112,12 @@ class PaymentService {
 
   const order = await store.get(db,'mail',payment.orderId);
   if (order?.MAIL_STATUS === 99 && order.MAIL_PAY_STATUS === 1) await this.refund(id,payment);
-  else if (order?.MAIL_STATUS === 9 && order.MAIL_PAY_STATUS === 1) await this.finish(id,'paid','complete');
+  else if (order?.MAIL_STATUS === 9 && order.MAIL_PAY_STATUS === 1) {
+   const earnings = new (require('./earnings_service.js'))();
+   const transferId = await earnings.queue(payment.orderId);
+   await this.finish(id,'paid','complete');
+   await earnings.reconcile(transferId);
+  }
  }
 
  async applyPaid(id, payment, transactionId) {
@@ -202,6 +207,12 @@ class PaymentService {
   try {
    if (!cfg.ready()) return {statusCode:503,body:''};
    notice = api.notification(event);
+   if (['MCHTRANSFER.AUTHORIZATION.CONFIRMED','MCHTRANSFER.AUTHORIZATION.CLOSED'].includes(notice.type)) {
+    const expected = notice.type === 'MCHTRANSFER.AUTHORIZATION.CONFIRMED' ? 'TAKING_EFFECT' : 'CLOSED';
+    if (notice.data.state !== expected) return {statusCode:400,body:''};
+    await tenant.system(() => new (require('./earnings_authorization_service.js'))().notification(notice.data));
+    return {statusCode:204,body:''};
+   }
    if (notice.type !== 'TRANSACTION.SUCCESS' || notice.data.trade_state !== 'SUCCESS' ||
        !/^[a-f0-9]{32}$/.test(notice.data.out_trade_no)) return {statusCode:400,body:''};
   } catch (_) { return {statusCode:401,body:''}; }

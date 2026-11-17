@@ -6,6 +6,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { runMiniProgram } = require('../test-support/miniprogram-module.cjs');
 const { notificationStub } = require('../test-support/notification-client-harness.cjs');
+const AppError = require('../../cloudfunctions/mcloud/framework/core/app_error.js');
+const SCHEMA_MARKER = 'bx_setup_crun_20261116_payment';
 const root = path.resolve(__dirname, '../..');
 const pages = 'miniprogram/projects/crun/pages/';
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
@@ -235,28 +237,35 @@ function moduleHarness(file, mocks) {
 
 test('failed collection creation cannot be cached as successful setup; recovery retries in the same instance', async () => {
  let available = false, creates = 0, schemaReady = false;
- class Base { AppError(msg) { throw Error(msg); } }
+ class Base { AppError(msg) { throw new AppError(msg); } }
  const Service = moduleHarness('cloudfunctions/mcloud/project/crun/service/base_project_service.js', {
   '../../../framework/database/db_util.js': {
-   isExistCollection: async name => name === 'bx_setup_crun_20261027_customer_service' ? schemaReady : name !== 'bx_operation_config' || available,
-   createCollection: async name => { if (name === 'bx_setup_crun_20261027_customer_service') { schemaReady = true; return true; } creates++; return false; }
+   isExistCollection: async name => name === SCHEMA_MARKER ? schemaReady : name !== 'bx_operation_config' || available,
+   createCollection: async name => { if (name === SCHEMA_MARKER) { schemaReady = true; return true; } creates++; return false; }
   }, '../../../framework/utils/util.js': {}, '../../../framework/platform/model/admin_model.js': {}, '../model/news_model.js': {},
+  '../../../framework/core/app_error.js': AppError,
   '../../../framework/platform/service/base_service.js': Base
  });
  const service = new Service();
- await assert.rejects(service.initSetup(), /初始化未完成/); await assert.rejects(service.initSetup(), /初始化未完成/); assert.equal(creates, 2);
+ await assert.rejects(service.initSetup(), /初始化未完成/); assert.equal(schemaReady, false);
+ await assert.rejects(service.initSetup(), /初始化未完成/); assert.equal(creates, 2); assert.equal(schemaReady, false);
  available = true; await service.initSetup(); await service.initSetup(); assert.equal(creates, 2);
+ assert.equal(schemaReady, true);
 });
 
 test('concurrent collection creation tolerates a false result only when the collection now exists', async () => {
- let exists = false;
- class Base { AppError(msg) { throw Error(msg); } }
+ let exists = false, creates = 0;
+ const lookups = [];
+ class Base { AppError(msg) { throw new AppError(msg); } }
  const Service = moduleHarness('cloudfunctions/mcloud/project/crun/service/base_project_service.js', {
-  '../../../framework/database/db_util.js': { isExistCollection: async () => exists, createCollection: async () => { exists = true; return false; } },
+  '../../../framework/database/db_util.js': { isExistCollection: async name => { lookups.push(name); return exists; }, createCollection: async () => { creates++; exists = true; return false; } },
   '../../../framework/utils/util.js': {}, '../../../framework/platform/model/admin_model.js': {}, '../model/news_model.js': {},
+  '../../../framework/core/app_error.js': AppError,
   '../../../framework/platform/service/base_service.js': Base
  });
  await new Service()._ensureCollection('bx_operation_config');
+ assert.equal(creates, 1);
+ assert.deepEqual(lookups, ['bx_operation_config', 'bx_operation_config']);
 });
 
 test('an initialized cold instance performs one schema lookup and shares that result with concurrent calls', async () => {
@@ -264,10 +273,12 @@ test('an initialized cold instance performs one schema lookup and shares that re
  const Service=moduleHarness('cloudfunctions/mcloud/project/crun/service/base_project_service.js',{
   '../../../framework/database/db_util.js':{isExistCollection:async name=>{lookups.push(name);return true;},createCollection:async()=>{throw Error('already initialized');}},
   '../../../framework/utils/util.js':{},'../../../framework/platform/model/admin_model.js':{},'../model/news_model.js':{},
+  '../../../framework/core/app_error.js':AppError,
   '../../../framework/platform/service/base_service.js':class {}
  });
  await Promise.all([new Service().initSetup(),new Service().initSetup()]);
- assert.deepEqual(lookups,['bx_setup_crun_20261027_customer_service']);
+ await new Service().initSetup();
+ assert.deepEqual(lookups,[SCHEMA_MARKER]);
 });
 
 for(const file of ['mail/add/mail_add.js','mail/add/mail_add_logic.js']) {

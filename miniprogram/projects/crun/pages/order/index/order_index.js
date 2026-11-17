@@ -373,6 +373,11 @@ Page({
 			if (!await PassportBiz.loginMustCancelWin(this) || !this._visible) return;
 			const confirm = await pageHelper.showConfirm('确认接单后请按订单要求尽快取件或购买，是否继续？');
 			if (!confirm || !this._visible) return;
+			const order = (this.data.dataList && this.data.dataList.list || []).find(row => row._id === id);
+			if (order && order.MAIL_PAYMENT_MODE === 'wechat') {
+				await require('../../../biz/earnings_authorization_biz.js').ensure(id, () => this._visible);
+				if (!this._visible) return;
+			}
 			const res = {data:await Ops.command('mail/accept', { id })};
 			if (!this._visible) return;
 

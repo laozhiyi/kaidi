@@ -20,6 +20,7 @@ function harness(state = -1) {
   MAIL_PAY_NO:id, MAIL_TOTAL_FEE:600, MAIL_PAY_STATUS:0, MAIL_STATUS:state, MAIL_END_TIME:Date.now()+60000
  }}, payment:{} };
  const calls = [];
+ let authorized = true;
  const clone = value => value && structuredClone(value);
  const store = {
   key:(...parts)=>parts.join('_'), scopeKey:(...parts)=>parts.join('_'), scope:()=>null, database:()=>({}),
@@ -37,11 +38,12 @@ function harness(state = -1) {
   const dependencies = {
    './operation_store.js':store, './mail_service.js':Mail, './wechat_pay_api.js':api, crypto,
    '../config/pay_config.js':{ appid,mchid,ready:()=>true,enabled:()=>true,notifyUrl:'https://example.test/pay' },
+   './earnings_authorization_service.js':class {async stored(){return authorized ? {outAuthorizationNo:'authorization-one',appid,merchant:mchid,openid:'rider'} : null;}},
    '../../../framework/core/app_error.js':Error,
    '../../../framework/cloud/cloud_base.js':{getCloud:()=>({getWXContext:()=>({APPID:appid,OPENID:'poster'})})}
   };
   const file = path.join(__dirname,'../../cloudfunctions/mcloud/project/crun/service',name+'.js');
-  vm.runInNewContext(fs.readFileSync(file,'utf8'),{module, console, require:key=>dependencies[key]}, {filename:file});
+  vm.runInNewContext(fs.readFileSync(file,'utf8'),{module, console, require:key=>key==='./earnings_service.js'?load('earnings_service').constructor:dependencies[key]}, {filename:file});
   return new module.exports();
  }
  function payment() {
@@ -54,7 +56,7 @@ function harness(state = -1) {
   Object.assign(rows.mail.order,{MAIL_STATUS:9,MAIL_PAY_STATUS:1,MAIL_TRANSACTION_ID:'wx123',MAIL_EARNINGS_STATUS:'pending'});
   return load('earnings_service');
  }
- return { rows,calls,api,payment,earnings,load };
+ return { rows,calls,api,payment,earnings,load,setAuthorized:value=>{authorized=value;} };
 }
 
 test('prepay charges the stored amount and signs the checkout package',async()=>{
@@ -101,31 +103,82 @@ test('a payment received after cancellation is refunded once and never published
  assert.deepEqual(h.calls,['refund']);
 });
 
-test('only the rider can claim a paid, completed order and the amount comes from the order',async()=>{
+test('automatic earnings only queue paid completed orders and use the stored amount',async()=>{
  const h=harness();const service=h.earnings();
- await assert.rejects(service.claim('poster','order',true),/不可领取/);
  h.rows.mail.order.MAIL_STATUS=3;
- await assert.rejects(service.claim('rider','order',true),/不可领取/);
+ await assert.rejects(service.queue('order'),/不可结算/);
  h.rows.mail.order.MAIL_STATUS=9;
- assert.equal((await service.claim('rider','order',false)).amount,540);
- assert.equal(Object.keys(h.rows.payment).length,1);
+ const transferId=await service.queue('order');
+ assert.equal(h.rows.payment[transferId].amount,540);
+ assert.equal(h.rows.payment[transferId].openid,'rider');
+ assert.equal(await service.queue('order'),transferId);
+ assert.equal(Object.keys(h.rows.payment).length,2);
+ h.rows.mail.order.MAIL_PAY_STATUS=2;
+ await assert.rejects(service.queue('order'),/不可结算/);
 });
 
-test('transfer retries reuse the same bill after an unknown result and paid status blocks another transfer',async()=>{
+test('automatic transfers query an unknown outcome and reuse the same bill only when not found',async()=>{
  const h=harness();const service=h.earnings();
- let firstBill, attempts=0, status='WAIT_USER_CONFIRM';
+ const transferId=await service.queue('order');
+ let firstBill, attempts=0, found=false;
  h.api.request=async(method,url,body)=>{
-  if (method==='GET') return {out_bill_no:firstBill,appid,mch_id:mchid,openid:'rider',transfer_amount:540,state:status};
-  assert.equal(body.transfer_scene_id,'1005');assert.equal(body.transfer_amount,540);assert.equal(body.openid,'rider');
+  if (method==='GET') {
+   if (!found) throw Object.assign(Error('not found'),{code:'NOT_FOUND'});
+   return {out_bill_no:firstBill,appid,mch_id:mchid,transfer_amount:540,state:'SUCCESS'};
+  }
+  assert.equal(url,'/v3/fund-app/mch-transfer/transfer-bills/transfer');
+  assert.equal(body.transfer_scene_id,'1005');assert.equal(body.transfer_amount,540);
+  assert.equal(body.openid,undefined);assert.equal(body.out_authorization_no,'authorization-one');
   if (++attempts===1) {firstBill=body.out_bill_no;throw Error('network timeout');}
   assert.equal(body.out_bill_no,firstBill);
-  return {out_bill_no:firstBill,state:'WAIT_USER_CONFIRM',package_info:'confirm-pkg'};
+  found=true;
+  return {out_bill_no:firstBill,appid,mch_id:mchid,transfer_amount:540,state:'SUCCESS'};
  };
- await assert.rejects(service.claim('rider','order',true),/network timeout/);
- assert.equal((await service.claim('rider','order',true)).confirm.package,'confirm-pkg');
- status='SUCCESS';
- assert.equal((await service.claim('rider','order',false)).status,'SUCCESS');
- assert.equal((await service.claim('rider','order',true)).status,'SUCCESS');
+ await assert.rejects(service.reconcile(transferId),/network timeout/);
+ assert.equal(h.rows.mail.order.MAIL_EARNINGS_STATUS,'pending');
+ await service.reconcile(transferId);
+ await service.reconcile(transferId);
  assert.equal(h.rows.mail.order.MAIL_EARNINGS_STATUS,'paid');
  assert.equal(attempts,2);
+});
+
+test('a successful transfer with a lost response is queried and never paid a second time',async()=>{
+ const h=harness();const service=h.earnings(),transferId=await service.queue('order');
+ let sent=0,bill;
+ h.api.request=async(method,url,body)=>{
+  if(method==='POST'){sent++;bill=body.out_bill_no;throw Error('lost response');}
+  return {out_bill_no:bill,appid,mch_id:mchid,transfer_amount:540,state:'SUCCESS'};
+ };
+ await assert.rejects(service.reconcile(transferId),/lost response/);
+ await service.reconcile(transferId);
+ await service.reconcile(transferId);
+ assert.equal(sent,1);
+ assert.equal(h.rows.mail.order.MAIL_EARNINGS_STATUS,'paid');
+});
+
+test('unconfirmed authorization and mismatched transfer results cannot record earnings as paid',async()=>{
+ const missing=harness(),service=missing.earnings();missing.setAuthorized(false);
+ await assert.rejects(service.queue('order'),/尚未授权/);
+ for(const mismatch of [{mch_id:'other'},{appid:'other'},{transfer_amount:1},{openid:'other'}]){
+  const h=harness(),earnings=h.earnings(),transferId=await earnings.queue('order');
+  const bill=h.rows.payment[transferId].billNo;
+  h.api.request=async()=>({out_bill_no:bill,appid,mch_id:mchid,transfer_amount:540,state:'SUCCESS',...mismatch});
+  await assert.rejects(earnings.reconcile(transferId),/WECHAT_TRANSFER_MISMATCH/);
+  assert.equal(h.rows.mail.order.MAIL_EARNINGS_STATUS,'pending');
+ }
+});
+
+test('completion reconciliation automatically transfers once without a rider claim request',async()=>{
+ const h=harness();h.earnings();h.rows.payment[id].state='paid';
+ let transfers=0;
+ h.api.request=async(method,url,body)=>{
+  assert.equal(method,'POST');assert.equal(url,'/v3/fund-app/mch-transfer/transfer-bills/transfer');transfers++;
+  assert.equal(body.out_authorization_no,'authorization-one');assert.equal(body.openid,undefined);
+  return {out_bill_no:body.out_bill_no,appid,mch_id:mchid,transfer_amount:540,state:'SUCCESS'};
+ };
+ const service=h.load('payment_service');
+ await service.reconcile(id);await service.reconcile(id);
+ assert.equal(h.rows.payment[id].state,'complete');
+ assert.equal(h.rows.mail.order.MAIL_EARNINGS_STATUS,'paid');
+ assert.equal(transfers,1);
 });

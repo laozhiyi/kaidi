@@ -17,7 +17,7 @@ function historyTime(value) {
  return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 19).replace('T', ' ') : '时间未知';
 }
 Page({
- data:{id:'',mail:null,detailUI:null,loading:true,error:false,errorMessage:'',notFound:false,configError:false,confirmGate:false,confirmCountdown:0,offlineNotice:'费用由双方线下协商结算，平台不代收、不担保；请勿提前向陌生人转账。',busy:false,panel:'',note:'',images:[],imagePreviews:{},video:'',videoPreview:'',deliveryMode:'place',reasons:['取件失败','取件码错误','联系不上','物品损坏','送错地址','申请取消','其他'],reasonIndex:0,config:null,earnings:null,pickupGate:false,pickupCountdown:2,priceSheet:false,priceValue:'',priceReason:'',priceReasons:['实际是中件','实际是大件','包裹超重','体积过大']},
+ data:{id:'',mail:null,detailUI:null,loading:true,error:false,errorMessage:'',notFound:false,configError:false,confirmGate:false,confirmCountdown:0,offlineNotice:'费用由双方线下协商结算，平台不代收、不担保；请勿提前向陌生人转账。',busy:false,panel:'',note:'',images:[],imagePreviews:{},video:'',videoPreview:'',deliveryMode:'place',reasons:['取件失败','取件码错误','联系不上','物品损坏','送错地址','申请取消','其他'],reasonIndex:0,config:null,pickupGate:false,pickupCountdown:2,priceSheet:false,priceValue:'',priceReason:'',priceReasons:['实际是中件','实际是大件','包裹超重','体积过大']},
  onLoad(options = {}) {
   ProjectBiz.initPage(this);
   this._openPanelAfterLoad = ['pickup', 'deliver', 'update_proof'].includes(options.panel) ? options.panel : '';
@@ -82,11 +82,6 @@ Page({
    mail.history = (Array.isArray(mail.MAIL_HISTORY) ? mail.MAIL_HISTORY : [])
     .filter(x => x && typeof x === 'object').map(x => ({ ...x, time: historyTime(x.at) }));
    const detailUI = MailUI.detail(mail);
-   if (mail.myaccept && detailUI.status === 9 && mail.MAIL_PAYMENT_MODE === 'wechat' && mail.MAIL_PAY_STATUS === 1) {
-    Ops.get('mail/earnings_status', { id: this.data.id }).then(earnings => {
-     if (this._visible && seq === this._seq) this.setData({ earnings });
-    }).catch(() => {});
-   } else if (this.data.earnings) this.setData({ earnings: null });
    this.setData({ mail, detailUI, loading: false, ...(this.data.panel === 'update_proof' && !detailUI.canUpdateProof ? { panel: '' } : {}) }, () => {
     if (!this._visible || seq !== this._seq) return;
     if (this._notificationId) Notifications.markRead(this._notificationId).catch(() => {});
@@ -109,27 +104,6 @@ Page({
     errorMessage: e && (e.msg || e.message) || '订单加载失败，请检查网络后重试' });
    return { ok: false };
   }
- },
- async bindClaimEarnings() {
-  if (this.data.busy) return;
-  if (typeof wx.requestMerchantTransfer !== 'function') {
-   Ops.error(new Error('请更新微信后再领取报酬'));
-   return;
-  }
-  this.setData({ busy: true });
-  try {
-   const params = { id: this.data.id };
-   let earnings = await Ops.get('mail/earnings_claim', params);
-   this.setData({ earnings });
-   if (earnings.confirm) {
-    await new Promise(resolve => wx.requestMerchantTransfer({ ...earnings.confirm, complete: resolve }));
-    earnings = await Ops.get('mail/earnings_status', params);
-    this.setData({ earnings });
-   }
-   wx.showToast({ title: earnings.status === 'SUCCESS' ? '报酬已到账' :
-    earnings.status === 'WAIT_USER_CONFIRM' ? '请在微信页面确认收款' : '请稍后刷新核对到账状态', icon: 'none' });
-  } catch (error) { Ops.error(error); }
-  finally { this.setData({ busy: false }); }
  },
  async bindPayTap() {
   if(this.data.busy)return;

@@ -126,7 +126,14 @@ class MailService extends Base {
   const allowPending = ['edit','archive','cancel'].includes(action);
   const actor = adminId ? {adminId} : {userId,allowPending,user:await this._user(userId,{allowPending})};
   const seed = action === 'accept' ? await this._seed(userId,'rider') : [];
-  return store.transaction(async tx => {
+  let earningsAuthorization = null;
+  if (action === 'accept') {
+   const order = await store.get(store.database(),'mail',id);
+   if (order && order.MAIL_PAYMENT_MODE === 'wechat' && order.MAIL_PAY_STATUS === 1) {
+    earningsAuthorization = await new (require('./earnings_authorization_service.js'))().require(userId);
+   }
+  }
+  const result = await store.transaction(async tx => {
    const currentUser = await this._actor(tx,actor);
    const mail = await store.get(tx,'mail',id); if (!mail || mail.MAIL_ADMIN_DELETED === true || mail._pid !== this.getProjectId()) this.AppError('订单不存在'); mail._id = id;
    const seen = await store.get(tx,'order_request',store.key(this.getProjectId(),adminId || userId,input.requestId));
@@ -145,6 +152,11 @@ class MailService extends Base {
     if ((mail.MAIL_RELEASED_RIDERS || []).includes(userId)) this.AppError('你已放弃过这个订单，不能再次接单');
     if (mail.MAIL_END_TIME <= now) this.AppError('该订单已超过接单截止时间');
     if (!(mail.MAIL_PAYMENT_MODE === 'offline' || mail.MAIL_PAYMENT_MODE === 'wechat' && mail.MAIL_PAY_STATUS === 1)) this.AppError('订单尚未确认付款，不能接单');
+    if (mail.MAIL_PAYMENT_MODE === 'wechat') {
+     if (!earningsAuthorization || earningsAuthorization.openid !== userId.split('^^^').pop()) this.AppError('请先授权自动收款后接单');
+     mail.MAIL_EARNINGS_AUTHORIZATION_NO = earningsAuthorization.outAuthorizationNo;
+     mail.MAIL_EARNINGS_AUTHORIZATION_ID = earningsAuthorization.authorizationId;
+    }
     if (!store.scope() && !config.campuses.includes(mail.MAIL_OBJ.campus)) this.AppError('该订单校区暂不在服务范围');
     if (!adminId) {
      const required = (mail.MAIL_OBJ || {}).riderGender;
@@ -273,6 +285,17 @@ class MailService extends Base {
    await this._record(tx,mail,actor,action,input.requestId,note,store.key(input),input._sourceFingerprint || '',message);
    return {id,statusDesc:this.getStatusDesc(mail)};
   });
+  if (action === 'confirm' || action === 'resolve' && input.resolution === 'complete') await this._settleCompletedOrder(id);
+  return result;
+ }
+ async _settleCompletedOrder(id) {
+  const order = await store.get(store.database(),'mail',id);
+  if (!order || order.MAIL_STATUS !== 9 || order.MAIL_PAYMENT_MODE !== 'wechat' || order.MAIL_PAY_STATUS !== 1) return;
+  try { await new (require('./payment_service.js'))().reconcile(order.MAIL_PAY_NO); }
+  catch (error) {
+   // Receipt is committed; the existing payment sweep continues the durable settlement.
+   console.error('[earnings] automatic settlement pending',id,error.code || error.message);
+  }
  }
  // 送达后 8 小时未确认收货，系统自动确认（见 maintenance_service）。
  static get AUTO_CONFIRM_MS() { return AUTO_CONFIRM_MS; }
