@@ -22,6 +22,12 @@
     <text class="my-arrow icon-right"></text>
   </view>
 
+<view class="my-card my-wallet" bindtap="bindSettlementTap" hover-class="my-tap" role="button" aria-label="跑腿结算，申请成为跑腿">
+    <view class="my-link-icon"><text class="icon-moneybag"></text></view>
+    <view class="my-link-copy"><view class="my-link-title">跑腿结算</view><view class="my-link-desc">跑腿收益与结算管理</view></view>
+    <text class="my-arrow icon-right"></text>
+  </view>
+
   <view class="my-card">
     <view class="my-section-title">我的服务</view>
     <view class="my-grid">

@@ -1,0 +1,53 @@
+<view class="settlement-page">
+ <view class="settlement-status">
+  <view class="settlement-status-icon"><text class="icon-moneybag"></text></view>
+  <view class="settlement-status-copy"><view class="settlement-title">开通跑腿结算</view><view class="settlement-subtitle">完成开通，管理跑腿收益</view></view>
+  <text class="settlement-badge">待开通</text>
+ </view>
+ <view class="settlement-notice"><text class="icon-info"></text><text>请使用本人信息申请，结算账户用于接收跑腿服务报酬。</text></view>
+
+ <view class="settlement-card">
+  <view class="settlement-card-title">结算账户信息</view>
+  <view class="settlement-card-desc">以下信息用于支付机构核验身份及结算账户</view>
+  <view class="settlement-field">
+   <label for="settlement-name" class="settlement-label">真实姓名</label>
+   <input id="settlement-name" class="settlement-input" value="{{form.realName}}" data-field="realName" bindinput="bindInput" placeholder="请输入本人真实姓名" maxlength="50" placeholder-class="settlement-placeholder" adjust-position="{{true}}"/>
+  </view>
+  <view class="settlement-field">
+   <label for="settlement-identity" class="settlement-label">身份证号</label>
+   <input id="settlement-identity" class="settlement-input" type="idcard" value="{{form.identity}}" data-field="identity" bindinput="bindInput" placeholder="请输入18位身份证号" maxlength="18" placeholder-class="settlement-placeholder" adjust-position="{{true}}"/>
+  </view>
+  <view class="settlement-field">
+   <label for="settlement-bank" class="settlement-label">本人Ⅰ类银行卡号</label>
+   <input id="settlement-bank" class="settlement-input" type="number" value="{{form.bankCard}}" data-field="bankCard" bindinput="bindInput" placeholder="请输入本人借记卡号" maxlength="19" placeholder-class="settlement-placeholder" adjust-position="{{true}}"/>
+   <view class="settlement-hint">请使用与实名信息一致的本人银行卡</view>
+  </view>
+  <view class="settlement-field">
+   <label for="settlement-phone" class="settlement-label">银行预留手机号</label>
+   <input id="settlement-phone" class="settlement-input" type="number" value="{{form.phone}}" data-field="phone" bindinput="bindInput" placeholder="请输入银行卡预留手机号" maxlength="11" placeholder-class="settlement-placeholder" adjust-position="{{true}}"/>
+  </view>
+ </view>
+
+ <view class="settlement-security">
+  <text class="icon-lock"></text>
+  <view><view class="settlement-security-title">你的信息由你授权</view><view class="settlement-security-copy">信息仅用于开户与结算验证。云速取不留存完整证件号或银行卡号，填写内容离开页面后清空。</view></view>
+ </view>
+ <checkbox-group bindchange="bindAgreement" class="settlement-agreements">
+  <label class="settlement-agreement"><view class="settlement-check-control"><checkbox class="settlement-native-check" value="rules" checked="{{rulesAccepted}}" color="#397bc8"/><view aria-hidden="{{true}}" class="settlement-check-box {{rulesAccepted ? 'settlement-check-box-active' : ''}}"></view></view><text>我已阅读并同意《云速取跑腿服务规则》</text></label>
+  <button class="settlement-document-link" data-kind="rules" bindtap="bindDocument">查看跑腿服务规则<text class="icon-right"></text></button>
+  <label class="settlement-agreement"><view class="settlement-check-control"><checkbox class="settlement-native-check" value="authorization" checked="{{authorizationAccepted}}" color="#397bc8"/><view aria-hidden="{{true}}" class="settlement-check-box {{authorizationAccepted ? 'settlement-check-box-active' : ''}}"></view></view><text>我同意为开户与结算向第三方支付服务商提供实名及银行卡信息</text></label>
+  <button class="settlement-document-link" data-kind="privacy" bindtap="bindDocument">查看实名信息处理说明<text class="icon-right"></text></button>
+ </checkbox-group>
+ <view wx:if="{{error}}" class="settlement-error">{{error}}</view>
+ <button class="settlement-submit" bindtap="bindSubmit" loading="{{submitting}}" disabled="{{submitting}}">完成开通</button>
+ <view class="settlement-submit-note">开通结果以支付机构审核为准</view>
+
+ <view wx:if="{{document}}" class="settlement-overlay" catchtouchmove="bindStop">
+  <view class="settlement-backdrop" bindtap="bindCloseDocument"></view>
+  <view class="settlement-sheet">
+   <view class="settlement-sheet-head"><text>{{document.title}}</text><button class="settlement-close" bindtap="bindCloseDocument" aria-label="关闭说明"><text class="icon-close"></text></button></view>
+   <scroll-view scroll-y class="settlement-sheet-body"><view wx:for="{{document.paragraphs}}" wx:key="*this" class="settlement-paragraph">{{item}}</view></scroll-view>
+   <button class="settlement-submit settlement-sheet-button" bindtap="bindCloseDocument">我知道了</button>
+  </view>
+ </view>
+</view>

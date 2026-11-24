@@ -1,0 +1,44 @@
+page { background: #f3f6fb; }
+.settlement-page { min-height: 100vh; box-sizing: border-box; padding: 28rpx 24rpx calc(40rpx + env(safe-area-inset-bottom)); color: #24334b; font-size: 28rpx; line-height: 1.6; }
+.settlement-status { display: flex; align-items: center; padding: 30rpx 26rpx; background: #fff; border-radius: 24rpx; }
+.settlement-status-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 80rpx; height: 80rpx; border-radius: 24rpx; background: #edf4fc; color: #397bc8; font-size: 40rpx; }
+.settlement-status-copy { flex: 1; min-width: 0; margin-left: 20rpx; }
+.settlement-title { font-size: 34rpx; font-weight: 600; }
+.settlement-subtitle { margin-top: 4rpx; font-size: 24rpx; color: #7c8ba0; }
+.settlement-badge { margin-left: 12rpx; padding: 5rpx 14rpx; color: #62748b; background: #f0f4f9; border-radius: 10rpx; font-size: 23rpx; white-space: nowrap; }
+.settlement-notice { display: flex; gap: 12rpx; padding: 24rpx 6rpx; color: #627c9e; font-size: 24rpx; line-height: 1.65; }
+.settlement-notice .icon-info { flex-shrink: 0; color: #397bc8; font-size: 29rpx; }
+.settlement-card { padding: 30rpx 28rpx; background: #fff; border-radius: 24rpx; }
+.settlement-card-title { font-size: 31rpx; font-weight: 600; }
+.settlement-card-desc { margin-top: 6rpx; color: #7c8ba0; font-size: 24rpx; }
+.settlement-field { margin-top: 30rpx; }
+.settlement-label { display: block; margin-bottom: 12rpx; font-size: 27rpx; color: #52657f; }
+.settlement-input { width: 100%; height: 90rpx; box-sizing: border-box; padding: 0 22rpx; border: 1rpx solid #e7edf5; border-radius: 14rpx; background: #f7f9fc; font-size: 28rpx; color: #24334b; }
+.settlement-placeholder { color: #a2aec0; font-size: 27rpx; }
+.settlement-hint { margin: 10rpx 2rpx 0; color: #8998ac; font-size: 22rpx; }
+.settlement-security { display: flex; align-items: flex-start; gap: 16rpx; padding: 26rpx 8rpx; }
+.settlement-security > .icon-lock { color: #397bc8; font-size: 32rpx; }
+.settlement-security-title { color: #52657f; font-size: 25rpx; }
+.settlement-security-copy { margin-top: 6rpx; color: #7c8ba0; font-size: 23rpx; }
+.settlement-agreements { display: block; padding: 6rpx 4rpx 12rpx; }
+.settlement-agreement { display: flex; align-items: flex-start; gap: 12rpx; color: #62748b; font-size: 24rpx; line-height: 1.75; }
+.settlement-check-control { position: relative; flex: 0 0 40rpx; width: 40rpx; height: 44rpx; margin-right: 2rpx; }
+.settlement-native-check { position: absolute; inset: 0; width: 44rpx; height: 44rpx; margin: 0; padding: 0; opacity: 0; z-index: 1; }
+.settlement-check-box { position: absolute; left: 0; top: 5rpx; width: 34rpx; height: 34rpx; box-sizing: border-box; border: 2rpx solid #c8d5e5; border-radius: 8rpx; background: #fff; pointer-events: none; }
+.settlement-check-box-active { border-color: #397bc8; background: #397bc8; }
+.settlement-check-box-active::after { content: ''; position: absolute; left: 10rpx; top: 4rpx; width: 9rpx; height: 17rpx; border-right: 3rpx solid #fff; border-bottom: 3rpx solid #fff; transform: rotate(45deg); }
+.settlement-agreement > text { flex: 1; min-width: 0; font-size: 26rpx; line-height: 1.65; }
+.settlement-document-link { display: flex; align-items: center; gap: 10rpx; margin: 8rpx 0 26rpx 54rpx; padding: 4rpx 0; background: transparent; color: #397bc8; text-align: left; font-size: 25rpx; line-height: 1.8; }
+.settlement-document-link::after, .settlement-submit::after, .settlement-close::after { border: 0; }
+.settlement-error { margin-bottom: 16rpx; color: #b65059; font-size: 24rpx; }
+.settlement-submit { height: 92rpx; padding: 0 20rpx; border-radius: 16rpx; background: #397bc8; color: #fff; line-height: 92rpx; font-size: 29rpx; font-weight: 500; }
+.settlement-submit[disabled] { background: #a9bfdc; color: #fff; }
+.settlement-submit-note { margin-top: 16rpx; color: #8998ac; text-align: center; font-size: 22rpx; }
+.settlement-overlay { position: fixed; inset: 0; z-index: 11000; }
+.settlement-backdrop { position: absolute; inset: 0; background: rgba(24,39,60,.4); }
+.settlement-sheet { position: absolute; left: 0; right: 0; bottom: 0; padding: 28rpx 32rpx calc(28rpx + env(safe-area-inset-bottom)); background: #fff; border-radius: 30rpx 30rpx 0 0; }
+.settlement-sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 16rpx; font-size: 30rpx; font-weight: 600; }
+.settlement-close { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 60rpx; height: 60rpx; margin: 0; padding: 0; border-radius: 50%; background: #f3f6fa; color: #8190a5; font-size: 28rpx; }
+.settlement-sheet-body { height: 48vh; max-height: 650rpx; margin: 24rpx 0; }
+.settlement-paragraph { margin-bottom: 24rpx; color: #62748b; font-size: 26rpx; line-height: 1.85; }
+.settlement-sheet-button { margin-top: 12rpx; }

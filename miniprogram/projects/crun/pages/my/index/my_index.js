@@ -116,6 +116,26 @@ Page(Object.assign({
   bindProfileContactTap() { return this._openUserPage('/projects/crun/pages/my/contact/contact'); },
   bindProfileAddressTap() { return this._openUserPage('/projects/crun/pages/my/address/address'); },
   bindInviteTap() { return this._openUserPage('/projects/crun/pages/invite/index/invite_index'); },
+  async bindSettlementTap() {
+    if (this._openingSettlement) return;
+    this._openingSettlement = true;
+    try {
+      if (!await PassportBiz.loginMustCancelWin(this) || this._unloaded) return;
+      const result = await new Promise(resolve => wx.showModal({
+        title: '申请跑腿结算',
+        content: '是否确定申请成为跑腿？',
+        confirmText: '确认申请',
+        cancelText: '暂不申请',
+        success: resolve,
+        fail: () => resolve({ confirm: false })
+      }));
+      if (!result.confirm || this._unloaded || !this._visible) return;
+      wx.navigateTo({
+        url: '/projects/crun/pages/my/settlement/settlement',
+        fail: () => pageHelper.showNoneToast('页面打开失败，请重试')
+      });
+    } finally { this._openingSettlement = false; }
+  },
   bindWalletTap() { return this._openUserPage('/projects/crun/pages/my/wallet/wallet'); },
   bindAboutTap() { wx.navigateTo({ url: '/projects/crun/pages/about/index/about_index' }); },
   bindCampusServiceTap() { wx.navigateTo({ url: '/projects/crun/pages/customer_service/chat/customer_service_chat' }); },

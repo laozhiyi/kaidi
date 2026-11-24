@@ -10,6 +10,7 @@
     "projects/crun/pages/invite/index/invite_index",
     "projects/crun/pages/search/search",
     "projects/crun/pages/my/index/my_index",
+    "projects/crun/pages/my/settlement/settlement",
     "projects/crun/pages/operations/operations",
     "projects/crun/pages/my/reg/my_reg",
     "projects/crun/pages/my/fav/my_fav",
