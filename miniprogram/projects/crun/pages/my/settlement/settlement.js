@@ -1,5 +1,7 @@
 const ProjectBiz = require('../../../biz/project_biz.js');
 
+const Ops = require('../../../biz/operations_biz.js');
+
 const emptyForm = () => ({ realName: '', identity: '', bankCard: '', phone: '' });
 const documents = {
  rules: {
@@ -14,17 +16,23 @@ const documents = {
   title: '实名信息处理说明',
   paragraphs: [
    '真实姓名、身份证号、本人银行卡号及银行预留手机号用于开户与结算验证。请确保信息属于本人，并在提交前阅读支付机构的服务协议与隐私政策。',
-   '填写内容仅在当前页面内保留，离开页面后清空；云速取不将完整证件号、银行卡号或证照写入本地缓存、平台数据库及日志。',
-   '开户通道可用时，实名及银行卡信息须通过经确认的数据直传通道提交给第三方支付机构。云速取仅保存办理结算所需的第三方账户标识、脱敏信息、处理状态及带服务端密钥的对应摘要。',
+   '填写内容离开页面后清空，申请时由服务端临时处理；云速取不将完整证件号、银行卡号或证照写入本地缓存、平台数据库及日志。',
+   '实名及银行卡信息经加密传输，通过云速取云函数临时转交给汇付天下（AdaPay），用于开户和结算验证。云速取仅保存办理结算所需的第三方账户标识、脱敏信息、处理状态及带服务端密钥的对应摘要。',
   ]
  }
 };
 
 Page({
- data: { form: emptyForm(), rulesAccepted: false, authorizationAccepted: false, error: '', document: null, submitting: false },
+ data: { account: null, statusLoading: false, form: emptyForm(), rulesAccepted: false, authorizationAccepted: false, error: '', document: null, submitting: false },
  onLoad() { ProjectBiz.initPage(this); },
- onHide() { this.clearForm(); },
- onUnload() { this._unloaded = true; this.clearForm(); },
+ async onShow() {
+  this._unloaded = false; this._active = true; const generation=this._generation=(this._generation || 0)+1; this.setData({statusLoading:true});
+  try { const account=await Ops.get('settlement/status'); if(this._active && generation===this._generation)this.setData({account,error:''}); }
+  catch(e) {if(this._active && generation===this._generation)this.setData({error:e.msg || e.message || '结算状态加载失败，请重试'});}
+  finally {if(this._active && generation===this._generation)this.setData({statusLoading:false});}
+ },
+ onHide() { this._generation=(this._generation || 0)+1; this._active = false; this.clearForm(); },
+ onUnload() { this._active = false; this._unloaded = true; this.clearForm(); },
  clearForm() {
   this.setData({ form: emptyForm(), rulesAccepted: false, authorizationAccepted: false, error: '', document: null, submitting: false });
  },
@@ -49,8 +57,9 @@ Page({
  },
  bindCloseDocument() { this.setData({ document: null }); },
  bindStop() {},
- bindSubmit() {
+ async bindSubmit() {
   if (this.data.submitting) return;
+  const generation=this._generation;
   const form = this.data.form;
   let error = '';
   if (!form.realName.trim()) error = '请填写本人真实姓名';
@@ -61,12 +70,14 @@ Page({
   this.setData({ error });
   if (error) return;
   this.setData({ submitting: true });
-  wx.showModal({
-   title: '暂时无法开通',
-   content: '结算开户服务暂不可用，本次申请未提交。请稍后重试，或通过云速取在线客服了解办理进度。',
-   showCancel: false,
-   confirmText: '我知道了',
-   complete: () => { if (!this._unloaded) this.setData({ submitting: false }); }
-  });
+  try {
+   const account=await Ops.get('settlement/open', {...form,rulesAccepted:this.data.rulesAccepted,authorizationAccepted:this.data.authorizationAccepted});
+   if(this._unloaded || this._active === false || generation!==this._generation)return;
+   this.clearForm(); this.setData({account});
+   wx.showModal({title:account.opened?'开通成功':'申请处理中',content:account.opened?'跑腿结算账户已开通，收益将按支付机构规则结算至本人银行卡。':'请稍后刷新核对办理结果。',showCancel:false});
+  } catch(e) {
+   if(this._unloaded || this._active === false || generation!==this._generation)return;
+   this.setData({error:e.msg || e.message || '办理结果待确认，请稍后刷新或联系在线客服'});
+  } finally {if(!this._unloaded && this._active !== false && generation===this._generation)this.setData({submitting:false});}
  }
 });

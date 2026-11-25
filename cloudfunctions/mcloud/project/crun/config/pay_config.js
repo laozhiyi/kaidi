@@ -3,6 +3,8 @@
 const env = process.env;
 const pem = value => (value || '').replace(/\\n/g, '\n').trim();
 const config = {
+ provider: (env.PAYMENT_PROVIDER || 'wechat').trim(),
+ adapayReady: () => require('./adapay_config.js').ready(),
  appid: (env.WECHAT_APP_ID || '').trim(),
  mchid: (env.WECHAT_PAY_MCH_ID || '').trim(),
  privateKey: pem(env.WECHAT_PAY_PRIVATE_KEY),

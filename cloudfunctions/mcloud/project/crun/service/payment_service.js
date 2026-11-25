@@ -14,6 +14,15 @@ let reportedInvalidConfig = false;
 
 class PaymentService {
  static newOrderMode() {
+  if (cfg.provider === 'adapay') {
+   if (cfg.adapayReady()) return 'adapay';
+   if (!reportedInvalidConfig) {
+    reportedInvalidConfig = true;
+    console.warn('[adapay] invalid config', {invalidFields:require('../config/adapay_config.js').invalidFields()});
+   }
+   return 'unavailable';
+  }
+  if (cfg.provider && cfg.provider !== 'wechat') return 'unavailable';
   if (!cfg.requested()) return 'offline';
   const invalidFields = cfg.invalidFields();
   if (!invalidFields.length) return 'wechat';
@@ -32,6 +41,8 @@ class PaymentService {
  }
 
  async prepare(userId, id) {
+  const ownedOrder = await this.owned(userId,id);
+  if (ownedOrder.MAIL_PAYMENT_MODE === 'adapay') return new (require('./adapay_payment_service.js'))().prepare(userId,id);
   if (!cfg.ready()) throw new AppError('微信支付暂不可用');
   await this.owned(userId, id);
   const wx = cloud.getCloud().getWXContext();
@@ -72,7 +83,7 @@ class PaymentService {
 
  async status(userId,id) {
   const order = await this.owned(userId,id);
-  if (order.MAIL_PAYMENT_MODE === 'wechat' && order.MAIL_PAY_NO) await this.reconcile(order.MAIL_PAY_NO);
+  if (['wechat','adapay'].includes(order.MAIL_PAYMENT_MODE) && order.MAIL_PAY_NO) await this.reconcile(order.MAIL_PAY_NO);
   const row = await this.owned(userId,id);
   return {paid:row.MAIL_PAY_STATUS===1,published:row.MAIL_PAY_STATUS===1 && ![-1,99].includes(row.MAIL_STATUS),
    status:row.MAIL_STATUS,refundStatus:row.MAIL_REFUND_STATUS || ''};
@@ -82,6 +93,7 @@ class PaymentService {
   const db = store.database();
   const payment = await store.get(db,'payment',id);
   if (!payment || !['pending','paid'].includes(payment.state)) return;
+  if (payment.provider === 'adapay') return new (require('./adapay_payment_service.js'))().reconcile(id);
   if (!cfg.ready() || payment.appid !== cfg.appid || payment.merchant !== cfg.mchid) throw new Error('PAYMENT_CONFIGURATION_MISMATCH');
   if (payment.state === 'pending') {
    let result = notified;
@@ -179,7 +191,7 @@ class PaymentService {
  }
 
  async sweep(deadline = Date.now() + 10000) {
-  if (!cfg.ready()) return;
+  if (!cfg.ready() && !(cfg.adapayReady && cfg.adapayReady())) return;
   await tenant.system(async () => {
    const db = store.database();
    const rows = (await db.collection(store.collection('payment')).where({

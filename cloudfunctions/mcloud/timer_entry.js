@@ -36,27 +36,46 @@ function kindOf(triggerName) {
  * @param {number} [options.budgetMs]   本次扫描的时间预算
  */
 async function run(event, options = {}) {
-  if (!event || event.Type !== 'Timer') throw new Error('WORKER_TIMER_ONLY');
+  event = require('./timer_event.js').normalize(event);
+  if (!event) throw new Error('WORKER_TIMER_ONLY');
 
-  const cloud = require('./framework/cloud/cloud_base.js').getCloud();
-  // 客户端可以伪造 Type，但伪造不出空 OPENID。
-  if (cloud.getWXContext().OPENID) throw new Error('WORKER_TIMER_ONLY');
+  const startedAt = Date.now();
+  const candidate = options.expectKind || kindOf(event.TriggerName);
+  const kind = ['orders', 'notifications'].includes(candidate) ? candidate : 'unknown';
+  let stage = 'authorization';
+  // A fixed marker is searchable in the log field even when initialization fails.
+  // Never log the input event, OPENID, credentials, or business payloads.
+  console.info('YUNSUQU_TIMER_START', { kind });
+  try {
+    const cloud = require('./framework/cloud/cloud_base.js').getCloud();
+    // Client-supplied Type cannot bypass trusted identity checks.
+    if (cloud.getWXContext().OPENID || kind === 'unknown') throw new Error('WORKER_TIMER_ONLY');
 
-  const kind = options.expectKind || kindOf(event.TriggerName);
-  if (!['orders', 'notifications'].includes(kind)) throw new Error('WORKER_TIMER_ONLY');
+    stage = 'initialization';
+    global.PID = 'crun';
+    await new (require('./project/crun/service/base_project_service.js'))().initSetup();
 
-  global.PID = 'crun';
-  await new (require('./project/crun/service/base_project_service.js'))().initSetup();
-
-  const shard = process.env.WORKER_SHARD === undefined ? undefined : Number(process.env.WORKER_SHARD);
-  // mcloud 默认超时 30 秒，预算留出让事务收尾的余量；函数超时调到 60 秒可设 WORKER_BUDGET_MS=40000。
-  const budgetMs = Number(process.env.WORKER_BUDGET_MS) || Number(options.budgetMs) || 20000;
-  return new (require('./project/crun/service/maintenance_service.js'))().runScheduled(kind, {
-    shard,
-    batchSize: Number(process.env.WORKER_BATCH_SIZE) || 50,
-    maxBatches: Number(process.env.WORKER_MAX_BATCHES) || 10,
-    budgetMs
-  });
+    const shard = process.env.WORKER_SHARD === undefined ? undefined : Number(process.env.WORKER_SHARD);
+    const budgetMs = Number(process.env.WORKER_BUDGET_MS) || Number(options.budgetMs) || 20000;
+    stage = 'maintenance';
+    const result = await new (require('./project/crun/service/maintenance_service.js'))().runScheduled(kind, {
+      shard,
+      batchSize: Number(process.env.WORKER_BATCH_SIZE) || 50,
+      maxBatches: Number(process.env.WORKER_MAX_BATCHES) || 10,
+      budgetMs
+    });
+    const counts = {};
+    for (const field of ['scanned', 'processed', 'failed', 'cleanupFailed']) {
+      if (Number.isSafeInteger(result && result[field]) && result[field] >= 0) counts[field] = result[field];
+    }
+    console.info('YUNSUQU_TIMER_DONE', { kind, durationMs: Date.now() - startedAt, ...counts });
+    return result;
+  } catch (error) {
+    const value = String(error && (error.code || error.errCode) || '');
+    const code = /^[A-Za-z0-9_-]{1,80}$/.test(value) ? value : error && error.message === 'WORKER_TIMER_ONLY' ? 'WORKER_TIMER_ONLY' : 'WORKER_FAILED';
+    console.error('YUNSUQU_TIMER_FAILED', { kind, stage, code, durationMs: Date.now() - startedAt });
+    throw error;
+  }
 }
 
 module.exports = { run, kindOf, TRIGGERS };

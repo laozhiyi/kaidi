@@ -127,7 +127,7 @@ function priceAdjust(mail) {
  const obj = mail && mail.MAIL_OBJ || {}, adjust = mail && mail.MAIL_PRICE_ADJUST || null;
  const status = mail ? Number(mail.MAIL_STATUS) : -1;
  const empty = { visible: false, pending: false, canPropose: false, canRespond: false };
- if (!mail || mail.MAIL_PAYMENT_MODE === 'wechat' || (obj.serviceType || 'take') !== 'take' || !(mail.mypost || mail.myaccept)) return empty;
+ if (!mail || (mail.MAIL_PAYMENT_MODE === 'wechat' || mail.MAIL_PAYMENT_MODE === 'adapay') || (obj.serviceType || 'take') !== 'take' || !(mail.mypost || mail.myaccept)) return empty;
  const money = cents => (Number(cents) / 100).toFixed(2);
  const used = Number(adjust && adjust.count || 0);
  const pending = !!adjust && adjust.status === 'pending' && status === 1;
@@ -165,7 +165,7 @@ function detail(mail, now = Date.now()) {
  const serviceType = obj.serviceType || 'take';
  const serviceName = { take: '快递代取', send: '物品代送', buy: '商品代买' }[serviceType] || '快递代取';
  const participant = !!(mail.mypost || mail.myaccept);
- const legacyPayment = !['offline','wechat'].includes(mail.MAIL_PAYMENT_MODE);
+ const legacyPayment = !['offline','wechat','adapay'].includes(mail.MAIL_PAYMENT_MODE);
  const expired = status === 0 && Number(mail.MAIL_END_TIME) > 0 && Number(mail.MAIL_END_TIME) <= now;
  // 已完成：顶栏整体转灰，并按角色显示发布人 / 骑手各自看到的结果。
  const done = status === 9 ? { title: mail.mypost ? '已收货' : mail.myaccept ? '已送达' : '订单已完成',

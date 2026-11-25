@@ -5,12 +5,12 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const root = path.resolve(__dirname, '../..');
-function settlement() {
+function settlement(reply = async () => {throw new Error('结算服务暂不可用');}) {
  let definition;
  const modals = [];
  vm.runInNewContext(fs.readFileSync(path.join(root, 'miniprogram/projects/crun/pages/my/settlement/settlement.js'), 'utf8'), {
   Page: page => { definition = page; },
-  require: () => ({ initPage() {} }),
+  require: name => name.includes('operations_biz') ? {get:reply} : {initPage() {}},
   wx: { showModal: options => modals.push(options) }
  });
  const page = { ...definition, data: structuredClone(definition.data), setData(update) {
@@ -21,27 +21,23 @@ function settlement() {
  } };
  return { page, modals };
 }
-test('settlement requires explicit consent and cannot report opening success while the provider is unavailable', () => {
+test('settlement requires explicit consent and cannot report opening success while the provider is unavailable', async () => {
  const { page, modals } = settlement();
  assert.equal(page.data.rulesAccepted, false);
  assert.equal(page.data.authorizationAccepted, false);
- page.bindSubmit();
+ await page.bindSubmit();
  assert.match(page.data.error, /姓名/);
  assert.equal(modals.length, 0);
  page.data.form = { realName:'测试同学', identity:'11010519491231002X', bankCard:'6222020000000000', phone:'13800000000' };
- page.bindSubmit();
+ await page.bindSubmit();
  assert.match(page.data.error, /勾选/);
  page.bindAgreement({ detail:{ value:['rules'] } });
- page.bindSubmit();
+ await page.bindSubmit();
  assert.equal(modals.length, 0);
  page.bindAgreement({ detail:{ value:['rules','authorization'] } });
- page.bindSubmit();
- assert.equal(modals.length, 1);
- assert.equal(modals[0].title, '暂时无法开通');
- assert.match(modals[0].content, /申请未提交/);
- page.bindSubmit();
- assert.equal(modals.length, 1);
- modals[0].complete();
+ await page.bindSubmit();
+ assert.equal(modals.length, 0);
+ assert.match(page.data.error, /服务暂不可用/);
  assert.equal(page.data.submitting, false);
 });
 test('leaving settlement clears sensitive fields and both consent choices', () => {

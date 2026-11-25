@@ -26,7 +26,7 @@ class FavService extends Base {
   }
   _available(order, userId) {
     return !!order && order._pid === this.getProjectId() && order.MAIL_ADMIN_DELETED !== true && order.MAIL_STATUS === 0
-      && (order.MAIL_PAYMENT_MODE === 'offline' || order.MAIL_PAYMENT_MODE === 'wechat' && order.MAIL_PAY_STATUS === 1) && !order.MAIL_ACCEPT_USER_ID
+      && (order.MAIL_PAYMENT_MODE === 'offline' || ['wechat','adapay'].includes(order.MAIL_PAYMENT_MODE) && order.MAIL_PAY_STATUS === 1) && !order.MAIL_ACCEPT_USER_ID
       && order.MAIL_USER_ID !== userId && Number(order.MAIL_END_TIME) > Date.now();
   }
   // Read the actual favorite records so historical favorites and removals never

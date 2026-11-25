@@ -123,6 +123,11 @@ class EarningsAuthorizationService {
        order.MAIL_USER_ID === userId || order.MAIL_ADMIN_DELETED === true || order.MAIL_END_TIME <= Date.now() ||
        (order.MAIL_RELEASED_RIDERS || []).includes(userId)) throw new AppError('该订单暂不可接取，请查看其他订单');
    if (order.MAIL_PAYMENT_MODE === 'offline') return 'offline';
+   if (order.MAIL_PAYMENT_MODE === 'adapay') {
+    if (order.MAIL_PAY_STATUS !== 1 || order.MAIL_REFUND_STATUS) throw new AppError('订单尚未确认付款');
+    await new (require('./adapay_account_service.js'))().requireReady(userId,tx);
+    return 'offline'; // No WeChat merchant-transfer authorization is needed for bank settlement.
+   }
    if (order.MAIL_PAYMENT_MODE !== 'wechat' || order.MAIL_PAY_STATUS !== 1 || order.MAIL_REFUND_STATUS ||
        !order.MAIL_TRANSACTION_ID || !order.MAIL_PAY_NO) throw new AppError('订单尚未确认付款，不能接单');
    const payment = await store.get(tx, 'payment', order.MAIL_PAY_NO);

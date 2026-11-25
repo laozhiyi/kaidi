@@ -1,11 +1,17 @@
 <view class="settlement-page">
  <view class="settlement-status">
   <view class="settlement-status-icon"><text class="icon-moneybag"></text></view>
-  <view class="settlement-status-copy"><view class="settlement-title">开通跑腿结算</view><view class="settlement-subtitle">完成开通，管理跑腿收益</view></view>
-  <text class="settlement-badge">待开通</text>
+  <view class="settlement-status-copy"><view class="settlement-title">{{account.opened ? '跑腿结算' : '开通跑腿结算'}}</view><view class="settlement-subtitle">{{account.opened ? '收益按支付机构规则结算至银行卡' : '完成开通，管理跑腿收益'}}</view></view>
+  <text class="settlement-badge">{{account.opened ? '已开通' : account.identified ? '待绑卡' : '待开通'}}</text>
  </view>
  <view class="settlement-notice"><text class="icon-info"></text><text>请使用本人信息申请，结算账户用于接收跑腿服务报酬。</text></view>
 
+ <view wx:if="{{account.opened}}" class="settlement-card">
+  <view class="settlement-card-title">结算账户已开通</view>
+  <view class="settlement-card-desc">{{account.name}} · 银行卡尾号 {{account.cardTail}}</view>
+  <view class="settlement-hint">订单完成并确认分账后，由支付机构按账户配置自动结算。具体到账时间以银行处理结果为准。</view>
+ </view>
+ <block wx:else>
  <view class="settlement-card">
   <view class="settlement-card-title">结算账户信息</view>
   <view class="settlement-card-desc">以下信息用于支付机构核验身份及结算账户</view>
@@ -41,6 +47,7 @@
  <view wx:if="{{error}}" class="settlement-error">{{error}}</view>
  <button class="settlement-submit" bindtap="bindSubmit" loading="{{submitting}}" disabled="{{submitting}}">完成开通</button>
  <view class="settlement-submit-note">开通结果以支付机构审核为准</view>
+ </block>
 
  <view wx:if="{{document}}" class="settlement-overlay" catchtouchmove="bindStop">
   <view class="settlement-backdrop" bindtap="bindCloseDocument"></view>
