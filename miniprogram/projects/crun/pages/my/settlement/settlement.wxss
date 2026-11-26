@@ -42,3 +42,8 @@ page { background: #f3f6fb; }
 .settlement-sheet-body { height: 48vh; max-height: 650rpx; margin: 24rpx 0; }
 .settlement-paragraph { margin-bottom: 24rpx; color: #62748b; font-size: 26rpx; line-height: 1.85; }
 .settlement-sheet-button { margin-top: 12rpx; }
+
+.settlement-state { margin-top: 20rpx; padding: 72rpx 28rpx; text-align: center; }
+.settlement-loader { width: 48rpx; height: 48rpx; margin: 0 auto 28rpx; box-sizing: border-box; border: 5rpx solid #e7edf5; border-top-color: #397bc8; border-radius: 50%; animation: settlement-loading 1s linear infinite; }
+.settlement-retry { margin-top: 32rpx; }
+@keyframes settlement-loading { to { transform: rotate(360deg); } }

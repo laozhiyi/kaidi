@@ -407,3 +407,46 @@ test('conflicting listed and saved confirmation IDs never mark earnings settled 
  await assert.rejects(h.service.reconcile(h.id),/OPERATION_MISMATCH/);
  assert.equal(created,1);assert.equal(h.rows.payment[h.id].state,'paid');assert.equal(h.rows.mail.order.MAIL_EARNINGS_STATUS,'pending');
 });
+
+
+test('new-user retry creates the same member after a verified member-not-found query',async()=>{
+ for(const code of ['member_not_exists','member_not_exist','user_not_exists','user_not_exist']){
+  const h=harness(),member='runner_'+h.store.scopeKey('adapay-account',cfg.appid,cfg.prod,'new-rider');
+  const form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true};
+  let creates=0,queries=0,binds=0;
+  const api={request:async(method,path,body)=>{
+   if(method==='GET'){
+    queries++;assert.equal(path,'/v1/members/'+member);assert.equal(body.member_id,member);
+    throw Object.assign(Error('ADAPAY_REQUEST_FAILED'),{code,verified:true});
+   }
+   if(path==='/v1/members/realname'){
+    creates++;assert.equal(body.member_id,member);
+    if(creates===1)throw Error('ADAPAY_NETWORK_ERROR');
+    return {app_id:cfg.appid,member_id:member,status:'succeeded',identified:'Y'};
+   }
+   assert.equal(path,'/v1/settle_accounts');binds++;
+   return {id:'bank1',app_id:cfg.appid,status:'succeeded',channel:'bank_account',account_info:{card_id:'6222020000*****4'}};
+  }};
+  const Service=load('service/adapay_account_service.js',{...h.deps,crypto,'./adapay_api.js':api},{console:{warn:()=>{}}}),service=new Service();
+  await assert.rejects(service.open('new-rider',form),/尚未确认/);
+  assert.equal((await service.open('new-rider',form)).opened,true);
+  await service.open('new-rider',form);
+  assert.equal(queries,1);assert.equal(creates,2);assert.equal(binds,1);
+ }
+});
+
+test('member retry does not treat configuration, network or unverified errors as a missing user',async()=>{
+ for(const error of [Object.assign(Error('ADAPAY_REQUEST_FAILED'),{code:'app_not_exists',verified:true}),Error('ADAPAY_NETWORK_ERROR'),Object.assign(Error('ADAPAY_REQUEST_FAILED'),{code:'member_not_exists',verified:false})]){
+  const h=harness(),form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true};
+  let creates=0,binds=0;
+  const api={request:async(method,path)=>{
+   if(method==='GET')throw error;
+   if(path==='/v1/members/realname'){creates++;throw Error('ADAPAY_NETWORK_ERROR');}
+   binds++;throw Error('unexpected binding');
+  }};
+  const Service=load('service/adapay_account_service.js',{...h.deps,crypto,'./adapay_api.js':api},{console:{warn:()=>{}}}),service=new Service();
+  await assert.rejects(service.open('new-rider',form),/尚未确认/);
+  await assert.rejects(service.open('new-rider',form),/尚未确认/);
+  assert.equal(creates,1);assert.equal(binds,0);
+ }
+});

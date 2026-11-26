@@ -101,7 +101,7 @@ class AdapayAccountService {
    else {
     if(reserved.existed) {
      stage = 'query_member';
-     try {real=await api.request('GET','/v1/members/'+member,{member_id:member});} catch(e) {if (!['member_not_exist','user_not_exist','user_not_exists'].includes(e.code)) throw e;}
+     try {real=await api.request('GET','/v1/members/'+member,{member_id:member});} catch(e) {if (e.verified !== true || !['member_not_exists','member_not_exist','user_not_exist','user_not_exists'].includes(e.code)) throw e;}
     }
     if (!real || real.identified !== 'Y') {
      stage = 'create_member';

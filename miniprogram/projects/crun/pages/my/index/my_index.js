@@ -7,6 +7,7 @@ const profileMethods = require('../profile_methods.js');
 const InviteBiz = require('../../../biz/invite_biz.js');
 const Notifications = require('../../../biz/notification_biz.js');
 const accountActions = require('../account_actions.js');
+const Ops = require('../../../biz/operations_biz.js');
 
 function profileFromToken(token) {
   if (!token) return null;
@@ -120,20 +121,32 @@ Page(Object.assign({
     if (this._openingSettlement) return;
     this._openingSettlement = true;
     try {
-      if (!await PassportBiz.loginMustCancelWin(this) || this._unloaded) return;
-      const result = await new Promise(resolve => wx.showModal({
-        title: '申请跑腿结算',
-        content: '是否确定申请成为跑腿？',
-        confirmText: '确认申请',
-        cancelText: '暂不申请',
-        success: resolve,
-        fail: () => resolve({ confirm: false })
-      }));
-      if (!result.confirm || this._unloaded || !this._visible) return;
+      if (!await PassportBiz.loginMustCancelWin(this) || this._unloaded || !this._visible) return;
+      const visit = this._visit;
+      const credential = PassportBiz.getToken()?.sessionToken;
+      const scope = cloudHelper.scopeKey?.();
+      const isCurrent = () => !this._unloaded && this._visible && this._visit === visit
+        && PassportBiz.getToken()?.sessionToken === credential && cloudHelper.scopeKey?.() === scope;
+      const account = await Ops.get('settlement/status');
+      if (!isCurrent()) return;
+      if (!account || typeof account.opened !== 'boolean') throw new Error('INVALID_SETTLEMENT_STATUS');
+      if (!account.opened) {
+        const result = await new Promise(resolve => wx.showModal({
+          title: '申请跑腿结算',
+          content: '是否确定申请成为跑腿？',
+          confirmText: '确认申请',
+          cancelText: '暂不申请',
+          success: resolve,
+          fail: () => resolve({ confirm: false })
+        }));
+        if (!result.confirm || !isCurrent()) return;
+      }
       wx.navigateTo({
         url: '/projects/crun/pages/my/settlement/settlement',
         fail: () => pageHelper.showNoneToast('页面打开失败，请重试')
       });
+    } catch (_) {
+      if (!this._unloaded && this._visible) pageHelper.showNoneToast('结算状态查询失败，请稍后重试');
     } finally { this._openingSettlement = false; }
   },
   bindWalletTap() { return this._openUserPage('/projects/crun/pages/my/wallet/wallet'); },

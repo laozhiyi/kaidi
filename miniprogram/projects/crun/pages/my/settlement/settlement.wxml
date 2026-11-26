@@ -1,4 +1,15 @@
 <view class="settlement-page">
+ <view wx:if="{{statusLoading}}" class="settlement-card settlement-state">
+  <view class="settlement-loader" aria-hidden="{{true}}"></view>
+  <view class="settlement-card-title">正在加载结算信息…</view>
+  <view class="settlement-card-desc">请稍候</view>
+ </view>
+ <view wx:elif="{{statusError || !account}}" class="settlement-card settlement-state">
+  <view class="settlement-card-title">结算信息加载失败</view>
+  <view class="settlement-card-desc">{{statusError || '请重新加载结算信息'}}</view>
+  <button class="settlement-submit settlement-retry" bindtap="bindRetryStatus">重新加载</button>
+ </view>
+ <block wx:else>
  <view class="settlement-status">
   <view class="settlement-status-icon"><text class="icon-moneybag"></text></view>
   <view class="settlement-status-copy"><view class="settlement-title">{{account.opened ? '跑腿结算' : '开通跑腿结算'}}</view><view class="settlement-subtitle">{{account.opened ? '收益按支付机构规则结算至银行卡' : '完成开通，管理跑腿收益'}}</view></view>
@@ -57,4 +68,5 @@
    <button class="settlement-submit settlement-sheet-button" bindtap="bindCloseDocument">我知道了</button>
   </view>
  </view>
+ </block>
 </view>

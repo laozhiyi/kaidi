@@ -23,16 +23,35 @@ const documents = {
 };
 
 Page({
- data: { account: null, statusLoading: false, form: emptyForm(), rulesAccepted: false, authorizationAccepted: false, error: '', document: null, submitting: false },
+ data: { account: null, statusLoading: true, statusError: '', form: emptyForm(), rulesAccepted: false, authorizationAccepted: false, error: '', document: null, submitting: false },
  onLoad() { ProjectBiz.initPage(this); },
- async onShow() {
-  this._unloaded = false; this._active = true; const generation=this._generation=(this._generation || 0)+1; this.setData({statusLoading:true});
-  try { const account=await Ops.get('settlement/status'); if(this._active && generation===this._generation)this.setData({account,error:''}); }
-  catch(e) {if(this._active && generation===this._generation)this.setData({error:e.msg || e.message || '结算状态加载失败，请重试'});}
-  finally {if(this._active && generation===this._generation)this.setData({statusLoading:false});}
+ onShow() {
+  this._unloaded = false; this._active = true;
+  this._generation = (this._generation || 0) + 1;
+  return this._loadStatus();
  },
- onHide() { this._generation=(this._generation || 0)+1; this._active = false; this.clearForm(); },
- onUnload() { this._active = false; this._unloaded = true; this.clearForm(); },
+ async _loadStatus() {
+  if (this._unloaded || !this._active) return;
+  const generation = this._generation;
+  if (this.data.statusLoading && this._statusLoadingGeneration === generation) return;
+  this._statusLoadingGeneration = generation;
+  const isCurrent = () => !this._unloaded && this._active && generation === this._generation;
+  this.setData({statusLoading:true,statusError:'',account:null,error:'',document:null});
+  try {
+   const account = await Ops.get('settlement/status');
+   if (!isCurrent()) return;
+   if (!account || typeof account.opened !== 'boolean') throw new Error('INVALID_SETTLEMENT_STATUS');
+   this.setData({account,statusLoading:false});
+  } catch (_) {
+   if (isCurrent()) this.setData({account:null,statusLoading:false,statusError:'暂时无法获取结算信息，请稍后重试'});
+  }
+ },
+ bindRetryStatus() { return this._loadStatus(); },
+ onHide() {
+  this._generation = (this._generation || 0) + 1; this._active = false;
+  this.clearForm(); this.setData({account:null,statusLoading:true,statusError:''});
+ },
+ onUnload() { this._unloaded = true; this.onHide(); },
  clearForm() {
   this.setData({ form: emptyForm(), rulesAccepted: false, authorizationAccepted: false, error: '', document: null, submitting: false });
  },
@@ -58,7 +77,7 @@ Page({
  bindCloseDocument() { this.setData({ document: null }); },
  bindStop() {},
  async bindSubmit() {
-  if (this.data.submitting) return;
+  if (this.data.submitting || this.data.statusLoading || this.data.statusError || !this.data.account || this.data.account.opened) return;
   const generation=this._generation;
   const form = this.data.form;
   let error = '';
