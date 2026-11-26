@@ -20,7 +20,8 @@ class ReviewService extends Base {
     await new Mail()._user(userId);
     const mail = await store.get(store.database(), 'mail', orderId), target = this._target(mail, userId);
     const review = await store.get(store.database(), 'order_review', store.key(this.getProjectId(), orderId, userId));
-    return { orderId, orderTitle: (mail.MAIL_OBJ || {}).title || '快递代取', targetName: target.name, targetRole: target.role,
+    // 已完成订单不再向对方展示称呼，评价页只显示「匿名用户」和对方角色。
+    return { orderId, orderTitle: (mail.MAIL_OBJ || {}).title || '快递代取', targetName: '匿名用户', targetRole: target.role,
       canReview: !review, reviewed: !!review,
       review: review ? { score: review.REVIEW_SCORE, content: review.REVIEW_CONTENT || '', time: time.timestamp2Time(review.REVIEW_ADD_TIME, 'Y-M-D h:m') } : null };
   }
@@ -66,10 +67,40 @@ class ReviewService extends Base {
         REVIEW_REQUEST_ID: input.requestId, REVIEW_FINGERPRINT: fingerprint
       });
       await store.set(tx, 'review_request', requestKey, { _pid: this.getProjectId(), reviewId: id, createdAt: Date.now() });
-      // 评价后订单从本人的「已完成」列表消失；标记与评价写在同一个事务里。
+      // 评价后「已完成」卡片不再显示评价按钮；标记与评价写在同一个事务里。
       await store.set(tx, 'mail', input.orderId, { ...mail, [mail.MAIL_USER_ID === userId ? 'MAIL_POSTER_REVIEWED' : 'MAIL_RIDER_REVIEWED']: true });
       return { id };
     });
+  }
+
+  /**
+   * 完成满 12 小时仍未评价：替未评价的一方写一条 5 星评价（内容为空，标记 REVIEW_AUTO），
+   * 并打上已评价标记，订单仍留在「已完成」直到本人删除。由定时任务在事务内调用；已有评价的一方不动。
+   */
+  async autoReview(tx, mail, id, now = Date.now()) {
+    if (!mail || mail.MAIL_STATUS !== 9 || !mail.MAIL_USER_ID || !mail.MAIL_ACCEPT_USER_ID || mail.MAIL_USER_ID === mail.MAIL_ACCEPT_USER_ID) return 0;
+    if (!(mail.MAIL_OVER_TIME > 0) || mail.MAIL_OVER_TIME > now - Mail.REVIEW_WINDOW_MS) return 0;
+    const next = { ...mail };
+    let written = 0;
+    for (const poster of [true, false]) {
+      const flag = poster ? 'MAIL_POSTER_REVIEWED' : 'MAIL_RIDER_REVIEWED';
+      if (mail[flag] === true) continue;
+      const from = poster ? mail.MAIL_USER_ID : mail.MAIL_ACCEPT_USER_ID, target = this._target(mail, from);
+      const reviewId = store.key(this.getProjectId(), id, from);
+      if (!await store.get(tx, 'order_review', reviewId)) {
+        await store.set(tx, 'order_review', reviewId, {
+          _pid: this.getProjectId(), REVIEW_ID: reviewId, REVIEW_ORDER_ID: id,
+          REVIEW_FROM_USER_ID: from, REVIEW_TO_USER_ID: target.id,
+          REVIEW_FROM_NAME: poster ? mail.MAIL_USER_NAME || '' : mail.MAIL_ACCEPT_USER_NAME || '', REVIEW_TO_NAME: target.name,
+          REVIEW_FROM_ROLE: target.fromRole, REVIEW_TO_ROLE: target.role,
+          REVIEW_SCORE: 5, REVIEW_CONTENT: '', REVIEW_ADD_TIME: now, REVIEW_AUTO: true
+        });
+        written++;
+      }
+      next[flag] = true;
+    }
+    await store.set(tx, 'mail', id, next);
+    return written;
   }
 
   async myList(userId, page = 1, direction = 'sent', size = 20) {

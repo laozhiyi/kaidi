@@ -24,7 +24,7 @@ class OperationConfigService extends Base {
   return { ...DEFAULTS, ...liftPrices(row && row.value),
    enabled: row ? !!(row.value && row.value.enabled === true) : scope ? false : DEFAULTS.enabled,
    enforceBusinessHours: !!(row && row.value && row.value.enforceBusinessHours === true),
-   configured: !!row, paymentMode: PaymentService.newOrderMode(), paymentNotice: '发布时微信支付跑腿费，支付确认后订单才会发布。平台抽成10%，订单完成后骑手实得跑腿费的90%。代买商品款另行结算；接单前取消或无人接单超时原路退款。', version: row && row.version || 0,
+   configured: !!row, paymentMode: PaymentService.newOrderMode(), paymentNotice: '支付成功后订单才会发布。订单完成后跑腿费结算给骑手，平台从中收取10%技术服务费；接单前取消或超时无人接单，原路退款。', version: row && row.version || 0,
    ...(scope ? { schoolId: scope.schoolId, campusId: scope.campusId, schoolName: scope.schoolName, campusName: scope.campusName,
     ...(scope.school ? {registrationReview:scope.school.registrationReview===true} : {}),
     campuses: [scope.campusName], locations: scope.campus.locations || { phases: [], pickupStations: [] } } : {}) };

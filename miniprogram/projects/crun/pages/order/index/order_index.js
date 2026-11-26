@@ -6,6 +6,7 @@ const PublicBiz = require('../../../../../comm/biz/public_biz.js');
 const Favorites = require('../../../biz/order_fav_biz.js');
 const OrderSync = require('../../../biz/order_sync_biz.js');
 const MailUI = require('../../../biz/mail_ui_biz.js');
+const SettlementGate = require('../../../biz/settlement_gate_biz.js');
 const OrderFilter = require('../../../biz/order_filter_biz.js');
 
 /**
@@ -14,8 +15,8 @@ const OrderFilter = require('../../../biz/order_filter_biz.js');
  *   0 可接单（浏览全部待接订单）    mail/list + sortType='wait'
  *   1 我接的（进行中）              mail/list + sortType='my_accept'
  *   2 我发布的（待支付、待接单与进行中） mail/list + sortType='my_post'
- *   3 已完成（本人尚未评价）         mail/list + sortType='my_done'
- * 已完成或已取消的订单不再出现在 1、2；评价后也不再出现在 3，只能在反馈投诉里选到。
+ *   3 已完成（本人未删除）           mail/list + sortType='my_done'
+ * 已完成或已取消的订单不再出现在 1、2；已完成订单留在 3，直到本人在卡片上删除，之后只能在反馈投诉里选到。
  */
 Page({
 	data: {
@@ -45,7 +46,7 @@ Page({
 
 		// 列表数据（cmpt-comm-list 通过 bind:list 回填）
 		dataList: null,
-		favoriteBusyId: '', favoriteSyncError: false, acceptingId: '', actionBusyId: '', confirmingId: '', orderSyncError: false,
+		favoriteBusyId: '', favoriteSyncError: false, acceptingId: '', actionBusyId: '', confirmingId: '', deletingId: '', orderSyncError: false,
 	},
 
 	onLoad: async function (options) {
@@ -193,7 +194,7 @@ Page({
         }
 		return Object.assign({}, order, {
 			showProgress: progress.visible, progressStep: progress.step, progressSteps: progress.steps, progressLabels: progress.steps.map(step => step.label),
-			deliveryAddress: MailUI.deliveryAddress(order), receipt: MailUI.receipt(order), requirementTags: MailUI.requirementTags(order), priceAdjust: MailUI.priceAdjust(order), commission: MailUI.commission(order),
+			deliveryAddress: MailUI.deliveryAddress(order), receipt: MailUI.receipt(order), requirementTags: MailUI.requirementTags(order), priceAdjust: MailUI.priceAdjust(order),
 			MAIL_FAV_CNT: Number(order.MAIL_FAV_CNT) || 0, MAIL_IS_FAV: !!order.MAIL_IS_FAV,
 			packageProofs: packages.filter(item => item && typeof item === 'object').map(item => ({ pickupPoint: item.pickupPoint || obj.address1 || '', code: obj.serviceType === 'send' ? item.note || '请联系发布者交接' : item.code || '查看取件截图', noteLabel: item.note ? '有备注' : '无备注' }))
 		});
@@ -372,6 +373,8 @@ Page({
 		this.setData({ acceptingId: id });
 		try {
 			if (!await PassportBiz.loginMustCancelWin(this) || !this._visible) return;
+			const order = (this.data.dataList && this.data.dataList.list || []).find(row => row._id === id);
+			if (!await SettlementGate.ensureSettlement(order) || !this._visible) return;
 			const confirm = await pageHelper.showConfirm('确认接单后请按订单要求尽快取件或购买，是否继续？');
 			if (!confirm || !this._visible) return;
 			const res = {data:await Ops.command('mail/accept', { id })};
@@ -446,6 +449,24 @@ Page({
 	},
 
 	bindOverTap: function (e) { this.bindDetailTap(e); },
+
+	/** 已完成卡片的删除：只从本人的「已完成」移除，对方不受影响，反馈投诉里仍可选到。 */
+	bindDeleteDoneTap: async function (e) {
+		const id = e.currentTarget.dataset.id;
+		const order = (this.data.dataList && this.data.dataList.list || []).find(row => row._id === id);
+		if (!id || !order || this.data.tabIndex !== 3 || Number(order.MAIL_STATUS) !== 9 || this.data.deletingId) return;
+		if (!await pageHelper.showConfirm('删除后订单不再显示在「已完成」里，如需反馈问题仍可在「反馈投诉」中选择。确定删除吗？') || !this._visible) return;
+		this.setData({ deletingId: id });
+		try {
+			await Ops.command('mail/del', { id });
+			if (!this._visible) return;
+			const list = (this.data.dataList && this.data.dataList.list || []).filter(row => row._id !== id);
+			this.setData({ 'dataList.list': list, 'dataList.total': Math.max(0, (Number(this.data.dataList.total) || 0) - 1) });
+			PublicBiz.removeCacheList('order-mail-done');
+			pageHelper.showSuccToast('已删除');
+		} catch (err) { if (this._visible) Ops.error(err); }
+		finally { if (!this._unloaded) this.setData({ deletingId: '' }); }
+	},
 
 	bindReviewTap: function (e) {
 		const id = e.currentTarget.dataset.id;

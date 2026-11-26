@@ -11,6 +11,8 @@ const TenantService = require('./tenant_service.js');
 const REQUEST_ROUTES = {publish:'mail/insert',edit:'mail/edit',accept:'mail/accept',pickup:'mail/pickup',cancel:'mail/cancel',deliver:'mail/deliver',update_proof:'mail/update_proof',price_propose:'mail/price_propose',price_respond:'mail/price_respond',release:'mail/release',confirm:'mail/finish',exception:'mail/exception',resolve_exception:'mail/resolve_exception',remind:'mail/remind',auto_confirm:'mail/auto_confirm',archive:'mail/del',hold:'admin/operations_hold',resolve:'admin/operations_resolve',admin_delete:'admin/operations_delete_order'};
 // 送达后 8 小时内未确认收货，由订单维护任务自动确认。
 const AUTO_CONFIRM_MS = 8 * 3600000;
+// 订单完成满 12 小时仍未评价的一方，由系统自动评 5 星；订单仍留在「已完成」，直到本人删除。
+const REVIEW_WINDOW_MS = 12 * 3600000;
 // 「提醒发布人收货」的冷却：同一订单 5 分钟内只允许提醒一次，避免刷消息。
 const REMIND_COOLDOWN_MS = 5 * 60000;
 // 价格协商：骑手到快递点发现包裹比所选大小大，可在取件前申请调价，由发布人同意或拒绝。
@@ -276,7 +278,11 @@ class MailService extends Base {
     Object.assign(mail,{MAIL_CATE_ID:rules.SERVICES[normalized.obj.serviceType].id,MAIL_CATE_NAME:rules.SERVICES[normalized.obj.serviceType].name,MAIL_OBJ:normalized.obj,MAIL_FORMS:normalized.forms,MAIL_END_TIME:normalized.endTime,MAIL_EXPECT_START:normalized.expectStart,MAIL_EXPECT_TIME:normalized.expectTime || normalized.endTime,MAIL_TOTAL_FEE:normalized.totalFee,MAIL_DELIVERY_MINUTES:normalized.obj.urgent ? config.urgentMinutes : config.deliveryMinutes});
     mail.MAIL_SCHEMA_VERSION=normalized.schemaVersion; mail.MAIL_RULE_SNAPSHOT=normalized.ruleSnapshot;
    } else if (action === 'archive') {
-    if (!poster || ![9,99].includes(state)) this.AppError('仅可隐藏已结束的本人订单'); mail.MAIL_POSTER_ARCHIVED = true;
+    // 已完成订单：发布者、骑手各自从「已完成」删除，互不影响；已取消订单沿用发布者隐藏。
+    if (state === 9 && poster) mail.MAIL_POSTER_DONE_DELETED = true;
+    else if (state === 9 && rider) mail.MAIL_RIDER_DONE_DELETED = true;
+    else if (state === 99 && poster) mail.MAIL_POSTER_ARCHIVED = true;
+    else this.AppError('仅可删除已完成的本人订单');
    } else this.AppError('不支持的订单操作');
    if (mail.MAIL_STATUS !== 1 && mail.MAIL_PRICE_ADJUST && mail.MAIL_PRICE_ADJUST.status === 'pending') {
     mail.MAIL_PRICE_ADJUST = { ...mail.MAIL_PRICE_ADJUST, status:'withdrawn', respondedAt:now };
@@ -308,6 +314,7 @@ class MailService extends Base {
  }
  // 送达后 8 小时未确认收货，系统自动确认（见 maintenance_service）。
  static get AUTO_CONFIRM_MS() { return AUTO_CONFIRM_MS; }
+ static get REVIEW_WINDOW_MS() { return REVIEW_WINDOW_MS; }
  static get REMIND_COOLDOWN_MS() { return REMIND_COOLDOWN_MS; }
  static get PRICE_ADJUST_MAX() { return PRICE_ADJUST_MAX; }
  async acceptMail(userId,id,input) { return this._change(userId,id,'accept',input); }
@@ -401,7 +408,7 @@ class MailService extends Base {
   if (mail.MAIL_STATUS === -1 && mail.MAIL_USER_ID !== userId) return null;
   await new (require('./review_service.js'))().decorateOrders(userId, [mail]);
   const result = rules.project(mail,userId);
-  if (result.mypost || result.myaccept) { await this._user(userId, { allowPending: result.mypost && !result.myaccept }); if (mail.MAIL_ACCEPT_USER_ID) result.acceptUser = await UserModel.getOne({USER_MINI_OPENID:mail.MAIL_ACCEPT_USER_ID},'USER_NAME,USER_MOBILE'); }
+  if (result.mypost || result.myaccept) { await this._user(userId, { allowPending: result.mypost && !result.myaccept }); if (mail.MAIL_ACCEPT_USER_ID && mail.MAIL_STATUS !== 9) result.acceptUser = await UserModel.getOne({USER_MINI_OPENID:mail.MAIL_ACCEPT_USER_ID},'USER_NAME,USER_MOBILE'); }
   if ((result.mypost || result.myaccept) && mail.MAIL_ACCEPT_USER_ID && mail.MAIL_ACCEPT_USER_ID !== mail.MAIL_USER_ID) result.MAIL_FEEDBACK_TARGET = {
    name: result.mypost ? mail.MAIL_ACCEPT_USER_NAME || '接单人' : mail.MAIL_USER_NAME || (mail.MAIL_OBJ || {}).poster || '发布者', role: result.mypost ? '接单人' : '发布者'
   };
@@ -435,10 +442,10 @@ class MailService extends Base {
    }
    // 申诉、客服咨询常常发生在订单结束很久之后：这里覆盖本人全部历史订单，不做时间窗裁剪。
    if (sortType === 'my_all') where.or = [{ MAIL_USER_ID: userId }, { MAIL_ACCEPT_USER_ID: userId }];
-   // 「已完成」只放本人还没评价的已完成订单；评价后订单从列表消失，只能在反馈投诉里选到。
+   // 「已完成」放本人全部已完成订单，直到本人在卡片上删除；删除只影响自己这一侧，反馈投诉里仍可选到。
    if (sortType === 'my_done') {
     where.and.MAIL_STATUS = 9;
-    where.or = [{ MAIL_USER_ID: userId, MAIL_ACCEPT_USER_ID: ['<>', ''], MAIL_POSTER_REVIEWED: ['<>', true] }, { MAIL_ACCEPT_USER_ID: userId, MAIL_RIDER_REVIEWED: ['<>', true] }];
+    where.or = [{ MAIL_USER_ID: userId, MAIL_ACCEPT_USER_ID: ['<>', ''], MAIL_POSTER_DONE_DELETED: ['<>', true] }, { MAIL_ACCEPT_USER_ID: userId, MAIL_RIDER_DONE_DELETED: ['<>', true] }];
    }
    if (['status','timeout'].includes(sortType)) { where.or = [{MAIL_USER_ID:userId},{MAIL_ACCEPT_USER_ID:userId}]; const state = sortType === 'timeout' ? 0 : Number(sortVal); if (![0,1,2,3,4,9,99].includes(state)) this.AppError('该订单校区暂不在服务范围'); where.and.MAIL_STATUS = state; if (sortType === 'timeout') where.and.MAIL_END_TIME = ['<',now]; }
   } else { where.and.MAIL_STATUS = 0; where.or = [{MAIL_PAYMENT_MODE:'offline'},{MAIL_PAYMENT_MODE:'wechat',MAIL_PAY_STATUS:1},{MAIL_PAYMENT_MODE:'adapay',MAIL_PAY_STATUS:1}]; where.and.MAIL_END_TIME = ['>',now]; if (sortType === 'wait') where.and.MAIL_USER_ID = ['<>',userId]; }

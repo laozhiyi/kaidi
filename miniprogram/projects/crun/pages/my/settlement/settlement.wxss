@@ -55,3 +55,5 @@ page { background: #f3f6fb; }
 .settlement-meta { color: #8998ac; font-size: 23rpx; }
 .settlement-heading { margin: 26rpx 0 12rpx; color: #24334b; font-size: 27rpx; font-weight: 600; }
 .settlement-strong { color: #24334b; font-weight: 600; }
+.settlement-blocked { color: #b7791f; }
+.settlement-link-button[disabled] { background: transparent !important; color: #a8b3c2 !important; }

@@ -29,14 +29,19 @@ const SIZE_GUIDE = [
 		examples: '大号整理箱、小型家电（微波炉、小洗衣机）、整箱矿泉水（24瓶）、大号毛绒玩具、组装家具包裹。' },
 ];
 
-// 跑腿费下限（元），与云端 order_plugins/parcel.js 的 MIN_FEE 一致。界面不写明数值：
-// 输入时去掉开头的 0 和小数点，能填进去的金额自然不低于 1 元；最多两位小数，整数最多 5 位。
+// 跑腿费下限（元），与云端 order_plugins/parcel.js 的 MIN_FEE 一致，页面上写明「1元起步」。
+// 每件价格最多两位小数，整数最多 4 位（与云端每件 10000 元上限一致）：输入时去掉开头的 0 和多余小数点；
+// 离开输入框时自动补全两位小数，清空则恢复参考价。
 const MIN_FEE = 1;
 function feeInput(raw) {
 	const text = String(raw == null ? '' : raw).replace(/[^\d.]/g, '').replace(/^[0.]+/, '');
 	const dot = text.indexOf('.');
-	const whole = (dot < 0 ? text : text.slice(0, dot)).slice(0, 5);
+	const whole = (dot < 0 ? text : text.slice(0, dot)).slice(0, 4);
 	return dot < 0 ? whole : whole + '.' + text.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+}
+function feeComplete(value, fallback) {
+	const text = feeInput(value);
+	return text ? Number(text).toFixed(2) : String(fallback || '');
 }
 
 // 订单里保存的上楼费；只有快递代取且选了「需要送上楼」才有值，老订单与非快递代取为 0。
@@ -225,7 +230,7 @@ module.exports = {
   },
  bindCampusChange(e) { const campusIndex = Number(e.detail.value); this._campusEdited = true; this.setData({ campusIndex, campus: this.data.campuses[campusIndex] }); },
  bindServiceHelpTap() { wx.navigateTo({ url: '/projects/crun/pages/customer_service/chat/customer_service_chat' }); },
- bindSettlementTap() { wx.showModal({ title: (this.data.config.paymentMode === 'wechat' || this.data.config.paymentMode === 'adapay') ? '微信支付说明' : '关于线下结算', content: (this.data.config.paymentMode === 'wechat' || this.data.config.paymentMode === 'adapay') ? require('../../../biz/payment_biz.js').PAY_NOTICE : this.data.config.offlineNotice, showCancel: false, confirmText: '我知道了' }); },
+ bindSettlementTap() { wx.showModal({ title: (this.data.config.paymentMode === 'wechat' || this.data.config.paymentMode === 'adapay') ? '微信支付说明' : '结算说明', content: (this.data.config.paymentMode === 'wechat' || this.data.config.paymentMode === 'adapay') ? require('../../../biz/payment_biz.js').PAY_NOTICE : this.data.config.offlineNotice, showCancel: false, confirmText: '我知道了' }); },
  _packageRows(previous = this.data.packageItems, types = this.data.packageTypes) {
   const rows = [], old = Array.isArray(previous) ? previous : [], used = new Set();
   for (const type of types) {
@@ -254,6 +259,7 @@ module.exports = {
  },
  _refreshFee(){const reference=this.data.packageTypes.reduce((sum,x,i)=>sum+x.count*this._prices[i],0);const total=this.data.packageItems.length ? this.data.packageItems.reduce((sum,x)=>sum+(Number(x.price)||0),0) : reference;const referencePrice=reference.toFixed(2);this.setData({totalFee:total.toFixed(2),payTotal:((Math.round(total*100)+(this.data.serviceType==='take'&&this.data.upstairs?Math.round((Number(this.data.tip)||0)*100):0))/100).toFixed(2),referencePrice});this._setFormVal('price',total.toFixed(2));},
  bindPackageItemInput(e){const index=Number(e.currentTarget.dataset.index);const mark=e.currentTarget.dataset.mark;const value=mark==='price'?feeInput(e.detail.value):e.detail.value;let items=this.data.packageItems.map((item,i)=>i===index?{...item,[mark]:value}:item); if(mark==='code' && String(e.detail.value || '').trim() && items[index] && items[index].images && items[index].images.length){ items[index]=Object.assign({},items[index],{images:[],imagePreviews:[]}); } this.setData({packageItems:items});this._setFormVal('packages',items);if(mark==='price'){this._refreshFee();return value;}},
+ bindPackagePriceBlur(e){const index=Number(e.currentTarget.dataset.index);const item=this.data.packageItems[index];if(!item)return;const value=feeComplete(e.detail.value,item.referencePrice);if(value===item.price)return value;const items=this.data.packageItems.map((x,i)=>i===index?{...x,price:value}:x);this.setData({packageItems:items});this._setFormVal('packages',items);this._refreshFee();return value;},
  bindCustomPrice(e){const value=String(e.detail.value||'').replace(/[^0-9.]/g,'');this.setData({customPrice:value});this._setFormVal('price',value);},
 
  /** 编辑模式：拉取原订单数据回填 */

@@ -1,8 +1,10 @@
 const Ops = require('./operations_biz.js');
-// 每次拉起微信支付前都弹出的说明；云端 operations/config 的 paymentNotice 使用同一段文字。
-const PAY_NOTICE = '发布时微信支付跑腿费，支付确认后订单才会发布。平台抽成10%，订单完成后骑手实得跑腿费的90%。代买商品款另行结算；接单前取消或无人接单超时原路退款。';
+// 支付说明：每次拉起支付前单独弹出；云端 operations/config 的 paymentNotice 使用同一段文字。
+const PAY_NOTICE = '支付成功后订单才会发布。订单完成后跑腿费结算给骑手，平台从中收取10%技术服务费；接单前取消或超时无人接单，原路退款。';
+// 弹窗正文开头空两格（全角空格）。
+const INDENT = '\u3000\u3000';
 function confirmNotice() {
- return new Promise(resolve => wx.showModal({ title: '支付说明', content: PAY_NOTICE, confirmText: '去支付', cancelText: '再想想',
+ return new Promise(resolve => wx.showModal({ title: '支付说明', content: INDENT + PAY_NOTICE, confirmText: '去支付', cancelText: '再想想',
   success: res => resolve(!!res.confirm), fail: () => resolve(false) }));
 }
 async function pay(id) {
@@ -23,4 +25,4 @@ async function pay(id) {
  if(!status.published)throw new Error(status.status===99?'订单已关闭，已付款项将原路退回':'支付结果确认中，请在订单详情刷新核对');
  return status;
 }
-module.exports={pay,PAY_NOTICE};
+module.exports={pay,PAY_NOTICE,INDENT};

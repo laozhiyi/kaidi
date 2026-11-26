@@ -7,6 +7,7 @@ const pageHelper = require('../../../../../helper/page_helper.js');
 const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
+const SettlementGate = require('../../../biz/settlement_gate_biz.js');
 function invalidateOrderLists() {
  if (!wx.removeStorageSync) return;
  for (const key of ['order-mail-take', 'order-mail-mine']) wx.removeStorageSync(key.toUpperCase() + '_LIST');
@@ -155,7 +156,7 @@ Page({
  bindBackOrders() { wx.switchTab({ url: '/projects/crun/pages/order/index/order_index' }); },
  bindServiceHelpTap() { wx.navigateTo({ url: '/projects/crun/pages/customer_service/chat/customer_service_chat' }); },
  bindCopyOrderTap() { const mail = this.data.mail; if (mail) wx.setClipboardData({ data: String(mail.MAIL_ID || mail._id) }); },
- bindNoticeTap() { if(this.data.mail && (this.data.mail.MAIL_PAYMENT_MODE === 'wechat' || this.data.mail.MAIL_PAYMENT_MODE === 'adapay')) return wx.showModal({title:'微信支付说明',content:'跑腿费已通过平台微信支付收取，请勿重复向发布者收取跑腿费。',showCancel:false}); wx.showModal({ title: '结算说明', content: this.data.detailUI && this.data.detailUI.legacyPayment ? '本单未标记为线下结算订单，请联系在线客服核对支付与退款记录，勿重复向对方转账。' : '费用由双方线下协商结算，平台不代收、不担保；请勿提前向陌生人转账。', showCancel: false, confirmText: '我知道了' }); },
+ bindNoticeTap() { if(this.data.mail && (this.data.mail.MAIL_PAYMENT_MODE === 'wechat' || this.data.mail.MAIL_PAYMENT_MODE === 'adapay')) return wx.showModal({title:'微信支付说明',content:'跑腿费已通过平台微信支付收取，请勿重复向发布者收取跑腿费。',showCancel:false}); wx.showModal({ title: '结算核对说明', content: '本单结算方式待核对，请联系在线客服核对支付与退款记录，勿重复向对方转账。', showCancel: false, confirmText: '我知道了' }); },
  bindManageTap() { if (this.data.detailUI && this.data.detailUI.participant) wx.navigateTo({ url: '../my_detail/mail_my_detail?id=' + this.data.id }); },
  // 价格协商按钮只在「我的订单详情」中渲染；公共详情页统一转去处理。
  bindPriceRespond() { return this.bindManageTap(); },
@@ -170,7 +171,8 @@ Page({
   let loading = false;
   try {
    if (!await PassportBiz.loginMustCancelWin(this)) return;
-   const confirm = await pageHelper.showConfirm('确认接单后请按订单要求尽快取件或购买。费用由双方线下协商结算，是否继续？');
+   if (!await SettlementGate.ensureSettlement(mail)) return;
+   const confirm = await pageHelper.showConfirm('确认接单后请按订单要求尽快取件或购买，是否继续？');
    if (!confirm) return;
    wx.showLoading({ title: '接单中...' }); loading = true;
    const result = await Ops.command('mail/accept', { id: mail._id });

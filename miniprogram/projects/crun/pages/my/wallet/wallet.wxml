@@ -7,7 +7,7 @@
       <view class="mall-hero-link" bindtap="bindOpenLogs"><text>积分明细</text><text class="icon-right"></text></view>
     </view>
     <view class="mall-points-value">{{points}}</view>
-    <view class="mall-hero-tip">兑换后在「已兑换」里出示券码，使用时点「确认核销」</view>
+    <view class="mall-hero-tip">{{isLoad && !items.length ? '商品待上架，积分会一直保留在账户里' : '兑换后在「已兑换」里出示券码，使用时点「确认核销」'}}</view>
   </view>
 
   <view class="mall-tabs">
@@ -31,7 +31,7 @@
         <view class="mall-card-btn">{{item.disabled ? '积分不足' : '立即兑换'}}</view>
       </view>
     </view>
-    <view wx:if="{{isLoad && !items.length && !error}}" class="mall-empty"><text class="icon-present mall-empty-icon"></text><text>暂无可兑换商品</text></view>
+    <view wx:if="{{isLoad && !items.length && !error}}" class="mall-empty"><text class="icon-present mall-empty-icon"></text><text class="mall-empty-title">商品待上架</text><text>上架后即可用积分兑换，已兑换的券不受影响</text></view>
   </block>
 
   <block wx:else>

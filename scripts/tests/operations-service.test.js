@@ -123,7 +123,7 @@ test('exception freezes flow and requires active administrator resolution with a
 test('quota counts concurrent publishes and accepted orders; unsafe mutation APIs are disabled',async()=>{
  const f=fixture();f.config.maxOpenOrders=1;const results=await Promise.allSettled([f.publish({requestId:f.req('one')}),f.publish({requestId:f.req('two')})]);assert.equal(results.filter(x=>x.status==='fulfilled').length,1);
  await assert.rejects(f.service.statusMail(),/禁用/);await assert.rejects(f.service.updateMailForms(),/禁止/);
- const id=[...f.table('mail').keys()][0];await assert.rejects(f.service.delMail('poster',id,{requestId:f.req('delete')}),/已结束/);
+ const id=[...f.table('mail').keys()][0];await assert.rejects(f.service.delMail('poster',id,{requestId:f.req('delete')}),/仅可删除已完成/);
  await assert.rejects(f.service.getMailList('other',{whereEx:{MAIL_USER_ID:'poster'}}),/不允许/);
 });
 

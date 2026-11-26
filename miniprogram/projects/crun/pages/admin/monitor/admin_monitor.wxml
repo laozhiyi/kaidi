@@ -9,7 +9,7 @@
   </view>
   <view class="ac-card">
     <view class="ac-section-head"><text class="ac-section-title">维护任务</text><text class="ac-muted">每次执行以下项目</text></view>
-    <view class="ac-maintenance-task"><view class="ac-task-step">01</view><view class="ac-task-copy"><view class="ac-row-title">关闭过期待接单订单</view><view class="ac-row-desc">处理超过接单截止时间、仍未接取的线下订单。</view></view></view>
+    <view class="ac-maintenance-task"><view class="ac-task-step">01</view><view class="ac-task-copy"><view class="ac-row-title">关闭过期待接单订单</view><view class="ac-row-desc">处理超过接单截止时间、仍未接取的订单。</view></view></view>
     <view class="ac-maintenance-task"><view class="ac-task-step">02</view><view class="ac-task-copy"><view class="ac-row-title">发送履约超时提醒</view><view class="ac-row-desc">提醒相关用户跟进，保留订单与履约记录。</view></view></view>
     <view class="ac-maintenance-task"><view class="ac-task-step">03</view><view class="ac-task-copy"><view class="ac-row-title">处理待发送通知</view><view class="ac-row-desc">发送待发通知并重试；达到重试上限的记录保留失败状态。</view></view></view>
     <view class="ac-maintenance-task"><view class="ac-task-step">04</view><view class="ac-task-copy"><view class="ac-row-title">过期客服邀请码</view><view class="ac-row-desc">把超过有效期的未用邀请码标记为已过期，并检查是否有重复码。</view></view></view>

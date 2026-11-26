@@ -6,7 +6,7 @@
     <view class="pub-field-row pub-view"><view class="pub-field-label pub-view">商品总预算（元） <text class="pub-required pub-text">*</text></view><view class="pub-input-box pub-view"><input class="pub-input" type="digit" value="{{mailValues.goodsBudget}}" placeholder="全部商品的预算，不含跑腿费" bindinput="bindMailInput" data-mark="goodsBudget" disabled="{{submitting}}" /></view></view>
     <view class="pub-field-row pub-view"><view class="pub-field-label pub-view">购买地点 <text class="pub-required pub-text">*</text></view><view class="pub-input-box pub-view"><textarea class="pub-address-input pub-textarea" value="{{packageItems[0].pickupPoint}}" maxlength="100" auto-height placeholder="填写店铺与位置，或填写就近购买" bindinput="bindPackageItemInput" data-index="0" data-mark="pickupPoint" disabled="{{submitting}}" /></view></view>
     <view class="pub-field-row pub-view"><view class="pub-field-label pub-view">跑腿费（元） <text class="pub-required pub-text">*</text></view><view class="pub-input-box pub-view"><input class="pub-input" type="digit" value="{{packageItems[0].price}}" placeholder="请填写本单跑腿费" bindinput="bindPackageItemInput" data-index="0" data-mark="price" disabled="{{submitting}}" /></view></view>
-    <view class="pub-footnote pub-view">商品款按实际小票与骑手线下结算；超出预算须先确认。跑腿费另计。</view>
+    <view class="pub-footnote pub-view">商品款按实际小票支付给骑手；超出预算须先确认。跑腿费另计。</view>
    </view>
 </template>
 <template name="parcel-fields">
@@ -27,11 +27,12 @@
      <view class="pub-size-guide-warning pub-view">请按实际大小选择哦！若现场发现超大/超重，请双方协商补差价哦~~~</view>
     </view>
     <view wx:if="{{packageItems.length}}" class="pub-package-details pub-view">
-     <view class="pub-detail-title pub-view">每件包裹信息 <text class="pub-text">{{serviceType === 'send' ? '价格独立设置，请填写取件位置和物品说明' : '价格独立设置，取件码和截图二选一，点截图可查看或删除'}}</text></view>
+     <view class="pub-detail-head pub-view"><text class="pub-detail-title pub-text">每件包裹信息</text><text class="pub-fee-floor pub-text">每件 1 元起步</text></view>
+     <view class="pub-detail-hint pub-view">价格按件单独设置，最多两位小数，{{serviceType === 'send' ? '请填写取件位置和物品说明' : '取件码和截图二选一'}}</view>
      <view wx:for="{{packageItems}}" wx:key="id" class="pub-package-detail pub-view">
       <view class="pub-package-detail-head pub-view"><text class="pub-text">{{index + 1}}. {{item.label}}</text><text class="pub-package-reference pub-text">参考 ¥{{item.referencePrice || item.price}}</text></view>
       <view class="pub-package-options-row pub-view">
-       <view class="pub-package-custom-price pub-view"><text class="pub-package-input-label pub-text">自定义价格</text><view class="pub-package-price-value pub-view"><input class="pub-input" type="digit" value="{{item.price}}" data-index="{{index}}" data-mark="price" bindinput="bindPackageItemInput" placeholder="本件费用" disabled="{{submitting}}"/><text class="pub-text">元</text></view></view>
+       <view class="pub-package-custom-price pub-view"><text class="pub-package-input-label pub-text">本件价格</text><view class="pub-package-price-value pub-view"><text class="pub-price-symbol pub-text">¥</text><input class="pub-input" type="digit" maxlength="7" value="{{item.price}}" data-index="{{index}}" data-mark="price" bindinput="bindPackageItemInput" bindblur="bindPackagePriceBlur" placeholder="1.00" placeholder-class="pub-placeholder" disabled="{{submitting}}"/></view></view>
        <button class="pub-package-pickup pub-button-base {{(submitting) ? 'pub-disabled' : ''}}" bindtap="bindOpenPackagePickup" data-id="{{item.id}}" disabled="{{submitting}}" aria-label="填写第{{index + 1}}件包裹的取件点"><text class="pub-package-input-label pub-text">取件点</text><view class="pub-package-pickup-value pub-view"><text class="pub-package-pickup-name {{!item.pickupPoint ? 'pub-package-pickup-empty' : ''}} pub-text">{{item.pickupPoint || (serviceType === 'send' ? '填写取件位置' : '选择快递点')}}</text><text class="icon-right pub-text"></text></view></button>
       </view>
       <view wx:if="{{serviceType === 'take'}}" class="pub-package-proof-row pub-view">

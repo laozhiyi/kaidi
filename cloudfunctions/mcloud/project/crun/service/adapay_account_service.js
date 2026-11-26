@@ -46,7 +46,27 @@ function parseInput(input) {
  return {name,identity,card,phone,fingerprint:digest([name,identity,card,phone]),identityDigest:digest([name,identity])};
 }
 // pending: 上次办理结果不明，正等待核对；页面据此提示刷新或联系客服。
-function mask(row) {return {opened:row?.status==='ready',identified:row?.identified===true,pending:row?.status==='changing' || row?.status==='needs_check' && row?.canCorrect !== true,name:row?.name || '',cardTail:row?.cardTail || '',status:row?.status || 'not_open',settlement:'auto'};}
+// boundAt：当前这张卡的绑定时间，换卡后更新；老记录没有该字段时用开通时的授权时间。
+function mask(row) {return {opened:row?.status==='ready',identified:row?.identified===true,pending:row?.status==='changing' || row?.status==='needs_check' && row?.canCorrect !== true,name:row?.name || '',cardTail:row?.cardTail || '',boundAt:row?.status==='ready' ? row.cardBoundAt || row.consentedAt || 0 : 0,status:row?.status || 'not_open',settlement:'auto'};}
+// 换卡记录写在账户文档里，最多保留最近 20 次，后台用户详情按时间倒序展示。
+// result：processing 办理中、succeeded 已更换、refused 支付机构未受理（原卡有效）、
+// unconfirmed 解除原卡结果不明、failed 原卡已解除但新卡未绑定、restored 核对后恢复原卡。
+const HISTORY_LIMIT = 20;
+function addHistory(row, entry) {return [...(Array.isArray(row?.cardHistory) ? row.cardHistory : []), entry].slice(-HISTORY_LIMIT);}
+// 每条记录带随机 id，按 id 更新结果；同一毫秒内的两次换卡也不会互相覆盖。
+function settleHistory(row, entryId, result) {
+ return (Array.isArray(row?.cardHistory) ? row.cardHistory : []).map(item => item.id === entryId ? {...item,result,updatedAt:Date.now()} : item);
+}
+// 账户变为已开通时：记录首次开通时间、当前卡的绑定时间，并把仍未结束的换卡记录标为已更换。
+function readyFields(row, accountId) {
+ const now = Date.now(), changed = row.accountId !== accountId || !row.cardBoundAt;
+ let history = (Array.isArray(row.cardHistory) ? row.cardHistory : []).map(item =>
+  ['processing','unconfirmed','failed'].includes(item.result) && item.toTail === row.cardTail ? {...item,result:'succeeded',updatedAt:now} : item);
+ // 换卡时新卡被拒、原卡已解除，之后改用另一张卡重新绑定成功：补一条记录。
+ const last = history[history.length - 1];
+ if (last && last.result === 'failed' && last.toTail !== row.cardTail) history = addHistory({cardHistory:history},{id:crypto.randomBytes(8).toString('hex'),at:now,fromTail:last.fromTail,toTail:row.cardTail,result:'succeeded',updatedAt:now});
+ return {openedAt:row.openedAt || now,cardBoundAt:changed ? now : row.cardBoundAt,cardHistory:history};
+}
 // Compare visible digits of provider-masked numbers in memory; never persist them.
 function numberMatches(value, expected) {
  if (typeof value !== 'string') return false;
@@ -90,7 +110,7 @@ class AdapayAccountService {
     if (row.accountId !== account.id) throw new Error('ADAPAY_ACCOUNT_NOT_CONFIRMED');
     return mask(row);
    }
-   const next = {...row,status:'ready',identified:true,accountId:account.id,canCorrect:false,leaseUntil:0,updatedAt:Date.now()};
+   const next = {...row,...readyFields(row,account.id),status:'ready',identified:true,accountId:account.id,canCorrect:false,leaseUntil:0,updatedAt:Date.now()};
    await store.set(tx,'payment',key(userId),next);
    return mask(next);
   });
@@ -103,7 +123,28 @@ class AdapayAccountService {
  }
  async status(userId) {
   await new (require('./mail_service.js'))()._user(userId);
-  return {available:cfg.ready(),...mask(await this.stored(userId))};
+  const account = mask(await this.stored(userId));
+  // 已开通时提前告知能否换卡，页面据此禁用「更换结算银行卡」并说明原因。
+  return {available:cfg.ready(),...account,changeBlocked:account.opened ? await this.openOrders(userId) : ''};
+ }
+ // 换卡前要求本人名下没有进行中的发布或接单，也没有正在结算的跑腿报酬：
+ // 解除原卡到新卡生效之间收不到分账，进行中的订单完成时会结算失败。
+ // 返回拦截原因，空字符串表示可以换卡。云开发事务内不能 where 查询，因此在事务外检查。
+ async openOrders(userId) {
+  const db = store.database(), cmd = db.command, mail = db.collection(store.collection('mail'));
+  for (const field of ['MAIL_USER_ID','MAIL_ACCEPT_USER_ID']) {
+   const rows = await mail.where(cmd.and([{_pid:'crun',[field]:userId,MAIL_ADMIN_DELETED:cmd.neq(true)},{MAIL_STATUS:cmd.neq(9)},{MAIL_STATUS:cmd.neq(99)}])).limit(1).get();
+   if (rows.data.length) return '你还有未完成的' + (field === 'MAIL_USER_ID' ? '发布' : '接单') + '订单，订单全部完成或取消后才能更换结算银行卡';
+  }
+  const earnings = await mail.where({_pid:'crun',MAIL_ACCEPT_USER_ID:userId,MAIL_STATUS:9,MAIL_EARNINGS_STATUS:'pending'}).limit(1).get();
+  return earnings.data.length ? '你还有跑腿报酬正在结算，结算完成后才能更换结算银行卡' : '';
+ }
+ // 后台用户详情：只给脱敏信息、开通与绑卡时间和换卡记录，不返回账户标识。
+ async adminSummary(userId) {
+  const row = await this.stored(userId);
+  if (!row) return null;
+  return {...mask(row),openedAt:row.openedAt || (row.status === 'ready' ? row.consentedAt || 0 : 0),
+   history:(Array.isArray(row.cardHistory) ? row.cardHistory : []).slice().reverse().map(item => ({at:item.at,fromTail:item.fromTail || '',toTail:item.toTail || '',result:item.result || ''}))};
  }
  // 上次结果不明（超时、应答丢失）且用户改了信息时，只读查询支付机构：
  // 确认该用户名下没有任何结算账户，才允许改填；换卡时删除结果不明而原账户仍有效的，恢复为已开通。
@@ -126,7 +167,8 @@ class AdapayAccountService {
   await store.transaction(async tx => {
    const cur = await this.stored(userId,tx);
    if (!cur || cur.status === 'ready' || cur.canCorrect || cur.fingerprint !== row.fingerprint || cur.leaseUntil > Date.now()) return;
-   const next = restore ? {...cur,status:'ready',identified:true,accountId:restore,previousAccountId:'',leaseUntil:0,updatedAt:Date.now()}
+   const next = restore ? {...cur,status:'ready',identified:true,accountId:restore,previousAccountId:'',cardTail:cur.previousCardTail || cur.cardTail,
+    cardHistory:(cur.cardHistory || []).map(item => ['processing','unconfirmed'].includes(item.result) ? {...item,result:'restored',updatedAt:Date.now()} : item),leaseUntil:0,updatedAt:Date.now()}
     : {...cur,canCorrect:true,bindAttempted:false,identified:member?.identified==='Y',previousAccountId:'',updatedAt:Date.now()};
    await store.set(tx,'payment',key(userId),next);
   });
@@ -136,7 +178,9 @@ class AdapayAccountService {
   await new (require('./mail_service.js'))()._user(userId);
   if (!cfg.ready()) throw new AppError('结算服务暂不可用，请联系在线客服');
   if (input.rulesAccepted !== true || input.authorizationAccepted !== true) throw new AppError('请阅读并同意服务协议与实名信息授权');
-  const p = parseInput(input), id = key(userId), now = Date.now();
+  const p = parseInput(input), id = key(userId), now = Date.now(), entryId = crypto.randomBytes(8).toString('hex');
+  const blocked = await this.openOrders(userId);
+  if (blocked) throw new AppError(blocked);
   const old = await store.transaction(async tx => {
    const row = await this.stored(userId,tx);
    if (!row || row.status !== 'ready' || !row.accountId) throw new AppError('结算账户尚未开通，请先完成开通');
@@ -144,7 +188,9 @@ class AdapayAccountService {
    if (row.fingerprint === p.fingerprint) throw new AppError('填写的信息与当前结算账户相同，无需更换');
    await store.limitInTransaction(tx,'crun',userId,'adapay-open',5,3600000);
    // 记下原账户：若进程在删除前后中断，下次提交时 reconcile 可据此查询并恢复。
-   await store.set(tx,'payment',id,{...row,status:'changing',previousAccountId:row.accountId,leaseUntil:now+60000,updatedAt:now});
+   // 同时写一条换卡记录，后续每个结束分支都会更新它的结果。
+   await store.set(tx,'payment',id,{...row,status:'changing',previousAccountId:row.accountId,previousCardTail:row.cardTail,leaseUntil:now+60000,updatedAt:now,
+    cardHistory:addHistory(row,{id:entryId,at:now,fromTail:row.cardTail || '',toTail:p.card.slice(-4),result:'processing',updatedAt:now})});
    return row;
   });
   try {
@@ -155,8 +201,8 @@ class AdapayAccountService {
    await store.transaction(async tx => {
     const row = await this.stored(userId,tx);
     if (row?.status !== 'changing') return;
-    await store.set(tx,'payment',id,refused ? {...row,status:'ready',previousAccountId:'',leaseUntil:0,updatedAt:Date.now()}
-     : {...row,status:'needs_check',accountId:'',previousAccountId:old.accountId,canCorrect:false,bindAttempted:false,leaseUntil:0,updatedAt:Date.now()});
+    await store.set(tx,'payment',id,refused ? {...row,status:'ready',previousAccountId:'',leaseUntil:0,updatedAt:Date.now(),cardHistory:settleHistory(row,entryId,'refused')}
+     : {...row,status:'needs_check',accountId:'',previousAccountId:old.accountId,canCorrect:false,bindAttempted:false,leaseUntil:0,updatedAt:Date.now(),cardHistory:settleHistory(row,entryId,'unconfirmed')});
    });
    const code = typeof e.code === 'string' && /^[A-Za-z0-9_]{1,80}$/.test(e.code) ? e.code : e.message === 'ADAPAY_DELETE_NOT_CONFIRMED' ? e.message : 'DELETE_UNCONFIRMED';
    console.warn('[adapay] settle account change not completed',{stage:'delete_account',code,refused});
@@ -167,7 +213,13 @@ class AdapayAccountService {
    await store.set(tx,'payment',id,{...row,status:'needs_check',accountId:'',previousAccountId:'',identified:true,canCorrect:true,bindAttempted:false,leaseUntil:0,updatedAt:Date.now()});
   });
   try {return await this.open(userId,input,{counted:true});}
-  catch (e) {throw new AppError('原结算银行卡已解除，新卡未绑定成功：' + (e instanceof AppError ? e.message : PENDING));}
+  catch (e) {
+   await store.transaction(async tx => {
+    const row = await this.stored(userId,tx);
+    if (row && row.status !== 'ready') await store.set(tx,'payment',id,{...row,cardHistory:settleHistory(row,entryId,'failed')});
+   });
+   throw new AppError('原结算银行卡已解除，新卡未绑定成功：' + (e instanceof AppError ? e.message : PENDING));
+  }
  }
  async requireReady(userId, tx = store.database()) {
   const row = await this.stored(userId,tx);
@@ -250,7 +302,7 @@ class AdapayAccountService {
    stage = 'save_account';
    return await store.transaction(async tx => {
     const row=await this.stored(userId,tx);
-    const next={...row,status:'ready',accountId:account.id,leaseUntil:0,updatedAt:Date.now()};
+    const next={...row,...readyFields(row,account.id),status:'ready',accountId:account.id,leaseUntil:0,updatedAt:Date.now()};
     await store.set(tx,'payment',id,next);return mask(next);
    });
   } catch (e) {

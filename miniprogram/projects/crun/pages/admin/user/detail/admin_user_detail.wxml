@@ -69,6 +69,17 @@
       </view>
     </view>
 
+    <view wx:if="{{!isServiceAdmin && profile.settlement}}" class="ac-card">
+      <view class="ac-section-head"><text class="ac-section-title">跑腿结算账户</text><text class="ac-badge">{{profile.settlement.status}}</text></view>
+      <view class="ac-row"><text class="ac-muted">开户姓名</text><text>{{profile.settlement.name}}</text></view>
+      <view class="ac-row"><text class="ac-muted">当前银行卡</text><text>{{profile.settlement.card}}</text></view>
+      <view class="ac-row"><text class="ac-muted">开通时间</text><text>{{profile.settlement.openedAt}}</text></view>
+      <view class="ac-row"><text class="ac-muted">当前卡绑定时间</text><text>{{profile.settlement.boundAt}}</text></view>
+      <view class="ac-field-label">换卡记录</view>
+      <view wx:if="{{!profile.settlement.history.length}}" class="ac-muted">暂无换卡记录</view>
+      <view wx:for="{{profile.settlement.history}}" wx:key="key" class="ac-row"><text class="ac-muted">{{item.at}}</text><text>{{item.from}} → {{item.to}}</text><text class="ac-badge {{item.ok ? 'green' : 'amber'}}">{{item.result}}</text></view>
+    </view>
+
     <view wx:if="{{!isServiceAdmin}}" class="ac-card">
       <view class="ac-section-head"><text class="ac-section-title">后台权限</text><text class="ac-badge">{{profile.roleLabel}}</text></view>
       <view wx:if="{{!canManageTarget}}" class="ac-notice amber">{{roleNotice}}</view>

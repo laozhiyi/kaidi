@@ -29,11 +29,11 @@ function makeProfile(address = '1栋101室') {
 function harness(options = {}) {
   const modules = new Map(), definitions = new Map(), errors = [], commands = [], modals = [];
   let profile = options.profile === undefined ? makeProfile() : options.profile;
-  const config = { enabled: true, paymentMode: 'offline', smallPrice: 1.5, mediumPrice: 3, largePrice: 5,
+  const config = { enabled: true, paymentMode: options.paymentMode || 'offline', smallPrice: 1.5, mediumPrice: 3, largePrice: 5,
     maxPackages: 10, campuses: ['育才校区'], enforceBusinessHours: false, offlineNotice: '线下结算',
     locations: { phases: ['一期', '二期'], pickupStations: [{ name: '一期', list: ['菜鸟驿站'] }] } };
   const pageHelper = { dataset: (e, key) => e.currentTarget.dataset[key], anchor() {}, fmtURLByPID: url => '/projects/crun' + url,
-    showModal: message => { errors.push(message); return false; }, showNoneToast: message => errors.push(message) };
+    showModal: message => { errors.push(message); return false; }, showNoneToast: message => errors.push(message), showSuccToast() {} };
   const passport = { isLogin: () => !!profile, isLoggedOut: () => false, getUserId: () => 'profile', getToken: () => ({ id: 'profile', status: 1, profileComplete: true, phoneVerified: true, sessionToken: 'session', allowManualRegistration: true }), loginMustBackWin: async () => true, loginMustCancelWin: async () => true, loginForPublish: async () => true };
   const cloud = {
     callCloudData: async route => {
@@ -48,7 +48,7 @@ function harness(options = {}) {
     }
   };
   const wx = { setNavigationBarTitle() {}, hideKeyboard() {}, showLoading() {}, hideLoading() {}, showToast() {},
-    showModal: data => modals.push(data), stopPullDownRefresh() {}, navigateTo() {}, redirectTo() {},
+    showModal: data => modals.push(data), requestPayment: data => { (options.payments || []).push(data); data.success(); }, stopPullDownRefresh() {}, navigateTo() {}, redirectTo() {},
     getStorageSync() {}, setStorageSync() {}, removeStorageSync() {} };
   const stubs = {
     'miniprogram/helper/page_helper.js': pageHelper,
@@ -59,9 +59,10 @@ function harness(options = {}) {
     'miniprogram/comm/biz/public_biz.js': { removeCacheList() {} },
     'miniprogram/projects/crun/biz/tenant_biz.js': { current: () => ({ schoolId: 'school', campusId: 'campus' }) },
     'miniprogram/projects/crun/biz/operations_biz.js': {
-      get: async () => copy(config), pendingCommand: () => null, error: error => errors.push(error.message),
+      // 在线支付时 payment_biz 走 options.payment 里的同名路由；其余读取返回运营配置。
+      get: async (route, params) => options.payment && options.payment[route] ? copy(options.payment[route](params)) : copy(config), pendingCommand: () => null, error: error => errors.push(error.message),
       upload: async images => images, command: async (route, params) => {
-        commands.push({ route, params: copy(params) }); return { _id: 'order-' + commands.length };
+        commands.push({ route, params: copy(params) }); return { _id: 'order-' + commands.length, paymentMode: config.paymentMode };
       }
     }
   };

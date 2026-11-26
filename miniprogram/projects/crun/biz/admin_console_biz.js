@@ -185,7 +185,22 @@ function userProfile(row) {
     studentCard: images('studentCard'),
     studentCardNote: raw('studentCard').length > 0 && !images('studentCard').length ? previewError : '',
     disclaimer: map.disclaimer ? (map.disclaimer.val === true ? '已同意' : '未同意') : '未同意',
-    contacts, addresses, others
+    contacts, addresses, others, settlement: settlementOf(row && row.USER_SETTLEMENT)
+  };
+}
+// 跑腿结算账户：只有脱敏姓名、卡号尾号和时间；换卡记录按时间倒序。
+const SETTLEMENT_STATUS = { ready: '已开通', changing: '换卡办理中', needs_check: '待核对', processing: '办理中' };
+const CHANGE_RESULT = { processing: '办理中', succeeded: '已更换', refused: '未受理，原卡继续有效', unconfirmed: '结果待核对', failed: '原卡已解除，新卡未绑定', restored: '核对后恢复原卡' };
+function settlementOf(value) {
+  if (!value || typeof value !== 'object') return null;
+  const tail = item => plainText(item) ? '尾号 ' + plainText(item) : '—';
+  return {
+    status: SETTLEMENT_STATUS[value.status] || '未开通', name: plainText(value.name) || '—', card: tail(value.cardTail),
+    openedAt: plainText(value.openedAt) || '—', boundAt: plainText(value.boundAt) || '—',
+    history: (Array.isArray(value.history) ? value.history : []).map((item, index) => ({
+      key: index, at: plainText(item && item.at) || '—', from: tail(item && item.fromTail), to: tail(item && item.toTail),
+      result: CHANGE_RESULT[item && item.result] || '—', ok: !!item && item.result === 'succeeded'
+    }))
   };
 }
 function message(error) { return error && (error.msg || error.message) || '网络连接失败，请稍后重试'; }

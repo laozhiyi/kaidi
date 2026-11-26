@@ -25,8 +25,12 @@
  <view wx:if="{{account.opened}}" class="settlement-card">
   <view class="settlement-card-title">结算账户已开通</view>
   <view class="settlement-card-desc">{{account.name}} · 银行卡尾号 {{account.cardTail}}</view>
+  <view wx:if="{{boundAtText}}" class="settlement-card-desc">绑定时间 {{boundAtText}}</view>
   <view class="settlement-hint">订单完成并确认分账后，由支付机构按账户配置自动结算。具体到账时间以银行处理结果为准。</view>
-  <button wx:if="{{mode !== 'change'}}" class="settlement-link-button" bindtap="bindStartChange">更换结算银行卡<text class="icon-right"></text></button>
+  <block wx:if="{{mode !== 'change'}}">
+   <button class="settlement-link-button" bindtap="bindStartChange" disabled="{{!!account.changeBlocked}}">更换结算银行卡<text class="icon-right"></text></button>
+   <view wx:if="{{account.changeBlocked}}" class="settlement-hint settlement-blocked">{{account.changeBlocked}}</view>
+  </block>
  </view>
  <block wx:if="{{!account.opened || mode === 'change'}}">
  <view class="settlement-card {{mode === 'change' ? 'settlement-change-card' : ''}}">

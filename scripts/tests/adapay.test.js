@@ -458,7 +458,10 @@ function accountHarness(handler){
  const api={request:async(m,p,b)=>{calls.push(m+' '+p);return handler(m,p,b,member);}};
  const Service=load('service/adapay_account_service.js',{...h.deps,crypto,'./adapay_api.js':api},{console:{warn:()=>{}}});
  const row=()=>Object.values(h.rows.payment).find(x=>x.kind==='adapay_account');
- return {h,member,calls,service:new Service(),row};
+ // 未完成订单的查询走数据库 where，这个桩替代它；需要拦截时改 t.blocked。
+ const t={h,member,calls,service:new Service(),row,blocked:''};
+ t.service.openOrders=async()=>t.blocked;
+ return t;
 }
 const rejected=(reason,code='channel_error')=>Object.assign(Error('ADAPAY_REQUEST_FAILED'),{code,verified:true,reason});
 const realnameOk=member=>({app_id:cfg.appid,member_id:member,identified:'Y',status:'succeeded'});
@@ -572,4 +575,64 @@ test('when the new card is rejected after the old one is removed the rider can c
  assert.equal(status.opened,false);assert.equal(status.identified,true);assert.equal(status.pending,false);
  const result=await t.service.open('rider',riderForm({bankCard:'6222020000009999'}));
  assert.equal(result.opened,true);assert.equal(t.row().accountId,'bank3');assert.equal(realname,1);
+});
+
+test('the settlement card cannot be changed while the rider has unfinished orders or unsettled earnings',async()=>{
+ const t=accountHarness((m,p,b,member)=>{
+  if(p==='/v1/members/realname')return realnameOk(member);
+  if(p==='/v1/settle_accounts')return bank('bank1',b.account_info.card_id);
+  throw Error('unexpected '+p);
+ });
+ await t.service.open('rider',riderForm());
+ t.blocked='你还有未完成的接单订单，订单全部完成或取消后才能更换结算银行卡';
+ assert.equal((await t.service.status('rider')).changeBlocked,t.blocked);
+ const before=JSON.stringify(t.row());
+ await assert.rejects(t.service.change('rider',riderForm({bankCard:'6222020000005678'})),/未完成的接单订单/);
+ assert.equal(JSON.stringify(t.row()),before,'a blocked change leaves the account untouched');
+ assert.deepEqual(t.calls.filter(x=>x.includes('delete')),[]);
+});
+
+test('every card change is kept in the account history with its own time, and the bind time moves to the new card',async()=>{
+ let deletion='ok';
+ const t=accountHarness((m,p,b,member)=>{
+  if(p==='/v1/members/realname')return realnameOk(member);
+  if(p==='/v1/settle_accounts')return bank('bank_'+b.account_info.card_id.slice(-4),b.account_info.card_id);
+  if(p==='/v1/settle_accounts/delete'){if(deletion==='refuse')throw rejected('');return {id:b.settle_account_id,status:'succeeded'};}
+  throw Error('unexpected '+p);
+ });
+ const before=Date.now();
+ await t.service.open('rider',riderForm());
+ const opened=t.row();
+ assert(opened.openedAt>=before && opened.cardBoundAt===opened.openedAt);
+ assert.equal((await t.service.status('rider')).boundAt,opened.cardBoundAt);
+ // 把开通时间拨回一天前，确认换卡后绑定时间更新、首次开通时间保留。
+ const stored=Object.values(t.h.rows.payment).find(x=>x.kind==='adapay_account');
+ stored.openedAt=stored.cardBoundAt=stored.consentedAt=before-86400000;
+ const changeAt=Date.now();
+ await t.service.change('rider',riderForm({bankCard:'6222020000005678'}));
+ const changed=t.row();
+ assert.equal(changed.openedAt,before-86400000,'the first opening time is kept');
+ assert(changed.cardBoundAt>=changeAt,'the bind time is the change time, not the original opening time');
+ assert.equal(changed.cardHistory.length,1);
+ assert(changed.cardHistory[0].at>=changeAt);
+ assert.deepEqual(changed.cardHistory.map(x=>[x.fromTail,x.toTail,x.result]),[['1234','5678','succeeded']]);
+ deletion='refuse';
+ await assert.rejects(t.service.change('rider',riderForm({bankCard:'6222020000009999'})),/继续有效/);
+ const summary=await t.service.adminSummary('rider');
+ assert.equal(summary.cardTail,'5678');assert.equal(summary.openedAt,before-86400000);
+ assert.deepEqual(summary.history.map(x=>[x.fromTail,x.toTail,x.result]),[['5678','9999','refused'],['1234','5678','succeeded']],'newest first');
+ assert.equal(JSON.stringify(summary).includes('bank_'),false,'the provider account id is not exposed');
+ assert(!JSON.stringify(t.h.rows.payment).includes('6222020000009999'));
+});
+
+
+test('the admin user detail lists the settlement card, its bind time and the change history',()=>{
+ const UI=require('../../miniprogram/projects/crun/biz/admin_console_biz.js');
+ const settlement=UI.userProfile({USER_NAME:'测试',USER_SETTLEMENT:{status:'ready',name:'测**',cardTail:'5678',openedAt:'2026-11-25 10:00',boundAt:'2026-11-26 10:00',
+  history:[{at:'2026-11-26 11:00',fromTail:'5678',toTail:'9999',result:'refused'},{at:'2026-11-26 10:00',fromTail:'1234',toTail:'5678',result:'succeeded'}]}}).settlement;
+ assert.deepEqual([settlement.status,settlement.card,settlement.openedAt,settlement.boundAt],['已开通','尾号 5678','2026-11-25 10:00','2026-11-26 10:00']);
+ assert.deepEqual(settlement.history.map(x=>[x.at,x.from,x.to,x.result,x.ok]),[['2026-11-26 11:00','尾号 5678','尾号 9999','未受理，原卡继续有效',false],['2026-11-26 10:00','尾号 1234','尾号 5678','已更换',true]]);
+ assert.equal(UI.userProfile({USER_NAME:'测试'}).settlement,null);
+ const wxml=fs.readFileSync(path.resolve(__dirname,'../../miniprogram/projects/crun/pages/admin/user/detail/admin_user_detail.wxml'),'utf8');
+ assert.match(wxml,/wx:if="\{\{!isServiceAdmin && profile\.settlement\}\}"[\s\S]*换卡记录/);
 });

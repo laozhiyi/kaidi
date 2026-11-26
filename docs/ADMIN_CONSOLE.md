@@ -55,7 +55,7 @@
 | 客服会话详情 | `customer_service/chat_detail/admin_customer_chat_detail` | 读取整条会话、展示用户状态与回复客服身份、直接回复 |
 | 客服邀请码 | `index/login/admin_login`（客服首次开通） | 登录页只保留一个微信登录主按钮，账号密码与邀请码降为文字链接；邀请码一次性、2 小时有效，开通后客服与管理员一样微信登录 |
 | 服务设置 | `settings/service/admin_service_settings` | 服务总开关、营业时间限制开关、营业时段、当前校区 |
-| 价格设置 | `settings/pricing/admin_pricing_settings` | 参考价格、包裹数量上限、线下结算说明 |
+| 价格设置 | `settings/pricing/admin_pricing_settings` | 参考价格、包裹数量上限、结算说明 |
 | 履约规则 | `settings/rules/admin_rules_settings` | 发布/接单数量、配送时效、加急与注册审核 |
 | 反馈页售后群码 | `settings/aftersales/admin_aftersales_settings` | 上传/更换「反馈投诉」页的售后群二维码，管理员与超管可改、客服无入口；群码 7 天过期后换一张即可，不用重新发版 |
 | 数据统计 | `analytics/admin_analytics` | 订单状态分布、完成率与运营待办 |

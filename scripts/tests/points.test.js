@@ -186,7 +186,8 @@ test('point/my 只返回本人的余额与明细，并按时间倒序分页', as
 });
 
 // ---- 积分商城：兑换免费打印券 ----
-const redeemSvc = f => new (f.load('point_service.js'))();
+// 兑换机制的用例按商品已上架处理；目录默认全部下架，见下方「下架」用例。
+const redeemSvc = f => Object.assign(new (f.load('point_service.js'))(), { onShelf: () => true });
 const setPoints = (f, userId, points) => { f.table('user').get(userId).USER_POINTS = points; };
 const redeemRows = (f, userId) => logs(f, userId).filter(row => row.reason === 'redeem');
 
@@ -447,4 +448,22 @@ test('核销：别人的券、不存在的券、非兑换记录都报「券不�
   assert.deepEqual(limited[0].slice(1), ['poster', 'point_use', 10, 60000]);
   const routes = fs.readFileSync(path.resolve(__dirname, '../../cloudfunctions/mcloud/project/crun/public/route.js'), 'utf8');
   assert.ok(routes.includes("'point/use': 'point_controller@use'"));
+});
+
+test('积分商品全部下架：列表不返回商品，兑换被拒绝且不扣分；已兑换的券仍可核销', async () => {
+  const f = fixture(), shelf = new (f.load('point_service.js'))(), open = redeemSvc(f);
+  setPoints(f, 'poster', 2000);
+  const voucher = await open.redeem('poster', { itemId: 'print_free', requestId: f.req('before-off-shelf') });
+  const listed = await shelf.items('poster');
+  assert.deepEqual(JSON.parse(JSON.stringify(listed.items)), []);
+  await assert.rejects(() => shelf.redeem('poster', { itemId: 'sto_minus3', requestId: f.req('off-shelf') }), /待上架/);
+  assert.equal(balance(f, 'poster'), 1900);
+  assert.equal(redeemRows(f, 'poster').length, 1);
+  // 同一请求的重试仍返回第一次的券码，不因下架报错。
+  assert.equal((await shelf.redeem('poster', { itemId: 'print_free', requestId: f.req('before-off-shelf') })).code, voucher.code);
+  await shelf.useVoucher('poster', { id: voucher.id });
+  const page = fs.readFileSync(path.resolve(__dirname, '../../miniprogram/projects/crun/pages/my/wallet/wallet.wxml'), 'utf8');
+  assert.match(page, /<text class="mall-empty-title">商品待上架<\/text>/);
+  assert.doesNotMatch(page, /onShelf|mall-off-tag|mall-card-off/);
+  assert.doesNotMatch(fs.readFileSync(path.resolve(__dirname, '../../miniprogram/projects/crun/pages/my/wallet/wallet.js'), 'utf8'), /onShelf|offShelf/);
 });

@@ -9,6 +9,7 @@ const BaseProjectAdminController = require('./base_project_admin_controller.js')
 const UserModel = require('../../model/user_model.js');
 const AdminUserService = require('../../service/admin/admin_user_service.js');
 const Roles = require('../../service/admin/admin_roles.js');
+const AdapayAccountService = require('../../service/adapay_account_service.js');
 const media = require('../../service/private_media_service.js');
 const timeUtil = require('../../../../framework/utils/time_util.js');
 
@@ -86,6 +87,20 @@ class AdminUserController extends BaseProjectAdminController {
 			// 待审核用户：客服额外拿到学号与学生证的只读预览（临时链接），其它资料仍不返回。
 			user.USER_AUDIT = await auditPreview(user.USER_AUDIT);
 			if (!user.USER_AUDIT) delete user.USER_AUDIT;
+			// 跑腿结算账户：管理员可见开通、绑卡时间与换卡记录；客服不返回。读取失败不影响用户详情。
+			if (!serviceView && user.USER_MINI_OPENID) {
+				try {
+					const account = await new AdapayAccountService().adminSummary(user.USER_MINI_OPENID);
+					if (account) user.USER_SETTLEMENT = {
+						...account,
+						openedAt: account.openedAt ? timeUtil.timestamp2Time(account.openedAt, 'Y-M-D h:m') : '',
+						boundAt: account.boundAt ? timeUtil.timestamp2Time(account.boundAt, 'Y-M-D h:m') : '',
+						history: account.history.map(item => ({ ...item, at: item.at ? timeUtil.timestamp2Time(item.at, 'Y-M-D h:m') : '' }))
+					};
+				} catch (error) {
+					console.warn('[admin] settlement summary unavailable', { code: error && (error.code || error.errCode) || 'SUMMARY_FAILED' });
+				}
+			}
 		}
 
 		return user;

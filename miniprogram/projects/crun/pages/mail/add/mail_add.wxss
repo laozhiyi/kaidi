@@ -221,3 +221,12 @@
 .publish-page .pub-deadline { display:block; border-bottom:0; }
 .publish-page .pub-deadline .pub-option-label { margin-bottom:18rpx; }
 .publish-page .pub-sheet-mask { z-index:20000; }
+/* 每件包裹信息：标题与「1 元起步」同行，说明另起一行；价格框带 ¥ 前缀，金额加粗 */
+.publish-page .pub-detail-head { display:flex; align-items:center; justify-content:space-between; gap:12rpx; }
+.publish-page .pub-detail-head .pub-detail-title { margin:0; font-size:26rpx; color:#2f415c; font-weight:600; }
+.publish-page .pub-fee-floor { flex-shrink:0; padding:4rpx 14rpx; border-radius:999rpx; background:#eaf2fd; color:#397bc8; font-size:21rpx; font-weight:500; }
+.publish-page .pub-detail-hint { margin-top:8rpx; color:#8a99ad; font-size:22rpx; line-height:1.5; }
+.publish-page .pub-package-custom-price .pub-package-price-value { padding:0 12rpx; background:#fff; border-radius:8rpx; }
+.publish-page .pub-price-symbol { flex-shrink:0; color:#254e7f; font-size:24rpx; font-weight:600; }
+.publish-page .pub-package-custom-price .pub-input { padding:0; background:transparent; font-size:28rpx; font-weight:600; }
+

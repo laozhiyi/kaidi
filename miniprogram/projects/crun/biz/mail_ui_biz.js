@@ -157,7 +157,8 @@ function commission(mail) {
  const total = Number(mail && mail.MAIL_TOTAL_FEE);
  if (!mail || !['wechat', 'adapay'].includes(mail.MAIL_PAYMENT_MODE) || !Number.isSafeInteger(total) || total < 1) return { visible: false };
  const net = Math.floor(total * (100 - COMMISSION_RATE) / 100);
- return { visible: true, rate: COMMISSION_RATE, gross: (total / 100).toFixed(2), net: (net / 100).toFixed(2), cut: ((total - net) / 100).toFixed(2) };
+ // 只展示骑手到手金额，不在界面上突出扣费；发布者看到的是「骑手到手」。
+ return { visible: true, rate: COMMISSION_RATE, gross: (total / 100).toFixed(2), net: (net / 100).toFixed(2), cut: ((total - net) / 100).toFixed(2), label: mail.mypost ? '骑手到手' : '到手' };
 }
 function mediaPurgeNotice(mail) {
  const status = mail.MAIL_STATUS == null ? -1 : Number(mail.MAIL_STATUS);
@@ -190,8 +191,10 @@ function detail(mail, now = Date.now()) {
   pickupPoint: item.pickupPoint || obj.address1 || '请联系发布者确认', code: item.code || '', note: item.note || '',
   images: mail.MAIL_MEDIA && mail.MAIL_MEDIA.packages && mail.MAIL_MEDIA.packages[index] || []
  }) : null).filter(Boolean) : [];
- const phone = participant ? (mail.mypost ? mail.acceptUser && mail.acceptUser.USER_MOBILE : obj.tel) : '';
- const contactName = participant ? (mail.mypost ? mail.acceptUser && mail.acceptUser.USER_NAME : obj.poster) : '';
+ // 订单完成后不再展示对方信息：称呼显示为匿名用户，不给电话，也就没有联系按钮。
+ const contactHidden = participant && status === 9;
+ const phone = participant && !contactHidden ? (mail.mypost ? mail.acceptUser && mail.acceptUser.USER_MOBILE : obj.tel) : '';
+ const contactName = contactHidden ? '匿名用户' : participant ? (mail.mypost ? mail.acceptUser && mail.acceptUser.USER_NAME : obj.poster) : '';
  let primary = 'orders', primaryLabel = '返回订单列表';
  if (participant && mail.mypost && status === -1) { primary = 'pay'; primaryLabel = '微信支付并发布'; }
  else if (participant && mail.mypost && status === 0 && !expired && mail.MAIL_PAYMENT_MODE === 'offline') { primary = 'edit'; primaryLabel = '编辑订单'; }
@@ -231,7 +234,7 @@ function detail(mail, now = Date.now()) {
   proofVideo: mail.MAIL_MEDIA && mail.MAIL_MEDIA.proofVideo && mail.MAIL_MEDIA.proofVideo[0] || '',
   pickupProof: mail.MAIL_PICKUP_PROOF ? { note: mail.MAIL_PICKUP_PROOF.note || '', at: time(mail.MAIL_PICKUP_PROOF.at), images: mail.MAIL_MEDIA && mail.MAIL_MEDIA.pickupProof || [], video: mail.MAIL_MEDIA && mail.MAIL_MEDIA.pickupVideo && mail.MAIL_MEDIA.pickupVideo[0] || '' } : null,
   // 已送达待确认时不再暴露发布人电话，改为站内提醒。
-  hideContactCall: !!(mail.myaccept && status === 2),
+  hideContactCall: !!(mail.myaccept && status === 2), contactHidden,
   canUpdateProof: !!mail.myaccept && status === 2 && !!mail.MAIL_DELIVERY_PROOF, proofUpdatedAt: time(mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.updatedAt),
   primary, primaryLabel, receipt: receipt(mail, now), history, canException: participant && status === 1, canResolveException, canCancel: !!mail.mypost && [-1,0].includes(status), canConfirmEarnings: !!mail.myaccept && [2, 9].includes(status) && mail.MAIL_CAN_CONFIRM_EARNINGS === true,
   earningsClaimed: !!mail.myaccept && status === 9 && mail.MAIL_EARNINGS_STATUS === 'paid',

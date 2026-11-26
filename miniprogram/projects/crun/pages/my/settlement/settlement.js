@@ -7,6 +7,13 @@ const emptyForm = () => ({ realName: '', identity: '', bankCard: '', phone: '' }
 // 关闭页面立即清空，离开超过 10 分钟也清空。
 const FORM_KEEP_MS = 10 * 60 * 1000;
 const plain = text => ({ type: 'p', segments: [{ t: text, b: false }] });
+const pad = value => String(value).padStart(2, '0');
+// 当前银行卡的绑定时间，换卡成功后更新。
+function dateText(ms) {
+ if (!(Number(ms) > 0)) return '';
+ const d = new Date(Number(ms));
+ return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
 const documents = {
  rules: () => Agreements.get('rider'),
  privacy: () => ({
@@ -21,7 +28,7 @@ const documents = {
 };
 
 Page({
- data: { account: null, statusLoading: true, statusError: '', mode: 'open', form: emptyForm(), rulesAccepted: false, authorizationAccepted: false, error: '', document: null, submitting: false },
+ data: { account: null, boundAtText: '', statusLoading: true, statusError: '', mode: 'open', form: emptyForm(), rulesAccepted: false, authorizationAccepted: false, error: '', document: null, submitting: false },
  onLoad() { ProjectBiz.initPage(this); },
  onShow() {
   this._unloaded = false; this._active = true;
@@ -65,7 +72,7 @@ Page({
   // 开通状态变化（例如待核对的申请已完成）后，原来填的内容不再适用；
   // 换卡失败导致原卡已解除时保留填写内容，用户改正后直接按开通流程重新提交。
   if (previous && previous.opened !== account.opened && !keepForm) this.clearForm();
-  this.setData({account,statusLoading:false,statusError:'',mode:account.opened && this.data.mode === 'change' ? 'change' : 'open'});
+  this.setData({account,boundAtText:dateText(account.boundAt),statusLoading:false,statusError:'',mode:account.opened && this.data.mode === 'change' && !account.changeBlocked ? 'change' : 'open'});
  },
  bindRetryStatus() { return this._loadStatus(); },
  onHide() {
@@ -102,7 +109,9 @@ Page({
  bindCloseDocument() { this.setData({ document: null }); },
  bindStop() {},
  bindStartChange() {
-  if (this.data.submitting || !this.data.account || !this.data.account.opened) return;
+  const account = this.data.account;
+  if (this.data.submitting || !account || !account.opened) return;
+  if (account.changeBlocked) { wx.showModal({ title: '暂时不能更换', content: account.changeBlocked, showCancel: false, confirmText: '我知道了' }); return; }
   this.setData({ mode: 'change', form: emptyForm(), rulesAccepted: false, authorizationAccepted: false, error: '' });
  },
  bindCancelChange() {
@@ -128,7 +137,7 @@ Page({
   try {
    const result=await Ops.get(changing ? 'settlement/change' : 'settlement/open', {...form,rulesAccepted:this.data.rulesAccepted,authorizationAccepted:this.data.authorizationAccepted});
    if(!isCurrent())return;
-   this.clearForm(); this.setData({account:result});
+   this.clearForm(); this.setData({account:result,boundAtText:dateText(result.boundAt)});
    const title = result.opened ? (changing ? '更换成功' : '开通成功') : '申请处理中';
    const content = result.opened
     ? (changing ? '结算银行卡已更换为尾号 ' + result.cardTail + ' 的银行卡，之后的收益将结算至新卡。' : '跑腿结算账户已开通，收益将按支付机构规则结算至本人银行卡。')

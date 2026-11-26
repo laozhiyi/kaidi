@@ -24,6 +24,9 @@ const CATALOG = Object.freeze([
  Object.freeze({ id: 'sto_minus3', name: '立减3元券', cost: 500, icon: 'sto', hint: '寄申通快递时出示后点「确认核销」' }),
  Object.freeze({ id: 'free_order', name: '免单特权', cost: 1000, icon: 'official', hint: '联系云速取客服使用，使用时点「确认核销」' })
 ]);
+// 上架中的商品 id。目前商品全部下架：列表不返回、也不能兑换；目录保留是为了已兑换的券仍能显示和核销。
+// 重新上架时把对应 id 加进来即可。
+const ON_SHELF = Object.freeze([]);
 const DEFAULT_HINT = '出示后点「确认核销」';
 const REQUEST_ID_RE = /^[a-zA-Z0-9_-]{16,100}$/;
 const VOUCHER_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -128,12 +131,13 @@ class PointService extends Base {
    page: result.page, size: result.size, total: result.total, hasMore: result.hasMore
   };
  }
- // 商品目录 + 当前余额。
+ // 上架中的商品 + 当前余额；下架的商品不出现在列表里。
  async items(userId) {
   const user = userId && await UserModel.getOne({ USER_MINI_OPENID: userId });
   if (!user) this.AppError('请先完成注册并登录');
-  return { points: Number(user.USER_POINTS) || 0, items: CATALOG.map(item => ({ ...item })) };
+  return { points: Number(user.USER_POINTS) || 0, items: CATALOG.filter(item => this.onShelf(item)).map(item => ({ ...item })) };
  }
+ onShelf(item) { return ON_SHELF.includes(item && item.id); }
  _voucherView(row) {
   const item = CATALOG.find(entry => entry.id === row.itemId);
   const usedAt = Number(row.usedAt) || 0;
@@ -166,6 +170,7 @@ class PointService extends Base {
   };
   const seen = await store.get(store.database(), 'point_log', id);
   if (seen) return replay(seen, Number((await UserModel.getOne({ USER_MINI_OPENID: userId })).USER_POINTS) || 0);
+  if (!this.onShelf(item)) this.AppError('该商品待上架，暂不能兑换');
   // 已保存的请求走上面的幂等返回，不占用限流额度；新请求才限流防连点。
   await store.limit(pid, userId, 'point_redeem', REDEEM_LIMIT.max, REDEEM_LIMIT.windowMs);
   return store.transaction(async tx => {

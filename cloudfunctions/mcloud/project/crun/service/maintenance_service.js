@@ -36,7 +36,9 @@ class MaintenanceService extends Base {
      : [['mail',{MAIL_STATUS:cmd.in([-1,0]),MAIL_END_TIME:cmd.lt(now)},'MAIL_END_TIME','expire'],
         ['mail',cmd.and([{MAIL_STATUS:cmd.in([1,2,3,4]),MAIL_DUE_TIME:cmd.lt(now),MAIL_OVERDUE_NOTIFIED:cmd.neq(true)},{MAIL_DUE_TIME:cmd.gt(0)}]),'MAIL_DUE_TIME','overdue'],
         // 送达后 8 小时未确认收货：自动确认，订单双方都收到一次状态更新。
-        ['mail',cmd.and([{MAIL_STATUS:2,MAIL_DELIVERED_TIME:cmd.lt(now-Mail.AUTO_CONFIRM_MS)},{MAIL_DELIVERED_TIME:cmd.gt(0)}]),'MAIL_DELIVERED_TIME','auto_confirm']];
+        ['mail',cmd.and([{MAIL_STATUS:2,MAIL_DELIVERED_TIME:cmd.lt(now-Mail.AUTO_CONFIRM_MS)},{MAIL_DELIVERED_TIME:cmd.gt(0)}]),'MAIL_DELIVERED_TIME','auto_confirm'],
+        // 完成满 12 小时仍有一方未评价：自动评 5 星，订单仍留在「已完成」。
+        ['mail',cmd.and([{MAIL_STATUS:9,MAIL_OVER_TIME:cmd.lt(now-Mail.REVIEW_WINDOW_MS)},{MAIL_OVER_TIME:cmd.gt(0)},{MAIL_ACCEPT_USER_ID:cmd.neq('')},cmd.or([{MAIL_POSTER_REVIEWED:cmd.neq(true)},{MAIL_RIDER_REVIEWED:cmd.neq(true)}])]),'MAIL_OVER_TIME','auto_review']];
     let count=0;
     let more=false;
     for(const [collection,where,order,scheduled] of queries){
@@ -108,6 +110,8 @@ class MaintenanceService extends Base {
   return {started,failed};
  }
  async _sweep(id,action){
+  // 自动好评只写评价和已评价标记，不改订单状态，也不给双方发通知。
+  if(action==='auto_review')return store.transaction(async tx=>{const row=await store.get(tx,'mail',id);if(!row||row.MAIL_ADMIN_DELETED===true)return;return new (require('./review_service.js'))().autoReview(tx,row,id);});
   const result=await store.transaction(async tx=>{
    const row=await store.get(tx,'mail',id),now=Date.now();if(!row||row.MAIL_ADMIN_DELETED===true)return;
   const svc=new Mail();row._id=id;
@@ -148,6 +152,9 @@ class MaintenanceService extends Base {
   // 手动维护入口与定时任务保持一致：送达满 8 小时也自动确认收货。
   const autoConfirm=await db.collection(store.collection('mail')).where({_pid:pid,MAIL_ADMIN_DELETED:cmd.neq(true),MAIL_STATUS:2,MAIL_DELIVERED_TIME:cmd.lt(now-Mail.AUTO_CONFIRM_MS)}).orderBy('MAIL_DELIVERED_TIME','asc').limit(30).get();
   const autoConfirmFailed=await this._batch(autoConfirm.data,item=>this._sweep(item._id,'auto_confirm'));
+  // 完成满 12 小时未评价的订单自动好评，与定时任务一致。
+  const autoReview=await db.collection(store.collection('mail')).where(cmd.and([{_pid:pid,MAIL_ADMIN_DELETED:cmd.neq(true),MAIL_STATUS:9,MAIL_OVER_TIME:cmd.lt(now-Mail.REVIEW_WINDOW_MS)},{MAIL_OVER_TIME:cmd.gt(0)},{MAIL_ACCEPT_USER_ID:cmd.neq('')},cmd.or([{MAIL_POSTER_REVIEWED:cmd.neq(true)},{MAIL_RIDER_REVIEWED:cmd.neq(true)}])])).orderBy('MAIL_OVER_TIME','asc').limit(30).get();
+  const autoReviewFailed=await this._batch(autoReview.data,item=>this._sweep(item._id,'auto_review'));
   const pending=await db.collection(store.collection('notification')).where({_pid:pid,delivery:cmd.in(['pending','retry','sending']),nextAttemptAt:cmd.lte(now)}).orderBy('nextAttemptAt','asc').limit(30).get();
   const notificationFailed=await this._batch(pending.data,message=>this.dispatch(message._id));
   // Only transient rate-limit buckets are pruned. Orders, audit and idempotency records are retained.
@@ -157,7 +164,7 @@ class MaintenanceService extends Base {
   const expiredInvites=await db.collection(store.collection('staff_invite')).where({_pid:pid,INVITE_STATUS:1,INVITE_EXPIRES_AT:cmd.lte(now)}).orderBy('INVITE_EXPIRES_AT','asc').limit(50).get();
   const inviteFailed=await this._batch(expiredInvites.data,item=>store.transaction(async tx=>{const row=await store.get(tx,'staff_invite',item._id);if(!row||row._pid!==pid||row.INVITE_STATUS!==1||row.INVITE_EXPIRES_AT>Date.now())return;await store.set(tx,'staff_invite',item._id,{...row,INVITE_STATUS:2});}));
   const inviteDuplicates=await this._inviteDuplicates(pid);
-  return {expired:expired.data.length-expiredFailed,overdue:overdue.data.length-overdueFailed,autoConfirm:autoConfirm.data.length-autoConfirmFailed,notifications:pending.data.length-notificationFailed,cleaned:buckets.data.length-cleanupFailed,invites:expiredInvites.data.length-inviteFailed,inviteDuplicates,failed:expiredFailed+overdueFailed+autoConfirmFailed+notificationFailed+cleanupFailed+inviteFailed};
+  return {expired:expired.data.length-expiredFailed,overdue:overdue.data.length-overdueFailed,autoConfirm:autoConfirm.data.length-autoConfirmFailed,autoReview:autoReview.data.length-autoReviewFailed,notifications:pending.data.length-notificationFailed,cleaned:buckets.data.length-cleanupFailed,invites:expiredInvites.data.length-inviteFailed,inviteDuplicates,failed:expiredFailed+overdueFailed+autoConfirmFailed+autoReviewFailed+notificationFailed+cleanupFailed+inviteFailed};
  }
  /**
   * 邀请码写入时用确定性文档 ID 保证同码只有一条；这里巡检的是绕过代码直接写库

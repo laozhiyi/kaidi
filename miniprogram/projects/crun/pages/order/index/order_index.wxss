@@ -686,18 +686,6 @@ page {
 	color: #b0640f;
 }
 
-.price-block {
-	flex-wrap: wrap;
-}
-
-.price-block .price-split {
-	width: 100%;
-	margin-top: 8rpx;
-	color: #7b8da8;
-	font-size: 22rpx;
-	white-space: nowrap;
-}
-
 .price-block.muted {
 	color: #94a3b8;
 }
@@ -890,3 +878,5 @@ page {
 /* 取件码行沿用 info-row 的标签列，值只占自身宽度，备注小标签紧跟在值后面 */
 .package-proof-row .val { flex: 0 1 auto; }
 .package-note-label { flex-shrink:0; margin-left:12rpx; padding:4rpx 10rpx; border-radius:14rpx; color:#397bc8; background:#edf5ff; font-size:20rpx; }
+.btn-delete { color: #8a94a6; }
+.review-tip { margin-top: 12rpx; padding: 8rpx 16rpx; border-radius: 8rpx; background: #fff8e8; color: #9a6a1c; font-size: 22rpx; line-height: 1.5; }

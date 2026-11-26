@@ -92,9 +92,9 @@ node scripts/check-architecture-deployment.cjs '.tmp/deploy/architecture-本次�
 
 检查成功后，使用控制台/开发者工具“云端安装依赖”部署到确认的环境；API 单独部署 `cloudfunctions/mcloud`。这些本地脚本不会安装、上传或部署。修改源文件后重新生成整个批次，不混用不同批次的函数。账户会话／注销维护同时涉及 API、订单 worker 和小程序，必须配套更新。旧客户端没有新凭证会被拒绝访问私有接口；旧缓存须由用户明确微信登录换取新凭证，不能兼容为仅凭 OPENID 自动恢复。
 
-订单扫描包含 `MAIL_ADMIN_DELETED != true`，在真实云环境检查 `worker_expiry`／`worker_overdue` 查询的扫描量、返回量和耗时；事务内仍复查删除标记，避免候选读取后被删除的订单继续生成事件。
+订单扫描包含 `MAIL_ADMIN_DELETED != true`，在真实云环境检查 `worker_expiry`／`worker_overdue`／`worker_auto_review` 查询的扫描量、返回量和耗时；事务内仍复查删除标记，避免候选读取后被删除的订单继续生成事件。
 
-**定时任务默认跑在 `mcloud` 里。** `config.json` 已声明 `orders-minute`、`notifications-minute` 两个每分钟触发器，`index.js` 在检测到 `Type === 'Timer'` 且调用方没有 OPENID 时转给 `timer_entry.js`，执行到期清理、超时提醒、8 小时自动确认收货和通知发送。日常只需要在开发者工具里「上传并部署」`mcloud` 一个函数，触发器随 `config.json` 一起更新；上传后到控制台确认两个触发器实际存在。
+**定时任务默认跑在 `mcloud` 里。** `config.json` 已声明 `orders-minute`、`notifications-minute` 两个每分钟触发器，`index.js` 在检测到 `Type === 'Timer'` 且调用方没有 OPENID 时转给 `timer_entry.js`，执行到期清理、超时提醒、8 小时自动确认收货、完成满 12 小时未评价自动好评和通知发送。日常只需要在开发者工具里「上传并部署」`mcloud` 一个函数，触发器随 `config.json` 一起更新；上传后到控制台确认两个触发器实际存在。
 
 如果历史上部署过独立的 `ordersWorker`／`notificationsWorker`，请删除它们的定时触发器或直接删除这两个函数，否则会和 `mcloud` 双跑（事务与幂等键能保证不重复写入，但会白跑一倍扫描）。确实想拆分部署时，改用 `node scripts/build-operations-worker.cjs --out cloudfunctions` 生成备用的三个目录，它们声明的触发器带 `worker-` 前缀，不会与 `mcloud` 同名。同时删除旧 `mcloud` 上遗留的 `operations-minute` 触发器。迁移函数没有公开 HTTP 入口或定时触发器。
 

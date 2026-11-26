@@ -147,6 +147,8 @@ function project(mail, userId, admin = false) {
  const plugin = Object.prototype.hasOwnProperty.call(SERVICES,obj.serviceType || 'take') ? plugins.get(obj.serviceType || 'take') : null;
  const publicFields = ['title','serviceType','small','medium','large','num','price','referencePrice','urgent','riderGender','upstairs','tip','campus','address1','address2','addressPhase',...(plugin ? plugin.publicFields : [])];
  out.MAIL_OBJ = privateAccess ? { ...obj } : Object.fromEntries(publicFields.filter(k => obj[k] !== undefined).map(k => [k,obj[k]]));
+ // 订单完成后骑手不再看到发布者的称呼、头像和电话；发布者那边由 viewMail 不再附带骑手资料。
+ if (!admin && myaccept && Number(mail.MAIL_STATUS) === 9) for (const key of ['poster','posterPic','tel','tel2']) delete out.MAIL_OBJ[key];
  out.mypost = mypost; out.myaccept = myaccept;
  out.status = LABELS[mail.MAIL_STATUS] || '状态未知'; if (mail.MAIL_STATUS === 0 && mail.MAIL_END_TIME < Date.now()) out.status = '已过期';
  out.overdue = ACTIVE.includes(mail.MAIL_STATUS) && mail.MAIL_DUE_TIME > 0 && mail.MAIL_DUE_TIME < Date.now();

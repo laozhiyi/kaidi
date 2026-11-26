@@ -15,6 +15,7 @@ function page(file, extraOps = {}, extraWx = {}, extraHelper = {}) {
  runMiniProgram(path.join(root, 'miniprogram/projects/crun/pages/mail', file), { console, Page: p => result = p,
   wx: extraWx, require(request) {
    if (request.includes('mail_ui_biz')) return UI;
+   if (request.includes('settlement_gate_biz')) return { ensureSettlement: async () => true };
    if (request.includes('content_check_helper')) return { imgTypeCheck: () => true, imgSizeCheck: () => true };
    if (request.includes('operations_biz')) return { get: async () => ({ paymentMode: 'offline' }), pendingCommand: () => null, ...extraOps };
    if (request.includes('cloud_helper')) return { callCloudSumbit: async () => ({ data: base }) };

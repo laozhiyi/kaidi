@@ -353,8 +353,8 @@ test('fee inputs cannot hold an amount below the minimum and the server rejects 
  await page.onLoad({ embedded: true });
  page.bindPackageTap({ currentTarget: { dataset: { index: 0, step: 1 } } });
  const type = value => page.bindPackageItemInput({ currentTarget: { dataset: { index: 0, mark: 'price' } }, detail: { value } });
- // 开头的 0 和小数点无法输入，所以能填进去的金额不会低于 1 元；返回值回填到输入框。
- for (const [raw, kept] of [['0', ''], ['0.', ''], ['.5', '5'], ['0.99', '99'], ['1', '1'], ['1.255', '1.25'], ['12a3', '123'], ['1234567', '12345']]) {
+ // 开头的 0 和小数点无法输入，所以能填进去的金额不会低于 1 元；整数最多 4 位，最多两位小数。返回值回填到输入框。
+ for (const [raw, kept] of [['0', ''], ['0.', ''], ['.5', '5'], ['0.99', '99'], ['1', '1'], ['1.255', '1.25'], ['12a3', '123'], ['1234567', '1234']]) {
   assert.equal(type(raw), kept, raw);
   assert.equal(page.data.packageItems[0].price, kept);
  }
