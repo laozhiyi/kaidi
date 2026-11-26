@@ -879,4 +879,6 @@ page {
 .package-proof-row .val { flex: 0 1 auto; }
 .package-note-label { flex-shrink:0; margin-left:12rpx; padding:4rpx 10rpx; border-radius:14rpx; color:#397bc8; background:#edf5ff; font-size:20rpx; }
 .btn-delete { color: #8a94a6; }
+/* 已评价只是状态，不可点；与按钮同高，跟在「查看详情」后面 */
+.reviewed-tag { display: inline-flex; align-items: center; height: 60rpx; margin-left: 14rpx; padding: 0 20rpx; border-radius: 30rpx; background: #eef7f0; color: #3f8f5a; font-size: 24rpx; white-space: nowrap; }
 .review-tip { margin-top: 12rpx; padding: 8rpx 16rpx; border-radius: 8rpx; background: #fff8e8; color: #9a6a1c; font-size: 22rpx; line-height: 1.5; }

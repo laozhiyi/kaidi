@@ -294,6 +294,7 @@
 								<button class="btn-ghost btn-delete" catchtap="bindDeleteDoneTap" data-id="{{order._id}}" loading="{{deletingId === order._id}}" disabled="{{!!deletingId}}">删除</button>
 								<button class="btn-ghost" catchtap="bindDetailTap" data-id="{{order._id}}">查看详情</button>
 								<button wx:if="{{order.MAIL_CAN_REVIEW}}" class="btn-primary" catchtap="bindReviewTap" data-id="{{order._id}}">评价</button>
+								<text wx:elif="{{order.MAIL_REVIEWED}}" class="reviewed-tag">{{order.MAIL_REVIEW_AUTO ? '已自动好评' : '已评价'}}</text>
 							</view>
 						</view>
 					</view>

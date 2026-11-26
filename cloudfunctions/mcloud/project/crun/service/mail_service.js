@@ -414,11 +414,6 @@ class MailService extends Base {
   };
   const favorite = (await new (require('./fav_service.js'))().orderStats(userId, [id], [mail])).list[0];
   Object.assign(result, { MAIL_FAV_CNT: favorite.count, MAIL_IS_FAV: favorite.isFav, MAIL_CAN_FAV: favorite.available });
-  // 骑手在已完成的微信支付订单上始终看到报酬入口；是否可拉起收款页由点击时服务端判断，
-  // 报酬到账后（MAIL_EARNINGS_STATUS 为 paid）前端显示「已领取」。
-  // 骑手在已送达（2）及之后的微信支付订单上始终看到报酬入口；报酬是否可领取由点击时服务端判断。
-  result.MAIL_CAN_CONFIRM_EARNINGS = !!result.myaccept && [2, 9].includes(mail.MAIL_STATUS) &&
-   mail.MAIL_PAYMENT_MODE === 'wechat' && mail.MAIL_PAY_STATUS === 1 && !mail.MAIL_REFUND_STATUS;
   return media.order(result);
  }
  async getMailDetail(userId,id) {

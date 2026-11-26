@@ -32,10 +32,12 @@ class ReviewService extends Base {
     const reviews = completed.length ? await db.collection(store.collection('order_review')).where({
       _pid: this.getProjectId(), REVIEW_FROM_USER_ID: userId, REVIEW_ORDER_ID: db.command.in(completed.map(mail => mail._id))
     }).limit(100).get() : { data: [] };
-    const reviewed = new Set(reviews.data.map(row => row.REVIEW_ORDER_ID)), eligible = new Set(completed.map(mail => mail._id));
+    const reviewed = new Map(reviews.data.map(row => [row.REVIEW_ORDER_ID, row])), eligible = new Set(completed.map(mail => mail._id));
     for (const mail of orders) {
       mail.MAIL_REVIEWED = eligible.has(mail._id) && reviewed.has(mail._id);
       mail.MAIL_CAN_REVIEW = eligible.has(mail._id) && !mail.MAIL_REVIEWED;
+      // 「已完成」卡片据此显示「已评价」或「已自动好评」（完成满 12 小时由系统补的 5 星）。
+      mail.MAIL_REVIEW_AUTO = mail.MAIL_REVIEWED && reviewed.get(mail._id).REVIEW_AUTO === true;
     }
   }
   async insert(userId, input) {

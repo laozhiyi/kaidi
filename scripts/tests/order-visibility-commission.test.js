@@ -58,6 +58,7 @@ test('a completed order stays in the done tab after reviews until each participa
  const reviewed = (await f.service.getMailList('poster', { sortType: 'my_done' })).list;
  assert.deepEqual(reviewed.map(row => row._id), [id], 'reviewing no longer removes the order');
  assert.equal(reviewed[0].MAIL_CAN_REVIEW, false);
+ assert.equal(reviewed[0].MAIL_REVIEWED, true); assert.equal(reviewed[0].MAIL_REVIEW_AUTO, false, 'a review written by the user is not marked auto');
  // 删除只影响自己这一侧，对方的「已完成」和双方的反馈投诉选单都不受影响。
  await f.service.delMail('poster', id, { requestId: f.req('delete-poster') });
  assert.equal(f.table('mail').get(id).MAIL_POSTER_DONE_DELETED, true);
@@ -119,6 +120,11 @@ test('twelve hours after completion every missing review becomes five stars and 
  await assert.rejects(reviews.insert('rider', { orderId: id, score: 1, requestId: f.req('late') }), /已经评价过/);
  for (const user of ['poster', 'rider']) assert.deepEqual(await ids(f, user, 'my_all'), [id], user + ' complaint picker');
  assert.deepEqual(await ids(f, 'rider', 'my_done'), [id]);
+ // 卡片据此显示「已自动好评」；本人写过评价的一方显示「已评价」。
+ const [riderRow] = (await f.service.getMailList('rider', { sortType: 'my_done' })).list;
+ assert.equal(riderRow.MAIL_CAN_REVIEW, false); assert.equal(riderRow.MAIL_REVIEWED, true); assert.equal(riderRow.MAIL_REVIEW_AUTO, true);
+ const [posterRow] = (await f.service.getMailList('poster', { sortType: 'my_done' })).list;
+ assert.equal(posterRow.MAIL_REVIEWED, true); assert.equal(posterRow.MAIL_REVIEW_AUTO, false);
 });
 
 test('a failed review leaves the order in the done tab', async () => {
@@ -159,13 +165,23 @@ test('order cards show no take-home amount while the detail keeps the rider amou
  assert.doesNotMatch(fs.readFileSync(path.join(root, 'miniprogram/projects/crun/pages/order/index/order_index.js'), 'utf8'), /commission/);
 });
 
-test('the done tab shows anonymous cards with delete and review actions', () => {
+test('the done tab shows anonymous cards with delete, review and reviewed marks', () => {
  const list = fs.readFileSync(path.join(root, 'miniprogram/projects/crun/pages/order/index/order_index.wxml'), 'utf8');
  const done = list.split('<!-- ===== 已完成 Tab ===== -->')[1];
  assert.match(done, /wx:if="\{\{order\.MAIL_CAN_REVIEW\}\}" class="btn-primary" catchtap="bindReviewTap" data-id="\{\{order\._id\}\}">评价</);
  assert.match(done, /catchtap="bindDeleteDoneTap" data-id="\{\{order\._id\}\}"[^>]*>删除</);
  assert.match(done, /<text class="nick">匿名用户<\/text>/);
- assert.doesNotMatch(done, /MAIL_OBJ\.poster|bindCallTap|已评价/);
+ assert.match(done, /<text wx:elif="\{\{order\.MAIL_REVIEWED\}\}" class="reviewed-tag">\{\{order\.MAIL_REVIEW_AUTO \? '已自动好评' : '已评价'\}\}<\/text>/);
+ assert.match(fs.readFileSync(path.join(root, 'miniprogram/projects/crun/pages/order/index/order_index.wxss'), 'utf8'), /\.reviewed-tag \{/);
+ assert.doesNotMatch(done, /MAIL_OBJ\.poster|bindCallTap/);
+});
+
+test('the rider order detail has no claim-earnings button', () => {
+ const page = 'miniprogram/projects/crun/pages/mail/my_detail/mail_my_detail';
+ assert.doesNotMatch(fs.readFileSync(path.join(root, page + '.wxml'), 'utf8'), /领取报酬|bindConfirmEarningsTap|canConfirmEarnings/);
+ assert.doesNotMatch(fs.readFileSync(path.join(root, page + '.js'), 'utf8'), /bindConfirmEarningsTap|earnings_confirm_package|requestMerchantTransfer/);
+ const ui = UI.detail({ MAIL_STATUS: 9, myaccept: true, MAIL_PAYMENT_MODE: 'wechat', MAIL_PAY_STATUS: 1, MAIL_CAN_CONFIRM_EARNINGS: true, MAIL_OBJ: {} });
+ for (const key of ['canConfirmEarnings', 'earningsClaimed', 'earningsLabel']) assert.equal(ui[key], undefined, key);
 });
 
 function orderList(commands, confirm = true) {
@@ -239,21 +255,15 @@ function payment(answers, replies) {
  return { biz: sandbox.module.exports, modals, calls };
 }
 
-test('every payment attempt shows the commission notice first and cancelling it never requests payment', async () => {
+test('payment goes straight to WeChat Pay without a payment notice popup', async () => {
  let paid = false;
  const replies = { 'mail/payment_status': () => ({ status: paid ? 0 : -1, published: paid }), 'mail/payment_prepare': () => { paid = true; return { payment: {} }; } };
- const declined = payment([false], replies);
- await assert.rejects(declined.biz.pay('one'), /支付已取消/);
- assert.equal(declined.modals.length, 1); assert.match(declined.modals[0].content, /^　　支付成功后订单才会发布[\s\S]*平台从中收取10%技术服务费/); assert.doesNotMatch(declined.modals[0].content, /抽成/);
- assert.deepEqual(declined.calls, ['mail/payment_status']);
- const first = payment([true], replies);
+ const first = payment([], replies);
  assert.equal((await first.biz.pay('one')).published, true);
- assert.equal(first.modals.length, 1);
+ assert.equal(first.modals.length, 0, 'no popup before requesting payment');
  assert.deepEqual(first.calls, ['mail/payment_status', 'mail/payment_prepare', 'requestPayment', 'mail/payment_status']);
- paid = false;
- const again = payment([true], replies);
- await again.biz.pay('two');
- assert.equal(again.modals.length, 1, 'the notice is shown on every payment, not once per session');
+ assert.match(first.biz.PAY_NOTICE, /^支付成功后订单才会发布[\s\S]*平台从中收取10%技术服务费/); assert.doesNotMatch(first.biz.PAY_NOTICE, /抽成/);
+ assert.doesNotMatch(fs.readFileSync(path.join(root, 'miniprogram/projects/crun/biz/payment_biz.js'), 'utf8'), /showModal/);
  const settled = payment([], { 'mail/payment_status': () => ({ status: 0, published: true }) });
  await settled.biz.pay('three');
  assert.equal(settled.modals.length, 0, 'an already published order needs no new payment');
@@ -272,7 +282,7 @@ async function publishTake(h) {
 
 const VALUABLE = '请勿在包裹中夹带现金、首饰、证件、数码产品等贵重物品。你已知晓该提醒，若因贵重物品产生丢失、损坏或纠纷，平台仅协助配合调查，不承担赔付责任。';
 
-test('online publishing shows the original valuables reminder, then the payment notice before paying', async () => {
+test('online publishing shows only the valuables reminder, then pays without a payment notice', async () => {
  let paid = false;
  const payments = [], h = harness({ paymentMode: 'wechat', payments, payment: {
   'mail/payment_status': () => ({ status: paid ? 0 : -1, published: paid }), 'mail/payment_prepare': () => { paid = true; return { payment: {} }; } } });
@@ -283,12 +293,8 @@ test('online publishing shows the original valuables reminder, then the payment 
  h.modals[0].success({ confirm: true });
  await flush();
  assert.equal(h.commands.length, 1, JSON.stringify(h.errors));
- assert.equal(h.modals.length, 2);
- assert.equal(h.modals[1].title, '支付说明');
- assert.match(h.modals[1].content, /^　　支付成功后订单才会发布[\s\S]*平台从中收取10%技术服务费/);
- assert.equal(payments.length, 0, 'payment waits for the payment notice');
- h.modals[1].success({ confirm: true });
  await submit;
+ assert.equal(h.modals.length, 1, 'no payment notice after the valuables reminder');
  assert.equal(payments.length, 1);
  assert.deepEqual(h.errors, []);
 });

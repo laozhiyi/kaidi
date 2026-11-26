@@ -26,11 +26,11 @@ function controller(f, actor, params) {
  return new Controller();
 }
 
-test('a rider can open an accepted order before it is completed without the earnings check failing the view', async () => {
+test('a rider can open an accepted order and the detail no longer carries an earnings claim entry', async () => {
  const f = fixture({ projectFields: true }), id = await f.publish();
  await f.service.acceptMail('rider', id, { requestId: f.req('acceptMail') });
  const mail = await f.service.viewMail('rider', id);
- assert.equal(mail.MAIL_CAN_CONFIRM_EARNINGS, false);
+ assert.equal(mail.MAIL_CAN_CONFIRM_EARNINGS, undefined);
  assert.equal(mail.myaccept, true);
 });
 

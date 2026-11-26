@@ -5,7 +5,6 @@ const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
 const Notifications = require('../../../biz/notification_biz.js');
 const OrderSync = require('../../../biz/order_sync_biz.js');
 const Tenant = require('../../../biz/tenant_biz.js');
-const { requestMerchantTransfer } = require('../../../biz/merchant_transfer_biz.js');
 function invalidateOrderLists() {
  if (!wx.removeStorageSync) return;
  for (const key of ['order-mail-take', 'order-mail-mine', 'order-mail-posted', 'order-mail-done']) wx.removeStorageSync(key.toUpperCase() + '_LIST');
@@ -146,24 +145,6 @@ Page({
   this.bindBackOrders();
  },
  // 已送达待确认：只提醒发布人，不暴露发布人联系方式。
- // 骑手确认收款：订单完成后，若平台已发起转账，则拉起微信确认收款页
- async bindConfirmEarningsTap() {
-  const ui = this.data.detailUI;
-  if (!this._visible || !ui || !ui.canConfirmEarnings || this.data.busy || this.data.loading || this.data.error) return;
-  this.setData({ busy: true });
-  try {
-   if (!await PassportBiz.loginMustCancelWin(this)) return;
-   const result = await Ops.get('mail/earnings_confirm_package', { id: this.data.id });
-   if (!result || !result.confirm || !result.confirm.package) { wx.showToast({ title: '报酬尚未生成，请稍后再试', icon: 'none' }); return; }
-   const outcome = await requestMerchantTransfer(result.confirm);
-   if (outcome === 'cancel') { wx.showToast({ title: '已取消收款确认', icon: 'none' }); return; }
-   wx.showToast({ title: '已发起收款确认，结果以微信为准', icon: 'none' });
-  } catch (e) {
-   if (this._visible) Ops.error(e);
-  } finally {
-   if (this._visible) { this.setData({ busy: false }); await this.load(); }
-  }
- },
  async bindRemindTap() {
   const ui = this.data.detailUI;
   if (!this._visible || !ui || this.data.busy || this.data.loading || this.data.error || this._reminding) return;
