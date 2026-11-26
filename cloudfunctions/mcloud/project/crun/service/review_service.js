@@ -66,6 +66,8 @@ class ReviewService extends Base {
         REVIEW_REQUEST_ID: input.requestId, REVIEW_FINGERPRINT: fingerprint
       });
       await store.set(tx, 'review_request', requestKey, { _pid: this.getProjectId(), reviewId: id, createdAt: Date.now() });
+      // 评价后订单从本人的「已完成」列表消失；标记与评价写在同一个事务里。
+      await store.set(tx, 'mail', input.orderId, { ...mail, [mail.MAIL_USER_ID === userId ? 'MAIL_POSTER_REVIEWED' : 'MAIL_RIDER_REVIEWED']: true });
       return { id };
     });
   }

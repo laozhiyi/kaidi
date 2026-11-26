@@ -424,19 +424,23 @@ class MailService extends Base {
   if (!Number.isInteger(page) || page < 1 || page > 500 || !Number.isInteger(size) || size < 1 || size > 50) this.AppError('分页参数无效');
   const where = {and:{_pid:this.getProjectId(),MAIL_ADMIN_DELETED:['<>',true]}};
   const now = Date.now();
-  const completedSince = now - 12 * 60 * 60 * 1000;
   if (search === '我的发布') sortType = 'my_post'; if (search === '我的接单') sortType = 'my_accept';
   if (['my_post','my_accept','my_done','status','timeout','my_all'].includes(sortType)) {
    await this._user(userId, { allowPending: sortType !== 'my_accept' });
    if (sortType === 'my_post') { where.and.MAIL_USER_ID = userId; where.and.MAIL_POSTER_ARCHIVED = ['<>',true]; }
    if (sortType === 'my_accept') { where.and.MAIL_ACCEPT_USER_ID = userId; where.and.MAIL_RIDER_ARCHIVED = ['<>',true]; }
    if (['my_post','my_accept'].includes(sortType)) {
-    // 已完成订单仅在完成后的 12 小时内显示；其他状态保持原有可见性。
-    where.or = [{ MAIL_STATUS: ['in', rules.ACTIVE] }, { MAIL_STATUS: ['in', [-1, 0, 99]], MAIL_END_TIME: ['>=', now] }, { MAIL_STATUS: 9, MAIL_OVER_TIME: ['>=', completedSince] }];
+    // 「我的发布 / 我的接单」只放进行中的订单：已完成、已取消的订单发布者和骑手都不再看到。
+    where.or = [{ MAIL_STATUS: ['in', rules.ACTIVE] }, { MAIL_STATUS: ['in', [-1, 0]], MAIL_END_TIME: ['>=', now] }];
    }
    // 申诉、客服咨询常常发生在订单结束很久之后：这里覆盖本人全部历史订单，不做时间窗裁剪。
    if (sortType === 'my_all') where.or = [{ MAIL_USER_ID: userId }, { MAIL_ACCEPT_USER_ID: userId }];
-   if (['my_done','status','timeout'].includes(sortType)) { where.or = [{MAIL_USER_ID:userId},{MAIL_ACCEPT_USER_ID:userId}]; const state = sortType === 'my_done' ? 9 : sortType === 'timeout' ? 0 : Number(sortVal); if (![0,1,2,3,4,9,99].includes(state)) this.AppError('该订单校区暂不在服务范围'); where.and.MAIL_STATUS = state; if (sortType === 'my_done') where.and.MAIL_OVER_TIME = ['>=', completedSince]; if (sortType === 'timeout') where.and.MAIL_END_TIME = ['<',now]; }
+   // 「已完成」只放本人还没评价的已完成订单；评价后订单从列表消失，只能在反馈投诉里选到。
+   if (sortType === 'my_done') {
+    where.and.MAIL_STATUS = 9;
+    where.or = [{ MAIL_USER_ID: userId, MAIL_ACCEPT_USER_ID: ['<>', ''], MAIL_POSTER_REVIEWED: ['<>', true] }, { MAIL_ACCEPT_USER_ID: userId, MAIL_RIDER_REVIEWED: ['<>', true] }];
+   }
+   if (['status','timeout'].includes(sortType)) { where.or = [{MAIL_USER_ID:userId},{MAIL_ACCEPT_USER_ID:userId}]; const state = sortType === 'timeout' ? 0 : Number(sortVal); if (![0,1,2,3,4,9,99].includes(state)) this.AppError('该订单校区暂不在服务范围'); where.and.MAIL_STATUS = state; if (sortType === 'timeout') where.and.MAIL_END_TIME = ['<',now]; }
   } else { where.and.MAIL_STATUS = 0; where.or = [{MAIL_PAYMENT_MODE:'offline'},{MAIL_PAYMENT_MODE:'wechat',MAIL_PAY_STATUS:1},{MAIL_PAYMENT_MODE:'adapay',MAIL_PAY_STATUS:1}]; where.and.MAIL_END_TIME = ['>',now]; if (sortType === 'wait') where.and.MAIL_USER_ID = ['<>',userId]; }
   if (search && !['我的发布','我的接单'].includes(search)) { const q = rules.text(search,'搜索关键词',30,true); where.and['MAIL_OBJ.title'] = ['like',q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')]; }
   // 同一维度多选是「或」，不同维度之间继续走 where.and 的「且」，因此多选条件

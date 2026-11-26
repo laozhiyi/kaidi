@@ -686,6 +686,18 @@ page {
 	color: #b0640f;
 }
 
+.price-block {
+	flex-wrap: wrap;
+}
+
+.price-block .price-split {
+	width: 100%;
+	margin-top: 8rpx;
+	color: #7b8da8;
+	font-size: 22rpx;
+	white-space: nowrap;
+}
+
 .price-block.muted {
 	color: #94a3b8;
 }

@@ -215,7 +215,7 @@ module.exports = {
   },
  bindCampusChange(e) { const campusIndex = Number(e.detail.value); this._campusEdited = true; this.setData({ campusIndex, campus: this.data.campuses[campusIndex] }); },
  bindServiceHelpTap() { wx.navigateTo({ url: '/projects/crun/pages/customer_service/chat/customer_service_chat' }); },
- bindSettlementTap() { wx.showModal({ title: (this.data.config.paymentMode === 'wechat' || this.data.config.paymentMode === 'adapay') ? '微信支付说明' : '关于线下结算', content: (this.data.config.paymentMode === 'wechat' || this.data.config.paymentMode === 'adapay') ? this.data.config.paymentNotice : this.data.config.offlineNotice, showCancel: false, confirmText: '我知道了' }); },
+ bindSettlementTap() { wx.showModal({ title: (this.data.config.paymentMode === 'wechat' || this.data.config.paymentMode === 'adapay') ? '微信支付说明' : '关于线下结算', content: (this.data.config.paymentMode === 'wechat' || this.data.config.paymentMode === 'adapay') ? require('../../../biz/payment_biz.js').PAY_NOTICE : this.data.config.offlineNotice, showCancel: false, confirmText: '我知道了' }); },
  _packageRows(previous = this.data.packageItems, types = this.data.packageTypes) {
   const rows = [], old = Array.isArray(previous) ? previous : [], used = new Set();
   for (const type of types) {

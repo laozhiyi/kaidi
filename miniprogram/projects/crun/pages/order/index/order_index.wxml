@@ -155,6 +155,7 @@
 								<text class="symbol">¥</text>
 								<text class="num">{{order.MAIL_OBJ.price}}</text>
 								<text wx:if="{{order.MAIL_OBJ.serviceType === 'buy'}}" class="tip">跑腿费</text><text wx:elif="{{order.MAIL_OBJ.tip > 0}}" class="tip tip-reward">含上楼费 ¥{{order.MAIL_OBJ.tip}}</text>
+								<view wx:if="{{order.commission.visible}}" class="price-split">抽成前 ¥{{order.commission.gross}} · 抽成后 ¥{{order.commission.net}}</view>
 							</view>
 							<view class="actions" catchtap="bindStop">
 								<button class="btn-ghost btn-fav {{order.MAIL_IS_FAV ? 'saved' : ''}}" catchtap="bindFavoriteTap" data-id="{{order._id}}" disabled="{{!!favoriteBusyId || (!order.MAIL_IS_FAV && order.MAIL_CAN_FAV === false)}}" loading="{{favoriteBusyId === order._id}}" aria-label="{{order.MAIL_IS_FAV ? '取消收藏订单' : '收藏订单'}}">{{order.MAIL_IS_FAV ? '已收藏' : '收藏'}}({{order.MAIL_FAV_CNT || 0}})</button>
@@ -202,10 +203,10 @@
 							<view wx:if="{{order.requirementTags.length}}" class="info-row info-row-req"><text class="lbl">要求</text><view class="val req-tags"><text wx:for="{{order.requirementTags}}" wx:for-item="tag" wx:key="key" class="req-tag req-tag-{{tag.tone}}">{{tag.text}}</text></view></view><view wx:if="{{order.priceAdjust.pending}}" class="price-pending"><text class="price-pending-title">{{order.mypost ? '骑手申请调价，待你处理' : '调价申请待发布人确认'}}</text><text class="price-pending-amount">¥{{order.priceAdjust.from}} → ¥{{order.priceAdjust.to}}</text></view>
 						</view>
 						<view class="card-divider"></view>
-						<view class="card-bot"><view class="price-block"><text class="symbol">¥</text><text class="num">{{order.MAIL_OBJ.price}}</text></view><view class="actions" catchtap="bindStop"><button class="btn-ghost" catchtap="bindCallTap" data-tel="{{order.MAIL_OBJ.tel}}">联系</button><button class="btn-ghost" catchtap="bindComplaintTap" data-id="{{order._id}}">申诉</button><button wx:if="{{order.MAIL_STATUS===1}}" class="btn-primary" catchtap="bindOrderAction" data-action="pickup" data-id="{{order._id}}" loading="{{actionBusyId === order._id}}" disabled="{{!!actionBusyId}}">{{order.MAIL_OBJ.serviceType === 'buy' ? '已购齐' : '已取件'}}</button><button wx:elif="{{order.MAIL_STATUS===4}}" class="btn-primary" catchtap="bindOrderAction" data-action="deliver" data-id="{{order._id}}" loading="{{actionBusyId === order._id}}" disabled="{{!!actionBusyId}}">已送达</button><button wx:elif="{{order.MAIL_STATUS===2}}" class="btn-ghost" catchtap="bindDetailTap" data-id="{{order._id}}">待收货</button></view></view>
+						<view class="card-bot"><view class="price-block"><text class="symbol">¥</text><text class="num">{{order.MAIL_OBJ.price}}</text><view wx:if="{{order.commission.visible}}" class="price-split">抽成前 ¥{{order.commission.gross}} · 抽成后 ¥{{order.commission.net}}</view></view><view class="actions" catchtap="bindStop"><button class="btn-ghost" catchtap="bindCallTap" data-tel="{{order.MAIL_OBJ.tel}}">联系</button><button class="btn-ghost" catchtap="bindComplaintTap" data-id="{{order._id}}">申诉</button><button wx:if="{{order.MAIL_STATUS===1}}" class="btn-primary" catchtap="bindOrderAction" data-action="pickup" data-id="{{order._id}}" loading="{{actionBusyId === order._id}}" disabled="{{!!actionBusyId}}">{{order.MAIL_OBJ.serviceType === 'buy' ? '已购齐' : '已取件'}}</button><button wx:elif="{{order.MAIL_STATUS===4}}" class="btn-primary" catchtap="bindOrderAction" data-action="deliver" data-id="{{order._id}}" loading="{{actionBusyId === order._id}}" disabled="{{!!actionBusyId}}">已送达</button><button wx:elif="{{order.MAIL_STATUS===2}}" class="btn-ghost" catchtap="bindDetailTap" data-id="{{order._id}}">待收货</button></view></view>
 					</view>
 				</view>
-				<view wx:elif="{{dataList && !dataList.error && dataList.total === 0}}" class="empty"><image class="empty-img" src="/projects/crun/images/follow/bag.png" mode="aspectFit"></image><view class="empty-title">还没有接过的订单</view><view class="empty-sub">切到「可接单」看看新订单吧</view></view>
+				<view wx:elif="{{dataList && !dataList.error && dataList.total === 0}}" class="empty"><image class="empty-img" src="/projects/crun/images/follow/bag.png" mode="aspectFit"></image><view class="empty-title">没有进行中的接单</view><view class="empty-sub">切到「可接单」看看新订单吧</view></view>
 				<template is="listLoadTpl" data="{{dataList,skin:'load-project'}}" />
 			</block>
 		</cmpt-comm-list>
@@ -233,7 +234,7 @@
 						</view>
 						<view class="card-divider"></view>
 						<view class="card-bot">
-							<view class="price-block"><text class="symbol">¥</text><text class="num">{{order.MAIL_OBJ.price}}</text></view>
+							<view class="price-block"><text class="symbol">¥</text><text class="num">{{order.MAIL_OBJ.price}}</text><view wx:if="{{order.commission.visible}}" class="price-split">抽成前 ¥{{order.commission.gross}} · 抽成后 ¥{{order.commission.net}}</view></view>
 							<view class="actions" catchtap="bindStop">
 								<button class="btn-ghost" catchtap="bindDetailTap" data-id="{{order._id}}">查看详情</button>
 								<button wx:if="{{order.receipt.visible}}" class="btn-primary" catchtap="bindConfirmReceiptTap" data-id="{{order._id}}" loading="{{confirmingId === order._id}}" disabled="{{confirmingId !== ''}}">确认收货</button>
@@ -242,7 +243,7 @@
 						<view wx:if="{{order.receipt.visible}}" class="receipt-hint">{{order.receipt.hint}}</view>
 					</view>
 				</view>
-				<view wx:elif="{{dataList && !dataList.error && dataList.total === 0}}" class="empty"><image class="empty-img" src="/projects/crun/images/follow/bag.png" mode="aspectFit"></image><view class="empty-title">还没有发布过订单</view><view class="empty-sub">可前往首页填写并发布订单</view></view>
+				<view wx:elif="{{dataList && !dataList.error && dataList.total === 0}}" class="empty"><image class="empty-img" src="/projects/crun/images/follow/bag.png" mode="aspectFit"></image><view class="empty-title">没有进行中的发布</view><view class="empty-sub">可前往首页填写并发布订单</view></view>
 				<template is="listLoadTpl" data="{{dataList,skin:'load-project'}}" />
 			</block>
 		</cmpt-comm-list>
@@ -287,10 +288,11 @@
 							<view class="price-block muted">
 								<text class="symbol">¥</text>
 								<text class="num">{{order.MAIL_OBJ.price}}</text>
+								<view wx:if="{{order.commission.visible}}" class="price-split">抽成前 ¥{{order.commission.gross}} · 抽成后 ¥{{order.commission.net}}</view>
 							</view>
 							<view class="actions" catchtap="bindStop">
 								<button class="btn-ghost" catchtap="bindDetailTap" data-id="{{order._id}}">查看详情</button>
-								<button wx:if="{{order.MAIL_CAN_REVIEW || order.MAIL_REVIEWED}}" class="{{order.MAIL_REVIEWED ? 'btn-ghost' : 'btn-primary'}}" catchtap="bindReviewTap" data-id="{{order._id}}">{{order.MAIL_REVIEWED ? '已评价' : '评价对方'}}</button>
+								<button wx:if="{{order.MAIL_CAN_REVIEW}}" class="btn-primary" catchtap="bindReviewTap" data-id="{{order._id}}">评价</button>
 							</view>
 						</view>
 					</view>
@@ -298,8 +300,8 @@
 
 				<view wx:elif="{{dataList && !dataList.error && dataList.total === 0}}" class="empty">
 					<image class="empty-img" src="/projects/crun/images/follow/bag.png" mode="aspectFit"></image>
-					<view class="empty-title">还没有完成的订单</view>
-					<view class="empty-sub">加油赚配送费～</view>
+					<view class="empty-title">没有待评价的订单</view>
+					<view class="empty-sub">评价过的订单可在「反馈投诉」中选择</view>
 				</view>
 
 				<template is="listLoadTpl" data="{{dataList,skin:'load-project'}}" />

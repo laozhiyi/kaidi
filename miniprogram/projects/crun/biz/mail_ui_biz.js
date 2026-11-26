@@ -151,6 +151,14 @@ function priceAdjust(mail) {
   hasRecord: !!tone, left: Math.max(0, PRICE_ADJUST_MAX - used), ...info };
 }
 // 订单结束后 10 天清理凭证：已清理显示日期，已结束未清理显示预告，其余状态不显示。
+// 平台抽成：在线支付订单完成后骑手实得跑腿费的 90%（按分向下取整），与云端结算一致。
+const COMMISSION_RATE = 10;
+function commission(mail) {
+ const total = Number(mail && mail.MAIL_TOTAL_FEE);
+ if (!mail || !['wechat', 'adapay'].includes(mail.MAIL_PAYMENT_MODE) || !Number.isSafeInteger(total) || total < 1) return { visible: false };
+ const net = Math.floor(total * (100 - COMMISSION_RATE) / 100);
+ return { visible: true, rate: COMMISSION_RATE, gross: (total / 100).toFixed(2), net: (net / 100).toFixed(2), cut: ((total - net) / 100).toFixed(2) };
+}
 function mediaPurgeNotice(mail) {
  const status = mail.MAIL_STATUS == null ? -1 : Number(mail.MAIL_STATUS);
  if (mail.MAIL_MEDIA_PURGED_AT) {
@@ -217,7 +225,7 @@ function detail(mail, now = Date.now()) {
   step: orderProgress.step, showProgress: orderProgress.visible, steps: orderProgress.steps, deliveryAddress: Address.formatOrderAddress(mail),
   phone: phone || '', phoneDisplay: maskPhone(phone), contactName: contactName || (mail.mypost ? (status === 0 && !expired ? '等待骑手接单' : '暂无骑手信息') : '发布者'), contactRole: mail.mypost ? '接单骑手' : '订单发布者',
   createdAt: time(mail.MAIL_ADD_TIME), endAt: time(mail.MAIL_END_TIME) || time(mail.end2), expectAt: expectSpan(mail), dueAt: time(mail.MAIL_DUE_TIME), deliveredAt: time(mail.MAIL_DELIVERED_TIME),
-  requirementText: requirementText(mail), mediaPurge: mediaPurgeNotice(mail), priceAdjust: priceAdjust(mail), tipText: serviceType === 'take' && Number(obj.tip) > 0 ? '含上楼费 ¥' + Number(obj.tip) : '',
+  requirementText: requirementText(mail), commission: commission(mail), mediaPurge: mediaPurgeNotice(mail), priceAdjust: priceAdjust(mail), tipText: serviceType === 'take' && Number(obj.tip) > 0 ? '含上楼费 ¥' + Number(obj.tip) : '',
   autoConfirmAt: time(mail.MAIL_AUTO_CONFIRM_AT), autoConfirmed: mail.MAIL_AUTO_CONFIRMED === true,
   deliveryMode: mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.mode || '', deliveryModeLabel: mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.mode === 'face' ? '当面交付' : mail.MAIL_DELIVERY_PROOF ? '放置指定位置' : '',
   proofVideo: mail.MAIL_MEDIA && mail.MAIL_MEDIA.proofVideo && mail.MAIL_MEDIA.proofVideo[0] || '',
@@ -230,4 +238,4 @@ function detail(mail, now = Date.now()) {
   earningsLabel: mail.MAIL_EARNINGS_STATUS === 'paid' ? '已领取' : '领取报酬'
  };
 }
-module.exports = { time, service, receipt, progress, detail, requirementText, requirementTags, priceAdjust, mediaPurgeNotice, deliveryAddress: Address.formatOrderAddress };
+module.exports = { COMMISSION_RATE, time, service, receipt, progress, detail, requirementText, requirementTags, priceAdjust, commission, mediaPurgeNotice, deliveryAddress: Address.formatOrderAddress };

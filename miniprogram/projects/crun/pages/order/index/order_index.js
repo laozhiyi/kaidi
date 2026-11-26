@@ -12,9 +12,10 @@ const OrderFilter = require('../../../biz/order_filter_biz.js');
  * 快递代取 - 接单/订单 Tab 页
  * 四个分段：
  *   0 可接单（浏览全部待接订单）    mail/list + sortType='wait'
- *   1 我接的（含取消与完成历史）        mail/list + search='我的接单' + sortType='status',sortVal='1'
- *   2 我发布的（全部状态）          mail/list + sortType='my_post'
- *   3 已完成                       mail/list + sortType='my_done'
+ *   1 我接的（进行中）              mail/list + sortType='my_accept'
+ *   2 我发布的（待支付、待接单与进行中） mail/list + sortType='my_post'
+ *   3 已完成（本人尚未评价）         mail/list + sortType='my_done'
+ * 已完成或已取消的订单不再出现在 1、2；评价后也不再出现在 3，只能在反馈投诉里选到。
  */
 Page({
 	data: {
@@ -192,7 +193,7 @@ Page({
         }
 		return Object.assign({}, order, {
 			showProgress: progress.visible, progressStep: progress.step, progressSteps: progress.steps, progressLabels: progress.steps.map(step => step.label),
-			deliveryAddress: MailUI.deliveryAddress(order), receipt: MailUI.receipt(order), requirementTags: MailUI.requirementTags(order), priceAdjust: MailUI.priceAdjust(order),
+			deliveryAddress: MailUI.deliveryAddress(order), receipt: MailUI.receipt(order), requirementTags: MailUI.requirementTags(order), priceAdjust: MailUI.priceAdjust(order), commission: MailUI.commission(order),
 			MAIL_FAV_CNT: Number(order.MAIL_FAV_CNT) || 0, MAIL_IS_FAV: !!order.MAIL_IS_FAV,
 			packageProofs: packages.filter(item => item && typeof item === 'object').map(item => ({ pickupPoint: item.pickupPoint || obj.address1 || '', code: obj.serviceType === 'send' ? item.note || '请联系发布者交接' : item.code || '查看取件截图', noteLabel: item.note ? '有备注' : '无备注' }))
 		});
@@ -449,7 +450,7 @@ Page({
 	bindReviewTap: function (e) {
 		const id = e.currentTarget.dataset.id;
 		const order = (this.data.dataList && this.data.dataList.list || []).find(row => row._id === id);
-		if (order && (order.MAIL_CAN_REVIEW || order.MAIL_REVIEWED)) wx.navigateTo({ url: '/projects/crun/pages/my/review_add/review_add?orderId=' + encodeURIComponent(id) });
+		if (order && order.MAIL_CAN_REVIEW) wx.navigateTo({ url: '/projects/crun/pages/my/review_add/review_add?orderId=' + encodeURIComponent(id) });
 	},
 
 	/**
