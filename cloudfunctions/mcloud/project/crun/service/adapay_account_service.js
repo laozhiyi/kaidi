@@ -8,7 +8,9 @@ const key = user => store.scopeKey('adapay-account', cfg.appid, cfg.prod, user);
 const memberId = user => 'runner_' + key(user);
 function digest(value) {return crypto.createHmac('sha256',cfg.digestKey).update(JSON.stringify(value)).digest('hex');}
 // 与小程序 public/agreements.js 中骑手协议的 version 保持一致。
-const CONSENT_VERSION = '2026-11-26';
+const Agreements = require('../public/agreement_versions.js');
+const CONSENT_VERSION = Agreements.VERSION;
+function checkConsent(input) {try {Agreements.requireRider(input);} catch(error) {throw new AppError(error.message);}}
 const MEMBER_MISSING = ['member_not_exists','member_not_exist','user_not_exist','user_not_exists'];
 // 支付机构明确拒绝（签名有效的失败应答）时，按拒绝类别提示用户改哪一项。
 const REJECTED = {
@@ -18,20 +20,20 @@ const REJECTED = {
  name:'姓名与银行卡开户名不一致，请填写银行卡开户人本人的姓名',
  card:'银行卡号未通过核验，请确认卡号无误且为本人Ⅰ类借记卡',
  limit:'核验次数过多，请稍后再试',
- exists:'支付机构显示该账户已登记过，请联系在线客服核对后再办理',
+ exists:'支付机构显示该账户已登记过，请通过“反馈与投诉”提交问题核对后再办理',
  mismatch:'姓名、身份证号、银行卡号与预留手机号未能匹配，请逐项核对后重新提交',
- '':'支付机构未通过本次核验，请核对填写的信息后重新提交；仍有问题请联系在线客服'
+ '':'支付机构未通过本次核验，请核对填写的信息后重新提交；仍有问题请通过“反馈与投诉”提交问题'
 };
 // 这些错误码说明是平台配置或支付机构自身的问题，与用户填写无关。
 const SERVICE_CODES = ['app_not_exists','system_exception','config_exception','security_exception','mer_not_register','agent_mer_conf_error','fee_not_config','pay_channel_not_config','risk_trade'];
-const PENDING = '开户或绑卡结果尚未确认，请稍后刷新本页查看。如需再次提交，请使用相同信息；仍未完成请联系在线客服';
-const SAME_PERSON = '你已用其他姓名和身份证号在支付机构完成实名，结算账户只能使用该本人信息；如有疑问请联系在线客服';
-const UNCONFIRMED = '上次提交的办理结果还在确认中，请稍后刷新本页；也可以先用上次相同的信息再提交一次以确认结果。需要更换信息请联系在线客服';
+const PENDING = '开户或绑卡结果尚未确认，请稍后刷新本页查看。如需再次提交，请使用相同信息；仍未完成请通过“反馈与投诉”提交问题';
+const SAME_PERSON = '你已用其他姓名和身份证号在支付机构完成实名，结算账户只能使用该本人信息；如有疑问请通过“反馈与投诉”提交问题';
+const UNCONFIRMED = '上次提交的办理结果还在确认中，请稍后刷新本页；也可以先用上次相同的信息再提交一次以确认结果。需要更换信息请通过“反馈与投诉”提交问题';
 // 只有提交开户、绑卡资料的两步被明确拒绝时，才提示用户修改填写内容；查询类步骤出错按结果未确认处理。
 function userMessage(e, stage) {
  if (e && e.verified === true && ['create_member','create_binding'].includes(stage)) {
   if (e.reason && REJECTED[e.reason]) return REJECTED[e.reason];
-  if (SERVICE_CODES.includes(e.code) || /^token_/.test(e.code || '')) return '结算服务暂时不可用，请稍后再试或联系在线客服';
+  if (SERVICE_CODES.includes(e.code) || /^token_/.test(e.code || '')) return '结算服务暂时不可用，请稍后再试或通过“反馈与投诉”提交问题';
   return REJECTED[''];
  }
  return PENDING;
@@ -47,7 +49,7 @@ function parseInput(input) {
 }
 // pending: 上次办理结果不明，正等待核对；页面据此提示刷新或联系客服。
 // boundAt：当前这张卡的绑定时间，换卡后更新；老记录没有该字段时用开通时的授权时间。
-function mask(row) {return {opened:row?.status==='ready',identified:row?.identified===true,pending:row?.status==='changing' || row?.status==='needs_check' && row?.canCorrect !== true,name:row?.name || '',cardTail:row?.cardTail || '',boundAt:row?.status==='ready' ? row.cardBoundAt || row.consentedAt || 0 : 0,status:row?.status || 'not_open',settlement:'auto'};}
+function mask(row) {return {opened:row?.status==='ready',identified:row?.identified===true,pending:row?.status==='changing' || row?.status==='needs_check' && row?.canCorrect !== true,name:row?.name || '',cardTail:row?.cardTail || '',boundAt:row?.status==='ready' ? (row.cardBoundAt === undefined ? row.consentedAt || 0 : row.cardBoundAt) : 0,status:row?.status || 'not_open',settlement:'auto',consentCurrent:Agreements.currentRider(row)};}
 // 换卡记录写在账户文档里，最多保留最近 20 次，后台用户详情按时间倒序展示。
 // result：processing 办理中、succeeded 已更换、refused 支付机构未受理（原卡有效）、
 // unconfirmed 解除原卡结果不明、failed 原卡已解除但新卡未绑定、restored 核对后恢复原卡。
@@ -176,8 +178,8 @@ class AdapayAccountService {
  // 更换结算银行卡：支付机构要求先删除原结算账户，再用同一 member_id、同一身份证和户名创建新账户。
  async change(userId, input) {
   await new (require('./mail_service.js'))()._user(userId);
-  if (!cfg.ready()) throw new AppError('结算服务暂不可用，请联系在线客服');
-  if (input.rulesAccepted !== true || input.authorizationAccepted !== true) throw new AppError('请阅读并同意服务协议与实名信息授权');
+  if (!cfg.ready()) throw new AppError('结算服务暂不可用，请通过“反馈与投诉”提交问题');
+  checkConsent(input);
   const p = parseInput(input), id = key(userId), now = Date.now(), entryId = crypto.randomBytes(8).toString('hex');
   const blocked = await this.openOrders(userId);
   if (blocked) throw new AppError(blocked);
@@ -189,7 +191,7 @@ class AdapayAccountService {
    await store.limitInTransaction(tx,'crun',userId,'adapay-open',5,3600000);
    // 记下原账户：若进程在删除前后中断，下次提交时 reconcile 可据此查询并恢复。
    // 同时写一条换卡记录，后续每个结束分支都会更新它的结果。
-   await store.set(tx,'payment',id,{...row,status:'changing',previousAccountId:row.accountId,previousCardTail:row.cardTail,leaseUntil:now+60000,updatedAt:now,
+   await store.set(tx,'payment',id,{...row,consentVersion:CONSENT_VERSION,authorizationVersion:CONSENT_VERSION,consentedAt:now,status:'changing',previousAccountId:row.accountId,previousCardTail:row.cardTail,leaseUntil:now+60000,updatedAt:now,
     cardHistory:addHistory(row,{id:entryId,at:now,fromTail:row.cardTail || '',toTail:p.card.slice(-4),result:'processing',updatedAt:now})});
    return row;
   });
@@ -226,10 +228,22 @@ class AdapayAccountService {
   if (!row || row.status !== 'ready' || !row.accountId) throw new AppError('请先在“我的—跑腿结算”完成开通，再接取在线支付订单');
   return row;
  }
+ async acceptAgreements(userId,input) {
+  await new (require('./mail_service.js'))()._user(userId);
+  checkConsent(input);
+  return store.transaction(async tx=>{
+   const row=await this.stored(userId,tx);
+   if (!row || row.status!=='ready') throw new AppError('请先完成结算开户');
+   if (Agreements.currentRider(row)) return mask(row);
+   const now=Date.now(), record={consentVersion:CONSENT_VERSION,authorizationVersion:CONSENT_VERSION,consentedAt:now};
+   const next={...row,...record,cardBoundAt:row.cardBoundAt === undefined ? row.consentedAt || 0 : row.cardBoundAt,consentHistory:[...(row.consentHistory || []),{consentVersion:row.consentVersion || '',authorizationVersion:row.authorizationVersion || '',consentedAt:row.consentedAt || 0}],updatedAt:now};
+   await store.set(tx,'payment',key(userId),next); return mask(next);
+  });
+ }
  async open(userId, input, options = {}) {
   await new (require('./mail_service.js'))()._user(userId);
-  if (!cfg.ready()) throw new AppError('结算服务暂不可用，请联系在线客服');
-  if (input.rulesAccepted !== true || input.authorizationAccepted !== true) throw new AppError('请阅读并同意服务协议与实名信息授权');
+  if (!cfg.ready()) throw new AppError('结算服务暂不可用，请通过“反馈与投诉”提交问题');
+  checkConsent(input);
   const {name,identity,card,phone,fingerprint,identityDigest} = parseInput(input);
   const id=key(userId), member=memberId(userId), now=Date.now();
   const before = await this.stored(userId);
@@ -248,7 +262,7 @@ class AdapayAccountService {
    if (!options.counted) await store.limitInTransaction(tx,'crun',userId,'adapay-open',5,3600000);
    const next={...old,_pid:'crun',kind:'adapay_account',userId,appid:cfg.appid,prod:cfg.prod,memberId:member,fingerprint,identityDigest,canCorrect:false,
     name:name.slice(0,1)+'**',cardTail:card.slice(-4),status:'processing',identified:old?.identified===true,
-    consentVersion:CONSENT_VERSION,consentedAt:now,leaseUntil:now+60000,updatedAt:now};
+    consentVersion:CONSENT_VERSION,authorizationVersion:CONSENT_VERSION,consentedAt:now,leaseUntil:now+60000,updatedAt:now};
    await store.set(tx,'payment',id,next);return {...next,existed:!!old};
   });
   if (reserved.status === 'ready') return mask(reserved);

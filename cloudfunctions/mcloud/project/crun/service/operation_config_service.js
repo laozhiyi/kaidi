@@ -24,7 +24,7 @@ class OperationConfigService extends Base {
   return { ...DEFAULTS, ...liftPrices(row && row.value),
    enabled: row ? !!(row.value && row.value.enabled === true) : scope ? false : DEFAULTS.enabled,
    enforceBusinessHours: !!(row && row.value && row.value.enforceBusinessHours === true),
-   configured: !!row, paymentMode: PaymentService.newOrderMode(), paymentNotice: '支付成功后订单才会发布。订单完成后跑腿费结算给骑手，平台从中收取10%技术服务费；接单前取消或超时无人接单，原路退款。', version: row && row.version || 0,
+   configured: !!row, paymentMode: PaymentService.newOrderMode(), paymentNotice: '支付成功后订单才会发布。订单完成后跑腿费结算给骑手，平台从中收取10%技术服务费；取件前双方可取消，无违约金，订单关闭并申请原路退款。确认收货或送达满8小时触发分账。银行卡不会立即到账，可结算款项按账户安排在次日或下一个工作日分批打款，实际到账以支付机构和银行处理为准；支付及结算手续费由平台承担。', version: row && row.version || 0,
    ...(scope ? { schoolId: scope.schoolId, campusId: scope.campusId, schoolName: scope.schoolName, campusName: scope.campusName,
     ...(scope.school ? {registrationReview:scope.school.registrationReview===true} : {}),
     campuses: [scope.campusName], locations: scope.campus.locations || { phases: [], pickupStations: [] } } : {}) };

@@ -288,8 +288,8 @@ Page({
    const prompts = {
     pickup: { title: '确认已取件', content: '确认已经取齐或购齐本单所有物品吗？接下来请上传凭证（照片或视频），提交后进入配送中。', confirmText: '上传凭证' },
     deliver: { title: '确认已送达', content: '确认已将本单所有包裹送到收件地址吗？接下来选择送达方式并提交凭证，提交后通知发布者确认收货。', confirmText: '提交凭证' },
-    confirm: { title: '确认收货', content: '请先核对包裹、数量和外观是否无误。确认后订单将从双方的日常订单列表中移除。' },
-    cancel: { title: '取消待接单订单', content: '确定取消这个尚未接单的订单吗？' }
+    confirm: { title: '确认收货', content: '请先核对包裹、数量和外观是否无误。确认后将触发报酬分账；银行卡不会立即到账，可结算款项按账户安排在次日或下一个工作日分批打款，实际到账以支付机构和银行处理为准。' },
+    cancel: { title: '取消订单', content: '取件前双方均可取消，不收违约金。取消后订单关闭、不重新上架，已支付金额将申请原路退回，到账以支付机构和银行处理为准。确定取消吗？' }
    };
    const result = await new Promise(resolve => wx.showModal({ ...prompts[action], success: resolve, fail: () => resolve({ confirm: false }) }));
    if (!result.confirm || !this._visible) return;

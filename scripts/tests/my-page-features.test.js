@@ -12,10 +12,70 @@ const event = (dataset = {}, value) => ({ currentTarget: { dataset }, detail: { 
 const deferred = () => { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; };
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
+test('historical disclaimer does not preselect new terms and opening either policy never changes consent', async () => {
+  const h = harness(), page = h.page('my/personal/my_personal.js');
+  delete h.user.USER_AGREEMENTS;
+  await page.onLoad({});
+  assert.equal(page.data.profileDisclaimer, false);
+  page.bindViewDisclaimer(); assert.match(h.navigation.at(-1).url, /about_agreement\?key=user$/);
+  page.bindViewPrivacy(); assert.match(h.navigation.at(-1).url, /about_agreement\?key=privacy$/);
+  assert.equal(page.data.profileDisclaimer, false);
+  await page.bindPersonalSubmit();
+  assert.equal(page.data.guideField, 'agreement');
+  assert.equal(h.calls.filter(x => x.route === 'passport/edit_base').length, 0);
+  page.bindDisclaimerTap(); await page.bindPersonalSubmit();
+  assert.equal(page.data.guideField, '');
+  const saved = h.calls.find(x => x.route === 'passport/edit_base');
+  assert.equal(saved.params.agreements.userVersion, '2026-11-27');
+  assert.equal(saved.params.agreements.privacyVersion, '2026-11-27');
+  assert.equal(saved.params.agreements.accepted, true);
+});
+test('agreement navigation still locates the checkbox after a profile load failure and retry', async () => {
+  const h=harness(),page=h.page('my/personal/my_personal.js');
+  delete h.user.USER_AGREEMENTS;
+  h.responses['passport/my_detail']=()=>{throw new Error('offline');};
+  await page.onLoad({focus:'agreement',retUrl:'back'});
+  assert.equal(page._focusAgreement,true);assert.equal(page.data.isLoad,false);
+  h.responses['passport/my_detail']=h.user;
+  await page._loadDetail();
+  assert.equal(page.data.guideField,'agreement');assert.equal(page.data.profileDisclaimer,false);
+  assert.equal(page.data.retUrl,'back');assert.equal(page._focusAgreement,false);
+});
+
+test('saved current agreement is preselected on the next visit, but unchecking still blocks saving', async () => {
+  const h=harness();delete h.user.USER_AGREEMENTS;
+  const first=h.page('my/personal/my_personal.js');await first.onLoad({});
+  assert.equal(first.data.profileDisclaimer,false);
+  first.bindDisclaimerTap();await first.bindPersonalSubmit();
+  const saved=h.calls.find(call=>call.route==='passport/edit_base');
+  assert.equal(saved.params.agreements.accepted,true);
+  // Subsequent profile reads return the consent record persisted by the server.
+  h.user.USER_AGREEMENTS={userVersion:saved.params.agreements.userVersion,privacyVersion:saved.params.agreements.privacyVersion,acceptedAt:1};
+  const next=h.page('my/personal/my_personal.js');await next.onLoad({});
+  assert.equal(next.data.profileDisclaimer,true);
+  next.bindDisclaimerTap();const before=h.calls.filter(call=>call.route==='passport/edit_base').length;
+  await next.bindPersonalSubmit();
+  assert.equal(h.calls.filter(call=>call.route==='passport/edit_base').length,before);
+  assert.equal(next.data.guideField,'agreement');assert.match(next.data.saveError,/协议/);
+});
+
+test('unchecking previously accepted terms prevents the personal form from uploading or saving', async () => {
+  const h=harness(),page=h.page('my/personal/my_personal.js');
+  await page.onLoad({});assert.equal(page.data.profileDisclaimer,true);
+  page.bindDisclaimerTap();assert.equal(page.data.profileDisclaimer,false);
+  const before=h.calls.length;
+  await page.bindPersonalSubmit({detail:{value:{nickname:'未授权的新昵称'}}});
+  assert.equal(h.calls.length,before);
+  assert.match(page.data.saveError,/协议/);assert.equal(page.data.saving,false);
+  page.bindDisclaimerTap();assert.equal(page.data.profileDisclaimer,true);
+  await page.bindPersonalSubmit({detail:{value:{nickname:'重新同意后保存'}}});
+  assert(h.calls.some(x=>x.route==='passport/edit_base' && x.params.name==='重新同意后保存'));
+});
+
 function harness(options = {}) {
   const storage = options.storage || new Map(), calls = [], navigation = [], messages = [], modals = [], images = [], modules = new Map(), definitions = new Map();
   let app, token = options.guest ? null : { id: 'poster', sessionToken: 'b'.repeat(64), name: '小周', pic: 'cloud://avatar', status: 1, phoneVerified: true, profileComplete: true }, stopped = 0;
-  const user = { USER_NAME: '小周', USER_MOBILE: '13800000000', USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: true, USER_PIC: 'cloud://avatar', USER_STATUS: 1, USER_FORMS: [
+  const user = { USER_AGREEMENTS: {userVersion:'2026-11-27',privacyVersion:'2026-11-27',acceptedAt:1}, USER_NAME: '小周', USER_MOBILE: '13800000000', USER_MOBILE_VERIFIED: true, USER_PROFILE_COMPLETE: true, USER_PIC: 'cloud://avatar', USER_STATUS: 1, USER_FORMS: [
     { mark: 'campus', val: '育才校区' }, { mark: 'sex', val: '男' }, { mark: 'college', val: computingCollege }, { mark: 'sub', val: '软件工程' },
     { mark: 'studentId', val: '20240001' }, { mark: 'studentCard', val: ['cloud://test/student-card.png'] }, { mark: 'disclaimer', val: true },
     { mark: 'contacts', val: [{ name: '甲', phone: '13800000001', isDefault: false }, { name: '乙', phone: '13800000002', isDefault: true }] },

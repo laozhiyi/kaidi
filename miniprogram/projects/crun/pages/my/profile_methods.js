@@ -1,9 +1,11 @@
+const Guide = require('../../biz/form_guide_biz.js');
 const Ops = require('../../biz/operations_biz.js');
 const cloudHelper = require('../../../../helper/cloud_helper.js');
 const validate = require('../../../../helper/validate.js');
 const pageHelper = require('../../../../helper/page_helper.js');
 const projectSetting = require('../../public/project_setting.js');
 const ProfileBiz = require('../../biz/profile_biz.js');
+const Agreements = require('../../public/agreements.js');
 const Address = require('../../biz/address_biz.js');
 const PassportBiz = require('../../../../comm/biz/passport_biz.js');
 const InviteBiz = require('../../biz/invite_biz.js');
@@ -148,7 +150,7 @@ function applyUser(page, user) {
     originalProfileCollege: college, originalProfileMajor: major, profileMajorManual: false,
     profileStudentId: String(ProfileBiz.formValue(forms, 'studentId') || ''), studentProofLocked: user.studentProofLocked === true,
     profileStudentCard: [].concat(ProfileBiz.formValue(forms, 'studentCard') || []).filter(value => typeof value === 'string' && value).slice(0, 1),
-    profileDisclaimer: ProfileBiz.formValue(forms, 'disclaimer') === true }, p, {
+    profileDisclaimer: Agreements.currentUser(user.USER_AGREEMENTS), profileAgreementCurrent: Agreements.currentUser(user.USER_AGREEMENTS) }, p, {
     campuses, campus, campusIndex: campuses.indexOf(campus), campusPickerVisible: false, campusDraft: '', contactEditorVisible: false, addressEditorVisible: false, placePickerVisible: false, placeDraft: '', editingContactIndex: -1, editingAddressIndex: -1, contactDraft: { name: '', phone: '' }, addressDraft: { label: '', detail: '', note: '' }
   }));
 }
@@ -156,6 +158,7 @@ function profileBusy(page) {
   return page._unloaded || page.data.saving || page.data.phoneAuthorizing || page.data.identityLoggingIn || page.data.collectionSaving || page.data.loggingOut || page.data.cancellingAccount;
 }
 function bindProfileNameInput(e) {
+  Guide.clear(this, 'nickname');
   if (profileBusy(this)) return;
   this._profileDirty = true; this.setData({ formName: e.detail.value });
 }
@@ -172,8 +175,10 @@ function bindPicTap(e) {
   const pic = e && e.detail && e.detail.avatarUrl;
   if (typeof pic !== 'string' || !pic.trim()) return;
   this._profileDirty = true; this.setData({ formPic: pic });
+  Guide.clear(this, 'avatar');
 }
 function bindProfileMobileInput(e) {
+  Guide.clear(this, 'phone');
   if (this.data.profilePhoneRequired || this.data.phoneLoginEnabled === true && (this.data.phoneVerified || !this.data.allowManualRegistration)) return;
   this._profileDirty = true; this.setData({ formMobile: e.detail.value });
 }
@@ -210,6 +215,7 @@ async function bindWechatPhone(e) {
     if (!result.user || result.user.USER_MOBILE_VERIFIED !== true) throw new Error('手机号授权未完成，请重试');
     // Keep unsaved edits to all other fields when rebinding the phone.
     this.setData({ formMobile: result.user.USER_MOBILE, phoneVerified: true });
+    Guide.clear(this, 'phone');
     this._profileDirty = true;
   } catch (error) {
     if (isCurrent()) {
@@ -249,6 +255,7 @@ function bindSelectCampus(e) {
   if ((!fixedCampus || value === fixedCampus) && (this.data.campuses || []).includes(value)) this.setData({ campusDraft: value });
 }
 function bindConfirmCampus() {
+  Guide.clear(this, 'campus');
   const { campusDraft } = this.data;
   const campusIndex = (this.data.campuses || []).indexOf(campusDraft);
   if (campusIndex < 0 || fixedCampus && campusDraft !== fixedCampus) return pageHelper.showNoneToast('请选择所在校区');
@@ -264,7 +271,8 @@ function bindCampusChange(e) {
   this._profileDirty = true;
   this.setData({ campusIndex: i, campus: this.data.campuses[i] });
 }
-function bindGenderTap(e) { this._profileDirty = true; this.setData({ profileSex: e.currentTarget.dataset.value || '' }); }
+function bindGenderTap(e) {
+  Guide.clear(this, 'gender'); this._profileDirty = true; this.setData({ profileSex: e.currentTarget.dataset.value || '' }); }
 function educationOptions(kind, college) {
   return kind === 'college' ? collegeNames : majorsForCollege(college);
 }
@@ -287,6 +295,7 @@ function bindEducationSearch(e) {
   this.setData({ educationSearch: value, educationOptions: matches });
 }
 function bindSelectEducation(e) {
+  Guide.clear(this, this.data.educationPicker === 'college' ? 'college' : 'major');
   const { educationPicker, profileCollege, profileSub, profileMajorManual } = this.data;
   const value = e.currentTarget.dataset.value;
   if (!educationPicker || !educationOptions(educationPicker, profileCollege).includes(value)) return;
@@ -308,24 +317,27 @@ function bindEnterMajorManually() {
 function bindProfileFieldInput(e) {
   if (profileBusy(this)) return;
   const field = e.currentTarget.dataset.field;
+  Guide.clear(this, field === 'profileStudentId' ? 'studentId' : 'major');
   if (field === 'profileStudentId' ? this.data.studentProofLocked : field !== 'profileSub' || !this.data.profileMajorManual) return;
   this._profileDirty = true;
   this.setData({ [field]: e.detail.value });
 }
 function bindDisclaimerTap() {
+  Guide.clear(this, 'agreement');
   if (profileBusy(this)) return;
-  this._profileDirty = true; this.setData({ profileDisclaimer: !this.data.profileDisclaimer });
+  this._profileDirty = true; this.setData({ profileDisclaimer: !this.data.profileDisclaimer, saveError: '' });
 }
 function bindViewDisclaimer() {
-  wx.navigateTo({ url: '/projects/crun/pages/about/index/about_index?key=SETUP_CONTENT_DISCLAIMER' });
+  wx.navigateTo({ url: '/projects/crun/pages/about/agreement/about_agreement?key=user' });
 }
+function bindViewPrivacy() { wx.navigateTo({url:'/projects/crun/pages/about/agreement/about_agreement?key=privacy'}); }
 function bindChooseStudentCard() {
   if (profileBusy(this) || this.data.studentProofLocked) return;
   const success = result => {
     const file = result.tempFiles && result.tempFiles[0];
     const path = file && file.tempFilePath || result.tempFilePaths && result.tempFilePaths[0];
     if (profileBusy(this) || this.data.studentProofLocked || !path) return;
-    this._profileDirty = true; this.setData({ profileStudentCard: [path] });
+    this._profileDirty = true; this.setData({ profileStudentCard: [path] }); Guide.clear(this, 'studentCard');
   };
   const fail = error => { if (!this._unloaded && !/cancel/i.test(error && error.errMsg || '')) pageHelper.showNoneToast('图片选择失败，请重试'); };
   if (typeof wx.chooseMedia === 'function' && supportsNative('chooseMedia')) wx.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'], success, fail });
@@ -568,6 +580,7 @@ async function bindSaveWechatProfile(e, options = {}) {
 // 邀请码：注册页与资料页共用这一套逻辑与 personal_form.wxml 里的字段。
 const INVITE_CODE_RE = /^[A-Z0-9]{6}$/;
 function bindInviteCodeInput(e) {
+  Guide.clear(this, 'invite');
   this.setData({ inviteCode: InviteBiz.normalize(String(e.detail.value || '').replace(/[^A-Za-z0-9]/g, '')) });
 }
 async function loadInviteInfo(page) {
@@ -593,30 +606,32 @@ async function bindSubmitTap(e) {
   this.setData({ saving: true, saveError: '' });
   try {
     if (!PassportBiz.getUserId()) throw new Error('请先点击微信登录');
-    if ((this.data.profilePhoneRequired || this.data.phoneLoginEnabled === true && !this.data.allowManualRegistration) && this.data.phoneVerified !== true) throw new Error('请先验证联系电话');
-    if (!/^1[3-9][0-9]{9}$/.test(this.data.formMobile || '')) throw new Error('请填写正确的手机号');
-    if (!(this.data.campuses || []).includes(this.data.campus) || fixedCampus && this.data.campus !== fixedCampus) throw new Error('请选择所在校区');
-    if (!['男', '女'].includes(this.data.profileSex)) throw new Error('请选择性别');
+    if (this.data.profileDisclaimer !== true) throw Guide.invalid('agreement', '请阅读并同意用户服务协议，并阅读隐私政策后再保存');
+    if (!String(this.data.formPic || '').trim()) throw Guide.invalid('avatar', '请点击选择头像');
+    if (!String(this.data.formName || '').trim() || String(this.data.formName).length > 30) throw Guide.invalid('nickname', '请填写昵称（最多30字）');
+    if ((this.data.profilePhoneRequired || this.data.phoneLoginEnabled === true && !this.data.allowManualRegistration) && this.data.phoneVerified !== true) throw Guide.invalid('phone', '请先验证联系电话');
+    if (!/^1[3-9][0-9]{9}$/.test(this.data.formMobile || '')) throw Guide.invalid('phone', '请填写正确的手机号');
+    if (!(this.data.campuses || []).includes(this.data.campus) || fixedCampus && this.data.campus !== fixedCampus) throw Guide.invalid('campus', '请选择所在校区');
+    if (!['男', '女'].includes(this.data.profileSex)) throw Guide.invalid('gender', '请选择性别');
     const college = String(this.data.profileCollege || '').trim();
     const major = String(this.data.profileSub || '').trim();
     const keepsCollege = this.data.isEdit && college === this.data.originalProfileCollege;
-    if (!college || !collegeNames.includes(college) && !keepsCollege) throw new Error('请选择所在学院');
-    if (!major || major.length > 80) throw new Error('请选择或填写所学专业（最多80字）');
+    if (!college || !collegeNames.includes(college) && !keepsCollege) throw Guide.invalid('college', '请选择所在学院');
+    if (!major || major.length > 80) throw Guide.invalid('major', '请选择或填写所学专业（最多80字）');
     const keepsMajor = college === this.data.originalProfileCollege && major === this.data.originalProfileMajor;
     if (!this.data.profileMajorManual && !majorsForCollege(college).includes(major) && !keepsMajor) {
-      throw new Error('请选择该学院的专业，或手动填写');
+      throw Guide.invalid('major', '请选择该学院的专业，或手动填写');
     }
     const studentId = String(this.data.profileStudentId || '').trim();
     // Required on first registration; legacy accounts may leave it empty when editing.
     if (!this.data.isEdit || studentId) {
-      if (!STUDENT_ID_RE.test(studentId)) throw new Error(studentId ? '学号为6-20位字母或数字' : '请填写学号');
+      if (!STUDENT_ID_RE.test(studentId)) throw Guide.invalid('studentId', studentId ? '学号为6-20位字母或数字' : '请填写学号');
     }
     const studentCard = (this.data.profileStudentCard || []).filter(value => typeof value === 'string' && value);
-    if (!this.data.isEdit && !studentCard.length) throw new Error('请上传学生证照片');
-    if (!this.data.isEdit && this.data.profileDisclaimer !== true) throw new Error('请阅读并同意免责声明');
+    if (!this.data.isEdit && !studentCard.length) throw Guide.invalid('studentCard', '请上传学生证照片');
     // 已绑定过邀请人的账号不能再改；其余情况（注册 / 资料编辑）填了就提交。
     const inviteCode = this.data.inviteBound ? '' : InviteBiz.normalize(this.data.inviteCode);
-    if (inviteCode && !INVITE_CODE_RE.test(inviteCode)) throw new Error('邀请码为6位大写字母或数字');
+    if (inviteCode && !INVITE_CODE_RE.test(inviteCode)) throw Guide.invalid('invite', '邀请码为6位大写字母或数字');
     const personal = [
       { mark: 'sex', title: '性别', type: 'select', val: this.data.profileSex },
       { mark: 'college', title: '学院', type: 'text', val: college },
@@ -630,6 +645,7 @@ async function bindSubmitTap(e) {
     forms.push({ mark: 'campus', title: '所在校区', type: 'select', val: this.data.campus });
     const data = validate.check({ ...this.data, formForms: forms }, projectSetting.USER_CHECK_FORM, this);
     if (!data) return;
+    Guide.clear(this);
     const pic = await cloudHelper.transTempPicOne(this.data.formPic, 'user/', '', false);
     if (!isCurrent()) return;
     for (const item of forms) if (item.type === 'image' && Array.isArray(item.val)) {
@@ -640,6 +656,7 @@ async function bindSubmitTap(e) {
     const isRegister = !this.data.isEdit;
     const result = await withTimeout(cloudHelper.callCloudSumbit(isRegister ? 'passport/register' : 'passport/edit_base', {
       name: this.data.formName, mobile: this.data.formMobile, pic, forms,
+      agreements: {accepted:true,userVersion:Agreements.VERSION,privacyVersion:Agreements.VERSION},
       // 邀请码随注册一起提交，由服务端在注册事务后立即绑定，避免中途丢失。
       inviteCode: isRegister ? inviteCode : ''
     }, { title: '保存中' }));
@@ -682,7 +699,8 @@ async function bindSubmitTap(e) {
     if (userId && !isCurrent()) return;
     const message = error && (error.msg || error.message) || '保存失败，请稍后重试';
     this.setData({ saveError: message });
+    if (error.formField) Guide.show(this, error.formField, message);
     pageHelper.showNoneToast(message);
   } finally { if (!this._unloaded) this.setData({ saving: false }); }
 }
-module.exports = { initProfileCapabilities, applyRegistrationPolicy, isProfileReady, loadCampuses, getCachedProfileUser, getProfileUser, invalidateProfileCache, clearLocalCaches, applyUser, finishProfile, bindProfileNameInput, bindProfileMobileInput, bindPicTap, bindChooseAvatar, bindWechatPhoneTap, bindWechatPhone, bindCampusChange, bindOpenCampusPicker, bindSelectCampus, bindConfirmCampus, bindCloseCampusPicker, bindProfileSheetTouchMove, bindGenderTap, bindOpenEducationPicker, bindCloseEducationPicker, bindEducationSearch, bindSelectEducation, bindEnterMajorManually, bindProfileFieldInput, bindDisclaimerTap, bindViewDisclaimer, bindChooseStudentCard, bindPreviewStudentCard, bindDeleteStudentCard, bindContactInput, bindAddressInput, bindOpenPlacePicker, bindSelectPlace, bindConfirmPlace, bindClearPlace, bindClosePlacePicker, bindPlaceSheetStop, bindAddContact, bindEditContact, bindSetDefaultContact, bindDeleteContact, bindCancelContact, bindSaveContact, bindAddAddress, bindEditAddress, bindSetDefaultAddress, bindDeleteAddress, bindCancelAddress, bindSaveAddress, bindSaveWechatProfile, bindSubmitTap, bindInviteCodeInput, bindCopyMyInviteCode, loadInviteInfo };
+module.exports = { initProfileCapabilities, applyRegistrationPolicy, isProfileReady, loadCampuses, getCachedProfileUser, getProfileUser, invalidateProfileCache, clearLocalCaches, applyUser, finishProfile, bindProfileNameInput, bindProfileMobileInput, bindPicTap, bindChooseAvatar, bindWechatPhoneTap, bindWechatPhone, bindCampusChange, bindOpenCampusPicker, bindSelectCampus, bindConfirmCampus, bindCloseCampusPicker, bindProfileSheetTouchMove, bindGenderTap, bindOpenEducationPicker, bindCloseEducationPicker, bindEducationSearch, bindSelectEducation, bindEnterMajorManually, bindProfileFieldInput, bindDisclaimerTap, bindViewDisclaimer, bindViewPrivacy, bindChooseStudentCard, bindPreviewStudentCard, bindDeleteStudentCard, bindContactInput, bindAddressInput, bindOpenPlacePicker, bindSelectPlace, bindConfirmPlace, bindClearPlace, bindClosePlacePicker, bindPlaceSheetStop, bindAddContact, bindEditContact, bindSetDefaultContact, bindDeleteContact, bindCancelContact, bindSaveContact, bindAddAddress, bindEditAddress, bindSetDefaultAddress, bindDeleteAddress, bindCancelAddress, bindSaveAddress, bindSaveWechatProfile, bindSubmitTap, bindInviteCodeInput, bindCopyMyInviteCode, loadInviteInfo };

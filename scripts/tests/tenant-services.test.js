@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const {fixture,A,B,C,tenant}=require('../test-support/tenant-services.cjs');
 const req=name=>'request_'+name.padEnd(16,'_');
 async function setup(){const f=fixture();await f.setup();return f;}
-async function publish(f,scope=A,name='publish') {return tenant.run(scope,()=>new (f.service('mail_service'))().insertMail('poster',{forms:f.forms(scope),requestId:req(name)}));}
+async function publish(f,scope=A,name='publish') {return tenant.run(scope,()=>new (f.service('mail_service'))().insertMail('poster',{agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms:f.forms(scope),requestId:req(name)}));}
 test('orders, configurations, quotas and notifications stay in their server-resolved campus',async()=>{
   const f=await setup(),a=await publish(f,A,'a'),b=await publish(f,B,'b'),c=await publish(f,C,'c');
   for(const [scope,id] of [[A,a._id],[B,b._id],[C,c._id]])await tenant.run(scope,async()=>{
@@ -149,7 +149,7 @@ test('the feed endpoint returns only current-campus opaque revisions',async()=>{
 });
 test('super admins can update the shared school registration policy without school grants',async()=>{
   const f=await setup();f.table('school').get(A.schoolId).registrationReview=true;
-  const Passport=f.service('passport_service'),p={name:'新同学',mobile:'13900000009',pic:'cloud://test/avatar.png',forms:[{mark:'sex',val:'女'},{mark:'college',val:'计算机学院'},{mark:'sub',val:'软件工程'},{mark:'studentId',val:'20240001'},{mark:'studentCard',val:['cloud://test/student-card.png']},{mark:'disclaimer',val:true},{mark:'campus',val:B.campusName}]};
+  const Passport=f.service('passport_service'),p={name:'新同学',mobile:'13900000009',pic:'cloud://test/avatar.png',agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms:[{mark:'sex',val:'女'},{mark:'college',val:'计算机学院'},{mark:'sub',val:'软件工程'},{mark:'studentId',val:'20240001'},{mark:'studentCard',val:['cloud://test/student-card.png']},{mark:'disclaimer',val:true},{mark:'campus',val:B.campusName}]};
   await tenant.run(B,()=>new Passport().wechatIdentityLogin('new-user'));
   const result=await tenant.run(B,()=>new Passport().register('new-user',p));assert.equal(result.token.status,0);
   const same=await tenant.run(A,()=>new Passport().login('new-user'));assert.equal(same.token.status,0);

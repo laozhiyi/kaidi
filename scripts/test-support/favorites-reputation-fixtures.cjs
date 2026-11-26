@@ -13,7 +13,7 @@ function scenarios() {
   const context = { orderId: 'order', orderTitle: '快递代取', targetName: '小陈同学', targetRole: '发布者', canReview: true, reviewed: false };
   return [
     { page: 'my/index/my_index', data: { user: { USER_NAME: '同学', USER_STATUS: 1 } }, expected: '我的信誉分' },
-    { page: 'order/index/order_index', data: { isLoad: true, tabIndex: 0, dataList: { list: [order], total: 1 } }, expected: '人收藏', absent: ['fab-publish'] },
+    { page: 'order/index/order_index', data: { isLoad: true, tabIndex: 0, dataList: { list: [order], total: 1 } }, expected: '收藏(', absent: ['fab-publish'] },
     { page: 'mail/detail/mail_detail', data: { isLoad: true, mail: order, detailUI: MailUI.detail(order) }, expected: '已收藏' },
     { page: 'my/reputation/my_reputation', data: { isLoad: true, summary: summary() }, expected: '你的信誉从 80 分开始' },
     { page: 'my/reputation/my_reputation', data: { loading: true }, expected: '正在获取信誉分' },

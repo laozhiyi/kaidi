@@ -16,15 +16,16 @@
     <text class="my-profile-arrow icon-right"></text>
   </view>
 
+  <view wx:if="{{user && user.USER_PROFILE_COMPLETE && !user.USER_ROLE && !agreementsCurrent}}" class="my-load-error" bindtap="bindUpdateAgreementsTap" role="button">服务协议与隐私政策已更新，点击阅读并确认</view>
   <view class="my-card my-wallet" bindtap="bindWalletTap" hover-class="my-tap">
     <view class="my-wallet-icon"><text class="icon-moneybag"></text></view>
     <view class="my-wallet-copy"><view class="my-link-title">积分商城</view><view class="my-link-desc">下单得积分 · 邀请好友得积分</view></view>
     <text class="my-arrow icon-right"></text>
   </view>
 
-<view class="my-card my-wallet" bindtap="bindSettlementTap" hover-class="my-tap" role="button" aria-label="跑腿结算，申请成为跑腿">
+<view class="my-card my-wallet" bindtap="bindSettlementTap" hover-class="my-tap" role="button" aria-label="跑腿申请与结算">
     <view class="my-link-icon"><text class="icon-moneybag"></text></view>
-    <view class="my-link-copy"><view class="my-link-title">跑腿结算</view><view class="my-link-desc">跑腿收益与结算管理</view></view>
+    <view class="my-link-copy"><view class="my-link-title">跑腿申请与结算</view><view class="my-link-desc">申请成为跑腿 · 收益与结算管理</view></view>
     <text class="my-arrow icon-right"></text>
   </view>
 
@@ -65,6 +66,7 @@
     <view class="my-settings-mask" catchtap="bindCloseSettings" catchtouchmove="bindSettingsTouchMove"></view>
     <view class="my-settings-sheet">
       <view class="my-settings-head"><view class="my-settings-title">设置与后台管理</view><button class="my-settings-close" bindtap="bindCloseSettings" aria-label="关闭设置"><text class="icon-close"></text></button></view>
+      <view class="my-link" bindtap="bindAgreementsTap"><view class="my-link-copy"><view class="my-link-title">服务协议与隐私</view><view class="my-link-desc">查看协议、结算规则和信息处理说明</view></view><text class="my-arrow icon-right"></text></view>
       <view class="my-link" bindtap="bindClearCacheTap" hover-class="my-tap"><view class="my-link-icon"><text class="icon-delete"></text></view><view class="my-link-copy"><view class="my-link-title">清除缓存</view><view class="my-link-desc">清理临时数据，保留登录和未提交的内容</view></view><text class="my-arrow icon-right"></text></view>
       <view class="my-link" bindtap="bindAdminTap" hover-class="my-tap"><view class="my-link-icon"><text class="icon-settings"></text></view><view class="my-link-copy"><view class="my-link-title">后台管理</view><view class="my-link-desc">已授权的工作人员可微信登录后台</view></view><text class="my-arrow icon-right"></text></view>
       <button class="my-settings-cancel" bindtap="bindCloseSettings">关闭</button>

@@ -13,9 +13,10 @@
 		<view class="order-tab {{tabIndex===1?'cur':''}}" data-idx="1" bindtap="bindTabTap">我的接单</view>
 		<view class="order-tab {{tabIndex===2?'cur':''}}" data-idx="2" bindtap="bindTabTap">我的发布</view>
 		<view class="order-tab {{tabIndex===3?'cur':''}}" data-idx="3" bindtap="bindTabTap">已完成</view>
-		<view class="order-tab-indicator" style="transform: translateX({{tabIndex*100}}%);"></view>
+		<view class="order-tab-indicator order-tab-indicator-{{tabIndex}}"></view>
 	</view>
 	<view wx:if="{{orderSyncError}}" class="order-fav-error" bindtap="_syncOrders">网络暂不稳定，点击更新订单</view>
+	<view wx:if="{{acceptingId && acceptProgress}}" class="order-accept-progress">{{acceptProgress}}</view>
 
 	<!-- ===== 筛选条（所有 Tab 共用，条件叠加生效） ===== -->
 	<view class="order-filter">

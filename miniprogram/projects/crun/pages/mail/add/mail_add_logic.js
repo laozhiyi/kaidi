@@ -1,3 +1,4 @@
+const Guide = require('../../../biz/form_guide_biz.js');
 const ProfileBiz = require('../../../biz/profile_biz.js');
 const Address = require('../../../biz/address_biz.js');
 const Deadline = require('../../../biz/deadline_biz.js');
@@ -258,7 +259,7 @@ module.exports = {
   }
  },
  _refreshFee(){const reference=this.data.packageTypes.reduce((sum,x,i)=>sum+x.count*this._prices[i],0);const total=this.data.packageItems.length ? this.data.packageItems.reduce((sum,x)=>sum+(Number(x.price)||0),0) : reference;const referencePrice=reference.toFixed(2);this.setData({totalFee:total.toFixed(2),payTotal:((Math.round(total*100)+(this.data.serviceType==='take'&&this.data.upstairs?Math.round((Number(this.data.tip)||0)*100):0))/100).toFixed(2),referencePrice});this._setFormVal('price',total.toFixed(2));},
- bindPackageItemInput(e){const index=Number(e.currentTarget.dataset.index);const mark=e.currentTarget.dataset.mark;const value=mark==='price'?feeInput(e.detail.value):e.detail.value;let items=this.data.packageItems.map((item,i)=>i===index?{...item,[mark]:value}:item); if(mark==='code' && String(e.detail.value || '').trim() && items[index] && items[index].images && items[index].images.length){ items[index]=Object.assign({},items[index],{images:[],imagePreviews:[]}); } this.setData({packageItems:items});this._setFormVal('packages',items);if(mark==='price'){this._refreshFee();return value;}},
+ bindPackageItemInput(e){const index=Number(e.currentTarget.dataset.index);Guide.clear(this, this.data.serviceType === 'buy' ? 'purchase' : 'parcel-' + (this.data.packageItems[index] || {}).id);const mark=e.currentTarget.dataset.mark;const value=mark==='price'?feeInput(e.detail.value):e.detail.value;let items=this.data.packageItems.map((item,i)=>i===index?{...item,[mark]:value}:item); if(mark==='code' && String(e.detail.value || '').trim() && items[index] && items[index].images && items[index].images.length){ items[index]=Object.assign({},items[index],{images:[],imagePreviews:[]}); } this.setData({packageItems:items});this._setFormVal('packages',items);if(mark==='price'){this._refreshFee();return value;}},
  bindPackagePriceBlur(e){const index=Number(e.currentTarget.dataset.index);const item=this.data.packageItems[index];if(!item)return;const value=feeComplete(e.detail.value,item.referencePrice);if(value===item.price)return value;const items=this.data.packageItems.map((x,i)=>i===index?{...x,price:value}:x);this.setData({packageItems:items});this._setFormVal('packages',items);this._refreshFee();return value;},
  bindCustomPrice(e){const value=String(e.detail.value||'').replace(/[^0-9.]/g,'');this.setData({customPrice:value});this._setFormVal('price',value);},
 
@@ -415,6 +416,11 @@ module.exports = {
 	},
 
 	_setFormVal: function (mark, val) {
+    Guide.clear(this, mark);
+    if (mark === 'packages') {
+     const field = this.data.guideField || '';
+     if (field === 'packages') Guide.clear(this);
+    }
 		const form = this.selectComponent('#cmpt-form');
 		if (form) form.setOneFormVal(mark, val);
 		if (this.data.formForms) this.setData({ formForms: this.data.formForms.map(item => item.mark === mark ? { ...item, val } : item) });
@@ -625,6 +631,7 @@ module.exports = {
     const items = this.data.packageItems.slice();
     items[index] = Object.assign({}, items[index], { images: [file.tempFilePath], imagePreviews: [], code:'' });
     this.setData({ packageItems: items });
+    Guide.clear(this, 'parcel-' + (items[index] || {}).id);
     this._setFormVal('packages', items);
    } });
   },
@@ -654,6 +661,7 @@ module.exports = {
      const items = this.data.packageItems.slice();
      items[index] = Object.assign({}, items[index], { images: [], imagePreviews: [] });
      this.setData({ packageItems: items });
+     Guide.clear(this, 'parcel-' + (items[index] || {}).id);
      this._setFormVal('packages', items);
      wx.showToast({ title: '已删除截图', icon: 'none' });
     },
@@ -684,6 +692,7 @@ module.exports = {
 
 	// 上楼费由发布人自定义：仅在需要送上楼时填写，0~20 元，最多两位小数；不合法时不计入合计并提示。
 	bindTipInput: function (e) {
+		Guide.clear(this, 'tip');
 		const tipInput = String(e.detail.value || '').trim();
 		const valid = !tipInput || (/^\d{1,2}(\.\d{1,2})?$/.test(tipInput) && Number(tipInput) <= 20);
 		this.setData({ tipInput, tip: valid && tipInput ? Number(tipInput) : 0, tipError: valid ? '' : '上楼费须在0至20元之间，最多两位小数' });
@@ -700,6 +709,7 @@ module.exports = {
 
 	bindEndSelect: function (e) {
 		this._endEdited = true;
+		Guide.clear(this, 'deadline');
 		this.setData({ formEnd: e.detail, formEndFocus: '' });
 	},
 
@@ -733,6 +743,7 @@ module.exports = {
   const index = this.data.packageItems.findIndex(item => item.id === this.data.packagePickupId);
   if (index < 0) { this.bindClosePackagePickup(); return; }
   const items = this.data.packageItems.map((item, at) => at === index ? { ...item, pickupPoint } : item);
+  Guide.clear(this, 'parcel-' + this.data.packagePickupId);
   this.setData({ packageItems: items }); this._setFormVal('packages', items);
   this.bindClosePackagePickup();
  },
@@ -777,6 +788,7 @@ module.exports = {
 		// These flags protect this order's draft, not all future orders on the home page.
 		this._profileEdited = {};
 		const packageTypes = (this.data.packageTypes || []).map((item, index) => Object.assign({}, item, { count: index === 0 ? initialCount : 0 }));
+		Guide.clear(this);
 		this.setData({ editId: '', mailId: '', formEnd: end, formEndFocus: '', mailValues, proofImages: [], proofPreview: {}, packageItems: [], packageTypes, totalCount: initialCount, totalFee: initialCount ? firstPrice : '0.00', urgent: false, riderGender: 'any', upstairs: false, tip: 0, tipInput: '', tipError: '', campus, campusIndex: Math.max(0, (this.data.campuses || []).indexOf(campus)) });
 		this._syncPackageItems([]);
 		this._setFormVal('title', this.data.serviceName);
@@ -816,12 +828,36 @@ module.exports = {
    }
    return rows;
   },
+ _validateVisibleFields() {
+  const packages = Array.isArray(this.data.packageItems) ? this.data.packageItems : [];
+  if (!packages.length) throw Guide.invalid('packages', '请至少选择1件包裹');
+  if (this.data.serviceType === 'buy') Plugins.get('buy').validate(this.data.mailValues || {});
+  for (let index = 0; index < packages.length; index++) {
+   const item = packages[index], field = this.data.serviceType === 'buy' ? 'purchase' : 'parcel-' + item.id;
+   if (!String(item.pickupPoint || '').trim()) throw Guide.invalid(field, this.data.serviceType === 'buy' ? '请填写购买地点' : '请填写第' + (index + 1) + '件包裹的取件点');
+   if (!/^\d+(?:\.\d{1,2})?$/.test(String(item.price)) || Number(item.price) < MIN_FEE || Number(item.price) > 10000) throw Guide.invalid(field, '请填写' + (this.data.serviceType === 'buy' ? '本单' : '第' + (index + 1) + '件包裹的') + '跑腿费，金额须在1至10000元之间，最多两位小数');
+   if (this.data.serviceType === 'take' && !String(item.code || '').trim() && !(item.images && item.images.length)) throw Guide.invalid(field, '请填写第' + (index + 1) + '件包裹的取件码，或上传取件码截图');
+  }
+  const values = this.data.mailValues || {};
+  if (!String(values.address2 || '').trim()) throw Guide.invalid('address2', '请填写送达地址');
+  if (this.data.serviceType === 'take' && this.data.tipError) throw Guide.invalid('tip', this.data.tipError);
+  if (!String(values.poster || '').trim()) throw Guide.invalid('poster', '请填写联系人');
+  if (!/^1[3-9]\d{9}$/.test(String(values.tel || '').trim())) throw Guide.invalid('tel', '请填写正确的11位手机号');
+  if (!String(this.data.formEnd || '').trim()) throw Guide.invalid('deadline', '请选择期待送达时间');
+  if (this._endEdited) {
+   const range = Deadline.parseRange(this.data.formEnd);
+   const reason = range ? Deadline.validate(range, Date.now(), this.data.expectLead || 0) : '请选择完整的送达时间段';
+   if (reason) throw Guide.invalid('deadline', reason);
+  }
+ },
  bindFormSubmit: async function () {
   const serviceState = MailUI.service(this.data.config);
   this.setData({ serviceState });
   if (!this.data.editId && this.data.config && this.data.config.enabled === true && !serviceState.canPublish) { Ops.error(new Error(serviceState.description)); return; }
   if (!this.data.config || this.data.configError || this.data.pageLoading || (this.data.config.enabled !== true && !this.data.editId)) { Ops.error(new Error('请先加载有效运营配置，并确认服务已开放')); return; }
   if(this._submitting || !this.data.config)return;
+  try { this._validateVisibleFields(); } catch (error) { Guide.show(this, error.formField, error.message); return; }
+  Guide.clear(this);
   // 发单前明确告知贵重物品风险：已经看过提醒，后续只能协助配合调查。
   if (!this.data.editId && !this._valuableAck) {
    if (this._valuableAsking) return;
@@ -887,6 +923,6 @@ module.exports = {
     catch(error) { Ops.error(error); }
     wx.navigateTo({url:pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id='+encodeURIComponent(id))});
    } else wx.showModal({title:this.data.editId?'保存成功':'发布成功',content:this.data.config.offlineNotice,showCancel:false,success:()=>this._showMailList()});
-  }catch(e){wx.hideLoading();Ops.error(e);}finally{this._submitting=false;this.setData({submitting:false});this._refreshPendingSubmission();}
+  }catch(e){wx.hideLoading();if(e.formField) Guide.show(this,e.formField,e.message); else Ops.error(e);}finally{this._submitting=false;this.setData({submitting:false});this._refreshPendingSubmission();}
  },
 };

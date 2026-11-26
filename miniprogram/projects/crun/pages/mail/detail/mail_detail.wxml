@@ -1,5 +1,6 @@
 <import src="../tpl/mail_detail_tpl.wxml"/>
 <view class="delivery-page">
+ <view wx:if="{{accepting && acceptProgress}}" class="od-config-note">{{acceptProgress}}</view>
  <view wx:if="{{isLoad !== true}}" class="od-state"><view class="od-state-icon"><text class="icon-{{isLoad === null ? 'time' : 'info'}}"></text></view><view class="od-state-title">{{isLoad === null ? '正在获取订单' : isLoad === 'notexist' ? '订单暂不可用' : '暂时无法加载'}}</view><view class="od-state-note">{{isLoad === null ? '为你整理本次代取的最新进展' : isLoad === 'notexist' ? '订单不存在或已删除，请返回列表选择其他订单' : errorMessage}}</view><button wx:if="{{isLoad === false}}" class="od-primary" bindtap="_loadDetail">重新加载</button><view wx:if="{{isLoad !== null}}" class="od-state-link" bindtap="bindBackOrders">返回订单列表</view></view>
  <block wx:if="{{isLoad === true && mail}}">
   <template is="mailDetailContent" data="{{mail: mail, ui: detailUI, actionDisabled: accepting || isLoad !== true || errorMessage}}"/>

@@ -104,7 +104,7 @@ function fixture({ projectFields = false } = {}) {
  store.limitAdmin = load('operation_store.js').limitAdmin;
  store.assertRequestOpen = load('operation_store.js').assertRequestOpen;
  store.assertRequestScope = load('operation_store.js').assertRequestScope;
- function user(id,extra={}){table('user').set(id,{_id:id,_pid:'crun',USER_MINI_OPENID:id,USER_STATUS:1,USER_NAME:id,USER_MOBILE:'13800000000',USER_MOBILE_VERIFIED:true,USER_PROFILE_COMPLETE:true,USER_PIC:'cloud://fixture/avatar',USER_FORMS:[{mark:'sex',val:'男'},{mark:'college',val:'计算机学院'},{mark:'sub',val:'软件工程'},{mark:'campus',val:'育才校区'}],...extra});}
+ function user(id,extra={}){table('user').set(id,{_id:id,_pid:'crun',USER_MINI_OPENID:id,USER_STATUS:1,USER_NAME:id,USER_MOBILE:'13800000000',USER_MOBILE_VERIFIED:true,USER_PROFILE_COMPLETE:true,USER_AGREEMENTS:{userVersion:'2026-11-27',privacyVersion:'2026-11-27',acceptedAt:1},USER_PIC:'cloud://fixture/avatar',USER_FORMS:[{mark:'sex',val:'男'},{mark:'college',val:'计算机学院'},{mark:'sub',val:'软件工程'},{mark:'campus',val:'育才校区'}],...extra});}
  user('poster');user('rider');user('rider2');user('other');table('admin').set('admin',{_id:'admin',_pid:'crun',ADMIN_STATUS:1,ADMIN_TYPE:1});
  const Config=load('operation_config_service.js');const config={...Config.DEFAULTS,enabled:true,openHour:0,closeHour:24,locations:load('tenant_defaults.js').locations};table('operation_config').set(store.key('crun','config'),{value:config});
  const forms=()=>Object.entries({title:'快递代取',code:'123-456',address1:'菜鸟一期',address2:'宿舍101',poster:'小王',tel:'13800000000',campus:'育才校区',small:1,medium:0,large:0,img:[],urgent:false}).map(([mark,val])=>({mark,val}));

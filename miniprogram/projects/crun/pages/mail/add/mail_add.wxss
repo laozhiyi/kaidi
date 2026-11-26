@@ -230,3 +230,8 @@
 .publish-page .pub-price-symbol { flex-shrink:0; color:#254e7f; font-size:24rpx; font-weight:600; }
 .publish-page .pub-package-custom-price .pub-input { padding:0; background:transparent; font-size:28rpx; font-weight:600; }
 
+
+/* Keep the reason beside its target, with more than color alone. */
+.form-guide-invalid { position:relative; outline:2rpx solid #c84747; outline-offset:4rpx; border-radius:8rpx; }
+.form-guide-message { display:block; width:100%; flex-basis:100%; box-sizing:border-box; color:#b33737; background:#fff5f4; font-size:24rpx; line-height:1.6; padding:12rpx; margin:8rpx 0; }
+.profile-field.form-guide-invalid,.profile-choice-field.form-guide-invalid,.profile-campus-control.form-guide-invalid,.settlement-agreement.form-guide-invalid { flex-wrap:wrap; }

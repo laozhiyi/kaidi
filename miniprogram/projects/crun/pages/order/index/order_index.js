@@ -370,14 +370,26 @@ Page({
 		const id = e.currentTarget.dataset.id;
 		if (!id || this._accepting) return;
 		this._accepting = true;
-		this.setData({ acceptingId: id });
+		this.setData({ acceptingId: id, acceptProgress: '正在检查接单资格，请稍候…' });
+		if (typeof console.info === 'function') console.info('[order-accept]', { entry: 'list', stage: 'started' });
+		let loading = false;
 		try {
-			if (!await PassportBiz.loginMustCancelWin(this) || !this._visible) return;
+			if (!await PassportBiz.loginMustCancelWin(this) || !this._visible) {
+				if (typeof console.info === 'function') console.info('[order-accept]', { entry: 'list', stage: 'login_stopped', visible: !!this._visible });
+				return;
+			}
 			const order = (this.data.dataList && this.data.dataList.list || []).find(row => row._id === id);
-			if (!await SettlementGate.ensureSettlement(order) || !this._visible) return;
+			if (!await SettlementGate.ensureSettlement(order) || !this._visible) {
+				if (typeof console.info === 'function') console.info('[order-accept]', { entry: 'list', stage: 'qualification_stopped', visible: !!this._visible });
+				return;
+			}
 			const confirm = await pageHelper.showConfirm('确认接单后请按订单要求尽快取件或购买，是否继续？');
 			if (!confirm || !this._visible) return;
+			this.setData({ acceptProgress: '正在提交接单，请稍候…' });
+			if (typeof console.info === 'function') console.info('[order-accept]', { entry: 'list', stage: 'submitting' });
+			wx.showLoading({title:'接单中，请稍候',mask:true}); loading = true;
 			const res = {data:await Ops.command('mail/accept', { id })};
+			wx.hideLoading(); loading = false;
 			if (!this._visible) return;
 
 			if (res && res.data && res.data.id) {
@@ -390,8 +402,9 @@ Page({
 				pageHelper.showNoneToast('手慢了，订单已被接走');
 			}
 		} catch (err) {
+			if (loading) { wx.hideLoading(); loading = false; }
 			if (this._visible) { Ops.error(err); await this._syncOrders(); }
-		} finally { this._accepting = false; if (!this._unloaded) this.setData({ acceptingId: '' }); }
+		} finally { if (loading) wx.hideLoading(); this._accepting = false; if (!this._unloaded) this.setData({ acceptingId: '', acceptProgress: '' }); }
 	},
 
 	/** 发布者从列表发起收货确认，详情页读取最新状态后执行现有核对流程。 */

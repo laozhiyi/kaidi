@@ -35,12 +35,12 @@ function detailFixture(name, status, role, patch = {}, progressExpected) {
   data: { isLoad: true, loading: false, id: order._id, mail: { ...order, canAccept: role === 'public' && status === 0, canSeeCode: role !== 'public' }, detailUI } };
 }
 function scenarios() {
- const publish = { isLoad: true, config, campuses: config.campuses, campus: '育才校区', campusIndex: 0, serviceState: UI.service(config, now), formEnd: '2026-09-10 18:00', formForms: [], fields: [] };
+ const publish = { isLoad: true, config, totalCount: 1, serviceType: 'take', campuses: config.campuses, campus: '育才校区', campusIndex: 0, serviceState: UI.service(config, now), formEnd: '2026-09-10 18:00', formForms: [], fields: [] };
  const fixtures = [
-  { name: 'publish-open', page: 'add/mail_add', data: publish, expected: '正常接单', absent: ['暂时停止接单'] },
+  { name: 'publish-open', page: 'add/mail_add', data: publish, expected: '快递，帮你带回来', absent: ['暂时停止接单'] },
   { name: 'publish-pending-recovery', page: 'add/mail_add', data: { ...publish, hasPendingSubmission: true }, expected: '核对上次提交' },
   { name: 'publish-paused', page: 'add/mail_add', data: { ...publish, config: { ...config, enabled: false }, serviceState: UI.service({ ...config, enabled: false }, now) }, expected: '管理员已暂停新订单' },
-  { name: 'publish-late-unrestricted', page: 'add/mail_add', data: { ...publish, serviceState: UI.service(config, Date.parse('2026-09-07T23:00:00+08:00')) }, expected: '全天可发布', present: ['发布代取订单'], absent: ['休息中，营业后可发布', '暂时停止接单'] },
+  { name: 'publish-late-unrestricted', page: 'add/mail_add', data: { ...publish, serviceState: UI.service(config, Date.parse('2026-09-07T23:00:00+08:00')) }, expected: '发布代取订单', present: ['发布代取订单'], absent: ['休息中，营业后可发布', '暂时停止接单'] },
   { name: 'publish-late-hours', page: 'add/mail_add', data: { ...publish, config: { ...config, enforceBusinessHours: true }, serviceState: UI.service({ ...config, enforceBusinessHours: true }, Date.parse('2026-09-07T23:00:00+08:00')) }, expected: '休息中，营业后可发布', absent: ['正常接单'] },
   { name: 'publish-error', page: 'add/mail_add', data: { isLoad: false, configError: true, loadError: '网络暂不可用，请检查连接后重试' }, expected: '重新加载' },
   { name: 'publish-stations', page: 'add/mail_add', data: { ...publish, packagePickupVisible: true, packagePickupNumber: 1, pickupStations: require('../../cloudfunctions/mcloud/project/crun/service/tenant_defaults.js').locations.pickupStations }, expected: '选择常用快递点', present: ['中通','邮政','京东','其他取件点','确认取件点'], absent: ['从哪里取，送到哪里','取件快递点'] },
@@ -81,7 +81,7 @@ function scenarios() {
  for (const available of [true, false]) {
   const updateSheet = detailFixture('detail-proof-update-sheet-' + available, 2, 'rider', { MAIL_DELIVERY_PROOF: proof });
   Object.assign(updateSheet.data, { panel: 'update_proof', note: proof.note, images: [proofId], imagePreviews: { [proofId]: available ? image : '' } });
-  updateSheet.present.push('更新送达凭证', '保存更新', '至少保留1张照片');
+  updateSheet.present.push('更新送达凭证', '保存更新', '凭证（二选一，至少1份）');
   if (!available) updateSheet.present.push('照片暂不可用');
   fixtures.push(updateSheet);
  }

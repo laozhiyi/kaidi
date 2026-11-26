@@ -1,4 +1,5 @@
-<view class="agreement-page">
+<view wx:if="{{error}}" class="agreement-page">{{error}}</view>
+<view wx:elif="{{agreement}}" class="agreement-page">
 	<view class="agreement-title">{{agreement.title}}</view>
 	<view wx:for="{{agreement.meta}}" wx:key="*this" class="agreement-meta">{{item}}</view>
 	<block wx:for="{{agreement.blocks}}" wx:key="index">

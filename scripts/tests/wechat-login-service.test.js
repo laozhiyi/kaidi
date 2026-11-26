@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { fixture, A, B, C, tenant } = require('../test-support/tenant-services.cjs');
 const APPID = 'wx3d8dc6fb0e764ec7';
 const mobile = '13912345678';
-const profile = (scope = A) => ({ name: '新同学', mobile, pic: 'cloud://test/avatar.png', forms: [
+const profile = (scope = A) => ({ name: '新同学', mobile, pic: 'cloud://test/avatar.png', agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: [
   { mark: 'sex', val: '女' }, { mark: 'college', val: '计算机学院' },
   { mark: 'sub', val: '软件工程' }, { mark: 'studentId', val: '20240001' }, { mark: 'studentCard', val: ['cloud://test/student-card.png'] }, { mark: 'disclaimer', val: true }, { mark: 'campus', val: scope.campusName }
 ] });
@@ -33,7 +33,7 @@ test('WeChat nickname and avatar save independently and survive later identity l
   await tenant.run(A, () => f.passport().wechatIdentityLogin('new-user'));
   const owners = f.table('identity_unique').size;
   const saved = await tenant.run(A, () => f.passport().saveWechatProfile('new-user', {
-    name: '微信昵称', pic: 'cloud://test/wechat-avatar.jpg', mobile, forms: profile().forms, USER_STATUS: 1, USER_PROFILE_COMPLETE: true
+    name: '微信昵称', pic: 'cloud://test/wechat-avatar.jpg', mobile, agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: profile().forms, USER_STATUS: 1, USER_PROFILE_COMPLETE: true
   }));
   assert.equal(saved.token.name, '微信昵称'); assert.equal(saved.token.pic, 'cloud://test/wechat-avatar.jpg');
   assert.equal(saved.token.status, 0); assert.equal(saved.token.profileComplete, false); assert.equal(saved.token.phoneVerified, false);
@@ -248,7 +248,7 @@ test('profile completion after WeChat login leaves the phone unverified and perm
   assert.equal(f.phoneCalls.length, 0);
   const detail = await tenant.run(A, () => f.passport().getMyDetail('new-user'));
   assert.equal(detail.allowManualRegistration, true);
-  const order = await tenant.run(A, () => new (f.service('mail_service'))().insertMail('new-user', { forms: f.forms(), requestId: 'manual_publish_0001' }));
+  const order = await tenant.run(A, () => new (f.service('mail_service'))().insertMail('new-user', { agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: f.forms(), requestId: 'manual_publish_0001' }));
   assert.equal(f.table('mail').get(order._id).MAIL_USER_ID, 'new-user');
 });
 
@@ -296,7 +296,7 @@ test('profile completion retains required fields and rejects users who have not 
   await assert.rejects(tenant.run(A, () => f.passport().editBase('new-user', profile())), /登录/);
   await tenant.run(A, () => f.passport().wechatIdentityLogin('new-user'));
   const before = structuredClone(f.row());
-  for (const change of [{ mobile: '123' }, { forms: [] }, { pic: '' }, { name: '' }]) {
+  for (const change of [{ mobile: '123' }, { agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: [] }, { pic: '' }, { name: '' }]) {
     await assert.rejects(tenant.run(A, () => f.passport().register('new-user', { ...profile(), ...change })), /手机|资料|性别|头像|昵称/);
     assert.deepEqual(f.row(), before);
   }
@@ -540,7 +540,7 @@ test('both profile save routes enforce first registration and protect archived s
     input.pic = owned + 'avatar.jpg';
     await assert.rejects(call('editBase', input), /手机号/);
     await call('verifyProfilePhone', { code: 'phone-code' });
-    const incomplete = { ...input, forms: input.forms.filter(item => !['studentId', 'studentCard', 'disclaimer'].includes(item.mark)) };
+    const incomplete = { ...input, agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: input.forms.filter(item => !['studentId', 'studentCard', 'disclaimer'].includes(item.mark)) };
     for (const method of ['register', 'editBase']) await assert.rejects(call(method, incomplete), /学号/);
     const card = input.forms.find(item => item.mark === 'studentCard');
     card.val = ['https://example.test/invalid.jpg'];

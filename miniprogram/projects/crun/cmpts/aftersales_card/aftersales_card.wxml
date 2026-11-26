@@ -1,25 +1,12 @@
 <view class="as-card">
-  <view class="as-head"><text class="as-title">售后群</text><text class="as-tag">遇到问题可加群咨询</text></view>
-  <view wx:if="{{loading}}" class="as-muted">正在加载…</view>
-  <view wx:elif="{{error}}" class="as-muted">售后群信息加载失败<text class="as-link" bindtap="load">重试</text></view>
-  <block wx:else>
-    <block wx:for="{{nodes}}" wx:key="index">
-      <view wx:if="{{item.type==='text'}}" class="as-text-row">
-        <text class="as-text" user-select>{{item.val}}</text>
-        <text class="as-copy" bindtap="bindCopy" data-text="{{item.val}}" role="button" aria-label="复制群信息">复制</text>
-      </view>
-      <view wx:elif="{{item.type==='img'}}" class="as-qr-wrap">
-        <image class="as-qr" src="{{item.val}}" mode="widthFix" data-url="{{item.val}}" bindtap="bindPreview" show-menu-by-longpress />
-        <text class="as-save" bindtap="bindSave" data-url="{{item.val}}" role="button" aria-label="保存二维码">保存二维码</text>
-      </view>
-    </block>
-    <!-- 后台未配置图片时用内置二维码兜底 -->
-    <block wx:if="{{!hasImage}}">
-      <view class="as-qr-wrap">
-        <image class="as-qr" src="{{fallbackQr}}" mode="widthFix" data-url="{{fallbackQr}}" bindtap="bindPreview" show-menu-by-longpress />
-        <text class="as-save" bindtap="bindSave" data-url="{{fallbackQr}}" role="button" aria-label="保存售后群二维码">保存二维码</text>
-      </view>
-      <view class="as-qr-tip">长按识别，或保存到相册后用微信「扫一扫 → 相册」加入。</view>
-    </block>
-  </block>
+ <view class="as-head"><text class="as-title">云速取-反馈群</text><text class="as-tag">QQ 群交流</text></view>
+ <view wx:if="{{loading}}" class="as-muted">正在更新群信息…</view>
+ <view wx:if="{{error}}" class="as-muted">群信息暂未更新，可先使用以下群号<text class="as-link" bindtap="load">重试</text></view>
+ <view class="as-number-row">
+  <view class="as-number-copy"><view class="as-number-label">QQ 群号</view><text class="as-number" user-select>{{group.number}}</text></view>
+  <button class="as-copy" bindtap="bindCopy" aria-label="复制 QQ 群号">复制群号</button>
+ </view>
+ <view class="as-tip">复制群号后，打开 QQ，搜索群号并申请入群。</view>
+ <view wx:if="{{group.note}}" class="as-note"><text user-select>{{group.note}}</text></view>
+ <view class="as-muted as-footnote">订单问题请同时在小程序内提交反馈，便于管理员核实与处理。</view>
 </view>

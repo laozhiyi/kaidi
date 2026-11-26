@@ -8,6 +8,7 @@ const InviteBiz = require('../../../biz/invite_biz.js');
 const Notifications = require('../../../biz/notification_biz.js');
 const accountActions = require('../account_actions.js');
 const Ops = require('../../../biz/operations_biz.js');
+const Agreements = require('../../../public/agreements.js');
 
 function profileFromToken(token) {
   if (!token) return null;
@@ -18,6 +19,7 @@ function profileFromToken(token) {
     USER_STATUS: token.status,
     USER_MOBILE_VERIFIED: token.phoneVerified,
     USER_PROFILE_COMPLETE: token.profileComplete,
+    USER_AGREEMENTS: token.agreements,
     allowManualRegistration: token.allowManualRegistration,
     profilePhoneRequired: token.profilePhoneRequired
   };
@@ -31,7 +33,7 @@ Page(Object.assign({
   },
   _showSavedProfile() {
     const token = PassportBiz.getToken();
-    this.setData({ user: profileFromToken(token), hasSession: !!token });
+    this.setData({ user: profileFromToken(token), hasSession: !!token, agreementsCurrent: Agreements.currentUser(token && token.agreements) });
   },
   async onShow() {
     this._visible = true;
@@ -66,7 +68,7 @@ Page(Object.assign({
         this._showSavedProfile();
         return;
       }
-      this.setData({ user, hasSession: true });
+      this.setData({ user, hasSession: true, agreementsCurrent: Agreements.currentUser(user.USER_AGREEMENTS) });
       if (user.USER_STATUS === 1 && profileMethods.isProfileReady(user)) InviteBiz.acceptPending().catch(() => {});
     }).catch(() => {
       if (!isCurrent()) return;
@@ -116,6 +118,11 @@ Page(Object.assign({
   bindFeedbackTap() { return this._openUserPage('/projects/crun/pages/feedback/index/feedback_index'); },
   bindProfileContactTap() { return this._openUserPage('/projects/crun/pages/my/contact/contact'); },
   bindProfileAddressTap() { return this._openUserPage('/projects/crun/pages/my/address/address'); },
+  bindUpdateAgreementsTap() { return this._openUserPage('/projects/crun/pages/my/personal/my_personal'); },
+  bindAgreementsTap() {
+    const titles=['用户服务协议','骑手服务与结算协议','隐私政策','实名与结算信息处理说明'];
+    wx.showActionSheet({itemList:titles,success:r=>{const key=['user','rider','privacy','identity'][r.tapIndex];if(key)wx.navigateTo({url:'/projects/crun/pages/about/agreement/about_agreement?key='+key});}});
+  },
   bindInviteTap() { return this._openUserPage('/projects/crun/pages/invite/index/invite_index'); },
   async bindSettlementTap() {
     if (this._openingSettlement) return;

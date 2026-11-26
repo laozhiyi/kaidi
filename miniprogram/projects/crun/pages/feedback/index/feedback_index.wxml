@@ -44,6 +44,7 @@
 				<text class="fb-order-empty-arrow">›</text>
 			</view>
 
+            <view wx:if="{{orderBrief}}" class="fb-order-tip">提交投诉不会自动暂停确认收货或分账。管理员核实后可将未完成订单转入异常处理；请及时查看处理回复。</view>
 			<view wx:if="{{orderLoading}}" class="fb-order-tip">正在核实关联订单…</view>
 			<view wx:elif="{{orderError}}" class="fb-order-tip fb-order-tip-error">{{orderError}}<text class="retry-link" bindtap="loadOrder">重新加载</text></view>
 		</view>

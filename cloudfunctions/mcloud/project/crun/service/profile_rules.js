@@ -38,7 +38,7 @@ const hasImage = value => {
 function requiredForRegistration(forms) {
   if (!STUDENT_ID_RE.test(String(formValue(forms, 'studentId') || '').trim())) return '请填写学号（6-20位字母或数字）';
   if (!hasImage(formValue(forms, 'studentCard'))) return '请上传学生证照片';
-  if (formValue(forms, 'disclaimer') !== true) return '请阅读并同意免责声明';
+  // 新版协议由 PassportService 校验版本并保存，历史免责声明不作为新版同意。
   return '';
 }
 

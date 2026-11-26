@@ -52,6 +52,12 @@ page {
 	transition: transform .25s ease;
 }
 
+.order-tab-indicator-0 { transform: translateX(0); }
+.order-tab-indicator-1 { transform: translateX(100%); }
+.order-tab-indicator-2 { transform: translateX(200%); }
+.order-tab-indicator-3 { transform: translateX(300%); }
+.order-accept-progress { margin:16rpx 24rpx; padding:20rpx 24rpx; border:1rpx solid #d5e5f8; border-radius:12rpx; background:#edf5ff; color:#2864a7; font-size:26rpx; line-height:1.6; }
+
 /* ===== 筛选条 ===== */
 .order-filter {
 	position: sticky;

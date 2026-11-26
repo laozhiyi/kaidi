@@ -1,3 +1,4 @@
+const Guide = require('../../../biz/form_guide_biz.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
 const InviteBiz = require('../../../biz/invite_biz.js');
@@ -8,6 +9,7 @@ Page(Object.assign({
     canGetWechatPhone: true, canChooseWechatAvatar: true, canUseWechatNickname: true, loadError: '' },
   async onLoad(options = {}) {
     ProjectBiz.initPage(this);
+    this._focusAgreement = options.focus === 'agreement';
     let retUrl = '';
     try { retUrl = decodeURIComponent(options.retUrl || ''); } catch (_) {}
     this.setData({ retUrl, returnToPublish: options.returnToPublish === '1' });
@@ -20,6 +22,13 @@ Page(Object.assign({
       profileMethods.applyUser(this, cached); this.setData({ isLoad: true, user: cached });
     }
     await Promise.all([profileMethods.loadCampuses(this), this._loadDetail()]);
+    this._focusAgreementIfReady();
+  },
+  _focusAgreementIfReady() {
+    if (!this._unloaded && this._focusAgreement && this.data.isLoad) {
+      this._focusAgreement = false;
+      Guide.show(this, 'agreement', '请阅读协议，并自主勾选后保存资料；返回后可继续原来的操作。');
+    }
   },
   onUnload() { this._unloaded = true; },
   _openLogin() {
@@ -41,6 +50,7 @@ Page(Object.assign({
       profileMethods.applyUser(this, user);
       profileMethods.loadInviteInfo(this);
       this.setData({ isLoad: true, user, ...(user.profilePhoneRequired ? { isEdit: user.USER_PROFILE_COMPLETE === true } : {}) });
+      this._focusAgreementIfReady();
     } catch (error) {
       if (!isCurrent()) return;
       if (!PassportBiz.getUserId()) return this._openLogin();

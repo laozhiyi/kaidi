@@ -6,6 +6,7 @@
  */
 
 module.exports = {
+ 'settlement/accept':'settlement_controller@accept',
  'settlement/status':'settlement_controller@status',
  'settlement/open':'settlement_controller@open',
  'settlement/change':'settlement_controller@change',

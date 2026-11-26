@@ -283,3 +283,22 @@ test('manual sessions revalidate the server policy so strict mode takes effect w
   assert.equal(f.token.allowManualRegistration, false);
   assert.equal(f.passport.isLogin(), false);
 });
+
+test('interactive login revalidation reports network failure instead of silently stopping acceptance', async () => {
+ const f=client({...ready,phoneVerified:false,allowManualRegistration:true});
+ f.responses.set('passport/login',new Error('网络响应超时'));
+ const page={_visible:true,data:{},setData(update){Object.assign(this.data,update);}};
+ assert.equal(await f.passport.loginMustCancelWin(page),false);
+ assert.equal(f.modals.length,1);assert.equal(f.modals[0].title,'登录检查未完成');
+ assert.match(f.modals[0].content,/超时/);assert.equal(f.token.id,ready.id);
+});
+
+test('a failed silent login or a reply for a hidden page does not interrupt the current page', async () => {
+ for(const silent of [true,false]){
+  const f=client({...ready,phoneVerified:false,allowManualRegistration:true});
+  f.responses.set('passport/login',new Error('offline'));
+  if(silent)await f.passport.loginSilenceMust();
+  else await f.passport.loginMustCancelWin({_visible:false,setData(){}});
+  assert.equal(f.modals.length,0);
+ }
+});

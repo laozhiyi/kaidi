@@ -10,8 +10,8 @@ function settlement(reply = async () => {throw new Error('结算服务暂不可�
  const modals = [];
  vm.runInNewContext(fs.readFileSync(path.join(root, 'miniprogram/projects/crun/pages/my/settlement/settlement.js'), 'utf8'), {
   Page: page => { definition = page; },
-  require: name => name.includes('operations_biz') ? {get:reply} : name.includes('agreements') ? require('../../miniprogram/projects/crun/public/agreements.js') : {initPage() {}},
-  wx: { showModal: options => modals.push(options) }
+  require: name => name.includes('form_guide_biz') ? require('../test-support/miniprogram-module.cjs').runMiniProgram(path.join(root,'miniprogram/projects/crun/biz/form_guide_biz.js'),{wx:{}}) : name.includes('operations_biz') ? {get:reply} : name.includes('agreements') ? require('../../miniprogram/projects/crun/public/agreements.js') : {initPage() {}},
+  wx: { showModal: options => modals.push(options), navigateTo: options => modals.push({navigation:options.url}) }
  });
  const page = { ...definition, data: structuredClone(definition.data), setData(update) {
   for (const [key, value] of Object.entries(update)) {
@@ -21,6 +21,29 @@ function settlement(reply = async () => {throw new Error('结算服务暂不可�
  } };
  return { page, modals };
 }
+test('an opened account accepts updated terms with versions only and does not resubmit bank details', async () => {
+ const calls=[], {page}=settlement(async(route,input)=>{calls.push({route,input});return {opened:true,consentCurrent:true,cardTail:'1234'};});
+ page._active=true;page._generation=1;
+ page.setData({statusLoading:false,account:{opened:true,consentCurrent:false}});
+ await page.bindSubmit();assert.equal(calls.length,0);
+ page.bindAgreement({detail:{value:['rules','authorization']}});await page.bindSubmit();
+ assert.equal(calls[0].route,'settlement/accept');
+ assert.deepEqual(Object.keys(calls[0].input).sort(),['authorizationAccepted','authorizationVersion','rulesAccepted','rulesVersion']);
+ assert.equal(calls[0].input.rulesVersion,'2026-11-27');
+ assert.equal(page.data.account.consentCurrent,true);
+});
+
+test('settlement validation locates the first invalid field, then each independent consent without provider writes', async () => {
+ const calls=[],{page}=settlement(async(route,input)=>{calls.push({route,input});return {};});
+ page.data.account={opened:false};page.data.statusLoading=false;
+ await page.bindSubmit();assert.equal(page.data.guideField,'realName');
+ for(const [field,value,next] of [['realName','测试同学','identity'],['identity','110101199001011234','bankCard'],['bankCard','6212345678901234','phone'],['phone','13800000000','rules']]){
+  page.bindInput({currentTarget:{dataset:{field}},detail:{value}});assert.equal(page.data.guideField,'');
+  await page.bindSubmit();assert.equal(page.data.guideField,next);
+ }
+ page.bindAgreement({detail:{value:['rules']}});await page.bindSubmit();assert.equal(page.data.guideField,'authorization');
+ assert.equal(calls.length,0);assert.equal(page.data.form.realName,'测试同学');
+});
 test('settlement requires explicit consent and cannot report opening success while the provider is unavailable', async () => {
  const { page, modals } = settlement();
  assert.equal(page.data.rulesAccepted, false);
@@ -151,14 +174,16 @@ test('failed or malformed settlement status never prompts a new application and 
 });
 
 test('unknown document keys cannot open a sheet', () => {
- const { page } = settlement();
+ const { page, modals } = settlement();
  page.bindDocument({ currentTarget:{ dataset:{ kind:'constructor' } } });
  assert.equal(page.data.document, null);
  page.bindDocument({ currentTarget:{ dataset:{ kind:'privacy' } } });
- assert.equal(page.data.document.title, '实名信息处理说明');
+ assert.equal(page.data.document, null);
+ assert.match(modals.at(-1).navigation, /about_agreement\?key=identity$/);
  page.bindDocument({ currentTarget:{ dataset:{ kind:'rules' } } });
- assert.equal(page.data.document.title, '云速取代取人（骑手）服务与结算协议');
- assert(page.data.document.blocks.some(block => block.type === 'p' && block.segments.some(seg => seg.b)), 'bold clauses stay bold');
+ assert.match(modals.at(-1).navigation, /about_agreement\?key=rider$/);
+ const agreement = require('../../miniprogram/projects/crun/public/agreements.js').get('rider');
+ assert(agreement.blocks.some(block => block.type === 'p' && block.segments.some(seg => seg.b)), 'bold clauses stay bold');
 });
 
 

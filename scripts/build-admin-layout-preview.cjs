@@ -58,7 +58,7 @@ for (const base of Object.keys(components)) styles[base] = browserCss(css(base +
 function componentState(base, attrs) {
   if (!definitions[base]) {
     let definition;
-    runMiniProgram(path.join(mini, base + '.js'), { Component: value => { definition = value; }, require: () => ({}) });
+    runMiniProgram(path.join(mini, base + '.js'), { Component: value => { definition = value; }, require: name => name.endsWith('/deadline_biz.js') ? require(path.resolve(mini, path.dirname(base), name)) : {} });
     const properties = Object.fromEntries(Object.entries(definition.properties || {}).map(([key, value]) => [key, value.value]));
     definitions[base] = { ...properties, ...definition.data };
   }

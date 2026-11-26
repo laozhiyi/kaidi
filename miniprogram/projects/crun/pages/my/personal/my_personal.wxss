@@ -123,3 +123,8 @@ page { background: #f3f6fb; }
 .profile-invite-mine { flex:1; color:#233552; font-size:30rpx; font-weight:600; letter-spacing:4rpx; }
 .profile-invite-copy { color:#397bc8; font-size:26rpx; padding:8rpx 0 8rpx 20rpx; }
 @media (max-width:360px) { .profile-page { padding-left:18rpx; padding-right:18rpx; } .profile-section { padding-left:20rpx; padding-right:20rpx; } .profile-field > .profile-field-label, .profile-choice-field > .profile-field-label { width:122rpx; } }
+
+/* Keep the reason beside its target, with more than color alone. */
+.form-guide-invalid { position:relative; outline:2rpx solid #c84747; outline-offset:4rpx; border-radius:8rpx; }
+.form-guide-message { display:block; width:100%; flex-basis:100%; box-sizing:border-box; color:#b33737; background:#fff5f4; font-size:24rpx; line-height:1.6; padding:12rpx; margin:8rpx 0; }
+.profile-field.form-guide-invalid,.profile-choice-field.form-guide-invalid,.profile-campus-control.form-guide-invalid,.settlement-agreement.form-guide-invalid { flex-wrap:wrap; }

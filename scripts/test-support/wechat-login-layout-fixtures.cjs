@@ -43,9 +43,9 @@ function scenarios() {
     { id: 'my-incomplete', title: '我的 · 已登录待完善联系资料', page: index, data: { user: { ...user, USER_PROFILE_COMPLETE: false } }, route: '../personal/my_personal', expected: '已登录，发单或接单前完善联系资料' },
     { id: 'my-ready', title: '我的 · 正常账号', page: index, data: { user }, route: '../personal/my_personal', expected: '查看或修改个人资料' },
     { id: 'my-manual-ready', title: '我的 · 手填注册账号', page: index, data: { user: { ...user, USER_MOBILE_VERIFIED: false, allowManualRegistration: true } }, route: '../personal/my_personal', expected: '查看或修改个人资料', absent: ['请授权微信手机号登录'] },
-    { id: 'my-manual-review', title: '我的 · 手填注册待审核', page: index, data: { user: { ...user, USER_MOBILE_VERIFIED: false, USER_STATUS: 0, allowManualRegistration: true } }, route: '../personal/my_personal', expected: '已注册，待审核', absent: ['请授权微信手机号登录'] },
+    { id: 'my-manual-review', title: '我的 · 手填注册待审核', page: index, data: { user: { ...user, USER_MOBILE_VERIFIED: false, USER_STATUS: 0, allowManualRegistration: true } }, route: '../personal/my_personal', expected: '待审核：可发单', absent: ['请授权微信手机号登录'] },
     { id: 'my-manual-strict', title: '我的 · 已恢复授权要求', page: index, data: { user: { ...user, USER_MOBILE_VERIFIED: false, allowManualRegistration: false } }, route: '../personal/my_personal', expected: '查看或修改个人资料' },
-    { id: 'my-review', title: '我的 · 等待审核', page: index, data: { user: { ...user, USER_STATUS: 0 } }, route: '../personal/my_personal', expected: '已注册，待审核' },
+    { id: 'my-review', title: '我的 · 等待审核', page: index, data: { user: { ...user, USER_STATUS: 0 } }, route: '../personal/my_personal', expected: '待审核：可发单' },
     { id: 'my-disabled', title: '我的 · 账号已停用', page: index, data: { user: { ...user, USER_STATUS: 9 } }, route: '../personal/my_personal', expected: '账号已停用' }
   ];
   const identityCases = [
@@ -53,13 +53,11 @@ function scenarios() {
     { id: 'identity-logged-out', title: '退出后 · 已有资料不自动恢复', page: reg, data: { ...profile, hasSession: false }, identityLogin: true, expected: '微信登录', absent: ['校园同学', '保存资料并继续', '微信手机号一键登录'] },
     { id: 'identity-pending', title: '微信账号登录 · 请求中', page: reg, data: { isLoad: true, identityLoggingIn: true }, identityLogin: true, expected: '微信登录', absent: ['微信手机号一键登录', '保存资料并继续'] },
     { id: 'identity-error', title: '微信账号登录 · 失败可重试', page: reg, data: { isLoad: true, loginError: '登录失败，请重试' }, identityLogin: true, expected: '登录失败，请重试', absent: ['微信手机号一键登录'] },
-    { id: 'identity-incomplete', title: '点击微信登录 · 头像昵称弹层', page: reg, data: { ...profile, wechatProfileVisible: true, phoneVerified: false, allowManualRegistration: true, formMobile: '' }, wechatOnly: true, expected: '确认并继续', absent: ['微信手机号一键登录', '手机号已通过微信验证', '所在校区', '联系电话', '学院', '专业'] },
-    { id: 'identity-profile-saving', title: '微信头像昵称 · 保存中', page: reg, data: { ...profile, wechatProfileVisible: true, hasSession: true, saving: true }, wechatOnly: true, expected: '确认并继续', absent: ['所在校区', '联系电话'] },
-    { id: 'identity-profile-login-pending', title: '微信头像昵称 · 登录中', page: reg, data: { ...profile, wechatProfileVisible: true, identityLoggingIn: true }, wechatOnly: true, expected: '确认并继续', absent: ['所在校区', '联系电话'] },
-    { id: 'identity-profile-fallback', title: '微信头像昵称 · 原生组件不可用', page: reg, data: { ...profile, wechatProfileVisible: true, canChooseWechatAvatar: false, canUseWechatNickname: false }, wechatOnly: true, expected: '从相册选择或拍照', absent: ['所在校区', '联系电话'] },
     { id: 'identity-contact', title: '个人资料 · 登录后填写联系资料', page: 'my/personal/my_personal', data: { ...profile, hasSession: true, formName: '微信昵称', formMobile: '', profileSex: '', profileCollege: '', profileSub: '', campus: '', allowManualRegistration: true }, profile: true, expected: '保存资料', absent: ['微信手机号一键登录', '收起联系资料', '编辑联系资料'] },
     { id: 'identity-personal', title: '个人资料 · 联系资料一直展开', page: 'my/personal/my_personal', data: { ...profile, hasSession: true, allowManualRegistration: true }, profile: true, expected: '保存资料', absent: ['请授权微信手机号', '收起联系资料', '编辑联系资料'] },
-    { id: 'identity-cancelling', title: '个人资料 · 确认注销期间', page: 'my/personal/my_personal', data: { ...profile, hasSession: true, cancellingAccount: true }, profile: true, expected: '注销账户', absent: ['收起联系资料', '编辑联系资料'] }
+    { id: 'identity-cancelling', title: '个人资料 · 确认注销期间', page: 'my/personal/my_personal', data: { ...profile, hasSession: true, cancellingAccount: true }, profile: true, expected: '注销账户', absent: ['收起联系资料', '编辑联系资料'] },
+    { id: 'identity-consent-unchecked', title: '个人资料 · 主动取消协议勾选', page: 'my/personal/my_personal', data: { ...profile, hasSession: true, profileAgreementCurrent: true, profileDisclaimer: false }, profile: true, expected: '请勾选同意协议后再保存资料。' },
+    { id: 'identity-consent-checked', title: '个人资料 · 已勾选协议', page: 'my/personal/my_personal', data: { ...profile, hasSession: true, profileAgreementCurrent: true, profileDisclaimer: true }, profile: true, expected: '保存资料', absent: ['请勾选同意协议后再保存资料。'] }
   ];
   return [...cases.map(fixture => ({ ...fixture, data: { phoneLoginEnabled: true, ...fixture.data } })),
     ...identityCases.map(fixture => ({ ...fixture, data: { phoneLoginEnabled: false, ...fixture.data } }))]

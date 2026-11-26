@@ -38,7 +38,7 @@ async function registerThroughSDK() {
   // OpenAPI getter, rather than replacing it with a plain-object SDK double.
   Object.defineProperty(f.cloud, 'openapi', { get: () => cloud.openapi });
   f.load('framework/validate/data_check.js').check = require('../cloudfunctions/mcloud/framework/validate/data_check.js').check;
-  const params = { name: '新同学', mobile: '13912345678', pic: 'cloud://test/avatar.png', forms: [
+  const params = { name: '新同学', mobile: '13912345678', pic: 'cloud://test/avatar.png', agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: [
     { mark: 'sex', val: '女' }, { mark: 'college', val: '计算机学院' },
     { mark: 'sub', val: '软件工程' }, { mark: 'campus', val: A.campusName },
     { mark: 'studentId', val: '202301001' }, { mark: 'studentCard', val: ['cloud://test/private/trusted-sdk-openid/student-card.png'] },

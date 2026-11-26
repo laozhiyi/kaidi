@@ -29,7 +29,7 @@ function componentState(base, attrs, defaults) {
 }
 function scenarios() {
  const absent = ['从哪里取，送到哪里', '取件快递点'];
- const present = ['自定义价格', '取件点', '二期 · 中通', '五期 · 邮政', 'A-314', 'B-628', '送到哪里'];
+ const present = ['本件价格', '取件点', '二期 · 中通', '五期 · 邮政', 'A-314', 'B-628', '送到哪里'];
  const accepted = { _id: 'parcel-pickup-order', MAIL_ID: 'PICKUP-ORDER', myaccept: true, mypost: false, MAIL_STATUS: 1, MAIL_PAYMENT_MODE: 'offline',
   MAIL_OBJ: { small: 2, price: 4, packages: parcels, address1: '二期 · 中通；五期 · 邮政', address2: '一期1号宿舍楼201室', poster: '小林', tel: '13800000000' }, MAIL_MEDIA: { pickup: [], packages: [[], []] } };
  const available = { ...accepted, myaccept: false, MAIL_STATUS: 0, MAIL_END_TIME: Date.now() + 86400000, canAccept: true, canSeeCode: false,

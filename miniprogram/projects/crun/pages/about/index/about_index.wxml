@@ -2,7 +2,8 @@
   <view class="op-card about-header">
     <view class="about-mark">取</view><view class="about-name">云速取</view><view class="op-muted">校园生活，便捷互助</view>
   </view>
-  <view class="op-card">
+  <aftersales-card wx:if="{{key==='SETUP_CONTENT_AFTERSALES'}}"/>
+  <view wx:else class="op-card">
     <view class="op-title">{{title}}</view>
     <view wx:if="{{loading}}" class="op-state op-muted">正在加载…</view>
     <view wx:elif="{{error}}" class="op-state"><view>内容加载失败</view><button class="op-button-secondary" bindtap="load">重试</button></view>
@@ -12,16 +13,14 @@
         <image wx:elif="{{item.type==='img'}}" class="about-image" mode="widthFix" src="{{item.val}}" data-url="{{item.val}}" bindtap="bindImage" show-menu-by-longpress />
       </block>
       <view wx:if="{{!about.length && !(key==='SETUP_CONTENT_AFTERSALES' && !hasImage)}}" class="op-muted">{{emptyText}}</view>
-      <!-- 后台未配置售后群图片时用内置二维码兜底 -->
-      <block wx:if="{{key==='SETUP_CONTENT_AFTERSALES' && !hasImage && !loading && !error}}">
-        <image class="about-image" mode="widthFix" src="{{fallbackQr}}" data-url="{{fallbackQr}}" bindtap="bindImage" show-menu-by-longpress />
-        <view class="op-muted">长按识别，或保存到相册后用微信「扫一扫 → 相册」加入。</view>
-      </block>
+
     </block>
   </view>
   <view wx:if="{{key==='SETUP_CONTENT_ABOUT'}}" class="op-card about-agreements">
     <view class="about-agreement" data-key="user" bindtap="bindAgreement" hover-class="about-agreement-hover"><text>云速取用户服务协议</text><text class="icon-right"></text></view>
     <view class="about-agreement" data-key="rider" bindtap="bindAgreement" hover-class="about-agreement-hover"><text>代取人（骑手）服务与结算协议</text><text class="icon-right"></text></view>
+    <view class="about-agreement" data-key="privacy" bindtap="bindAgreement" hover-class="about-agreement-hover"><text>隐私政策</text><text class="icon-right"></text></view>
+    <view class="about-agreement" data-key="identity" bindtap="bindAgreement" hover-class="about-agreement-hover"><text>实名与结算信息处理说明</text><text class="icon-right"></text></view>
   </view>
   <button wx:if="{{key==='SETUP_CONTENT_ABOUT'}}" class="op-button-secondary" bindtap="bindContact">联系我们</button>
   <button class="op-button-primary" bindtap="bindService">联系在线客服</button>

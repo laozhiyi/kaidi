@@ -15,7 +15,7 @@ Page({
       { key: 'feedback', title: '投诉与反馈', desc: '核实投诉、回复用户并结案', icon: 'icon-notice', serviceAllowed: true },
       { key: 'invite', title: '客服邀请码', desc: '一次性开通客服权限，2 小时内有效', icon: 'icon-friendadd' },
       { key: 'about', title: '关于与联系', desc: '小程序介绍与联系信息', icon: 'icon-info' },
-      { key: 'aftersales', title: '反馈页售后群码', desc: '群二维码过期随时换，不用重新发版', icon: 'icon-qr_code' },
+      { key: 'aftersales', title: '云速取-反馈群', desc: '设置 QQ 群号和加群说明', icon: 'icon-group' },
       { key: 'qr', title: '小程序码', desc: '获取小程序推广入口', icon: 'icon-qr_code' }
     ] },
     { title: '数据与系统', items: [

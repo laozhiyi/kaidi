@@ -189,7 +189,7 @@ class PassportBiz extends BaseBiz {
   }
   const version = sessionVersion;
   try {
-   const result = await cloudHelper.callCloudSumbit('passport/login', {}, { title: title || '登录中' });
+   const result = await cloudHelper.callCloudSumbit('passport/login', {}, { title: title || '登录中', ...(mustLogin ? { hint: false } : {}) });
    // A stale background refresh must not undo a newer authorization or save.
    if (version !== sessionVersion) return PassportBiz._loginDecision(PassportBiz.getToken(), mustLogin, method, that, allowPending);
    const current = result && result.data && result.data.token || null;
@@ -197,8 +197,12 @@ class PassportBiz extends BaseBiz {
    else PassportBiz.clearToken();
    return PassportBiz._loginDecision(current, mustLogin, method, that, allowPending);
   } catch (err) {
+   const currentRequest = version === sessionVersion;
    if (version === sessionVersion && err && err.code && err.code !== 500 && !err.staleScope) PassportBiz.clearToken();
    if (that && !that._unloaded) that.setData({ isLogin: PassportBiz.isLogin() });
+   if (mustLogin && currentRequest && !(err && (err.staleScope || err.staleSession)) && (!that || !that._unloaded && that._visible !== false)) {
+    wx.showModal({ title: '登录检查未完成', content: err && (err.msg || err.message) || '暂时无法核验登录状态，请检查网络后重试', showCancel: false });
+   }
    return false;
   }
 	}

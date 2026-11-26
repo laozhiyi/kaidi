@@ -1,3 +1,4 @@
+const Guide = require('../../../biz/form_guide_biz.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 const Agreements = require('../../../public/agreements.js');
 const Ops = require('../../../biz/operations_biz.js');
@@ -6,7 +7,6 @@ const emptyForm = () => ({ realName: '', identity: '', bankCard: '', phone: '' }
 // 填写内容只保存在当前页面内存中，不写缓存、不上传保存。切到后台或打开协议后回来仍在；
 // 关闭页面立即清空，离开超过 10 分钟也清空。
 const FORM_KEEP_MS = 10 * 60 * 1000;
-const plain = text => ({ type: 'p', segments: [{ t: text, b: false }] });
 const pad = value => String(value).padStart(2, '0');
 // 当前银行卡的绑定时间，换卡成功后更新。
 function dateText(ms) {
@@ -14,22 +14,11 @@ function dateText(ms) {
  const d = new Date(Number(ms));
  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
 }
-const documents = {
- rules: () => Agreements.get('rider'),
- privacy: () => ({
-  title: '实名信息处理说明',
-  meta: [],
-  blocks: [
-   '真实姓名、身份证号、本人银行卡号及银行预留手机号用于开户与结算验证。请确保信息属于本人，并在提交前阅读支付机构的服务协议与隐私政策。',
-   '填写内容只保存在当前页面，关闭页面或离开超过10分钟后清空；申请时由服务端临时处理，云速取不将完整证件号、银行卡号或证照写入本地缓存、平台数据库及日志。',
-   '实名及银行卡信息经加密传输，通过云速取云函数临时转交给汇付天下（AdaPay），用于开户和结算验证。云速取仅保存办理结算所需的第三方账户标识、脱敏信息、处理状态及带服务端密钥的对应摘要。'
-  ].map(plain)
- })
-};
+const documents={rules:()=>Agreements.get('rider'),privacy:()=>Agreements.get('identity')};
 
 Page({
  data: { account: null, boundAtText: '', statusLoading: true, statusError: '', mode: 'open', form: emptyForm(), rulesAccepted: false, authorizationAccepted: false, error: '', document: null, submitting: false },
- onLoad() { ProjectBiz.initPage(this); },
+ onLoad(options = {}) { ProjectBiz.initPage(this); this._focusAgreement = options.focus === 'agreement'; },
  onShow() {
   this._unloaded = false; this._active = true;
   this._generation = (this._generation || 0) + 1;
@@ -73,27 +62,31 @@ Page({
   // 换卡失败导致原卡已解除时保留填写内容，用户改正后直接按开通流程重新提交。
   if (previous && previous.opened !== account.opened && !keepForm) this.clearForm();
   this.setData({account,boundAtText:dateText(account.boundAt),statusLoading:false,statusError:'',mode:account.opened && this.data.mode === 'change' && !account.changeBlocked ? 'change' : 'open'});
+  if (this._focusAgreement) { this._focusAgreement = false; if (!account.consentCurrent || !account.opened) Guide.show(this, 'rules', '请阅读骑手协议并自主勾选确认'); }
  },
  bindRetryStatus() { return this._loadStatus(); },
  onHide() {
   this._generation = (this._generation || 0) + 1; this._active = false;
   this._hiddenAt = Date.now();
-  this.setData({document:null});
+  this.setData({document:null,submitting:false});
  },
  onUnload() {
   this._unloaded = true; this._generation = (this._generation || 0) + 1; this._active = false;
   this.clearForm(); this.setData({account:null,statusLoading:true,statusError:''});
  },
  clearForm() {
+  Guide.clear(this);
   this.setData({ form: emptyForm(), rulesAccepted: false, authorizationAccepted: false, error: '', document: null, submitting: false, mode: 'open' });
  },
  bindInput(event) {
   const field = event.currentTarget.dataset.field;
+  Guide.clear(this, field);
   if (!Object.prototype.hasOwnProperty.call(this.data.form, field)) return;
   this.setData({ ['form.' + field]: field === 'identity' ? String(event.detail.value || '').trim().toUpperCase() : String(event.detail.value || ''), error: '' });
  },
  bindAgreement(event) {
   const values = event.detail.value || [];
+  if (values.includes(this.data.guideField)) Guide.clear(this, this.data.guideField);
   this.setData({
    rulesAccepted: values.includes('rules'),
    authorizationAccepted: values.includes('authorization'),
@@ -104,7 +97,7 @@ Page({
   const kind = event.currentTarget.dataset.kind;
   if (!Object.prototype.hasOwnProperty.call(documents, kind)) return;
   const document = documents[kind]();
-  if (document) this.setData({ document });
+  if (document) wx.navigateTo({url:'/projects/crun/pages/about/agreement/about_agreement?key='+document.key});
  },
  bindCloseDocument() { this.setData({ document: null }); },
  bindStop() {},
@@ -121,21 +114,35 @@ Page({
  async bindSubmit() {
   const account = this.data.account;
   const changing = this.data.mode === 'change';
-  if (this.data.submitting || this.data.statusLoading || this.data.statusError || !account || account.opened !== changing) return;
+  const updating = account && account.opened && !changing && !account.consentCurrent;
+  if (this.data.submitting || this.data.statusLoading || this.data.statusError || !account || account.opened !== changing && !updating) return;
+  const acceptanceGeneration = this._generation;
+  const acceptanceCurrent = () => !this._unloaded && this._active && acceptanceGeneration === this._generation;
+  if (updating) {
+   if (!this.data.rulesAccepted || !this.data.authorizationAccepted) { const message='请分别阅读并勾选新版骑手协议与实名信息授权'; this.setData({error:message}); Guide.show(this, this.data.rulesAccepted ? 'authorization' : 'rules', message); return; }
+   this.setData({submitting:true,error:''});
+   try {
+    const result=await Ops.get('settlement/accept',{rulesAccepted:true,authorizationAccepted:true,rulesVersion:Agreements.VERSION,authorizationVersion:Agreements.VERSION});
+    if (acceptanceCurrent()) this.setData({account:{...account,...result},rulesAccepted:false,authorizationAccepted:false});
+   } catch(error) {if (acceptanceCurrent()) this.setData({error:error.msg || error.message || '确认失败，请重试'});}
+   finally {if (acceptanceCurrent()) this.setData({submitting:false});}
+   return;
+  }
   const generation=this._generation;
   const form = this.data.form;
-  let error = '';
-  if (!form.realName.trim()) error = changing ? '请填写开通时的本人真实姓名' : '请填写本人真实姓名';
-  else if (!/^\d{17}[\dXx]$/.test(form.identity.trim())) error = '请填写18位身份证号';
-  else if (!/^\d{16,19}$/.test(form.bankCard.replace(/\s/g, ''))) error = '请填写16至19位本人银行卡号';
-  else if (!/^1\d{10}$/.test(form.phone.trim())) error = '请填写11位银行预留手机号';
-  else if (!this.data.rulesAccepted || !this.data.authorizationAccepted) error = '请阅读并勾选服务协议与实名信息授权';
+  let error = '', field = '';
+  if (!form.realName.trim()) field = 'realName', error = changing ? '请填写开通时的本人真实姓名' : '请填写本人真实姓名';
+  else if (!/^\d{17}[\dXx]$/.test(form.identity.trim())) field = 'identity', error = '请填写18位身份证号';
+  else if (!/^\d{16,19}$/.test(form.bankCard.replace(/\s/g, ''))) field = 'bankCard', error = '请填写16至19位本人银行卡号';
+  else if (!/^1\d{10}$/.test(form.phone.trim())) field = 'phone', error = '请填写11位银行预留手机号';
+  else if (!this.data.rulesAccepted || !this.data.authorizationAccepted) field = this.data.rulesAccepted ? 'authorization' : 'rules', error = '请阅读并勾选服务协议与实名信息授权';
   this.setData({ error });
-  if (error) return;
+  if (error) { Guide.show(this, field, error); return; }
+  Guide.clear(this);
   this.setData({ submitting: true });
   const isCurrent = () => !this._unloaded && this._active !== false && generation === this._generation;
   try {
-   const result=await Ops.get(changing ? 'settlement/change' : 'settlement/open', {...form,rulesAccepted:this.data.rulesAccepted,authorizationAccepted:this.data.authorizationAccepted});
+   const result=await Ops.get(changing ? 'settlement/change' : 'settlement/open', {...form,rulesAccepted:this.data.rulesAccepted,authorizationAccepted:this.data.authorizationAccepted,rulesVersion:Agreements.VERSION,authorizationVersion:Agreements.VERSION});
    if(!isCurrent())return;
    this.clearForm(); this.setData({account:result,boundAtText:dateText(result.boundAt)});
    const title = result.opened ? (changing ? '更换成功' : '开通成功') : '申请处理中';
@@ -147,7 +154,7 @@ Page({
    if(!isCurrent())return;
    this.setData({submitting:false});
    // 云端返回的是具体原因（如预留手机号不一致），用弹窗明确告知；填写内容保留，方便修改后重新提交。
-   wx.showModal({title:changing ? '更换未完成' : '开通未成功',content:e.msg || e.message || '办理结果待确认，请稍后刷新或联系在线客服',showCancel:false,confirmText:'我知道了'});
+   wx.showModal({title:changing ? '更换未完成' : '开通未成功',content:e.msg || e.message || '办理结果待确认，请稍后刷新或通过反馈与投诉提交问题',showCancel:false,confirmText:'我知道了'});
    // 失败后状态可能已变化（例如原卡已解除、进入待核对），静默刷新页面上的状态。
    this._refreshStatus(true);
   } finally {if(isCurrent())this.setData({submitting:false});}

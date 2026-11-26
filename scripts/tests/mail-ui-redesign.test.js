@@ -92,7 +92,7 @@ test('detail primary actions depend on actual order role and status, never on pa
  const cases = [[0, 'poster', 'edit'], [1, 'rider', 'pickup'], [4, 'rider', 'deliver'], [4, 'poster', 'contact'], [2, 'poster', 'confirm'], [2, 'rider', 'remind'], [3, 'rider', 'contact'], [9, 'poster', 'done'], [9, 'rider', 'done'], [99, 'public', 'orders']];
  for (const [status, role, action] of cases) {
   const mail = { ...base, MAIL_STATUS: status, mypost: role === 'poster', myaccept: role === 'rider', acceptUser: { USER_NAME: '小陈', USER_MOBILE: '13900000000' } };
-  const ui = UI.detail(mail, now); assert.equal(ui.primary, action); assert.equal(ui.canCancel, role === 'poster' && status === 0); assert.equal(ui.canException, role !== 'public' && status === 1);
+  const ui = UI.detail(mail, now); assert.equal(ui.primary, action); assert.equal(ui.canCancel, role === 'poster' && status === 0 || role === 'rider' && status === 1); assert.equal(ui.canException, role !== 'public' && status === 1);
   if (status === 9 && role !== 'public') assert.equal(ui.primaryLabel, role === 'poster' ? '已收货' : '已送达');
  }
  const expired = UI.detail({ ...base, mypost: true, MAIL_END_TIME: now - 1 }, now); assert.equal(expired.expired, true); assert.equal(expired.step, -1); assert.notEqual(expired.primary, 'edit');
@@ -155,7 +155,7 @@ test('more menu filters mutations by role/state, and cancellation is never perfo
  p.setData({ mail: base, loading: false, detailUI: UI.detail({ ...base, mypost: true }, now) });
  p.bindMoreTap(); assert.ok(sheet.itemList.includes('取消订单')); assert.ok(!sheet.itemList.includes('配送异常 / 申请取消'));
  sheet.success({ tapIndex: 0 }); await new Promise(resolve => setImmediate(resolve)); assert.ok(modal.title.includes('取消')); assert.equal(commands, 0);
- p.setData({ detailUI: UI.detail({ ...base, myaccept: true, MAIL_STATUS: 1 }, now) }); p.bindMoreTap(); assert.ok(sheet.itemList.includes('配送异常 / 申请取消')); assert.ok(!sheet.itemList.includes('取消订单'));
+ p.setData({ detailUI: UI.detail({ ...base, myaccept: true, MAIL_STATUS: 1 }, now) }); p.bindMoreTap(); assert.ok(sheet.itemList.includes('配送异常 / 申请取消')); assert.ok(sheet.itemList.includes('取消订单'));
  p.setData({ detailUI: UI.detail({ ...base, myaccept: true, MAIL_STATUS: 4 }, now) }); p.bindMoreTap(); assert.ok(!sheet.itemList.some(item => item.includes('异常'))); assert.ok(sheet.itemList.includes('反馈与投诉'));
  p.bindPanel({ currentTarget: { dataset: { action: 'exception' } } }); assert.equal(p.data.panel, '');
  p.setData({ detailUI: UI.detail(base, now) }); sheet = null; p.bindMoreTap(); assert.equal(sheet, null);

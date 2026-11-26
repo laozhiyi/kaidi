@@ -133,7 +133,7 @@ async function registered(f) {
   assert.equal(login.token.phoneVerified, false);
   assert.equal(login.token.profileComplete, false);
   const result = await f.passport.register('sample-user-openid', { name: '同学[1]', mobile: '13900000001', pic: 'cloud://test/sample-avatar.png',
-    forms: [{ mark: 'sex', val: '男' }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' }, { mark: 'studentId', val: '20240001' }, { mark: 'studentCard', val: ['cloud://test/student-card.png'] }, { mark: 'disclaimer', val: true },
+    agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: [{ mark: 'sex', val: '男' }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' }, { mark: 'studentId', val: '20240001' }, { mark: 'studentCard', val: ['cloud://test/student-card.png'] }, { mark: 'disclaimer', val: true },
       { mark: 'campus', title: '校区', val: '育才校区' }] });
   const id = f.store.key('crun', 'user', result.token.id);
   return { token: result.token, id, row: f.table('user').get(id) };
@@ -231,7 +231,7 @@ test('registration binds the invite immediately and every later review decision 
   await f.passport.wechatIdentityLogin('sample-user-openid');
   await f.passport.register('sample-user-openid', { name: '被邀请人', mobile: '13900000003', pic: 'cloud://test/avatar.png',
     inviteCode: 'abc234',
-    forms: [{ mark: 'sex', val: '男' }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' },
+    agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: [{ mark: 'sex', val: '男' }, { mark: 'college', val: '计算机学院' }, { mark: 'sub', val: '软件工程' },
       { mark: 'studentId', val: '20240002' }, { mark: 'studentCard', val: ['cloud://test/card.png'] },
       { mark: 'disclaimer', val: true }, { mark: 'campus', title: '校区', val: '育才校区' }] });
 
@@ -272,7 +272,7 @@ test('a wrong invite code at registration never blocks the profile; the reason i
   await inviterCode(f);
   await f.passport.wechatIdentityLogin('sample-user-openid');
   const result = await f.passport.register('sample-user-openid', { name: '填错码的人', mobile: '13900000004', pic: 'cloud://test/avatar.png',
-    inviteCode: 'zzzzzz', forms: profileForms });
+    inviteCode: 'zzzzzz', agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: profileForms });
   assert.equal(result.token.profileComplete, true, '资料照常保存');
   assert.equal(result.invite.accepted, false);
   assert.match(result.invite.reason, /邀请码无效/);
@@ -287,7 +287,7 @@ test('a valid code typed at registration binds; the profile page then reports it
   const code = await inviterCode(f);
   await f.passport.wechatIdentityLogin('sample-user-openid');
   const result = await f.passport.register('sample-user-openid', { name: '填对码的人', mobile: '13900000005', pic: 'cloud://test/avatar.png',
-    inviteCode: code.toLowerCase(), forms: profileForms });
+    inviteCode: code.toLowerCase(), agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: profileForms });
   assert.equal(result.invite.accepted, true);
   assert.equal(result.invite.reason, '');
   const info = await invites.getMyInviteInfo('sample-user-openid');

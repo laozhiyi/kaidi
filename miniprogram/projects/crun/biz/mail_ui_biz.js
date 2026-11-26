@@ -236,7 +236,7 @@ function detail(mail, now = Date.now()) {
   // 已送达待确认时不再暴露发布人电话，改为站内提醒。
   hideContactCall: !!(mail.myaccept && status === 2), contactHidden,
   canUpdateProof: !!mail.myaccept && status === 2 && !!mail.MAIL_DELIVERY_PROOF, proofUpdatedAt: time(mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.updatedAt),
-  primary, primaryLabel, receipt: receipt(mail, now), history, canException: participant && status === 1, canResolveException, canCancel: !!mail.mypost && [-1,0].includes(status)
+  primary, primaryLabel, receipt: receipt(mail, now), history, canException: participant && status === 1, canResolveException, canCancel: !(mail.MAIL_PICKUP_TIME > 0) && !!(!!mail.mypost && [-1,0].includes(status) || participant && (status === 1 || status === 3 && mail.MAIL_EXCEPTION && mail.MAIL_EXCEPTION.previousStatus === 1 && mail.MAIL_EXCEPTION.reason !== '管理员介入'))
  };
 }
 module.exports = { COMMISSION_RATE, time, service, receipt, progress, detail, requirementText, requirementTags, priceAdjust, commission, mediaPurgeNotice, deliveryAddress: Address.formatOrderAddress };

@@ -1,7 +1,7 @@
 <view class="profile-section profile-personal">
   <view class="profile-section-head"><view><view class="profile-section-title">联系资料</view><view class="profile-section-subtitle">发布或接单前完善，方便校园互助</view></view><view class="profile-section-tag">必填</view></view>
   <view class="profile-field-list">
-    <view class="profile-field profile-phone-field">
+    <view id="guide-phone" class="{{guideField === 'phone' ? 'form-guide-invalid' : ''}} profile-field profile-phone-field"><view wx:if="{{guideField === 'phone'}}" class="form-guide-message">{{guideMessage}}</view>
       <text class="profile-field-label">{{phoneLoginEnabled ? '手机号' : '联系电话'}}</text>
       <block wx:if="{{profilePhoneRequired}}">
         <view class="profile-phone-value profile-phone-inline">
@@ -20,13 +20,13 @@
         <button wx:if="{{phoneLoginEnabled && canGetWechatPhone && (phoneVerified || !allowManualRegistration)}}" class="profile-phone-authorize" open-type="getPhoneNumber" bindtap="bindWechatPhoneTap" bindgetphonenumber="bindWechatPhone" loading="{{phoneAuthorizing}}" disabled="{{phoneAuthorizing || saving || collectionSaving}}">{{phoneVerified ? '更换' : '授权'}}</button>
       </block>
     </view>
-    <view class="profile-choice-field"><view class="profile-field-label">性别</view><view class="profile-choice-group"><view wx:for="{{genderOptions}}" wx:key="*this" class="profile-choice {{profileSex === item ? 'profile-choice-selected' : ''}}" data-value="{{item}}" bindtap="bindGenderTap"><text class="profile-choice-dot"></text>{{item}}</view></view></view>
-    <view class="profile-field profile-education-control" data-kind="college" bindtap="bindOpenEducationPicker" hover-class="profile-education-pressed" role="button" aria-label="{{profileCollege ? '学院，' + profileCollege : '请选择学院'}}">
+    <view id="guide-gender" class="{{guideField === 'gender' ? 'form-guide-invalid' : ''}} profile-choice-field"><view wx:if="{{guideField === 'gender'}}" class="form-guide-message">{{guideMessage}}</view><view class="profile-field-label">性别</view><view class="profile-choice-group"><view wx:for="{{genderOptions}}" wx:key="*this" class="profile-choice {{profileSex === item ? 'profile-choice-selected' : ''}}" data-value="{{item}}" bindtap="bindGenderTap"><text class="profile-choice-dot"></text>{{item}}</view></view></view>
+    <view id="guide-college" class="{{guideField === 'college' ? 'form-guide-invalid' : ''}} profile-field profile-education-control" data-kind="college" bindtap="bindOpenEducationPicker" hover-class="profile-education-pressed" role="button" aria-label="{{profileCollege ? '学院，' + profileCollege : '请选择学院'}}"><view wx:if="{{guideField === 'college'}}" class="form-guide-message">{{guideMessage}}</view>
       <text class="profile-field-label">学院</text>
       <view class="profile-education-value {{profileCollege ? '' : 'profile-education-placeholder'}}">{{profileCollege || '请选择学院'}}</view>
       <text class="profile-education-arrow icon-right" aria-hidden="true"></text>
     </view>
-    <view class="profile-field profile-education-control" data-kind="major" bindtap="bindOpenEducationPicker" hover-class="{{profileCollege ? 'profile-education-pressed' : 'none'}}" role="button" aria-disabled="{{!profileCollege}}" aria-label="{{profileSub && !profileMajorManual ? '专业，' + profileSub : profileCollege ? '选择专业' : '请先选择学院'}}">
+    <view id="guide-major" class="{{guideField === 'major' ? 'form-guide-invalid' : ''}} profile-field profile-education-control" data-kind="major" bindtap="bindOpenEducationPicker" hover-class="{{profileCollege ? 'profile-education-pressed' : 'none'}}" role="button" aria-disabled="{{!profileCollege}}" aria-label="{{profileSub && !profileMajorManual ? '专业，' + profileSub : profileCollege ? '选择专业' : '请先选择学院'}}"><view wx:if="{{guideField === 'major'}}" class="form-guide-message">{{guideMessage}}</view>
       <text class="profile-field-label">专业</text>
       <view class="profile-education-value {{profileSub && !profileMajorManual ? '' : 'profile-education-placeholder'}}">{{profileMajorManual ? '从列表选择' : profileSub || (profileCollege ? '请选择专业' : '请先选择学院')}}</view>
       <text wx:if="{{profileCollege}}" class="profile-education-arrow icon-right" aria-hidden="true"></text>
@@ -36,22 +36,23 @@
       <text class="profile-field-label">专业名称</text>
       <input class="profile-field-input" value="{{profileSub}}" maxlength="80" placeholder="请输入专业名称" bindinput="bindProfileFieldInput" data-field="profileSub" />
     </view>
-    <view class="profile-field"><text class="profile-field-label">学号</text><input class="profile-field-input" value="{{profileStudentId}}" maxlength="20" placeholder="请输入学号（6-20位字母或数字）" bindinput="bindProfileFieldInput" data-field="profileStudentId" disabled="{{studentProofLocked}}" /></view>
-    <view class="profile-card-field">
+    <view id="guide-studentId" class="{{guideField === 'studentId' ? 'form-guide-invalid' : ''}} profile-field"><view wx:if="{{guideField === 'studentId'}}" class="form-guide-message">{{guideMessage}}</view><text class="profile-field-label">学号</text><input class="profile-field-input" value="{{profileStudentId}}" maxlength="20" placeholder="请输入学号（6-20位字母或数字）" bindinput="bindProfileFieldInput" data-field="profileStudentId" disabled="{{studentProofLocked}}" /></view>
+    <view id="guide-studentCard" class="{{guideField === 'studentCard' ? 'form-guide-invalid' : ''}} profile-card-field"><view wx:if="{{guideField === 'studentCard'}}" class="form-guide-message">{{guideMessage}}</view>
       <view class="profile-card-head"><text class="profile-field-label">学生证</text><text class="profile-card-required">必填，用于身份核验</text></view>
       <view class="profile-card-body">
         <view wx:if="{{profileStudentCard.length}}" class="profile-card-preview"><image class="profile-card-image" src="{{profileStudentCard[0]}}" mode="aspectFill" bindtap="bindPreviewStudentCard" aria-label="预览学生证" /><view wx:if="{{!studentProofLocked}}" class="profile-card-delete" bindtap="bindDeleteStudentCard" role="button" aria-label="删除学生证图片"><text class="icon-close"></text></view></view>
         <view wx:else class="profile-card-add" bindtap="bindChooseStudentCard" role="button" aria-label="上传学生证"><text class="icon-add"></text><text class="profile-card-add-text">上传</text></view>
       </view>
       <view wx:if="{{!isEdit && !profileStudentCard.length}}" class="profile-required-hint">请上传学生证照片后再保存</view>
-      <view wx:if="{{studentProofLocked}}" class="profile-required-hint">已审核，如需更正请联系客服</view>
+      <view wx:if="{{studentProofLocked}}" class="profile-required-hint">已审核，如需更正请通过反馈与投诉申请</view>
     </view>
-    <view class="profile-campus-control {{campus ? 'profile-campus-selected' : ''}}" bindtap="bindOpenCampusPicker" hover-class="profile-campus-pressed" role="button" aria-label="{{profileCampusFixed ? '查看校区' : '选择所在校区'}}"><view><view class="profile-field-label">所在校区</view><view class="profile-campus-value">{{campus || '请选择所在校区'}}</view></view><view class="profile-campus-action">{{profileCampusFixed ? '查看校区' : campus ? '更换' : '选择'}}<text class="icon-right"></text></view></view>
+    <view id="guide-campus" class="{{guideField === 'campus' ? 'form-guide-invalid' : ''}} profile-campus-control {{campus ? 'profile-campus-selected' : ''}}" bindtap="bindOpenCampusPicker" hover-class="profile-campus-pressed" role="button" aria-label="{{profileCampusFixed ? '查看校区' : '选择所在校区'}}"><view wx:if="{{guideField === 'campus'}}" class="form-guide-message">{{guideMessage}}</view><view><view class="profile-field-label">所在校区</view><view class="profile-campus-value">{{campus || '请选择所在校区'}}</view></view><view class="profile-campus-action">{{profileCampusFixed ? '查看校区' : campus ? '更换' : '选择'}}<text class="icon-right"></text></view></view>
   </view>
   <view wx:if="{{!campus}}" class="profile-required-hint">请选择所在校区后再保存</view>
-  <view class="profile-disclaimer"><view class="profile-disclaimer-check {{profileDisclaimer ? 'profile-disclaimer-on' : ''}}" bindtap="bindDisclaimerTap" role="checkbox" aria-checked="{{profileDisclaimer}}" aria-label="同意免责声明"><view class="profile-disclaimer-box"><text wx:if="{{profileDisclaimer}}" class="icon-check"></text></view><text class="profile-disclaimer-text">我已阅读并同意</text></view><text class="profile-disclaimer-link" bindtap="bindViewDisclaimer">《免责声明》</text></view>
+  <view id="guide-agreement" class="{{guideField === 'agreement' ? 'form-guide-invalid' : ''}} profile-disclaimer"><view wx:if="{{guideField === 'agreement'}}" class="form-guide-message">{{guideMessage}}</view><view class="profile-disclaimer-check {{profileDisclaimer ? 'profile-disclaimer-on' : ''}}" bindtap="bindDisclaimerTap" role="checkbox" aria-checked="{{profileDisclaimer}}" aria-label="同意用户服务协议并阅读隐私政策"><view class="profile-disclaimer-box"><text wx:if="{{profileDisclaimer}}" class="icon-check"></text></view><text class="profile-disclaimer-text">我已阅读并同意</text></view><text class="profile-disclaimer-link" bindtap="bindViewDisclaimer">《用户服务协议》</text><text>，并已阅读</text><text class="profile-disclaimer-link" bindtap="bindViewPrivacy">《隐私政策》</text></view>
+  <view wx:if="{{profileDisclaimer !== true}}" class="profile-required-hint">{{profileAgreementCurrent ? '请勾选同意协议后再保存资料。' : '请阅读当前版本并自主勾选；历史免责声明不代表已同意新版协议。'}}</view>
 </view>
-<view class="profile-section profile-invite">
+<view id="guide-invite" class="{{guideField === 'invite' ? 'form-guide-invalid' : ''}} profile-section profile-invite"><view wx:if="{{guideField === 'invite'}}" class="form-guide-message">{{guideMessage}}</view>
   <view wx:if="{{inviteBound}}" class="profile-field"><text class="profile-field-label">已填写邀请码 {{inviteBoundCode}}</text></view>
   <view wx:else class="profile-field"><text class="profile-field-label">邀请码（选填）</text><input class="profile-field-input" value="{{inviteCode}}" maxlength="6" placeholder="输入好友的6位邀请码" bindinput="bindInviteCodeInput" /></view>
   <view wx:if="{{myInviteCode}}" class="profile-field"><text class="profile-field-label">我的邀请码</text><text class="profile-invite-mine" user-select>{{myInviteCode}}</text><text class="profile-invite-copy" bindtap="bindCopyMyInviteCode">复制</text></view>

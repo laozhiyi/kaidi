@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path'),crypto=require('node:crypto');
 const base=path.resolve(__dirname,'../../cloudfunctions/mcloud/project/crun');
-function load(file,deps,extra={}) {const module={exports:{}};vm.runInNewContext(fs.readFileSync(path.join(base,file),'utf8'),{module,require:n=>{if(n in deps)return deps[n];throw Error('Missing mock '+n);},console,Buffer,URL,URLSearchParams,Intl,...extra});return module.exports;}
+function load(file,deps,extra={}) {const module={exports:{}};vm.runInNewContext(fs.readFileSync(path.join(base,file),'utf8'),{module,require:n=>{if(n in deps)return deps[n];if(n==='../public/agreement_versions.js')return require(path.join(base,'public/agreement_versions.js'));throw Error('Missing mock '+n);},console,Buffer,URL,URLSearchParams,Intl,...extra});return module.exports;}
 const pair=crypto.generateKeyPairSync('rsa',{modulusLength:1024});
 const cfg={appid:'app_test',prod:false,wxAppid:'wx0123456789abcdef',privateKey:pair.privateKey,publicKey:pair.publicKey,ready:()=>true,notifyUrl:'https://example.test/adapay/notify',digestKey:'h'.repeat(32)};
 const wire=load('service/adapay_api.js',{'crypto':crypto,'../config/adapay_config.js':cfg});
@@ -90,7 +90,7 @@ test('payment callback marks a durable recheck and cannot claim that a forged ou
 });
 test('personal opening persists only identifiers, masked fields, consent and keyed digest',async()=>{
  const h=harness(),account='runner_'+h.store.scopeKey('adapay-account',cfg.appid,cfg.prod,'rider');
- const form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true};
+ const form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true,rulesVersion:'2026-11-27',authorizationVersion:'2026-11-27'};
  let binds=0;
  const api={request:async(m,p,b)=>{
   if(p==='/v1/members/realname')return {app_id:cfg.appid,member_id:account,identified:'Y',status:'succeeded'};
@@ -129,7 +129,7 @@ test('AdaPay transport signs official URL+payload and refuses unsigned errors wi
 
 test('an uncertain bank binding is not sent a second time',async()=>{
  const h=harness(),member='runner_'+h.store.scopeKey('adapay-account',cfg.appid,cfg.prod,'rider');let binds=0;
- const form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true};
+ const form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true,rulesVersion:'2026-11-27',authorizationVersion:'2026-11-27'};
  const api={request:async(m,p)=>{
   if(p==='/v1/members/realname')return {app_id:cfg.appid,member_id:member,identified:'Y',status:'succeeded'};
   if(p.startsWith('/v1/members/'))throw new Error('ADAPAY_NETWORK_ERROR');
@@ -146,7 +146,7 @@ test('actual order acceptance enforces AdaPay onboarding even without the fronte
  Object.assign(f.table('mail').get(id),{MAIL_PAYMENT_MODE:'adapay',MAIL_PAY_STATUS:1,MAIL_PAY_NO:'ada-order'});
  await assert.rejects(f.service.acceptMail('rider',id,{requestId:f.req('reject-accept')}),/跑腿结算/);
  assert.equal(f.table('mail').get(id).MAIL_STATUS,0);
- f.load('adapay_account_service.js').prototype.requireReady=async()=>({memberId:'runner1',accountId:'account1'});
+ f.load('adapay_account_service.js').prototype.requireReady=async()=>({memberId:'runner1',accountId:'account1',consentVersion:'2026-11-27',authorizationVersion:'2026-11-27',consentedAt:1});
  await f.service.acceptMail('rider',id,{requestId:f.req('accept')} );
  assert.equal(f.table('mail').get(id).MAIL_STATUS,1);
 });
@@ -174,7 +174,7 @@ test('AdaPay config rejects mismatched PEM markers and malformed private key bod
 
 
 test('opening diagnostics identify local confirmation failures without logging personal data',async()=>{
- const form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true};
+ const form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true,rulesVersion:'2026-11-27',authorizationVersion:'2026-11-27'};
  for(const failure of ['member','account','network','unknown']){
   const h=harness(),member='runner_'+h.store.scopeKey('adapay-account',cfg.appid,cfg.prod,'rider'),logs=[];
   const api={request:async(m,p)=>{
@@ -196,7 +196,7 @@ test('opening diagnostics identify local confirmation failures without logging p
 
 
 test('an uncertain binding recovers only a unique verified account for the same member without creating another',async()=>{
- const form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true};
+ const form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true,rulesVersion:'2026-11-27',authorizationVersion:'2026-11-27'};
  for(const mode of ['success','no-list','empty','ambiguous','wrong-app','wrong-member','wrong-mode','disabled','wrong-name','wrong-identity','wrong-card','wrong-prefix','pending','wrong-account-app','wrong-account-mode','wrong-account-member','corporate','wrong-detail-id','wrong-detail-card','weak-mask','network']){
   const h=harness(),member='runner_'+h.store.scopeKey('adapay-account',cfg.appid,cfg.prod,'rider'),calls=[],logs=[];
   const account={id:'bank1',status:'succeeded',app_id:cfg.appid,prod_mode:'false',channel:'bank_account',account_info:{card_id:'622202****1234',cert_id:'1101****002X',bank_acct_type:'2'}};
@@ -253,7 +253,7 @@ test('an uncertain binding recovers only a unique verified account for the same 
 
 
 test('binding validation reports boolean mismatch flags and never logs response or form contents',async()=>{
- const form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true};
+ const form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true,rulesVersion:'2026-11-27',authorizationVersion:'2026-11-27'};
  for(const failure of ['status','app','id','channel','member','card','infoString']){
   const h=harness(),member='runner_'+h.store.scopeKey('adapay-account',cfg.appid,cfg.prod,'rider'),logs=[];
   const account={status:'succeeded',app_id:cfg.appid,id:'bank1',channel:'bank_account',member_id:member,account_info:{card_id:'622202****1234'},description:form.identity};
@@ -297,7 +297,7 @@ test('GET requests follow official SDK headers and carry signed query parameters
 });
 
 test('provider masks with ten leading digits and one trailing digit work for creation and signed recovery',async()=>{
- const form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true};
+ const form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true,rulesVersion:'2026-11-27',authorizationVersion:'2026-11-27'};
  for(const recovery of [false,true]){
   const h=harness(),member='runner_'+h.store.scopeKey('adapay-account',cfg.appid,cfg.prod,'rider'),calls=[];
   const account={status:'succeeded',app_id:cfg.appid,prod_mode:'false',id:'bank1',channel:'bank_account',member_id:member,
@@ -412,7 +412,7 @@ test('conflicting listed and saved confirmation IDs never mark earnings settled 
 test('new-user retry creates the same member after a verified member-not-found query',async()=>{
  for(const code of ['member_not_exists','member_not_exist','user_not_exists','user_not_exist']){
   const h=harness(),member='runner_'+h.store.scopeKey('adapay-account',cfg.appid,cfg.prod,'new-rider');
-  const form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true};
+  const form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true,rulesVersion:'2026-11-27',authorizationVersion:'2026-11-27'};
   let creates=0,queries=0,binds=0;
   const api={request:async(method,path,body)=>{
    if(method==='GET'){
@@ -437,7 +437,7 @@ test('new-user retry creates the same member after a verified member-not-found q
 
 test('member retry does not treat configuration, network or unverified errors as a missing user',async()=>{
  for(const error of [Object.assign(Error('ADAPAY_REQUEST_FAILED'),{code:'app_not_exists',verified:true}),Error('ADAPAY_NETWORK_ERROR'),Object.assign(Error('ADAPAY_REQUEST_FAILED'),{code:'member_not_exists',verified:false})]){
-  const h=harness(),form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true};
+  const h=harness(),form={realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true,rulesVersion:'2026-11-27',authorizationVersion:'2026-11-27'};
   let creates=0,binds=0;
   const api={request:async(method,path)=>{
    if(method==='GET')throw error;
@@ -452,7 +452,7 @@ test('member retry does not treat configuration, network or unverified errors as
 });
 
 // ---- 开户/换卡的失败反馈、结果核对与更换结算银行卡 ----
-const riderForm=(over={})=>({realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true,...over});
+const riderForm=(over={})=>({realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true,rulesVersion:'2026-11-27',authorizationVersion:'2026-11-27',...over});
 function accountHarness(handler){
  const h=harness(),member='runner_'+h.store.scopeKey('adapay-account',cfg.appid,cfg.prod,'rider'),calls=[];
  const api={request:async(m,p,b)=>{calls.push(m+' '+p);return handler(m,p,b,member);}};

@@ -11,6 +11,7 @@ const dataUtil = require('../../../framework/utils/data_util.js');
 const store = require('./operation_store.js');
 const rules = require('./order_rules.js');
 const profileRules = require('./profile_rules.js');
+const Agreements = require('../public/agreement_versions.js');
 const AccountService = require('./account_service.js');
 const config = require('../../../config/config.js');
 
@@ -57,6 +58,8 @@ class PassportService extends BaseProjectService {
   const previous = await UserModel.getOne({ USER_MINI_OPENID: userId });
   if (!previous) this.AppError('请先点击微信登录，再完善个人资料');
   if (previous && previous.USER_STATUS === 9) this.AppError('账号已停用，请联系客服');
+  try { Agreements.userConsent(previous.USER_AGREEMENTS, input.agreements, Date.now()); }
+  catch (error) { this.AppError(error.message); }
   const strictPhone = profileRules.requiresProfilePhoneVerification();
   if (!profileRules.allowsManualRegistration() && previous.USER_MOBILE_VERIFIED !== true) this.AppError('请先授权验证微信手机号');
   const name = rules.text(input.name, '昵称', 30, true), mobile = rules.text(input.mobile, '手机', 11, true);
@@ -126,6 +129,11 @@ class PassportService extends BaseProjectService {
     if (old && old.userId === userId) await tx.collection(store.collection('identity_unique')).doc(oldKey).remove();
    }
    const now = Date.now(), data = current;
+   const accepted = Agreements.userConsent(current.USER_AGREEMENTS, input.agreements, now);
+   if (!Agreements.currentUser(current.USER_AGREEMENTS)) {
+    data.USER_AGREEMENT_HISTORY = [...(data.USER_AGREEMENT_HISTORY || []), accepted];
+   }
+   data.USER_AGREEMENTS = accepted;
    // Only first completion chooses the school's review policy. Editing an
    // existing pending/rejected account must not approve it implicitly.
    if (data.USER_STATUS === 8 || updatingProof && !completing && data.USER_STATUS === 1) data.USER_STATUS = 0;
@@ -291,7 +299,7 @@ class PassportService extends BaseProjectService {
 		let where = {
 			USER_MINI_OPENID: userId
 		}
-		let fields = 'USER_PIC,USER_MOBILE,USER_MOBILE_VERIFIED,USER_PROFILE_COMPLETE,USER_NAME,USER_FORMS,USER_OBJ,USER_STATUS,USER_CHECK_REASON,USER_PAY_PIC,USER_ROLE'
+		let fields = 'USER_PIC,USER_MOBILE,USER_MOBILE_VERIFIED,USER_PROFILE_COMPLETE,USER_NAME,USER_FORMS,USER_OBJ,USER_STATUS,USER_CHECK_REASON,USER_PAY_PIC,USER_ROLE,USER_AGREEMENTS'
 		const user = await UserModel.getOne(where, fields);
   return user ? { ...user, USER_MOBILE_VERIFIED: user.USER_MOBILE_VERIFIED === true, USER_PROFILE_COMPLETE: profileRules.isComplete(user), allowManualRegistration: profileRules.allowsManualRegistration(), phoneLoginEnabled: profileRules.isPhoneLoginEnabled(), profilePhoneRequired: profileRules.requiresProfilePhoneVerification(), studentProofLocked: profileRules.requiresProfilePhoneVerification() && studentProofLocked(user) } : null;
 	}
@@ -320,7 +328,7 @@ class PassportService extends BaseProjectService {
 		let where = {
 			'USER_MINI_OPENID': userId
 		};
-		let fields = 'USER_ID,USER_MINI_OPENID,USER_NAME,USER_PIC,USER_STATUS,USER_MOBILE,USER_MOBILE_VERIFIED,USER_PROFILE_COMPLETE,USER_FORMS,USER_ROLE';
+		let fields = 'USER_ID,USER_MINI_OPENID,USER_NAME,USER_PIC,USER_STATUS,USER_MOBILE,USER_MOBILE_VERIFIED,USER_PROFILE_COMPLETE,USER_FORMS,USER_ROLE,USER_AGREEMENTS';
 		let user = await UserModel.getOne(where, fields);
 		let token = {};
 		if (user) {
@@ -333,6 +341,7 @@ class PassportService extends BaseProjectService {
 			token.status = user.USER_STATUS;
    token.phoneVerified = user.USER_MOBILE_VERIFIED === true;
    token.profileComplete = profileRules.isComplete(user);
+   token.agreements = user.USER_AGREEMENTS || null;
    token.allowManualRegistration = profileRules.allowsManualRegistration();
    token.phoneLoginEnabled = profileRules.isPhoneLoginEnabled();
    token.profilePhoneRequired = profileRules.requiresProfilePhoneVerification();

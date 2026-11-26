@@ -4,4 +4,4 @@ page { background: #f4f6f9; }
 .agreement-meta { margin-top: 10rpx; color: #8d9bb0; font-size: 24rpx; text-align: center; }
 .agreement-heading { margin-top: 40rpx; font-size: 30rpx; font-weight: 700; line-height: 1.6; }
 .agreement-paragraph { margin-top: 16rpx; color: #4e637f; font-size: 27rpx; line-height: 1.8; }
-.agreement-strong { color: #25364d; font-weight: 700; }
+.agreement-strong { color: #172c49; font-weight: 700; }

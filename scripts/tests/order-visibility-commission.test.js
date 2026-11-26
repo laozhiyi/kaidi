@@ -217,8 +217,9 @@ test('deleting a done card asks first, calls mail/del once and removes only that
 
 function gate(account) {
  const modals = [], navigations = [], gets = [];
- const sandbox = { module: { exports: {} }, require: () => ({ get: async route => { gets.push(route); return account; } }),
-  wx: { showModal: options => { modals.push(options); options.complete(); }, navigateTo: options => navigations.push(options.url) } };
+ const record={userVersion:'2026-11-27',privacyVersion:'2026-11-27',acceptedAt:1};
+ const sandbox = { module: { exports: {} }, require: name => name.includes('agreements') ? require('../../miniprogram/projects/crun/public/agreements.js') : name.includes('passport_biz') ? {getToken:()=>({agreements:record}),getUserId:()=> 'student',logoutEpoch:()=>0} : { scopeKey:()=> 'school:campus',get: async route => { gets.push(route); return account; } },
+  wx: { showModal: options => { modals.push(options); options.success({confirm:true}); }, navigateTo: options => navigations.push(options.url) } };
  vm.runInNewContext(fs.readFileSync(path.join(root, 'miniprogram/projects/crun/biz/settlement_gate_biz.js'), 'utf8'), sandbox);
  return { biz: sandbox.module.exports, modals, navigations, gets };
 }
@@ -227,9 +228,9 @@ test('accepting an online order without a bound settlement card goes to the sett
  const missing = gate({ opened: false });
  assert.equal(await missing.biz.ensureSettlement({ MAIL_PAYMENT_MODE: 'adapay' }), false);
  assert.deepEqual(missing.gets, ['settlement/status']);
- assert.equal(missing.modals.length, 1); assert.equal(missing.modals[0].showCancel, false); assert.match(missing.modals[0].content, /银行卡/);
+ assert.equal(missing.modals.length, 1); assert.equal(missing.modals[0].showCancel, true); assert.match(missing.modals[0].content, /银行卡/);
  assert.deepEqual(missing.navigations, ['/projects/crun/pages/my/settlement/settlement']);
- const ready = gate({ opened: true });
+ const ready = gate({ opened: true, consentCurrent: true });
  assert.equal(await ready.biz.ensureSettlement({ MAIL_PAYMENT_MODE: 'adapay' }), true);
  assert.deepEqual([ready.modals.length, ready.navigations.length], [0, 0]);
  const offline = gate({ opened: false });
@@ -267,7 +268,7 @@ test('payment goes straight to WeChat Pay without a payment notice popup', async
  const settled = payment([], { 'mail/payment_status': () => ({ status: 0, published: true }) });
  await settled.biz.pay('three');
  assert.equal(settled.modals.length, 0, 'an already published order needs no new payment');
- assert.match(fs.readFileSync(path.join(root, 'cloudfunctions/mcloud/project/crun/service/operation_config_service.js'), 'utf8'), new RegExp("paymentNotice: '" + first.biz.PAY_NOTICE + "'"));
+ assert.ok(fs.readFileSync(path.join(root, 'cloudfunctions/mcloud/project/crun/service/operation_config_service.js'), 'utf8').includes("paymentNotice: '" + first.biz.PAY_NOTICE + "'"));
 });
 
 async function publishTake(h) {

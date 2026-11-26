@@ -73,6 +73,7 @@ function command(route, params = {}, options = {}) {
  return task.promise;
 }
 function withRecovery(error, route, params, key) {
+ if (!error || typeof error !== 'object') error = new Error(String(error || '请求结果尚未确认，请核对上次提交'));
  error.recover = () => {
   if (pendingKey(route, params) !== key) return Promise.reject(new Error('登录账号已变化，请返回重试'));
   return recoverCommand(route, params);
@@ -114,6 +115,7 @@ async function sendCommand(route, params, options, key, signature) {
      const unresolved = new Error((error.msg || error.message || '本次重试未完成') + '；此前提交结果尚未确认，请先核对上次结果。');
      throw withRecovery(unresolved, route, params, key);
     }
+    if (!businessError) throw withRecovery(error, route, params, key);
     throw error;
    }
    if (typeof options.onRetry === 'function') options.onRetry(attempt + 1);
@@ -191,6 +193,20 @@ async function subscribeChat() {
 }
 function error(e){
  const recover = e && e.recover;
+ const message = e && (e.msg || e.message) || '';
+ const profileAgreement = /^请到个人资料阅读并确认新版用户服务协议与隐私政策后再(?:发单|接单)$/.test(message);
+ const riderAgreement = message === '请到跑腿结算页阅读并确认新版骑手协议';
+ if (!recover && (profileAgreement || riderAgreement)) {
+  const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
+  const origin = pages[pages.length - 1], scope = cloud.scopeKey ? cloud.scopeKey() : '', generation = sessionGeneration, userId = Passport.getUserId();
+  wx.showModal({title:'请先确认协议',content:message,showCancel:true,confirmText:'去确认协议',cancelText:'暂不处理',success:res=>{
+   if (!res.confirm || generation !== sessionGeneration || userId !== Passport.getUserId() || scope !== (cloud.scopeKey ? cloud.scopeKey() : '')) return;
+   if (origin && typeof getCurrentPages === 'function' && getCurrentPages().slice(-1)[0] !== origin) return;
+   const path = profileAgreement ? 'personal/my_personal?retUrl=back&focus=agreement' : 'settlement/settlement?focus=agreement';
+   wx.navigateTo({url:'/projects/crun/pages/my/'+path,fail:()=>wx.showModal({title:'暂时无法打开',content:'请返回“我的”，打开'+(profileAgreement?'个人资料':'跑腿结算')+'确认协议。当前内容已保留。',showCancel:false})});
+  }});
+  return;
+ }
  wx.showModal({title:'操作未完成',content:e && (e.msg || e.message) || '网络异常，请重试',showCancel:!!recover,confirmText:recover?'核对上次':'确定',cancelText:'稍后',success:async res=>{
   if (!recover || !res.confirm) return;
   wx.showLoading({title:'核对上次提交',mask:true});

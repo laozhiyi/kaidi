@@ -92,14 +92,14 @@ function smokeRender(code) {
     ['admin/feedback/list/admin_feedback_list', { loading: false, list: [] }, '暂无符合条件的反馈'],
     ['admin/feedback/detail/admin_feedback_detail', { detail: { _id: 'fb', FB_TITLE: '反馈内容', FB_CONTENT: '请协助处理', history: [] } }, '提交处理结果'],
     ['admin/user/list/admin_user_list', { list: [] }, '用户管理'],
-    ['admin/user/detail/admin_user_detail', { user: { USER_STATUS: 0, USER_NAME: '小陈', USER_FORMS: [] } }, '审核通过'],
+    ['admin/user/detail/admin_user_detail', { profile: { USER_STATUS: 0, USER_NAME: '小陈', USER_FORMS: [] } }, '审核通过'],
     ['admin/settings/index/admin_settings', {}, '业务与系统管理'],
     ['admin/settings/service/admin_service_settings', { config, isSuperAdmin: false }, '当前为只读模式'],
     ['admin/settings/pricing/admin_pricing_settings', { config, isSuperAdmin: false }, '当前为只读模式'],
     ['admin/settings/rules/admin_rules_settings', { config, isSuperAdmin: false }, '当前为只读模式'],
     ['admin/analytics/admin_analytics', { overview: { total: 0, rows: [] } }, '订单状态分布'],
     ['admin/monitor/admin_monitor', { isSuperAdmin: false }, '执行维护需要超级管理员权限'],
-    ['about/index/about_index', { loading: false, about: [] }, '联系校区客服'],
+    ['about/index/about_index', { loading: false, about: [] }, '联系在线客服'],
     ['admin/tenants/admin_tenants', { loading: true }, '正在加载'],
     ['admin/tenants/admin_tenants', { school: {schoolId:'school_a',name:'学校 A',version:1}, campusLoading:true }, '正在加载地点'],
     ['admin/tenants/admin_tenants', { school: {schoolId:'school_a',name:'学校 A',version:1}, campusError:'地点读取失败' }, '重试地点加载'],
@@ -206,7 +206,7 @@ function smokeRender(code) {
     if (fixture.identityLogin) {
       const login = controls.filter(button => button.attr.bindtap === 'bindOpenWechatProfile');
       assert.equal(login.length, 1, fixture.title + ' 必须明确点击微信登录');
-      assert.equal(nodeText(login[0]), '点击微信登录');
+      assert.equal(nodeText(login[0]), data.identityLoggingIn ? '微信登录中' : '点击微信登录');
       assert.ok(!login[0].attr.openType, '基础登录不能调用原生手机号能力');
       assert.equal(!!login[0].attr.disabled, !!data.identityLoggingIn);
       assert.ok(!elements.some(node => node.tag === 'wx-input'), '点击登录前不读取或展示个人资料');

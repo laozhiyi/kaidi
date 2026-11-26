@@ -6,6 +6,7 @@ const ConfigService = require('./operation_config_service.js');
 const store = require('./operation_store.js');
 const rules = require('./order_rules.js');
 const profileRules = require('./profile_rules.js');
+const Agreements = require('../public/agreement_versions.js');
 const media = require('./private_media_service.js');
 const TenantService = require('./tenant_service.js');
 const REQUEST_ROUTES = {publish:'mail/insert',edit:'mail/edit',accept:'mail/accept',pickup:'mail/pickup',cancel:'mail/cancel',deliver:'mail/deliver',update_proof:'mail/update_proof',price_propose:'mail/price_propose',price_respond:'mail/price_respond',release:'mail/release',confirm:'mail/finish',exception:'mail/exception',resolve_exception:'mail/resolve_exception',remind:'mail/remind',auto_confirm:'mail/auto_confirm',archive:'mail/del',hold:'admin/operations_hold',resolve:'admin/operations_resolve',admin_delete:'admin/operations_delete_order'};
@@ -114,8 +115,9 @@ class MailService extends Base {
   this._request(input.requestId); const fingerprint=store.key(input);
   const id = store.key(this.getProjectId(),userId,input.requestId), seed = await this._seed(userId,'poster');
   return store.transaction(async tx => {
-   await this._actor(tx,{userId,user,allowPending:true}); const old = await store.get(tx,'mail',id);
+   const currentUser = await this._actor(tx,{userId,user,allowPending:true}); const old = await store.get(tx,'mail',id);
    if (old) { if (old.MAIL_PUBLISH_FINGERPRINT!==fingerprint) this.AppError('相同请求标识不能提交不同内容'); if (old._pid !== this.getProjectId() || old.MAIL_USER_ID !== userId) this.AppError('订单标识冲突'); return {id:old.MAIL_ID,_id:id,fee:old.MAIL_TOTAL_FEE/100,paymentMode:old.MAIL_PAYMENT_MODE}; }
+   if (!Agreements.currentUser(currentUser.USER_AGREEMENTS)) this.AppError('请到个人资料阅读并确认新版用户服务协议与隐私政策后再发单');
    if (!TenantService.isPublicCampus(store.scope() || {})) this.AppError('该校区暂未开放发单');
    if(await store.get(tx,'order_request',store.key(this.getProjectId(),userId,input.requestId)))this.AppError('请求标识已被使用');
    await store.assertRequestOpen(tx,this.getProjectId(),userId,REQUEST_ROUTES.publish,input.requestId);
@@ -148,11 +150,15 @@ class MailService extends Base {
    const state = mail.MAIL_STATUS, now = Date.now(); let note = '', message = null;
    if (action !== 'accept' && !adminId && !poster && !rider) this.AppError('无权限操作该订单');
    if (action === 'accept') {
+    if (!Agreements.currentUser(currentUser.USER_AGREEMENTS)) this.AppError('请到个人资料阅读并确认新版用户服务协议与隐私政策后再接单');
     if (!TenantService.isPublicCampus(store.scope() || {})) this.AppError('该校区暂未开放接单');
     rules.requireOpen(config,now);
     if (state !== 0 || mail.MAIL_ACCEPT_USER_ID) this.AppError('该订单已被接取或状态已变化，请查看其他订单');
     if (poster) this.AppError('不能接取自己发布的订单');
-    if (mail.MAIL_PAYMENT_MODE === 'adapay') await new (require('./adapay_account_service.js'))().requireReady(userId,tx);
+    if (mail.MAIL_PAYMENT_MODE === 'adapay') {
+     const settlementAccount = await new (require('./adapay_account_service.js'))().requireReady(userId,tx);
+     if (!Agreements.currentRider(settlementAccount)) this.AppError('请到跑腿结算页阅读并确认新版骑手协议');
+    }
     if ((mail.MAIL_RELEASED_RIDERS || []).includes(userId)) this.AppError('你已放弃过这个订单，不能再次接单');
     if (mail.MAIL_END_TIME <= now) this.AppError('该订单已超过接单截止时间');
     if (!(mail.MAIL_PAYMENT_MODE === 'offline' || ['wechat','adapay'].includes(mail.MAIL_PAYMENT_MODE) && mail.MAIL_PAY_STATUS === 1)) this.AppError('订单尚未确认付款，不能接单');
@@ -222,7 +228,10 @@ class MailService extends Base {
     const expired = !(mail.MAIL_END_TIME > now);
     message = { only:'poster', title:'骑手已放弃接单', content:expired ? '调价未达成，骑手已放弃接单；订单已过接单截止时间，请编辑后重新发布' : '调价未达成，骑手已放弃接单，订单已按原价 ¥' + fee + ' 重新发布，等待其他骑手接单' };
    } else if (action === 'cancel') {
-    if (!poster || ![-1,0].includes(state)) this.AppError('只有发布者可取消待支付或待接单订单；订单已接单后不能直接取消'); mail.MAIL_STATUS = 99; note = rules.text(input.note || '发布者取消','取消原因',300,true);
+    const unpickedException = state === 3 && mail.MAIL_EXCEPTION && mail.MAIL_EXCEPTION.previousStatus === 1 && mail.MAIL_EXCEPTION.reason !== '管理员介入';
+    if (!(poster && [-1,0].includes(state) || (poster || rider) && (state === 1 || unpickedException)) || mail.MAIL_PICKUP_TIME > 0) this.AppError('仅订单参与人可在取件前取消；取件后或管理员介入后请通过反馈与投诉处理');
+    mail.MAIL_STATUS = 99; note = rules.text(input.note || (rider ? '骑手取消' : '发布者取消'),'取消原因',300,true);
+    message = {title:'订单已取消',content:'取件前取消，不收违约金。本订单已关闭，已付款项将申请原路退回。'};
    } else if (action === 'deliver') {
     if (!rider || state !== 4) this.AppError('仅配送中的接单人可提交送达');
     // 两种送达方式：放置指定位置（须凭证）/ 当面交付（由发布人确认收货）。
@@ -258,6 +267,7 @@ class MailService extends Base {
     if (byApplicant) {
      if (adminId || !this._isExceptionApplicant(mail,userId)) this.AppError('仅异常申请人可处理该异常');
      if (!['resume','cancel'].includes(input.resolution)) this.AppError('异常申请人只能恢复流程或取消订单');
+     if (input.resolution === 'cancel' && (mail.MAIL_EXCEPTION.previousStatus !== 1 || mail.MAIL_PICKUP_TIME > 0)) this.AppError('取件后不能自行取消，请通过反馈与投诉处理');
      note = input.resolution === 'resume' ? '异常申请人恢复订单流程' : '异常申请人取消订单';
      message = input.resolution === 'resume'
       ? { title:'订单流程已恢复', content:'异常申请人已恢复订单，请继续按订单进度履约' }

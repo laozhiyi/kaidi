@@ -167,14 +167,23 @@ Page({
   if (this.data.isLoad !== true || !mail || !mail._id || !mail.canAccept || this._accepting) return;
   if (mail.endTimestamp && mail.endTimestamp <= Date.now()) { await this._loadDetail(); return; }
   this._accepting = true;
-  this.setData({ accepting: true });
+  this.setData({ accepting: true, acceptProgress: '正在检查接单资格，请稍候…' });
+  if (typeof console.info === 'function') console.info('[order-accept]', { entry: 'detail', stage: 'started' });
   let loading = false;
   try {
-   if (!await PassportBiz.loginMustCancelWin(this)) return;
-   if (!await SettlementGate.ensureSettlement(mail)) return;
+   if (!await PassportBiz.loginMustCancelWin(this)) {
+    if (typeof console.info === 'function') console.info('[order-accept]', { entry: 'detail', stage: 'login_stopped', visible: !!this._visible });
+    return;
+   }
+   if (!await SettlementGate.ensureSettlement(mail) || !this._visible) {
+    if (typeof console.info === 'function') console.info('[order-accept]', { entry: 'detail', stage: 'qualification_stopped', visible: !!this._visible });
+    return;
+   }
    const confirm = await pageHelper.showConfirm('确认接单后请按订单要求尽快取件或购买，是否继续？');
-   if (!confirm) return;
-   wx.showLoading({ title: '接单中...' }); loading = true;
+   if (!confirm || !this._visible) return;
+   this.setData({ acceptProgress: '正在提交接单，请稍候…' });
+   if (typeof console.info === 'function') console.info('[order-accept]', { entry: 'detail', stage: 'submitting' });
+   wx.showLoading({ title: '接单中，请稍候', mask: true }); loading = true;
    const result = await Ops.command('mail/accept', { id: mail._id });
    wx.hideLoading(); loading = false;
    if (result && result.id) {
@@ -185,8 +194,8 @@ Page({
      wx.redirectTo({ url: pageHelper.fmtURLByPID('/pages/mail/my_detail/mail_my_detail?id=' + mail._id) });
     } else if (this.data.mail) this.data.mail.canAccept = false;
    } else if (this._visible) { pageHelper.showNoneToast('订单状态已变化，请刷新后查看'); await this._loadDetail(); }
-  } catch (err) { if (this._visible) { Ops.error(err); await this._loadDetail(); } }
-  finally { if (loading) wx.hideLoading(); this._accepting = false; if (this._visible) this.setData({ accepting: false }); else this.data.accepting = false; }
+  } catch (err) { if (loading) { wx.hideLoading(); loading = false; } if (this._visible) { Ops.error(err); await this._loadDetail(); } }
+  finally { if (loading) wx.hideLoading(); this._accepting = false; if (this._visible) this.setData({ accepting: false, acceptProgress: '' }); else { this.data.accepting = false; this.data.acceptProgress = ''; } }
  },
  bindUpdateProofTap() {
   if (!this._visible || this.data.isLoad !== true || this.data.errorMessage || this.data.accepting || !this.data.detailUI || !this.data.detailUI.canUpdateProof) return;

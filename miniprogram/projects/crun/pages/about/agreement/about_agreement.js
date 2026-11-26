@@ -6,7 +6,8 @@ Page({
 	data: { agreement: null },
 	onLoad(options = {}) {
 		ProjectBiz.initPage(this);
-		const agreement = Agreements.get(options.key) || Agreements.get('user');
+		const agreement = Agreements.get(options.key || 'user');
+        if (!agreement) { this.setData({error:'协议不存在，请返回重新选择'}); return; }
 		wx.setNavigationBarTitle({ title: agreement.title });
 		this.setData({ agreement });
 	}

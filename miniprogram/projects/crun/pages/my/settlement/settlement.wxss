@@ -43,6 +43,9 @@ page { background: #f3f6fb; }
 .settlement-paragraph { margin-bottom: 24rpx; color: #62748b; font-size: 26rpx; line-height: 1.85; }
 .settlement-sheet-button { margin-top: 12rpx; }
 
+.settlement-key-terms { border-left: 6rpx solid #397bc8; }
+.settlement-key-terms .settlement-hint { color: #25364d; font-weight: 600; }
+.settlement-document-links { margin-top: 30rpx; }
 .settlement-state { margin-top: 20rpx; padding: 72rpx 28rpx; text-align: center; }
 .settlement-loader { width: 48rpx; height: 48rpx; margin: 0 auto 28rpx; box-sizing: border-box; border: 5rpx solid #e7edf5; border-top-color: #397bc8; border-radius: 50%; animation: settlement-loading 1s linear infinite; }
 .settlement-retry { margin-top: 32rpx; }
@@ -57,3 +60,8 @@ page { background: #f3f6fb; }
 .settlement-strong { color: #24334b; font-weight: 600; }
 .settlement-blocked { color: #b7791f; }
 .settlement-link-button[disabled] { background: transparent !important; color: #a8b3c2 !important; }
+
+/* Keep the reason beside its target, with more than color alone. */
+.form-guide-invalid { position:relative; outline:2rpx solid #c84747; outline-offset:4rpx; border-radius:8rpx; }
+.form-guide-message { display:block; width:100%; flex-basis:100%; box-sizing:border-box; color:#b33737; background:#fff5f4; font-size:24rpx; line-height:1.6; padding:12rpx; margin:8rpx 0; }
+.profile-field.form-guide-invalid,.profile-choice-field.form-guide-invalid,.profile-campus-control.form-guide-invalid,.settlement-agreement.form-guide-invalid { flex-wrap:wrap; }

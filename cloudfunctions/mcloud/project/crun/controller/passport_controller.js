@@ -96,6 +96,7 @@ class PassportController extends BaseProjectController {
 			mobile: 'must|mobile|name=手机',
 			pic: 'must|string|name=头像',
 			forms: 'array|name=表单',
+            agreements: 'object|name=协议确认',
 			inviteCode: 'string|max:6|name=邀请码',
 			status: 'int|default=1'
 		};
@@ -118,6 +119,7 @@ class PassportController extends BaseProjectController {
 			mobile: 'must|mobile|name=手机',
 			pic: 'must|string|name=头像',
 			forms: 'array|name=表单',
+            agreements: 'object|name=协议确认',
 		};
 
 		// 取得数据

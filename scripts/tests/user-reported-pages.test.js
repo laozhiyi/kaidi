@@ -383,14 +383,15 @@ test('the pickup reminder renders above the proof sheet and its native inputs', 
 
 test('both platform agreements are reachable from login, about and settlement', () => {
  const Agreements = require('../../miniprogram/projects/crun/public/agreements.js');
- assert.deepEqual(Agreements.keys, ['user', 'rider']);
+ assert.deepEqual(Agreements.keys, ['user', 'rider', 'privacy', 'identity']);
  assert.equal(Agreements.get('constructor'), null);
  assert.equal(Agreements.get('user').title, '云速取用户服务协议');
  assert(JSON.parse(read('miniprogram/app.json')).pages.includes('projects/crun/pages/about/agreement/about_agreement'));
- assert.match(read(pages + 'my/reg/my_reg.wxml'), /《云速取用户服务协议》/);
+ assert.match(read(pages + 'my/reg/my_reg.wxml'), /《用户服务协议》/);
  assert.match(read(pages + 'about/index/about_index.wxml'), /data-key="rider"/);
  assert.match(read(pages + 'my/settlement/settlement.wxml'), /《云速取代取人（骑手）服务与结算协议》/);
  // 骑手协议版本与云端记录的同意版本一致。
  const service = read('cloudfunctions/mcloud/project/crun/service/adapay_account_service.js');
- assert(service.includes("const CONSENT_VERSION = '" + Agreements.get('rider').version + "';"));
+ assert(service.includes('const CONSENT_VERSION = Agreements.VERSION;'));
+ assert.equal(require('../../cloudfunctions/mcloud/project/crun/public/agreement_versions.js').VERSION, Agreements.get('rider').version);
 });

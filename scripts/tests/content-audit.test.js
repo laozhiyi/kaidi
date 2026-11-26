@@ -121,7 +121,7 @@ test('long Unicode fields remain valid text when split for auditing', async () =
 });
 
 function profile(f) {
-  return { name: '新同学', mobile: '13912345678', pic: f && f.avatar ? f.avatar('avatar.png') : 'cloud://test/avatar.png', forms: [
+  return { name: '新同学', mobile: '13912345678', pic: f && f.avatar ? f.avatar('avatar.png') : 'cloud://test/avatar.png', agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: [
     { mark: 'sex', title: '性别', type: 'select', val: '女' },
     { mark: 'college', title: '学院', type: 'text', val: '计算机学院' },
     { mark: 'sub', title: '专业', type: 'text', val: '软件工程' },
@@ -163,7 +163,7 @@ async function profileFixture() {
 test('the WeChat details route audits the nickname and updates only the trusted account', async () => {
   const f = await profileFixture();
   const result = await f.call('passport/wechat_profile', { name: '微信昵称', pic: f.avatar('wechat.jpg'),
-    userId: 'poster', USER_STATUS: 1, mobile: '13912345678', forms: profile(f).forms });
+    userId: 'poster', USER_STATUS: 1, mobile: '13912345678', agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: profile(f).forms });
   assert.equal(result.code, 200, result.msg);
   assert.deepEqual(f.auditCalls.map(item => item.content), ['微信昵称']);
   assert.equal(f.auditCalls[0].scene, 1); assert.equal(f.auditCalls[0].openid, 'audit-user');

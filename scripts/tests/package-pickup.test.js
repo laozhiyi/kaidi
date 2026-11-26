@@ -175,8 +175,29 @@ test('buy form rejects missing goods, invalid quantities and budgets before subm
  for (const patch of [{}, { goods:'牛奶',buyQuantity:'1.5',goodsBudget:'10' }, { goods:'牛奶',buyQuantity:'1',goodsBudget:'0' }]) {
   for (const [mark,value] of Object.entries(patch)) page.bindMailInput(event({mark},value));
   await page.bindFormSubmit();
+  assert.equal(page.data.guideField, !page.data.mailValues.goods ? 'goods' : page.data.mailValues.buyQuantity === '1.5' ? 'buyQuantity' : 'goodsBudget');
  }
- assert.equal(errors.length, 3); assert.equal(calls.length, 0);
+ assert.equal(errors.length, 0); assert.equal(calls.length, 0);
+});
+
+test('order validation locates missing contacts and preserves the entire draft without upload or payment', async () => {
+ const {page,calls,uploads}=await formHarness('mail_add_embedded.js');
+ setPickup(page,0,'雅园','中通');page.bindPackageItemInput(event({index:0,mark:'code'},'123-456'));
+ await page.bindFormSubmit();assert.equal(page.data.guideField,'address2');
+ page.bindMailInput(event({mark:'address2'},'二期1栋101'));assert.equal(page.data.guideField,'');
+ await page.bindFormSubmit();assert.equal(page.data.guideField,'poster');
+ page.bindMailInput(event({mark:'poster'},'测试同学'));
+ await page.bindFormSubmit();assert.equal(page.data.guideField,'tel');
+ assert.equal(page.data.packageItems[0].code,'123-456');assert.equal(page.data.mailValues.address2,'二期1栋101');
+ assert.equal(calls.length,0);assert.equal(uploads.length,0);
+ page.bindMailInput(event({mark:'tel'},'13800000000'));assert.equal(page.data.guideField,'');
+});
+
+test('editing a different parcel does not hide the first parcel problem', async () => {
+ const {page}=await formHarness();page.bindPackageTap(event({index:0,step:1}));
+ await page.bindFormSubmit();const field=page.data.guideField;
+ page.bindPackageItemInput(event({index:1,mark:'code'},'second'));assert.equal(page.data.guideField,field);
+ setPickup(page,0,'雅园','中通');assert.equal(page.data.guideField,'');
 });
 
 test('server validates service and buying fields and preserves legacy pickup proof requirements', () => {
@@ -344,8 +365,9 @@ test('editing restores every stored parcel even when database records have no cl
 test('publishing requires each pickup point before any upload and resets the next draft', async () => {
  const { page, calls, uploads, errors } = await formHarness('mail_add_embedded.js');
  page.bindPackageTap(event({ index: 0, step: 1 })); setPickup(page, 0, '雅园', '中通');
+ page.bindPackageItemInput(event({index:0,mark:'code'},'123'));
  await page.bindFormSubmit();
- assert.match(errors[0], /第2件包裹的取件点/); assert.equal(calls.length, 0); assert.equal(uploads.length, 0);
+ assert.match(page.data.guideMessage, /第2件包裹的取件点/); assert.equal(page.data.guideField,'parcel-'+page.data.packageItems[1].id); assert.equal(calls.length, 0); assert.equal(uploads.length, 0);
  setPickup(page, 1, '知园', '邮政');
  page.bindOpenPackagePickup(event({ id: page.data.packageItems[0].id }));
  page.bindPackagePickupInput(event({}, '   ')); page.bindConfirmPackagePickup();

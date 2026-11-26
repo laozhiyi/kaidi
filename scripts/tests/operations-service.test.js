@@ -76,7 +76,7 @@ test('anonymous viewers never match unassigned or missing order identities',asyn
 
 test('publish retry is idempotent even after closure, and changed payload cannot reuse the key',async()=>{
  const f=fixture(),id=await f.publish();f.config.enabled=false;assert.equal(await f.publish(),id);assert.equal(f.table('mail').size,1);assert.equal(f.table('order_event').size,1);
- const changed=f.forms();changed.find(x=>x.mark==='small').val=2;await assert.rejects(f.publish({forms:changed}),/不同内容/);
+ const changed=f.forms();changed.find(x=>x.mark==='small').val=2;await assert.rejects(f.publish({agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms:changed}),/不同内容/);
 });
 
 test('two racing riders yield one accept, one quota reservation and no partial loser writes',async()=>{
@@ -94,7 +94,7 @@ test('active registered users, order campus, self-accept and deadline are server
 
 test('accept versus cancel serializes and accept versus edit never mutates an accepted order',async()=>{
  const f=fixture(),id=await f.publish();const result=await Promise.allSettled([f.service.acceptMail('rider',id,{requestId:f.req('accept')}),f.service.cancelMail('poster',id,{requestId:f.req('cancel')})]);assert.equal(result.filter(x=>x.status==='fulfilled').length,1);
- if(f.table('mail').get(id).MAIL_STATUS===1)await assert.rejects(f.service.editMail('poster',{id,forms:f.forms(),requestId:f.req('edit')}),/尚未被接取/);
+ if(f.table('mail').get(id).MAIL_STATUS===1)await assert.rejects(f.service.editMail('poster',{id,agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms:f.forms(),requestId:f.req('edit')}),/尚未被接取/);
 });
 
 test('only rider can submit required proof; only poster can confirm; quotas released once',async()=>{
@@ -161,7 +161,7 @@ test('admin login verifies password before issuing a token and password changes 
 });
 
 test('registration is unique under racing calls and cannot self-authorize or edit a disabled profile',async()=>{
- const f=fixture(),svc=new (f.load('passport_service.js'))();f.config.registrationReview=true;const input={name:'同学',mobile:'13912345678',pic:'cloud://test/avatar.png',forms:[{mark:'sex',val:'男'},{mark:'college',val:'计算机学院'},{mark:'sub',val:'软件工程'},{mark:'studentId',val:'20240001'},{mark:'studentCard',val:['cloud://test/student-card.png']},{mark:'disclaimer',val:true},{mark:'campus',val:'育才校区'}],status:1};
+ const f=fixture(),svc=new (f.load('passport_service.js'))();f.config.registrationReview=true;const input={name:'同学',mobile:'13912345678',pic:'cloud://test/avatar.png',agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms:[{mark:'sex',val:'男'},{mark:'college',val:'计算机学院'},{mark:'sub',val:'软件工程'},{mark:'studentId',val:'20240001'},{mark:'studentCard',val:['cloud://test/student-card.png']},{mark:'disclaimer',val:true},{mark:'campus',val:'育才校区'}],status:1};
  await svc.wechatIdentityLogin('newuser');
  await Promise.all([svc.register('newuser',input),svc.register('newuser',input)]);const users=[...f.table('user').values()].filter(x=>x.USER_MINI_OPENID==='newuser');assert.equal(users.length,1);assert.equal(users[0].USER_STATUS,0);assert.equal(users[0].USER_MOBILE_VERIFIED,false);
  await svc.wechatIdentityLogin('newuser2');
@@ -220,7 +220,7 @@ test('non-take orders silently drop delivery requirements', () => {
 });
 
 test('public order projection exposes delivery requirements before accepting', async () => {
- const f = fixture(), id = await f.publish({ forms: requirementForms(f, 'female', true) });
+ const f = fixture(), id = await f.publish({ agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: requirementForms(f, 'female', true) });
  const publicOrder = (await f.service.getMailList('rider', { sortType: 'wait' })).list[0];
  assert.equal(publicOrder.MAIL_OBJ.riderGender, 'female');
  assert.equal(publicOrder.MAIL_OBJ.upstairs, true);
@@ -228,18 +228,18 @@ test('public order projection exposes delivery requirements before accepting', a
 });
 
 test('gender-restricted orders reject the wrong or missing rider sex and never block any/legacy orders', async () => {
- const female = fixture(), femaleId = await female.publish({ forms: requirementForms(female, 'female', false) });
+ const female = fixture(), femaleId = await female.publish({ agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: requirementForms(female, 'female', false) });
  await assert.rejects(female.service.acceptMail('rider', femaleId, { requestId: female.req('male-rider') }), /该订单仅限女生配送/);
  assert.equal(female.table('mail').get(femaleId).MAIL_STATUS, 0);
  sexed(female, 'rider2', '女');
  await female.service.acceptMail('rider2', femaleId, { requestId: female.req('female-rider') });
  assert.equal(female.table('mail').get(femaleId).MAIL_ACCEPT_USER_ID, 'rider2');
 
- const male = fixture(), maleId = await male.publish({ forms: requirementForms(male, 'male', false) });
+ const male = fixture(), maleId = await male.publish({ agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: requirementForms(male, 'male', false) });
  sexed(male, 'rider', '女');
  await assert.rejects(male.service.acceptMail('rider', maleId, { requestId: male.req('female-rider') }), /该订单仅限男生配送/);
 
- const any = fixture(), anyId = await any.publish({ forms: requirementForms(any, 'any', false) });
+ const any = fixture(), anyId = await any.publish({ agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: requirementForms(any, 'any', false) });
  await any.service.acceptMail('rider', anyId, { requestId: any.req('any-rider') });
 
  const legacy = fixture(), legacyId = await legacy.publish();
@@ -248,7 +248,7 @@ test('gender-restricted orders reject the wrong or missing rider sex and never b
 });
 
 test('a rider without a recorded sex cannot accept a gender-restricted order', async () => {
- const f = fixture(), id = await f.publish({ forms: requirementForms(f, 'female', false) });
+ const f = fixture(), id = await f.publish({ agreements:{accepted:true,userVersion:'2026-11-27',privacyVersion:'2026-11-27'},forms: requirementForms(f, 'female', false) });
  f.user('rider', { USER_FORMS: [{ mark: 'college', val: '计算机学院' }] });
  // 资料完整性由既有资料规则先行拦截；这里放开它，单独验证接单侧的兜底提示。
  f.load('profile_rules.js').isReady = () => true;
