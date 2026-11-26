@@ -69,6 +69,9 @@ test('redundant pages are removed while export and role-specific workflows remai
   for (const key of ['orders', 'feedback', 'analytics', 'settings']) assert.ok(read(mini + 'admin/index/home/admin_home.wxml').includes('data-key="' + key + '"'));
 });
 test('new-page development settings do not use hot reload or unused-file filtering', () => {
+  assert.equal(JSON.parse(read('project.config.json')).setting.compileHotReLoad, false);
+  // 私有配置只存在于开发者本机，不进仓库；存在时它会覆盖共享配置，需要一并检查。
+  if (!fs.existsSync(path.join(root, 'project.private.config.json'))) return;
   const config = JSON.parse(read('project.private.config.json'));
   assert.equal(config.setting.compileHotReLoad, false);
   assert.equal(config.setting.ignoreDevUnusedFiles, false);
