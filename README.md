@@ -28,7 +28,7 @@
 - 退出撤销服务端会话并清理本地资料。注销成功即退出，两小时内主动登录会取消注销；等于截止时间已到期，有任何未完成的发单／接单时拒绝注销。到期数据及可确认归属的私有图片由订单维护任务清理。
 - 默认常用地址和联系人自动填入首页、独立下单页；正在编辑的手填内容和已有订单不会被默认资料覆盖。
 - 发布成功后清理上一单的备注和包裹，下一单可以使用新的默认资料。常用地址入口可主动重新选择。
-- 后台学校／校区授权门槛已取消，管理员账号、角色、令牌及请求的数据范围继续生效；详见 [后台管理](ADMIN_CONSOLE.md)。
+- 后台学校／校区授权门槛已取消，管理员账号、角色、令牌及请求的数据范围继续生效；详见 [后台管理](docs/ADMIN_CONSOLE.md)。
 - 客服在后台登录页点击「客服首次开通」，输入管理员生成的邀请码并确认。小程序先建立微信会话，再兑换邀请码和开通客服权限。客服开通无需提交学生注册资料。
 - 当前内测仅开放广西师范大学雁山校区。个人资料的校区列表会显示同校其他校区及「暂未开放」状态，新发单与接单仅在雁山开放。扩大范围时同步调整 `mcloud` 的 `PUBLIC_CAMPUS_SCOPE` 和个人资料页的 `PUBLIC_PROFILE_CAMPUS`。
 
@@ -64,10 +64,21 @@ node scripts/check-miniprogram-pages.cjs --wcc '<微信开发者工具内的 wcc
 | 文档 | 用途 |
 | --- | --- |
 | [部署与迁移](deployment/MULTI_TENANT_ROLLOUT.md) | 函数打包、环境、权限、索引、旧数据迁移、回滚及云端验收 |
-| [稳定性与并发](RELIABILITY.md) | 幂等、限流、数据权限、任务维护、并发测试和容量检查 |
-| [后台管理](ADMIN_CONSOLE.md) | 后台入口、角色与内测登录、设置保存、页面检查 |
-| [公告与通知](NOTIFICATIONS.md) | 已读规则、站内消息、微信订阅及故障排查 |
+| [稳定性与并发](docs/RELIABILITY.md) | 幂等、限流、数据权限、任务维护、并发测试和容量检查 |
+| [后台管理](docs/ADMIN_CONSOLE.md) | 后台入口、角色与内测登录、设置保存、页面检查 |
+| [公告与通知](docs/NOTIFICATIONS.md) | 已读规则、站内消息、微信订阅及故障排查 |
+| [微信支付部署](docs/WECHAT_PAY_DEPLOYMENT.md) | 商户收款、骑手免确认授权与商家转账部署验收 |
 | [登录与账户](deployment/WECHAT_LOGIN.md) | 头像昵称登录、联系资料、完整退出、两小时注销及部署验收 |
 | [文字审核](deployment/CONTENT_AUDIT.md) | 字段选择、服务异常、内容拒绝与 OpenAPI 封装 |
 
 源码位于 `miniprogram/` 和 `cloudfunctions/mcloud/`；离线检查和测试位于 `scripts/`。部署索引与权限材料保留在 `deployment/`。
+
+## 提交到 GitHub
+
+只提交 `miniprogram/`、`cloudfunctions/`、`scripts/`、`deployment/`、`docs/` 以及根目录的 `project.config.json`、`AGENTS.md`、`README.md`、`.gitignore`。其余内容由 [.gitignore](.gitignore) 排除，分类说明写在该文件里：
+
+- **严禁提交**：`project.private.config.json`、`pem/` 及各类证书私钥、`.env`（模板 `.env.example` 照常提交）。
+- **临时产物**：测试日志、调试快照、预览页面、打包副本统一放进 `.tmp/`，不要放在仓库根目录。
+- **依赖与本地工具**：`node_modules/`、AI 助手和规划笔记目录。
+
+提交前先运行 `git status`，确认列表里没有日志、截图或密钥。需要回退时，用 `git tag` 查看已标记的稳定版本。
