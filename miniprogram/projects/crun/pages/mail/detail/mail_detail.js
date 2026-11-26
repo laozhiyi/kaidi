@@ -154,7 +154,7 @@ Page({
   finally { if (!this._unloaded) this.setData({ favoriteBusy: false }); }
  },
  bindBackOrders() { wx.switchTab({ url: '/projects/crun/pages/order/index/order_index' }); },
- bindServiceHelpTap() { wx.navigateTo({ url: '/projects/crun/pages/customer_service/chat/customer_service_chat' }); },
+ bindServiceHelpTap() { require('../../../biz/customer_service_biz.js').openCustomerService(); },
  bindCopyOrderTap() { const mail = this.data.mail; if (mail) wx.setClipboardData({ data: String(mail.MAIL_ID || mail._id) }); },
  bindNoticeTap() { if(this.data.mail && (this.data.mail.MAIL_PAYMENT_MODE === 'wechat' || this.data.mail.MAIL_PAYMENT_MODE === 'adapay')) return wx.showModal({title:'微信支付说明',content:'跑腿费已通过平台微信支付收取，请勿重复向发布者收取跑腿费。',showCancel:false}); wx.showModal({ title: '结算核对说明', content: '本单结算方式待核对，请联系在线客服核对支付与退款记录，勿重复向对方转账。', showCancel: false, confirmText: '我知道了' }); },
  bindManageTap() { if (this.data.detailUI && this.data.detailUI.participant) wx.navigateTo({ url: '../my_detail/mail_my_detail?id=' + this.data.id }); },

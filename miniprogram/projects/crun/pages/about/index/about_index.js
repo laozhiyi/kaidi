@@ -44,5 +44,5 @@ Page({
     wx.previewImage({ current: target, urls: [target] });
   },
   bindContact() { wx.navigateTo({ url: '/projects/crun/pages/about/index/about_index?key=SETUP_CONTENT_CONTACT' }); },
-  bindService() { wx.navigateTo({ url: '/projects/crun/pages/customer_service/chat/customer_service_chat' }); }
+  bindService() { require('../../../biz/customer_service_biz.js').openCustomerService(); }
 });

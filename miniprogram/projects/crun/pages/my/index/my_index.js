@@ -151,7 +151,7 @@ Page(Object.assign({
   },
   bindWalletTap() { return this._openUserPage('/projects/crun/pages/my/wallet/wallet'); },
   bindAboutTap() { wx.navigateTo({ url: '/projects/crun/pages/about/index/about_index' }); },
-  bindCampusServiceTap() { wx.navigateTo({ url: '/projects/crun/pages/customer_service/chat/customer_service_chat' }); },
+  bindCampusServiceTap() { require('../../../biz/customer_service_biz.js').openCustomerService(); },
   bindMyAcceptTap() {
     wx.setStorageSync('crun-order-tab', 1);
     wx.switchTab({ url: '/projects/crun/pages/order/index/order_index' });

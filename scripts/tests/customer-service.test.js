@@ -473,3 +473,21 @@ test('客服可以处理投诉、订单履约与用户注册审核，但拿不�
 	assert.match(routes, /'admin\/customer_service_invite'/);
 	assert.doesNotMatch(routes, /admin\/campus_service_/);
 });
+
+test('every user-facing customer service entry shows 待开发 instead of opening the chat', () => {
+	const read = file => fs.readFileSync(path.join(__dirname, '../../miniprogram/projects/crun', file), 'utf8');
+	const entries = { 'pages/about/index/about_index.js': 'bindService', 'pages/my/index/my_index.js': 'bindCampusServiceTap',
+		'pages/mail/add/mail_add_logic.js': 'bindServiceHelpTap', 'pages/mail/detail/mail_detail.js': 'bindServiceHelpTap',
+		'pages/mail/my_detail/mail_my_detail.js': 'bindServiceHelpTap' };
+	for (const [file, handler] of Object.entries(entries)) {
+		const source = read(file);
+		assert.match(source, new RegExp(handler + "\\(\\) \\{ require\\('\\.\\./\\.\\./\\.\\./biz/customer_service_biz\\.js'\\)\\.openCustomerService\\(\\); \\}"), file);
+		assert.doesNotMatch(source, /customer_service_chat/, file);
+	}
+	const toasts = [], navigation = [], sandbox = { module: { exports: {} }, wx: { showToast: data => toasts.push(data), navigateTo: data => navigation.push(data) } };
+	sandbox.exports = sandbox.module.exports;
+	vm.runInNewContext(read('biz/customer_service_biz.js'), sandbox);
+	sandbox.module.exports.openCustomerService();
+	assert.equal(sandbox.module.exports.OPEN, false);
+	assert.equal(JSON.stringify(toasts), JSON.stringify([{ title: '待开发', icon: 'none' }])); assert.equal(navigation.length, 0);
+});

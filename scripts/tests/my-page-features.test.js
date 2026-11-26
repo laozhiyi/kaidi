@@ -711,7 +711,8 @@ test('every personal-center entry reaches its intended destination and private e
   };
   const h = harness(), page = h.page('my/index/my_index.js');
   for (const [handler, route] of Object.entries(routes)) { await page[handler](); assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/' + route); }
-  page.bindCampusServiceTap(); assert.match(h.navigation.at(-1).url, /customer_service_chat$/);
+  const before = h.navigation.length; page.bindCampusServiceTap();
+  assert.equal(h.navigation.length, before, 'online customer service is not open yet'); assert.equal(h.messages.at(-1), '待开发');
   page.bindAboutTap(); assert.match(h.navigation.at(-1).url, /about_index$/);
   const denied = harness({ allowed: false }), guest = denied.page('my/index/my_index.js');
   for (const handler of Object.keys(routes)) await guest[handler]();
