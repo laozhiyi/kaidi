@@ -30,6 +30,10 @@ Page({
     } catch (error) { if (!this._unloaded) this.setData({ error: true }); }
     finally { if (!this._unloaded) this.setData({ loading: false }); }
   },
+  bindAgreement(e) {
+    const key = e.currentTarget.dataset.key;
+    if (key === 'user' || key === 'rider') wx.navigateTo({ url: '/projects/crun/pages/about/agreement/about_agreement?key=' + key });
+  },
   async onPullDownRefresh() { try { await this.load(); } finally { wx.stopPullDownRefresh(); } },
   async bindImage(e) {
     const url = e.currentTarget.dataset.url;

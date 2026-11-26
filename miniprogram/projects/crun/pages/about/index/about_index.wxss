@@ -4,3 +4,6 @@
 .about-name { font-size: 38rpx; font-weight: 600; margin-bottom: 12rpx; }
 .about-content { margin: 20rpx 0; white-space: pre-wrap; line-height: 1.9; }
 .about-image { display: block; width: 100%; margin: 20rpx 0; border-radius: 12rpx; }
+.about-agreement { display: flex; align-items: center; justify-content: space-between; padding: 26rpx 0; color: #25364d; font-size: 28rpx; }
+.about-agreement + .about-agreement { border-top: 1rpx solid #edf1f6; }
+.about-agreement-hover { opacity: .7; }

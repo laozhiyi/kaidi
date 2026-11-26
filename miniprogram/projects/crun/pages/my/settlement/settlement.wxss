@@ -47,3 +47,11 @@ page { background: #f3f6fb; }
 .settlement-loader { width: 48rpx; height: 48rpx; margin: 0 auto 28rpx; box-sizing: border-box; border: 5rpx solid #e7edf5; border-top-color: #397bc8; border-radius: 50%; animation: settlement-loading 1s linear infinite; }
 .settlement-retry { margin-top: 32rpx; }
 @keyframes settlement-loading { to { transform: rotate(360deg); } }
+.settlement-pending { margin-bottom: 20rpx; border: 1rpx solid #f3dcb2; background: #fffaf1; }
+.settlement-link-button { display: flex; align-items: center; gap: 8rpx; margin: 18rpx 0 0; padding: 0; background: transparent; color: #397bc8; font-size: 26rpx; line-height: 1.8; text-align: left; }
+.settlement-link-button::after, .settlement-cancel::after { border: 0; }
+.settlement-change-card { margin-top: 20rpx; }
+.settlement-cancel { margin-top: 16rpx; height: 84rpx; border-radius: 16rpx; background: #eef2f7; color: #52657f; line-height: 84rpx; font-size: 28rpx; }
+.settlement-meta { color: #8998ac; font-size: 23rpx; }
+.settlement-heading { margin: 26rpx 0 12rpx; color: #24334b; font-size: 27rpx; font-weight: 600; }
+.settlement-strong { color: #24334b; font-weight: 600; }

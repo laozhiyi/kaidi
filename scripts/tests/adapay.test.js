@@ -450,3 +450,126 @@ test('member retry does not treat configuration, network or unverified errors as
   assert.equal(creates,1);assert.equal(binds,0);
  }
 });
+
+// ---- 开户/换卡的失败反馈、结果核对与更换结算银行卡 ----
+const riderForm=(over={})=>({realName:'测试同学',identity:'11010519491231002X',bankCard:'6222020000001234',phone:'13800000000',rulesAccepted:true,authorizationAccepted:true,...over});
+function accountHarness(handler){
+ const h=harness(),member='runner_'+h.store.scopeKey('adapay-account',cfg.appid,cfg.prod,'rider'),calls=[];
+ const api={request:async(m,p,b)=>{calls.push(m+' '+p);return handler(m,p,b,member);}};
+ const Service=load('service/adapay_account_service.js',{...h.deps,crypto,'./adapay_api.js':api},{console:{warn:()=>{}}});
+ const row=()=>Object.values(h.rows.payment).find(x=>x.kind==='adapay_account');
+ return {h,member,calls,service:new Service(),row};
+}
+const rejected=(reason,code='channel_error')=>Object.assign(Error('ADAPAY_REQUEST_FAILED'),{code,verified:true,reason});
+const realnameOk=member=>({app_id:cfg.appid,member_id:member,identified:'Y',status:'succeeded'});
+const bank=(id,card)=>({id,app_id:cfg.appid,status:'succeeded',channel:'bank_account',prod_mode:'false',account_info:{card_id:card.slice(0,4)+'****'+card.slice(-4)}});
+
+test('AdaPay rejection reasons are classified without keeping the provider description',()=>{
+ for(const [data,reason] of [[{error_msg:'银行卡预留手机号不一致'},'phone'],[{invalid_param:'tel_no'},'phone'],[{error_msg:'该卡为信用卡，暂不支持'},'card_type'],
+  [{error_msg:'姓名与身份证号不匹配'},'identity'],[{error_msg:'户名不符'},'name'],[{invalid_param:'card_id'},'card'],[{error_msg:'四要素验证失败'},'mismatch'],[{error_msg:'系统繁忙'},''],
+  [{error_msg:'身份证号与银行卡不匹配'},'mismatch'],[{error_msg:'结算账户已存在'},'exists'],[{invalid_param:'card_id',error_msg:'预留手机号不一致'},'card']])
+  assert.equal(wire.reasonOf(data),reason,JSON.stringify(data));
+});
+
+test('a verified bank rejection names the field to fix and the corrected details can be resubmitted',async()=>{
+ let first=true;
+ const t=accountHarness((m,p,b,member)=>{
+  if(p==='/v1/members/realname')return realnameOk(member);
+  if(p==='/v1/settle_accounts'){if(first){first=false;throw rejected('phone');}return bank('bank1',b.account_info.card_id);}
+  throw Error('unexpected '+p);
+ });
+ await assert.rejects(t.service.open('rider',riderForm({phone:'13900000000'})),/预留手机号/);
+ assert.equal(t.row().canCorrect,true);
+ const result=await t.service.open('rider',riderForm());
+ assert.equal(result.opened,true);
+ assert.equal(t.calls.filter(x=>x.endsWith('/v1/members/realname')).length,1,'a confirmed realname member is reused');
+});
+
+test('provider or configuration failures are not reported as wrong user details',async()=>{
+ const t=accountHarness((m,p,b,member)=>{
+  if(p==='/v1/members/realname')return realnameOk(member);
+  throw rejected('','system_exception');
+ });
+ await assert.rejects(t.service.open('rider',riderForm()),/暂时不可用/);
+});
+
+test('an unconfirmed result with changed details is reconciled before correction is allowed',async()=>{
+ for(const accounts of [[],[{id:'other'}]]){
+  let binds=0;
+  const t=accountHarness((m,p,b,member)=>{
+   if(p==='/v1/members/realname')return realnameOk(member);
+   if(m==='GET'&&p==='/v1/members/'+member)return {...realnameOk(member),prod_mode:'false',disabled:'N',settle_accounts:accounts};
+   if(p==='/v1/settle_accounts'){if(++binds===1)throw Error('ADAPAY_TIMEOUT');return bank('bank2',b.account_info.card_id);}
+   throw Error('unexpected '+p);
+  });
+  await assert.rejects(t.service.open('rider',riderForm({phone:'13900000000'})),/尚未确认/);
+  assert.equal(t.row().canCorrect,false);
+  if(accounts.length){
+   await assert.rejects(t.service.open('rider',riderForm()),/还在确认中/);
+   assert.equal(binds,1,'an existing provider account blocks another binding');
+  } else {
+   const result=await t.service.open('rider',riderForm());
+   assert.equal(result.opened,true);assert.equal(binds,2);
+  }
+ }
+});
+
+test('changing the settlement card requires the same person and deletes the old account before binding the new one',async()=>{
+ const t=accountHarness((m,p,b,member)=>{
+  if(p==='/v1/members/realname')return realnameOk(member);
+  if(p==='/v1/settle_accounts')return bank(b.account_info.card_id.endsWith('1234')?'bank1':'bank2',b.account_info.card_id);
+  if(p==='/v1/settle_accounts/delete'){assert.equal(JSON.stringify(b),JSON.stringify({member_id:member,settle_account_id:'bank1'}));return {id:'bank1',status:'succeeded',prod_mode:'false'};}
+  throw Error('unexpected '+p);
+ });
+ await t.service.open('rider',riderForm());
+ await assert.rejects(t.service.change('rider',riderForm({realName:'别人',bankCard:'6222020000005678'})),/开通时的本人姓名和身份证号/);
+ await assert.rejects(t.service.change('rider',riderForm()),/无需更换/);
+ await assert.rejects(t.service.open('rider',riderForm({bankCard:'6222020000005678'})),/更换结算银行卡/);
+ const result=await t.service.change('rider',riderForm({bankCard:'6222020000005678'}));
+ assert.equal(result.opened,true);assert.equal(result.cardTail,'5678');assert.equal(t.row().accountId,'bank2');
+ const order=t.calls.filter(x=>x.includes('/v1/settle_accounts'));
+ assert.deepEqual(order,['POST /v1/settle_accounts','POST /v1/settle_accounts/delete','POST /v1/settle_accounts']);
+ const saved=JSON.stringify(t.h.rows.payment);assert(!saved.includes('6222020000005678'));
+});
+
+test('a refused card change keeps the old account and an unknown deletion is reconciled later',async()=>{
+ let deletion='refuse';
+ const t=accountHarness((m,p,b,member)=>{
+  if(p==='/v1/members/realname')return realnameOk(member);
+  if(p==='/v1/settle_accounts')return bank('bank1',b.account_info.card_id);
+  if(p==='/v1/settle_accounts/delete'){if(deletion==='refuse')throw rejected('');throw Error('ADAPAY_TIMEOUT');}
+  if(m==='GET'&&p==='/v1/members/'+member)return {...realnameOk(member),prod_mode:'false',disabled:'N',settle_accounts:[{id:'bank1'}]};
+  if(m==='GET'&&p==='/v1/settle_accounts/bank1')return bank('bank1','6222020000001234');
+  throw Error('unexpected '+p);
+ });
+ await t.service.open('rider',riderForm());
+ await assert.rejects(t.service.change('rider',riderForm({bankCard:'6222020000005678'})),/继续有效/);
+ assert.equal(t.row().status,'ready');assert.equal(t.row().accountId,'bank1');
+ deletion='timeout';
+ await assert.rejects(t.service.change('rider',riderForm({bankCard:'6222020000005678'})),/换卡结果暂未确认/);
+ assert.equal(t.row().status,'needs_check');assert.equal(t.row().previousAccountId,'bank1');
+ assert.equal((await t.service.status('rider')).pending,true);
+ // 再次提交时先核对：原账户仍然有效，恢复为已开通，不会再绑一张卡。
+ await assert.rejects(t.service.open('rider',riderForm({bankCard:'6222020000005678'})),/更换结算银行卡/);
+ assert.equal(t.row().status,'ready');assert.equal(t.row().accountId,'bank1');
+});
+
+test('when the new card is rejected after the old one is removed the rider can correct and bind again',async()=>{
+ let rejectNew=true,realname=0;
+ const t=accountHarness((m,p,b,member)=>{
+  if(p==='/v1/members/realname'){realname++;return realnameOk(member);}
+  if(p==='/v1/settle_accounts'){
+   if(b.account_info.card_id.endsWith('1234'))return bank('bank1',b.account_info.card_id);
+   if(rejectNew){rejectNew=false;throw rejected('card_type');}
+   return bank('bank3',b.account_info.card_id);
+  }
+  if(p==='/v1/settle_accounts/delete')return {id:'bank1',status:'succeeded'};
+  throw Error('unexpected '+p);
+ });
+ await t.service.open('rider',riderForm());
+ await assert.rejects(t.service.change('rider',riderForm({bankCard:'6222020000005678'})),/原结算银行卡已解除，新卡未绑定成功：该银行卡暂不支持/);
+ const status=await t.service.status('rider');
+ assert.equal(status.opened,false);assert.equal(status.identified,true);assert.equal(status.pending,false);
+ const result=await t.service.open('rider',riderForm({bankCard:'6222020000009999'}));
+ assert.equal(result.opened,true);assert.equal(t.row().accountId,'bank3');assert.equal(realname,1);
+});

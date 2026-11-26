@@ -8,13 +8,20 @@ const SECTIONS = {
  pricing: ['smallPrice', 'mediumPrice', 'largePrice', 'maxPackages', 'offlineNotice'],
  rules: ['maxActiveOrders', 'maxOpenOrders', 'deliveryMinutes', 'urgentMinutes', 'urgentEnabled', 'registrationReview']
 };
+// 跑腿费下限 1 元；早先保存的低于 1 元的参考价按 1 元使用，避免保存其他分组时整份配置校验失败。
+const MIN_PRICE = 1;
+const liftPrices = value => {
+ const next = { ...(value || {}) };
+ for (const name of ['smallPrice', 'mediumPrice', 'largePrice']) if (typeof next[name] === 'number' && next[name] < MIN_PRICE) next[name] = MIN_PRICE;
+ return next;
+};
 class OperationConfigService extends Base {
  async getConfig(tx = store.database()) {
   const scope = store.scope();
   const row = await store.get(tx, 'operation_config', store.scopeKey(this.getProjectId(), 'config'));
   // Only an absent document uses the default opening policy. Read failures propagate;
   // saved pauses and malformed legacy settings must never be silently re-enabled.
-  return { ...DEFAULTS, ...(row && row.value || {}),
+  return { ...DEFAULTS, ...liftPrices(row && row.value),
    enabled: row ? !!(row.value && row.value.enabled === true) : scope ? false : DEFAULTS.enabled,
    enforceBusinessHours: !!(row && row.value && row.value.enforceBusinessHours === true),
    configured: !!row, paymentMode: PaymentService.newOrderMode(), paymentNotice: '发布时微信支付跑腿费，支付确认后订单才会发布；代买商品款另行结算。接单前取消或无人接单超时原路退款。', version: row && row.version || 0,
@@ -27,7 +34,7 @@ class OperationConfigService extends Base {
   for (const name of ['enabled','urgentEnabled','registrationReview']) { if (typeof value[name] !== 'boolean') this.AppError('配置开关无效'); next[name] = value[name]; }
   if (value.enforceBusinessHours !== undefined && typeof value.enforceBusinessHours !== 'boolean') this.AppError('营业时间限制开关无效');
   next.enforceBusinessHours = value.enforceBusinessHours === true;
-  const ranges = { smallPrice:[0,100], mediumPrice:[0,100], largePrice:[0,100], maxPackages:[1,100], maxActiveOrders:[1,20], maxOpenOrders:[1,50], deliveryMinutes:[10,1440], urgentMinutes:[10,1440], openHour:[0,23], closeHour:[1,24] };
+  const ranges = { smallPrice:[1,100], mediumPrice:[1,100], largePrice:[1,100], maxPackages:[1,100], maxActiveOrders:[1,20], maxOpenOrders:[1,50], deliveryMinutes:[10,1440], urgentMinutes:[10,1440], openHour:[0,23], closeHour:[1,24] };
   for (const [name, range] of Object.entries(ranges)) { const n = value[name]; if (typeof n !== 'number' || !Number.isFinite(n) || n < range[0] || n > range[1] || (!name.endsWith('Price') && !Number.isInteger(n)) || name.endsWith('Price') && Math.abs(n * 100 - Math.round(n * 100)) > 1e-7) this.AppError('配置数值无效：' + name); next[name] = n; }
   if (next.openHour >= next.closeHour || next.urgentMinutes > next.deliveryMinutes) this.AppError('营业时间或加急时效无效');
   if (!Array.isArray(value.campuses) || !value.campuses.length || value.campuses.length > 20 || value.campuses.some(x => typeof x !== 'string' || !x.trim() || x.length > 30)) this.AppError('请设置1至20个有效校区');
@@ -63,7 +70,7 @@ class OperationConfigService extends Base {
    if (!require('../../../framework/tenancy/tenant_context.js').isAdminEnabled(admin) || admin._pid !== this.getProjectId() || admin.ADMIN_TYPE !== 1) this.AppError('超级管理员权限已失效');
    const old = await store.get(tx, 'operation_config', id);
    const scope = store.scope();
-   const merged = section ? { ...DEFAULTS, ...(scope ? {enabled:false} : {}), ...(old && old.value || {}), ...value } : { ...value };
+   const merged = section ? { ...DEFAULTS, ...(scope ? {enabled:false} : {}), ...liftPrices(old && old.value), ...value } : { ...value };
    if (scope) merged.campuses = [scope.campusName];
    if(scope){
     const school=await store.get(tx,'school',scope.schoolId);if(!school)this.AppError('学校配置不存在');

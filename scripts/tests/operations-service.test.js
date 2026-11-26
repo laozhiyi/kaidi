@@ -4,8 +4,10 @@ const {fixture}=require('../test-support/operations-fixture.cjs');
 const password=require('../../cloudfunctions/mcloud/framework/utils/password_util.js');
 
 test('server recomputes cents and rejects malformed forms, disabled service and bad deadlines',async()=>{
- const f=fixture(),rules=f.load('order_rules.js');const forms=f.forms();forms.push({mark:'price',val:0.01});
- assert.equal(rules.validateForms(forms,f.config,Date.now()).totalFee,1);
+ const f=fixture(),rules=f.load('order_rules.js');const forms=f.forms();forms.push({mark:'price',val:1});
+ assert.equal(rules.validateForms(forms,f.config,Date.now()).totalFee,100);
+ // 跑腿费下限 1 元：低于 1 元的整单价格被拒绝。
+ for(const low of [0.99,0.01]){const input=f.forms();input.push({mark:'price',val:low});assert.throws(()=>rules.validateForms(input,f.config,Date.now()));}
  for(const transform of [a=>a.push({mark:'tel',val:'123'}),a=>a.find(x=>x.mark==='small').val=-1,a=>a.find(x=>x.mark==='small').val=1.5,a=>a.find(x=>x.mark==='campus').val='外校',a=>a.find(x=>x.mark==='urgent').val=true,a=>a.find(x=>x.mark==='img').val=['https://untrusted'],a=>a.push({mark:'formEnd',val:'2020-01-01 12:00'})]){
   const input=f.forms();transform(input);assert.throws(()=>rules.validateForms(input,f.config,Date.now()));
  }
@@ -252,4 +254,12 @@ test('a rider without a recorded sex cannot accept a gender-restricted order', a
  f.load('profile_rules.js').isReady = () => true;
  await assert.rejects(f.service.acceptMail('rider', id, { requestId: f.req('no-sex') }), /该订单有性别要求，请先在个人资料中填写性别/);
  assert.equal(f.table('mail').get(id).MAIL_STATUS, 0);
+});
+
+test('reference prices saved below 1 yuan are used as 1 yuan and do not block other settings',async()=>{
+ const f=fixture(),Config=f.load('operation_config_service.js'),row=[...f.table('operation_config').values()][0];
+ row.value={...row.value,smallPrice:0.5,mediumPrice:0.01};
+ const read=await new Config().getConfig();assert.equal(read.smallPrice,1);assert.equal(read.mediumPrice,1);assert.equal(read.largePrice,row.value.largePrice);
+ const saved=await new Config().saveConfig({maxActiveOrders:4},'admin','rules');assert.equal(saved.maxActiveOrders,4);assert.equal(saved.smallPrice,1);
+ await assert.rejects(new Config().saveConfig({smallPrice:0.5},'admin','pricing'),/smallPrice/);
 });

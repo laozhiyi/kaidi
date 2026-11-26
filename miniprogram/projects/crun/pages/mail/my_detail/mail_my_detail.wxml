@@ -16,9 +16,7 @@
    </view>
   </view>
  </block>
- <view wx:if="{{confirmGate}}" class="od-sheet-mask confirm-gate-mask" catchtouchmove="bindStopProp"><view class="confirm-gate" catchtap="bindStopProp"><view class="confirm-gate-icon">?</view><view class="confirm-gate-title">请仔细核对后确认收货</view><view class="confirm-gate-copy">确认后订单会自动从双方的日常订单列表中移除，请确认包裹、数量和外观均无误。</view><view class="confirm-gate-count" wx:if="{{confirmCountdown > 0}}">请阅读 {{confirmCountdown}} 秒</view><view class="confirm-gate-count ready" wx:else>已阅读完毕，可以确认</view><view class="confirm-gate-actions"><button class="od-footer-tool" bindtap="bindGateCancel">再看一看</button><button class="od-primary" bindtap="bindGateConfirm" disabled="{{confirmCountdown > 0 || busy}}">确认收货</button></view></view></view>
 
- <view wx:if="{{pickupGate}}" class="od-sheet-mask confirm-gate-mask" catchtouchmove="bindStopProp"><view class="confirm-gate pickup-gate" catchtap="bindStopProp"><view class="confirm-gate-icon pickup-gate-icon">!</view><view class="confirm-gate-title">提交前请确认包裹大小</view><view class="pickup-gate-copy">提交取件凭证即视为已确认包裹大小，之后不能再申请调价或更改价格。</view><view wx:if="{{detailUI.priceAdjust.pending}}" class="pickup-gate-sub">你的调价申请尚未处理，提交后将自动撤回。</view><button class="od-primary pickup-gate-skip" bindtap="bindPickupGateSkip">跳过（{{pickupCountdown}}s）</button></view></view>
  <view wx:if="{{priceSheet}}" class="od-sheet-mask" catchtouchmove="bindStopProp" bindtap="bindClosePriceSheet">
   <view class="od-sheet" catchtap="bindStopProp">
    <view class="od-sheet-handle"></view>
@@ -43,10 +41,11 @@
      <view class="od-mode {{deliveryMode === 'face' ? 'od-mode-active' : ''}}" data-mode="face" bindtap="bindDeliveryMode" role="button"><view class="od-mode-radio"></view><view class="od-mode-copy"><view class="od-mode-title">当面交付</view><view class="od-mode-desc">当面交给收件人，发布者收到同步后点击确认收货</view></view></view>
     </view>
     <picker wx:if="{{panel === 'exception'}}" range="{{reasons}}" value="{{reasonIndex}}" bindchange="bindReason" disabled="{{busy}}"><view class="od-reason"><text>问题类型</text><text>{{reasons[reasonIndex]}} <text class="icon-unfold"></text></text></view></picker>
-    <textarea class="od-textarea" placeholder="{{panel === 'exception' ? '请描述具体问题及希望如何处理（必填）' : panel === 'pickup' ? '取件说明（选填）' : deliveryMode === 'face' ? '交付说明（选填）' : '请填写送达位置与物品情况（必填）'}}" value="{{note}}" bindinput="bindNote" maxlength="{{panel === 'exception' ? 500 : 300}}" disabled="{{busy}}"/>
+    <view wx:if="{{pickupGate}}" class="od-textarea od-textarea-static">{{note}}</view>
+    <textarea wx:else class="od-textarea" placeholder="{{panel === 'exception' ? '请描述具体问题及希望如何处理（必填）' : panel === 'pickup' ? '取件说明（选填）' : deliveryMode === 'face' ? '交付说明（选填）' : '请填写送达位置与物品情况（必填）'}}" value="{{note}}" bindinput="bindNote" maxlength="{{panel === 'exception' ? 500 : 300}}" disabled="{{busy}}"/>
     <view class="od-upload-heading"><text>{{panel === 'exception' ? '补充照片（选填，最多10张）' : video ? '凭证视频' : deliveryMode === 'face' && panel !== 'pickup' ? '交付凭证（选填）' : '凭证（二选一，至少1份）'}}</text><text>{{video ? '1 / 1 段' : images.length + ' / 10 张'}}</text></view>
     <block wx:if="{{video && panel !== 'exception'}}">
-     <view class="od-video-item"><video class="od-video-player" src="{{videoPreview || video}}" object-fit="cover" show-center-play-btn enable-progress-gesture="{{false}}"/><view class="od-video-remove" catchtap="bindRemoveVideo"><text class="icon-close"></text></view></view>
+     <view class="od-video-item"><video wx:if="{{!pickupGate}}" class="od-video-player" src="{{videoPreview || video}}" object-fit="cover" show-center-play-btn enable-progress-gesture="{{false}}"/><view class="od-video-remove" catchtap="bindRemoveVideo"><text class="icon-close"></text></view></view>
      <view class="od-upload-tip">照片和视频二选一：已添加视频凭证，删除后可改传照片</view>
     </block>
     <block wx:else>
@@ -60,4 +59,7 @@
    <button class="od-primary od-sheet-submit" bindtap="bindSubmitPanel" loading="{{busy}}" disabled="{{busy || loading || error}}">{{panel === 'update_proof' ? '保存更新' : panel === 'deliver' ? '提交，通知发布者' : panel === 'pickup' ? '提交取件凭证' : '提交异常说明'}}</button>
   </view>
  </view>
+ <!-- 二次确认弹窗放在最后并使用更高层级，始终盖住底部操作栏和凭证面板。 -->
+ <view wx:if="{{confirmGate}}" class="od-sheet-mask confirm-gate-mask" catchtouchmove="bindStopProp"><view class="confirm-gate" catchtap="bindStopProp"><view class="confirm-gate-icon">?</view><view class="confirm-gate-title">请仔细核对后确认收货</view><view class="confirm-gate-copy">确认后订单会自动从双方的日常订单列表中移除，请确认包裹、数量和外观均无误。</view><view class="confirm-gate-count" wx:if="{{confirmCountdown > 0}}">请阅读 {{confirmCountdown}} 秒</view><view class="confirm-gate-count ready" wx:else>已阅读完毕，可以确认</view><view class="confirm-gate-actions"><button class="od-footer-tool" bindtap="bindGateCancel">再看一看</button><button class="od-primary" bindtap="bindGateConfirm" disabled="{{confirmCountdown > 0 || busy}}">确认收货</button></view></view></view>
+ <view wx:if="{{pickupGate}}" class="od-sheet-mask confirm-gate-mask" catchtouchmove="bindStopProp"><view class="confirm-gate pickup-gate" catchtap="bindStopProp"><view class="confirm-gate-icon pickup-gate-icon">!</view><view class="confirm-gate-title">提交前请确认包裹大小</view><view class="pickup-gate-copy">提交取件凭证即视为已确认包裹大小，之后不能再申请调价或更改价格。</view><view wx:if="{{detailUI.priceAdjust.pending}}" class="pickup-gate-sub">你的调价申请尚未处理，提交后将自动撤回。</view><button class="od-primary pickup-gate-skip" bindtap="bindPickupGateSkip">跳过（{{pickupCountdown}}s）</button></view></view>
 </view>

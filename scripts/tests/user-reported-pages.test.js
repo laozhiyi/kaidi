@@ -347,3 +347,50 @@ test('profile entry sends guests to login and all authenticated accounts to pers
  assert.ok(!index.includes('../edit/my_edit'));
  assert.ok(!publish.includes('/pages/my/edit/my_edit'));
 });
+
+test('fee inputs cannot hold an amount below the minimum and the server rejects one anyway', async () => {
+ const h = pageHarness('mail/add/mail_add_logic.js', () => config), page = h.page;
+ await page.onLoad({ embedded: true });
+ page.bindPackageTap({ currentTarget: { dataset: { index: 0, step: 1 } } });
+ const type = value => page.bindPackageItemInput({ currentTarget: { dataset: { index: 0, mark: 'price' } }, detail: { value } });
+ // 开头的 0 和小数点无法输入，所以能填进去的金额不会低于 1 元；返回值回填到输入框。
+ for (const [raw, kept] of [['0', ''], ['0.', ''], ['.5', '5'], ['0.99', '99'], ['1', '1'], ['1.255', '1.25'], ['12a3', '123'], ['1234567', '12345']]) {
+  assert.equal(type(raw), kept, raw);
+  assert.equal(page.data.packageItems[0].price, kept);
+ }
+ const { fixture } = require('../test-support/operations-fixture.cjs');
+ const f = fixture(), rules = f.load('order_rules.js');
+ for (const price of [0.5, 0.99]) {
+  const forms = f.forms();
+  forms.push({ mark: 'packages', val: [{ type: 'small', price, pickupPoint: '菜鸟一期', code: '', note: '', images: [] }] });
+  assert.throws(() => rules.validateForms(forms, f.config, Date.now()), /package price invalid/);
+ }
+ const ok = f.forms();
+ ok.push({ mark: 'packages', val: [{ type: 'small', price: 1, pickupPoint: '菜鸟一期', code: '', note: '', images: [] }] });
+ assert.equal(rules.validateForms(ok, f.config, Date.now()).totalFee, 100);
+ // 后台参考价同样不能设成低于 1 元。
+ const pricing = read(pages + 'admin/settings/pricing/admin_pricing_settings.js');
+ assert.equal((pricing.match(/type: 'digit', min: 1,/g) || []).length, 3);
+});
+
+test('the pickup reminder renders above the proof sheet and its native inputs', () => {
+ const wxml = read(pages + 'mail/my_detail/mail_my_detail.wxml');
+ assert(wxml.indexOf('wx:if="{{pickupGate}}"') > wxml.indexOf('wx:if="{{panel}}"'), 'the reminder comes after the proof sheet');
+ assert.match(read(pages + 'mail/my_detail/mail_my_detail.wxss'), /\.confirm-gate-mask \{ z-index: 300;/);
+ assert.match(wxml, /<textarea wx:else class="od-textarea"/);
+ assert.match(wxml, /<video wx:if="\{\{!pickupGate\}\}" class="od-video-player"/);
+});
+
+test('both platform agreements are reachable from login, about and settlement', () => {
+ const Agreements = require('../../miniprogram/projects/crun/public/agreements.js');
+ assert.deepEqual(Agreements.keys, ['user', 'rider']);
+ assert.equal(Agreements.get('constructor'), null);
+ assert.equal(Agreements.get('user').title, '云速取用户服务协议');
+ assert(JSON.parse(read('miniprogram/app.json')).pages.includes('projects/crun/pages/about/agreement/about_agreement'));
+ assert.match(read(pages + 'my/reg/my_reg.wxml'), /《云速取用户服务协议》/);
+ assert.match(read(pages + 'about/index/about_index.wxml'), /data-key="rider"/);
+ assert.match(read(pages + 'my/settlement/settlement.wxml'), /《云速取代取人（骑手）服务与结算协议》/);
+ // 骑手协议版本与云端记录的同意版本一致。
+ const service = read('cloudfunctions/mcloud/project/crun/service/adapay_account_service.js');
+ assert(service.includes("const CONSENT_VERSION = '" + Agreements.get('rider').version + "';"));
+});
