@@ -10,7 +10,7 @@ function settlement(reply = async () => {throw new Error('结算服务暂不可�
  const modals = [];
  vm.runInNewContext(fs.readFileSync(path.join(root, 'miniprogram/projects/crun/pages/my/settlement/settlement.js'), 'utf8'), {
   Page: page => { definition = page; },
-  require: name => name.includes('operations_biz') ? {get:reply} : {initPage() {}},
+  require: name => name.includes('operations_biz') ? {get:reply} : name.includes('agreements') ? require('../../miniprogram/projects/crun/public/agreements.js') : {initPage() {}},
   wx: { showModal: options => modals.push(options) }
  });
  const page = { ...definition, data: structuredClone(definition.data), setData(update) {
@@ -37,20 +37,50 @@ test('settlement requires explicit consent and cannot report opening success whi
  assert.equal(modals.length, 0);
  page.bindAgreement({ detail:{ value:['rules','authorization'] } });
  await page.bindSubmit();
- assert.equal(modals.length, 0);
- assert.match(page.data.error, /服务暂不可用/);
+ // 云端失败原因用弹窗明确告知，且不会显示成开通成功。
+ assert.equal(modals.length, 1);
+ assert.equal(modals[0].title, '开通未成功');
+ assert.match(modals[0].content, /服务暂不可用/);
+ assert.equal(page.data.error, '');
  assert.equal(page.data.submitting, false);
+ assert.equal(page.data.form.realName, '测试同学', 'a failed submission keeps the form for correction');
 });
-test('leaving settlement clears sensitive fields and both consent choices', () => {
- for (const lifecycle of ['onHide','onUnload']) {
-  const { page } = settlement();
-  page.data.form = { realName:'测试同学', identity:'11010519491231002X', bankCard:'6222020000000000', phone:'13800000000' };
-  page.bindAgreement({ detail:{ value:['rules','authorization'] } });
-  page[lifecycle]();
-  assert(Object.values(page.data.form).every(value => value === ''));
-  assert.equal(page.data.rulesAccepted, false);
-  assert.equal(page.data.authorizationAccepted, false);
- }
+const filled = () => ({ realName:'测试同学', identity:'11010519491231002X', bankCard:'6222020000000000', phone:'13800000000' });
+test('closing settlement clears sensitive fields and both consent choices', () => {
+ const { page } = settlement();
+ page.data.form = filled();
+ page.bindAgreement({ detail:{ value:['rules','authorization'] } });
+ page.onUnload();
+ assert(Object.values(page.data.form).every(value => value === ''));
+ assert.equal(page.data.rulesAccepted, false);
+ assert.equal(page.data.authorizationAccepted, false);
+});
+test('switching to the background keeps the form in page memory without reloading', async () => {
+ let calls = 0;
+ const { page } = settlement(async () => { calls++; return { opened:false }; });
+ await page.onShow();
+ page.data.form = filled();
+ page.bindAgreement({ detail:{ value:['rules','authorization'] } });
+ page.onHide();
+ assert.deepEqual(page.data.form, filled());
+ const refresh = page.onShow();
+ assert.equal(page.data.statusLoading, false, 'returning does not flash the loading state');
+ await refresh;
+ assert.equal(calls, 2);
+ assert.deepEqual(page.data.form, filled());
+ assert.equal(page.data.rulesAccepted, true);
+ assert.equal(page.data.authorizationAccepted, true);
+});
+test('a long absence clears the form when the page is shown again', async () => {
+ const { page } = settlement(async () => ({ opened:false }));
+ await page.onShow();
+ page.data.form = filled();
+ page.bindAgreement({ detail:{ value:['rules','authorization'] } });
+ page.onHide();
+ page._hiddenAt -= 11 * 60 * 1000;
+ await page.onShow();
+ assert(Object.values(page.data.form).every(value => value === ''));
+ assert.equal(page.data.rulesAccepted, false);
 });
 function settlementEntry(reply = async () => ({opened:false})) {
  let page;
@@ -126,6 +156,9 @@ test('unknown document keys cannot open a sheet', () => {
  assert.equal(page.data.document, null);
  page.bindDocument({ currentTarget:{ dataset:{ kind:'privacy' } } });
  assert.equal(page.data.document.title, '实名信息处理说明');
+ page.bindDocument({ currentTarget:{ dataset:{ kind:'rules' } } });
+ assert.equal(page.data.document.title, '云速取代取人（骑手）服务与结算协议');
+ assert(page.data.document.blocks.some(block => block.type === 'p' && block.segments.some(seg => seg.b)), 'bold clauses stay bold');
 });
 
 
@@ -162,5 +195,51 @@ test('settlement retry ignores duplicate taps and late replies from previous pag
  const second=page.onShow();assert.equal(calls,2);
  replies[0]({opened:false});await first;assert.equal(page.data.account,null);assert.equal(page.data.statusLoading,true);
  replies[1]({opened:true});await second;assert.equal(page.data.account.opened,true);
- page.onHide();assert.equal(page.data.account,null);assert.equal(page.data.statusLoading,true);
+ page.onHide();const third=page.onShow();assert.equal(calls,3);assert.equal(page.data.statusLoading,false);
+ page.onHide();replies[2]({opened:false});await third;assert.equal(page.data.account.opened,true,'a late silent refresh is ignored');
+ page.onUnload();assert.equal(page.data.account,null);assert.equal(page.data.statusLoading,true);
+});
+
+test('an opened account can change its settlement card and reports the result', async () => {
+ const routes = [];
+ const { page, modals } = settlement(async (route, params) => {
+  routes.push(route);
+  if (route === 'settlement/status') return { opened:true, name:'测**', cardTail:'1234' };
+  assert.equal(params.bankCard, '6222020000005678');
+  return { opened:true, name:'测**', cardTail:'5678' };
+ });
+ await page.onShow();
+ await page.bindSubmit();
+ assert.deepEqual(routes, ['settlement/status'], 'an opened account cannot resubmit the opening form');
+ page.bindStartChange();
+ assert.equal(page.data.mode, 'change');
+ page.data.form = { ...filled(), bankCard:'6222020000005678' };
+ page.bindAgreement({ detail:{ value:['rules','authorization'] } });
+ await page.bindSubmit();
+ assert.deepEqual(routes, ['settlement/status', 'settlement/change']);
+ assert.equal(modals[0].title, '更换成功');
+ assert.match(modals[0].content, /5678/);
+ assert.equal(page.data.mode, 'open');
+ assert(Object.values(page.data.form).every(value => value === ''));
+});
+
+test('a failed card change shows the reason, keeps the form and follows the refreshed state', async () => {
+ let opened = true;
+ const { page, modals } = settlement(async route => {
+  if (route === 'settlement/status') return { opened, identified:true, name:'测**', cardTail:'1234' };
+  opened = false;
+  throw Object.assign(new Error('x'), { msg:'原结算银行卡已解除，新卡未绑定成功：银行预留手机号与银行登记的不一致' });
+ });
+ await page.onShow();
+ page.bindStartChange();
+ page.data.form = filled();
+ page.bindAgreement({ detail:{ value:['rules','authorization'] } });
+ await page.bindSubmit();
+ await new Promise(resolve => setImmediate(resolve));
+ assert.equal(modals[0].title, '更换未完成');
+ assert.match(modals[0].content, /预留手机号/);
+ assert.equal(page.data.account.opened, false);
+ assert.equal(page.data.mode, 'open', 'the unbound account continues with the opening form');
+ assert.deepEqual(page.data.form, filled());
+ page.bindCancelChange();
 });

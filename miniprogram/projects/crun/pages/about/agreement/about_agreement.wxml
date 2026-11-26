@@ -1,0 +1,8 @@
+<view class="agreement-page">
+	<view class="agreement-title">{{agreement.title}}</view>
+	<view wx:for="{{agreement.meta}}" wx:key="*this" class="agreement-meta">{{item}}</view>
+	<block wx:for="{{agreement.blocks}}" wx:key="index">
+		<view wx:if="{{item.type === 'h'}}" class="agreement-heading">{{item.text}}</view>
+		<view wx:else class="agreement-paragraph"><text wx:for="{{item.segments}}" wx:for-item="seg" wx:key="index" user-select class="{{seg.b ? 'agreement-strong' : ''}}">{{seg.t}}</text></view>
+	</block>
+</view>

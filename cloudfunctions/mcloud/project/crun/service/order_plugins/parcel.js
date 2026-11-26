@@ -1,6 +1,8 @@
 'use strict';
 // Shared parcel representation for the current three products. A future plugin
 // can provide its own normalize/quote implementation without a parcel count.
+// 每件及整单跑腿费的下限（元）。界面不写明数值，输入框本身无法填入更低金额。
+const MIN_FEE = 1;
 function normalize(input, obj, config, tools, proof) {
  const {text,images,fail}=tools;
  obj.imgUrls = proof ? images(input.img || []) : [];
@@ -15,7 +17,7 @@ function normalize(input, obj, config, tools, proof) {
   const counts = { small:0, medium:0, large:0 };
   // Normalize payloads from older clients into the same per-parcel representation.
   const legacyPickup = parcelItems.some(item => item && Object.prototype.hasOwnProperty.call(item,'pickupPoint')) ? '' : text(input.address1 || '', '取件点', 100, false);
-  parcelItems = parcelItems.map((item, index) => { if (!item || !['small','medium','large'].includes(item.type)) fail('package type invalid'); counts[item.type]++; const price = Number(item.price); if (!Number.isFinite(price) || price < 0.01 || price > 10000) fail('package price invalid'); const pickupPoint = text(item.pickupPoint == null ? legacyPickup : item.pickupPoint, '第' + (index + 1) + '件包裹的取件点', 100, true); const code = proof ? text(item.code || '','code',200,false) : ''; const note = text(item.note || '','note',300,false); const packageImages = proof ? images(item.images || []) : []; if (code && packageImages.length) fail('package proof must choose code or image'); return { type:item.type, price:Number(price.toFixed(2)), pickupPoint, code, note, images:packageImages }; });
+  parcelItems = parcelItems.map((item, index) => { if (!item || !['small','medium','large'].includes(item.type)) fail('package type invalid'); counts[item.type]++; const price = Number(item.price); if (!Number.isFinite(price) || price < MIN_FEE || price > 10000) fail('package price invalid'); const pickupPoint = text(item.pickupPoint == null ? legacyPickup : item.pickupPoint, '第' + (index + 1) + '件包裹的取件点', 100, true); const code = proof ? text(item.code || '','code',200,false) : ''; const note = text(item.note || '','note',300,false); const packageImages = proof ? images(item.images || []) : []; if (code && packageImages.length) fail('package proof must choose code or image'); return { type:item.type, price:Number(price.toFixed(2)), pickupPoint, code, note, images:packageImages }; });
   if (counts.small !== obj.small || counts.medium !== obj.medium || counts.large !== obj.large) fail('package proof count mismatch');
   obj.packages = parcelItems;
   obj.address1 = [...new Set(parcelItems.map(item => item.pickupPoint))].join('；');
@@ -30,10 +32,10 @@ function normalize(input, obj, config, tools, proof) {
  let totalFee = obj.packages.length ? Math.round(obj.packages.reduce((sum, item) => sum + item.price * 100, 0)) : referenceFee;
  if (input.price !== undefined && input.price !== null && input.price !== '') {
   const value = Number(input.price);
-  if (!Number.isFinite(value) || value < 0.01 || value > 10000 || !/^\d+(?:\.\d{1,2})?$/.test(String(input.price).trim())) fail('费用须在0.01至10000元之间，最多保留两位小数');
+  if (!Number.isFinite(value) || value < MIN_FEE || value > 10000 || !/^\d+(?:\.\d{1,2})?$/.test(String(input.price).trim())) fail('跑腿费填写有误，请重新填写');
   if (!obj.packages.length) totalFee = Math.round(value * 100);
  }
  obj.price = totalFee / 100; obj.referencePrice = referenceFee / 100;
  return { totalFee, referenceFee };
 }
-module.exports={normalize};
+module.exports={normalize,MIN_FEE};

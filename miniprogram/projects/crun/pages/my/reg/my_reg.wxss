@@ -34,6 +34,8 @@
 .account-login-page--guest .login-submit { height:88rpx; margin:28rpx 0 0; padding:0 24rpx; border-radius:14rpx; background:#397bc8; color:#fff; font-size:30rpx; font-weight:600; line-height:88rpx; }
 .account-login-page--guest .login-submit::after { border:0; }
 .account-login-page--guest .login-submit[disabled] { background:#397bc8; color:#fff; opacity:.5; }
+.login-agreement { margin-top:20rpx; color:#8d9bb0; font-size:23rpx; line-height:1.6; text-align:center; }
+.login-agreement-link { color:#397bc8; }
 .login-tip { margin-top:20rpx; color:#8d9bb0; font-size:23rpx; text-align:center; }
 .login-error { margin-top:16rpx; }
 .login-services { padding:28rpx 20rpx 26rpx; border-radius:24rpx; background:#fff; box-shadow:0 6rpx 24rpx rgba(36,51,75,.035); }

@@ -3,6 +3,7 @@
     "projects/crun/pages/default/index/default_index",
     "projects/crun/pages/order/index/order_index",
     "projects/crun/pages/about/index/about_index",
+    "projects/crun/pages/about/agreement/about_agreement",
     "projects/crun/pages/customer_service/chat/customer_service_chat",
     "projects/crun/pages/feedback/index/feedback_index",
     "projects/crun/pages/feedback/my_list/feedback_my_list",

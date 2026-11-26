@@ -5,6 +5,27 @@ const crypto = require('crypto');
 const cfg = require('../config/adapay_config.js');
 const base = 'https://api.adapay.tech';
 const safeCode = value => /^[A-Za-z0-9_]{1,80}$/.test(value || '') ? value : 'ADAPAY_REJECTED';
+// 把支付机构/银行渠道的拒绝原因归成固定类别，供页面提示用户改哪一项。
+// error_msg 原文可能带证件号或卡号，只在内存中匹配关键词，不返回、不保存、不打印。
+function reasonOf(data) {
+ const param = String(data && data.invalid_param || '').toLowerCase(), msg = String(data && data.error_msg || '');
+ if (/tel|phone|mobile/.test(param)) return 'phone';
+ if (/cert/.test(param)) return 'identity';
+ if (/name/.test(param)) return 'name';
+ if (/card|acct|bank/.test(param)) return 'card';
+ if (/已存在|重复/.test(msg)) return 'exists';
+ if (/手机/.test(msg)) return 'phone';
+ if (/信用卡|贷记|准贷记|[二Ⅱ]类|II类|卡类型|卡种|不支持(该|此)?(银行)?卡/.test(msg)) return 'card_type';
+ const identity = /身份证|证件/.test(msg), name = /姓名|户名/.test(msg), card = /卡号|银行卡|账号/.test(msg);
+ // 同时提到银行卡和身份信息时说不清是哪一项错，按整体不匹配提示逐项核对。
+ if (card && (identity || name)) return 'mismatch';
+ if (identity) return 'identity';
+ if (name) return 'name';
+ if (card) return 'card';
+ if (/频繁|次数|上限|超限/.test(msg)) return 'limit';
+ if (/要素|鉴权|认证|验证|不一致|不匹配|有误/.test(msg)) return 'mismatch';
+ return '';
+}
 function verify(data, signature) {
  if (typeof data !== 'string' || typeof signature !== 'string' || !crypto.verify('RSA-SHA1', Buffer.from(data), cfg.publicKey, Buffer.from(signature, 'base64'))) throw new Error('ADAPAY_SIGNATURE_INVALID');
  return JSON.parse(data);
@@ -34,9 +55,9 @@ function request(method, path, params = {}) {
    res.on('end', () => {
     try {
      const data = decode(Buffer.concat(chunks).toString('utf8'));
-     if (res.statusCode < 200 || res.statusCode >= 300 || data.status === 'failed') throw Object.assign(new Error('ADAPAY_REQUEST_REJECTED'),{code:safeCode(data.error_code),verified:true});
+     if (res.statusCode < 200 || res.statusCode >= 300 || data.status === 'failed') throw Object.assign(new Error('ADAPAY_REQUEST_REJECTED'),{code:safeCode(data.error_code),verified:true,reason:reasonOf(data)});
      resolve(data);
-    } catch (e) { reject(Object.assign(new Error('ADAPAY_REQUEST_FAILED'),{code:safeCode(e.code || e.message),verified:e.verified===true})); }
+    } catch (e) { reject(Object.assign(new Error('ADAPAY_REQUEST_FAILED'),{code:safeCode(e.code || e.message),verified:e.verified===true,reason:e.verified===true ? e.reason || '' : ''})); }
    });
   });
   // Never attach the HTTP request, response, credentials, or provider descriptions to errors.
@@ -60,4 +81,4 @@ function cents(value) {
  return n;
 }
 const money = n => { if (!Number.isSafeInteger(n) || n < 0) throw new Error('ADAPAY_AMOUNT_INVALID'); return (n/100).toFixed(2); };
-module.exports = {request, notification, verify, decode, cents, money};
+module.exports = {request, notification, verify, decode, cents, money, reasonOf};

@@ -89,6 +89,7 @@ Page(Object.assign({
     wx.redirectTo({ url: '/projects/crun/pages/my/personal/my_personal' + suffix,
       fail: () => { this._navigating = false; this.setData({ loginError: '页面打开失败，请重试' }); } });
   },
+  bindAgreementTap() { wx.navigateTo({ url: '/projects/crun/pages/about/agreement/about_agreement?key=user' }); },
   bindOpenWechatProfile() {
     if (this._unloaded || this._navigating || this.data.phoneLoginEnabled || this.data.identityLoggingIn || this.data.saving) return;
     return this.bindWechatAccountLogin();

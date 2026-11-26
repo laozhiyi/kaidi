@@ -19,6 +19,10 @@
       </block>
     </block>
   </view>
+  <view wx:if="{{key==='SETUP_CONTENT_ABOUT'}}" class="op-card about-agreements">
+    <view class="about-agreement" data-key="user" bindtap="bindAgreement" hover-class="about-agreement-hover"><text>云速取用户服务协议</text><text class="icon-right"></text></view>
+    <view class="about-agreement" data-key="rider" bindtap="bindAgreement" hover-class="about-agreement-hover"><text>代取人（骑手）服务与结算协议</text><text class="icon-right"></text></view>
+  </view>
   <button wx:if="{{key==='SETUP_CONTENT_ABOUT'}}" class="op-button-secondary" bindtap="bindContact">联系我们</button>
   <button class="op-button-primary" bindtap="bindService">联系在线客服</button>
 </view>

@@ -29,6 +29,16 @@ const SIZE_GUIDE = [
 		examples: '大号整理箱、小型家电（微波炉、小洗衣机）、整箱矿泉水（24瓶）、大号毛绒玩具、组装家具包裹。' },
 ];
 
+// 跑腿费下限（元），与云端 order_plugins/parcel.js 的 MIN_FEE 一致。界面不写明数值：
+// 输入时去掉开头的 0 和小数点，能填进去的金额自然不低于 1 元；最多两位小数，整数最多 5 位。
+const MIN_FEE = 1;
+function feeInput(raw) {
+	const text = String(raw == null ? '' : raw).replace(/[^\d.]/g, '').replace(/^[0.]+/, '');
+	const dot = text.indexOf('.');
+	const whole = (dot < 0 ? text : text.slice(0, dot)).slice(0, 5);
+	return dot < 0 ? whole : whole + '.' + text.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+}
+
 // 订单里保存的上楼费；只有快递代取且选了「需要送上楼」才有值，老订单与非快递代取为 0。
 function serviceTypeTip(obj) { const tip = Number(obj && obj.tip); return (obj && (obj.serviceType || 'take') === 'take' && obj.upstairs === true) && Number.isFinite(tip) && tip > 0 ? Math.round(tip * 100) / 100 : 0; }
 
@@ -243,7 +253,7 @@ module.exports = {
   }
  },
  _refreshFee(){const reference=this.data.packageTypes.reduce((sum,x,i)=>sum+x.count*this._prices[i],0);const total=this.data.packageItems.length ? this.data.packageItems.reduce((sum,x)=>sum+(Number(x.price)||0),0) : reference;const referencePrice=reference.toFixed(2);this.setData({totalFee:total.toFixed(2),payTotal:((Math.round(total*100)+(this.data.serviceType==='take'&&this.data.upstairs?Math.round((Number(this.data.tip)||0)*100):0))/100).toFixed(2),referencePrice});this._setFormVal('price',total.toFixed(2));},
- bindPackageItemInput(e){const index=Number(e.currentTarget.dataset.index);const mark=e.currentTarget.dataset.mark;let items=this.data.packageItems.map((item,i)=>i===index?{...item,[mark]:e.detail.value}:item); if(mark==='code' && String(e.detail.value || '').trim() && items[index] && items[index].images && items[index].images.length){ items[index]=Object.assign({},items[index],{images:[],imagePreviews:[]}); } this.setData({packageItems:items});this._setFormVal('packages',items);if(mark==='price')this._refreshFee();},
+ bindPackageItemInput(e){const index=Number(e.currentTarget.dataset.index);const mark=e.currentTarget.dataset.mark;const value=mark==='price'?feeInput(e.detail.value):e.detail.value;let items=this.data.packageItems.map((item,i)=>i===index?{...item,[mark]:value}:item); if(mark==='code' && String(e.detail.value || '').trim() && items[index] && items[index].images && items[index].images.length){ items[index]=Object.assign({},items[index],{images:[],imagePreviews:[]}); } this.setData({packageItems:items});this._setFormVal('packages',items);if(mark==='price'){this._refreshFee();return value;}},
  bindCustomPrice(e){const value=String(e.detail.value||'').replace(/[^0-9.]/g,'');this.setData({customPrice:value});this._setFormVal('price',value);},
 
  /** 编辑模式：拉取原订单数据回填 */
@@ -828,7 +838,7 @@ module.exports = {
    if (this.data.serviceType === 'take' && this.data.tipError) throw new Error(this.data.tipError);
    const missingPickup = packages.findIndex(item => !String(item.pickupPoint || '').trim());
    if (missingPickup >= 0) throw new Error(this.data.serviceType === 'buy' ? '请填写购买地点' : '请填写第' + (missingPickup + 1) + '件包裹的取件点');
-   if (packages.some(item => !/^\d+(?:\.\d{1,2})?$/.test(String(item.price)) || Number(item.price) < 0.01 || Number(item.price) > 10000)) throw new Error('跑腿费须在0.01至10000元之间，最多保留两位小数');
+   if (packages.some(item => !/^\d+(?:\.\d{1,2})?$/.test(String(item.price)) || Number(item.price) < MIN_FEE || Number(item.price) > 10000)) throw new Error('跑腿费填写有误，请重新填写');
    const plugin=Plugins.get(this.data.serviceType); plugin.validate(this.data.mailValues || {});
    // 默认送达时间段是进页面时算的：停留久了会过期，用户没动过就按当前时间重算一次。
    if (!this.data.editId && !this._endEdited) {

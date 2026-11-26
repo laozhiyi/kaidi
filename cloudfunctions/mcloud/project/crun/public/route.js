@@ -8,6 +8,7 @@
 module.exports = {
  'settlement/status':'settlement_controller@status',
  'settlement/open':'settlement_controller@open',
+ 'settlement/change':'settlement_controller@change',
  'mail/payment_prepare':'mail_controller@preparePayment',
  'mail/payment_status':'mail_controller@paymentStatus',
  'mail/earnings_authorization_prepare':'mail_controller@prepareEarningsAuthorization',
