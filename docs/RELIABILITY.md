@@ -1,6 +1,6 @@
 # 云开发稳定性与流畅度上线说明
 
-完整部署顺序、迁移、权限、索引和真实云验收以 [部署手册](../deployment/MULTI_TENANT_ROLLOUT.md) 为准。旧版仅按项目隔离和客户端数据库监听的部署方式已停止使用。
+完整部署顺序、迁移、权限、索引和真实云验收以 [部署手册](DEPLOYMENT.md) 为准。
 
 ## 已实现的行为
 
@@ -14,7 +14,7 @@
 - 公告使用校区摘要及用户已读版本索引；摘要正常命中时不遍历全部公告与阅读历史。通知每 60 秒、收藏每 30 秒同步，主动操作完成后及时刷新。
 - 列表使用稳定排序与游标，静默刷新避免重复总数统计。60 秒内的内存快照按身份、学校、校区、筛选条件隔离。长列表有更新入口，不强制跳回顶部。
 - 取/送/买插件提供校验、计价和表单差异；订单引擎保留授权、事务、幂等、配额及状态机。订单保存业务版本和规则快照，营业时间由服务端按 UTC+8 校验。
-- 订单维护与微信订阅派发是两个独立定时函数；按时间和文档 ID 续扫，有批量、时间预算、失败计数和持久检查点。某条异常记录不会一直挡住后面的任务。
+- 订单维护与微信订阅派发是 `mcloud` 内两个独立的定时触发器（`orders-minute`、`notifications-minute`）；按时间和文档 ID 续扫，有批量、时间预算、失败计数和持久检查点。某条异常记录不会一直挡住后面的任务。
 
 “立即响应”指按钮与页面反馈及时，订单成功及数据最新状态仍需要云端确认。范围过滤防止返回另一校区业务数据，不是对网络、外部通知投递或任意容量的保证。
 
@@ -34,7 +34,7 @@
 
 使用 [候选索引清单](../deployment/database-indexes.json)。校区查询以 `_pid, schoolId, campusId` 开头，学校账号以 `_pid, schoolId` 开头；只有受控目录、全局身份、迁移和定时扫描使用全局索引。时间游标同时包含 `_id`。
 
-在线客服是全校共享池，`bx_campus_service_message` 没有校区维度：会话翻页与未读计数索引以 `_pid` + `CSM_USER_ID` 开头，会话池聚合排序另用 `_pid` + `CSM_ADD_TIME/CSM_ID`。客服邀请码不依赖唯一索引：文档 ID 是确定性的 `store.key(pid,'staff_invite',code)`，`create()` 在事务内查 ID 后写入，撞码只会换码或覆盖同一条记录。详见 [部署手册](../deployment/MULTI_TENANT_ROLLOUT.md) 第 2 节。
+在线客服是全校共享池，`bx_campus_service_message` 没有校区维度：会话翻页与未读计数索引以 `_pid` + `CSM_USER_ID` 开头，会话池聚合排序另用 `_pid` + `CSM_ADD_TIME/CSM_ID`。客服邀请码不依赖唯一索引：文档 ID 是确定性的 `store.key(pid,'staff_invite',code)`，`create()` 在事务内查 ID 后写入，撞码只会换码或覆盖同一条记录。详见 [部署手册](DEPLOYMENT.md#2-索引与资源配置)。
 
 ```powershell
 node scripts/check-architecture-deployment.cjs
@@ -44,12 +44,12 @@ node scripts/check-architecture-deployment.cjs
 
 ## 发布与运行
 
-完整操作执行 [多校部署手册](../deployment/MULTI_TENANT_ROLLOUT.md)，尤其注意：
+完整操作执行 [部署手册](DEPLOYMENT.md)，尤其注意：
 
 1. 明确独立测试环境 ID，备份数据并演练恢复。显式设置 `CLOUD_ENV_ID`，不要默认使用仓库中的原环境配置。
 2. 暂停旧写流量和旧定时任务，按冻结计划完成全量 plan/apply/verify 和逐校区 finalize。保持历史 ID、请求和审计记录，不清库。
-3. 配套部署 API、小程序、权限和索引。新初始化标记是 `bx_setup_crun_20261027_customer_service`；不要手工提前创建。
-4. 删除 API 上旧的 `operations-minute` 触发器。新 `ordersWorker/orders-minute` 与 `notificationsWorker/notifications-minute` 分开部署，API 不接收 Timer。
+3. 配套部署 API、小程序、权限和索引。初始化标记由代码在集合就绪后创建，不要手工提前创建（当前标记见部署手册）。
+4. 确认 `mcloud` 的 `orders-minute`、`notifications-minute` 触发器存在；删除旧的 `operations-minute` 触发器，以及曾单独部署的 worker 触发器，避免双跑。
 5. 验证真实运行时、微信订阅模板/权限、冷启动、数据库与审核配额。校区默认暂停，完成配置和验收后再逐步开放。
 6. 关闭/删除临时迁移函数，保留备份与日志，并监控错误、冲突、任务积压和资源用量。
 

@@ -15,7 +15,7 @@ AppID 和基础库以 [项目配置](../project.config.json) 为准。
 
 联系电话由云端保存微信返回的号码。所有资料保存入口检查当前账号的验证状态和号码，新注册还统一检查学号、学生证及免责声明。历史手填号码需要补验，可以由真正授权该号码的同校用户取得绑定。其他账号已验证的号码继续受到同校唯一性保护。新版学生证须从当前账号的私有目录上传，经服务端校验并归档。已审核通过的新版学号和证件由客服处理更正。历史资料可重新上传证件，变更后重新进入审核。
 
-**待审核（`USER_STATUS=0`）账号资料完整且手机号验证后即可发单，接单要求审核通过（`USER_STATUS=1`）**。审核拒绝和停用账号均不能发单或接单。文字检查说明见 [CONTENT_AUDIT.md](CONTENT_AUDIT.md)。
+**待审核（`USER_STATUS=0`）账号资料完整且手机号验证后即可发单，接单要求审核通过（`USER_STATUS=1`）**。审核拒绝和停用账号均不能发单或接单。文字检查说明见 [内容审核](CONTENT_AUDIT.md)。
 
 独立手动注册和授权失败后自动转手动注册已移除；资料表单只能更新通过微信登录建立的账号，不能给游客建号。
 
@@ -48,7 +48,7 @@ AppID 和基础库以 [项目配置](../project.config.json) 为准。
 
 自动删除仅限配置的目标云环境、可确认本人 `private/` 或 `private-evidence/` 路径的文件。历史 `crun/user/...` 随机共享头像路径无法从现有数据证明所有者，代码仅移除引用；需按存储所有者元数据另行核对，不能删除用户随意提交的 URL。从未送到服务器的孤立上传也无法通过数据库枚举，应单独设置经核对的存储清理策略。
 
-本功能不执行历史账号批量删除。已经单独完成的旧账号清理无需重做，正在测试的新账号也无需清空。
+本功能不执行历史账号批量删除。
 
 ## 接口、凭证与配置
 
@@ -66,17 +66,17 @@ AppID 和基础库以 [项目配置](../project.config.json) 为准。
 
 身份只来自云函数可信 `OPENID`，不接受客户端指定账号。数据库只保存会话摘要；普通会话有效期为 24 小时，主动登录轮换凭证，退出／注销立即使该凭证失效。同校跨校区共享资料，不同学校资料仍隔离；会话和注销范围覆盖本应用该微信身份。
 
-新版 `mcloud` 默认在资料页强制验证。旧环境变量 `WECHAT_PHONE_LOGIN_ENABLED` 和 `ALLOW_MANUAL_REGISTRATION` 可从云端配置移除。
+资料页强制验证手机号。资料页强制验证时，旧环境变量 `WECHAT_PHONE_LOGIN_ENABLED` 和 `ALLOW_MANUAL_REGISTRATION` 不生效（见 `service/profile_rules.js`），可从云端配置移除。
 
 ## 配套部署
 
 1. 核对 AppID、目标云环境和体验成员，设置 `CLOUD_ENV_ID`。确认该 AppID 已开通手机号快速验证、有可用额度，并在隐私保护指引中声明手机号用途。
-2. 上传最新 `cloudfunctions/mcloud` 并云端安装依赖。初始化标记为 `bx_setup_crun_20260923_accounts`，必须由代码在集合就绪后创建。
-3. 为 `bx_account_session`、`bx_account_media`、`bx_account_cleanup_file` 及全部业务集合设置客户端 `read=false/write=false`。按 [索引清单](database-indexes.json) 建立 `bx_user` 的 `school_verified_phone` 复合索引并核验其他账户索引。云存储须允许本人上传 `private/`，并禁止客户端写入 `private-evidence/`，详见 [部署手册](MULTI_TENANT_ROLLOUT.md)。
-4. 从当前源码重新上传 `mcloud`（定时任务已内置在 `config.json` 的两个每分钟触发器里），确认控制台里触发器有效。API 与存储调用设置有界超时（建议 API 30 秒、定时分支预算 20 秒），最长在途写入必须短于两小时撤销期。生成和校验命令见 [部署手册](MULTI_TENANT_ROLLOUT.md)。
+2. 上传最新 `cloudfunctions/mcloud` 并云端安装依赖。初始化标记由代码在集合就绪后创建，不要手工提前创建。
+3. 为 `bx_account_session`、`bx_account_media`、`bx_account_cleanup_file` 及全部业务集合设置客户端 `read=false/write=false`。按 [索引清单](../deployment/database-indexes.json) 建立 `bx_user` 的 `school_verified_phone` 复合索引并核验其他账户索引。云存储须允许本人上传 `private/`，并禁止客户端写入 `private-evidence/`，详见 [部署手册](DEPLOYMENT.md)。
+4. 从当前源码重新上传 `mcloud`（定时任务已内置在 `config.json` 的两个每分钟触发器里），确认控制台里触发器有效。API 与存储调用设置有界超时（建议 API 30 秒、定时分支预算 20 秒），最长在途写入必须短于两小时撤销期。生成和校验命令见 [部署手册](DEPLOYMENT.md)。
 5. 重新编译客户端并生成新真机预览。旧客户端及旧 token 不含服务端凭证，必须主动重新登录，不能按旧 OPENID 静默恢复。不要只更新前端或继续使用旧 worker 快照。
 
-更新本功能不需要清空账户或重复学校迁移。客户端和管理界面已统一为“云速取”；微信搜索／分享使用的注册名称仍需在公众平台核对和修改，项目配置不会自动重命名平台账号。
+更新本功能不需要清空账户或重复学校迁移。客户端和管理界面统一显示“云速取”；微信搜索／分享使用的注册名称仍需在公众平台核对和修改，项目配置不会自动重命名平台账号。
 
 ## 真机验收
 

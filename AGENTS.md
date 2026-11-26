@@ -4,7 +4,7 @@
 
 云速取 is a native WeChat Mini Program backed by WeChat Cloud Development. Feature pages, components, and client business logic live under `miniprogram/projects/crun/`. Shared components, helpers, templates, and assets live in `miniprogram/cmpts/`, `miniprogram/helper/`, `miniprogram/tpls/`, and `miniprogram/images/`. Register new pages in `miniprogram/app.json`.
 
-`cloudfunctions/mcloud/` contains the main API and scheduled-job source. `cloudfunctions/payNotify/` handles WeChat Pay callbacks. Under `cloudfunctions/mcloud/project/crun/`, `public/route.js` maps routes to controllers, `service/` holds business rules, and `model/` defines persistence. Regression tests and their fixtures live in `scripts/tests/` and `scripts/test-support/`. See `deployment/` for database rules, indexes, and rollout steps.
+`cloudfunctions/mcloud/` contains the main API, the scheduled jobs (`orders-minute`, `notifications-minute` in `config.json`), and the HTTP payment callbacks for WeChat Pay and AdaPay. `cloudfunctions/payNotify/` is a disabled placeholder; never route payments to it. Under `cloudfunctions/mcloud/project/crun/`, `public/route.js` maps routes to controllers, `service/` holds business rules, and `model/` defines persistence. Regression tests and their fixtures live in `scripts/tests/` and `scripts/test-support/`. `deployment/` holds only database rules and index manifests. All maintenance documentation lives in `docs/` and is indexed in `README.md`.
 
 ## Build and Development
 
@@ -23,6 +23,15 @@ Use CommonJS and match surrounding indentation. WeChat Developer Tools uses four
 
 Write focused regressions in `*.test.js` using `node:test` and `node:assert/strict`. Run a single file with `node --test scripts/tests/tenant-services.test.js`. Reuse the fixtures in `scripts/test-support/` for cloud services. Cover the changed behavior and its failure paths. Check changes to native authorization, payment, or other WeChat platform APIs on a device in the target cloud environment.
 
+## Repository Hygiene and Documentation
+
+Follow `CONTRIBUTING.md`; `scripts/tests/repo-hygiene.test.js` enforces it.
+
+- Commit only source, tests, deployment config, and maintained docs. Put logs, screenshots, previews, snapshots, and scratch scripts in `.tmp/`, which is ignored. Never create files at the repository root.
+- Do not write reports, summaries, diagnoses, or plans as Markdown files (no `*_REPORT.md`, `*_SUMMARY.md`, `FIX_*.md`). Put that content in the commit message, the PR description, or your reply to the user.
+- When behavior changes, edit the matching `docs/*.md` section in place so it describes the current state. Do not append dated changelog paragraphs or phrases such as 本次、本轮、尚未上传.
+- A new doc must be a module-level reference in `docs/` and be listed in the README table. Prefer extending an existing doc.
+
 ## Commits and Pull Requests
 
-Use concise Chinese commit subjects that describe the change, as in `完善微信登录、手机号验证与雁山校区内测`. In PRs, explain the affected flow, list checks run, link relevant issues, and include screenshots for visible changes. Call out cloud deployment or database changes and follow `deployment/MULTI_TENANT_ROLLOUT.md`. Keep credentials and `project.private.config.json` local.
+Use concise Chinese commit subjects that describe the change, as in `完善微信登录、手机号验证与雁山校区内测`. In PRs, explain the affected flow, list checks run, link relevant issues, and include screenshots for visible changes. Call out cloud deployment or database changes and follow `docs/DEPLOYMENT.md`. Work on a feature branch and merge through a PR; never force-push `main`. Keep credentials and `project.private.config.json` local.

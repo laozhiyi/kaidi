@@ -1,6 +1,6 @@
 # 公告与站内消息
 
-云端部署、数据库权限／索引及迁移统一执行 [部署手册](../deployment/MULTI_TENANT_ROLLOUT.md)，功能入口与本地检查见 [README](../README.md)。
+云端部署、数据库权限／索引及迁移统一执行 [部署手册](DEPLOYMENT.md)，功能入口与本地检查见 [README](../README.md)。
 
 ## 用户行为
 
@@ -10,7 +10,7 @@
 - 前台共用一个 60 秒刷新计时器，返回小程序时刷新，退到后台停止。网络异常保留最后确认的数字；消息中心发现变化时显示更新入口。
 - 切换校区后清理旧摘要，过期响应不能回填到新校区。批量已读捕获当前消息 ID，操作期间新增的消息仍保留未读。
 
-公告微信推送不在本轮范围，现有订单订阅入口保留。
+公告不发送微信推送；微信订阅只用于订单和客服回复。
 
 ## 公告存储与摘要
 
@@ -24,7 +24,7 @@
 
 ## 微信订单订阅
 
-站内通知与订单事务一起保存；微信订阅在 `notificationsWorker` 中异步领取、发送及记录结果，不占用 API 的同步请求链路。配置 `ORDER_SUBSCRIBE_TEMPLATE_ID`、`ORDER_SUBSCRIBE_FIELDS` 和 `subscribeMessage.send` 权限，字段必须对应实际模板。
+站内通知与订单事务一起保存；微信订阅由 `mcloud` 的 `notifications-minute` 定时分支异步领取、发送及记录结果，不占用 API 的同步请求链路。配置 `ORDER_SUBSCRIBE_TEMPLATE_ID`、`ORDER_SUBSCRIBE_FIELDS` 和 `subscribeMessage.send` 权限，字段必须对应实际模板。
 
 新订阅链接携带学校、校区及通知编号，详情页先校验目录并切换到原校区，再读取订单。离开页面后晚到的目录响应不再切换校区。已发出的旧链接无法补写范围，使用旧链接时须先选择订单原校区。
 
@@ -43,7 +43,7 @@
 
 所有相关集合均关闭客户端数据库读写，包括刷新信号集合。合法读写由云函数校验身份和校区范围后执行。使用 [索引候选清单](../deployment/database-indexes.json)，公告/个人通知/阅读记录索引加 `_pid, schoolId, campusId` 前缀；通知 worker 的全局队列扫描使用单独索引。
 
-升级必须同时部署小程序、API 和独立定时函数，并完成旧数据迁移。旧版只部署 `mcloud` 与 `bx_news_read` 的步骤不适用于多校版本。移除旧 `operations-minute`，实际建立新的通知定时触发器。
+升级需同时部署小程序和 `mcloud`，并在控制台确认 `notifications-minute` 触发器存在；如果曾部署独立的 `notificationsWorker`，删除它的触发器，避免双跑。
 
 ## 核验
 

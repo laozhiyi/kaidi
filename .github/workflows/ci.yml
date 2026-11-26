@@ -1,0 +1,25 @@
+# 每次推送和 Pull Request 自动运行回归测试与仓库卫生检查。
+# 检查失败的 PR 不应合并。
+name: 检查
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: 安装云函数依赖
+        run: npm install --prefix cloudfunctions/mcloud --no-package-lock --ignore-scripts --no-audit --no-fund
+      - name: 回归测试（含仓库卫生检查）
+        run: npm test --prefix cloudfunctions/mcloud
+      - name: 源码接线检查
+        run: node scripts/check-architecture-source.cjs
+      - name: 页面注册检查
+        run: node scripts/check-miniprogram-pages.cjs

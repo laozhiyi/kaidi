@@ -1,0 +1,107 @@
+# 支付、分账与跑腿报酬
+
+云速取支持两个在线支付渠道，由 `mcloud` 环境变量 `PAYMENT_PROVIDER` 选择：
+
+| 取值 | 渠道 | 报酬结算 |
+| --- | --- | --- |
+| `wechat`（默认） | 微信支付 JSAPI，商户收款 | 确认收货后通过微信支付「商家转账」自动支付劳务报酬 |
+| `adapay` | AdaPay 原生小程序支付 | 实名绑卡结算账户 + 延时分账（骑手 90%、平台 10%） |
+
+渠道只影响新订单；已有订单继续走原渠道，直到退款和报酬结算全部结束，旧渠道的密钥、回调和定时任务都要保留。两个渠道的回调都由 `mcloud` 的 HTTP 网关接收（`index.js` 按请求头分流），`cloudfunctions/payNotify` 是关闭状态的占位函数，不要配置为回调入口。
+
+所有凭据只配置在云函数环境变量中，禁止提交到 Git。PEM 支持完整多行、字面 `\n`，AdaPay 还支持后台导出的无头尾 Base64。必要配置缺失或格式不正确时，新订单阻止在线发布，不会自动回退为线下订单。
+
+## 共同规则
+
+- 后端以存储的订单金额为准，按分计账；跑腿收益向下取整到分，余数归平台。代买的商品款按既有流程另行结算。
+- 平台承担支付手续费，代码不重复加收，也不从骑手报酬中扣除。
+- 付款确认后才公开订单。未付款取消关闭支付；付款后取消或无人接单原路退款。
+- 「受理成功」不等于「终态成功」：退款、转账、分账都以签名查询的终态为准，处理中和失败不显示为成功。结果不明时按原单号查询，查询确认失败或关闭后才允许重新创建，避免重复出款。
+- 资金终态依赖订单维护定时器（`orders-minute`）持续核对，部署后必须确认触发器实际运行。
+- 创建或确认 `bx_payment` 集合，应用 [仅服务端访问规则](../deployment/database-rules/server-only.json)，按 [索引清单](../deployment/database-indexes.json) 创建 `payment_due`。
+
+## 微信支付
+
+### 商户平台和云开发
+
+1. 核对 JSAPI 支付已绑定云速取 AppID，商家转账已获批「佣金报酬」场景（1005）。转账使用[用户授权免确认模式](https://pay.weixin.qq.com/doc/v3/merchant/4012715211)，首次授权由[申请授权接口](https://pay.weixin.qq.com/doc/v3/merchant/4015901167)和微信官方页面完成，后续使用[用户授权后转账接口](https://pay.weixin.qq.com/doc/v3/merchant/4014399371)。
+2. 为 `mcloud` 启用固定公网出口 IP，加到商户平台「商家转账」的 API 安全 IP 白名单。确认转账资金账户有足够余额和额度。
+3. 为 `mcloud` 配置专用 HTTPS HTTP 网关路径，保留 POST 原始请求体和微信支付请求头。同一通知地址也接收免确认收款授权的生效/关闭通知。
+
+骑手首次接取微信支付订单时，在接单流程中完成一次微信官方免确认收款授权，服务端查询确认授权生效后才接单。之后发布人确认收货或系统自动确认收货时，云端自动发起转账；订单详情不提供领取报酬按钮。
+
+### 环境变量
+
+| Key | Value |
+| --- | --- |
+| `WECHAT_APP_ID` | 云速取小程序 AppID |
+| `WECHAT_PAY_MCH_ID` | 已绑定的商户号 |
+| `WECHAT_PAY_PRIVATE_KEY` | 商户 API 证书对应的私钥 PEM |
+| `WECHAT_PAY_CERT_SERIAL` | 商户 API 证书序列号 |
+| `WECHAT_PAY_PUBLIC_KEY` | 微信支付公钥 PEM（采用公钥模式） |
+| `WECHAT_PAY_PUBLIC_KEY_ID` | 该微信支付公钥 ID |
+| `WECHAT_PAY_API_V3_KEY` | 32 字节 APIv3 密钥，用于解密通知 |
+| `WECHAT_PAY_NOTIFY_URL` | 上述 HTTPS 通知地址 |
+| `WECHAT_PAY_ENABLED` | 默认关闭，只在目标环境验证时设为 `true` |
+
+线上出现问题时，先关闭 `WECHAT_PAY_ENABLED` 停止创建新的微信支付订单，保留凭据和定时任务，继续处理已有订单的支付确认、退款和报酬结算。如果 Git 历史中曾出现真实凭据，先轮换。
+
+## AdaPay
+
+### 环境变量
+
+| 变量 | 值或来源 |
+| --- | --- |
+| `PAYMENT_PROVIDER` | `adapay` |
+| `ADAPAY_APP_ID` | AdaPay 应用号，通常为 `app_...`，不是微信 AppID |
+| `ADAPAY_PROD_MODE` | `false` 使用模拟环境；真实联调使用 `true` |
+| `ADAPAY_API_KEY` | 与模式对应的 `api_test_...` 或 `api_live_...` |
+| `ADAPAY_PRIVATE_KEY` | 与后台商户 RSA 公钥配套的 PKCS8 私钥 |
+| `ADAPAY_PUBLIC_KEY` | AdaPay RSA 公钥，不是商户公钥 |
+| `ADAPAY_IDENTITY_HMAC_KEY` | 单独随机生成的至少 32 字节服务端密钥，保持稳定并安全备份 |
+| `ADAPAY_NOTIFY_URL` | 云函数 HTTP 接入地址，HTTPS，路径以 `/adapay/notify` 结尾，无查询参数 |
+| `WECHAT_APP_ID` | 已关联 AdaPay 渠道的云速取微信 AppID |
+
+不要把私钥当成 API Key，也不要用微信支付私钥填充 AdaPay 配置。模拟、正式模式的开户记录相互隔离。线上支付费率按商户后台执行。
+
+### 部署顺序
+
+1. 本地测试通过后先部署代码，再启用 `PAYMENT_PROVIDER=adapay`，避免旧代码读取新配置。
+2. 在微信开发者工具右键 `cloudfunctions/mcloud`，选择「上传并部署：云端安装依赖」。接入只使用 Node 内置密码与 HTTPS 模块，没有第三方 SDK 依赖。
+3. 将 HTTP 网关的 `/adapay/notify` POST 路由关联到 `mcloud`，原样传递 body、headers、httpMethod、isBase64Encoded，不做 JSON 重写、登录重定向或签名内容改写。
+4. 确认 `orders-minute` 定时触发器运行：回调验签后只排入核对队列，资金终态由签名查询结果确认。
+5. 重新编译并上传小程序。先在隔离环境验证模拟模式，再做经过授权的小额真实联调；模拟支付不能证明真实开户、出款或银行到账。
+
+### 分账与费用
+
+- 延时模式创建支付时不传 `fee_mode`（传入非空值会返回 `fee_mode_not_blank`），也不传分账列表。订单完成时创建支付确认/分账，使用 `fee_mode=O` 从商户手续费账户扣费。需在服务商后台确保外扣可用、余额充足；外扣不可用或余额不足时停留待处理，不改为从骑手报酬扣费。
+- 分账由支付机构在原支付中完成，平台不先提取全部资金再转账。付款后未分账取消走支付撤销；已分账订单不提供自助退款，争议由平台人工处理。
+- 分账确认的详情不一定包含 `payment_id`。核对依靠已验签的对象 ID、应用、环境、唯一请求单号、金额与分账接收方；若返回 `payment_id`，仍检查其与原支付一致。分账受理后保存 `operationId`，列表未收录时直接查询该对象，不再次提交；列表对象与已保存 ID 冲突时停留待核对。
+- 停留在 paid/pending 的记录由 `orders-minute` 重新查询并同步为 complete/settled，页面显示「报酬已分账」。不要在后台直接改状态或手工重新分账。
+- 「已分账」只表示资金已分配到支付机构账户，不代表银行卡到账。到账以 AdaPay 结算查询的明细和机构实际结算周期为准，页面不显示「银行已到账」。
+- 不自动设置渠道最低提现额、单笔或每日限额，沿用机构自动结算，没有主动提现入口。
+
+### 开户与绑卡
+
+- 开户信息经云函数短暂转交。完整姓名、身份证号、银行卡号、预留手机号不写缓存、数据库或日志；只保存账户标识、状态、脱敏姓名、卡尾号、授权版本与时间、HMAC 摘要。
+- 开户账户按当前校区隔离。拓展校区时需要设计账户复用迁移。
+- 绑卡请求超时或成功应答丢失时，禁止再次盲目创建结算账户。用相同资料重试时，服务端只读查询原 `member_id` 的结算账户，校验应用、正式/模拟环境、实名状态、账户类型及银行卡可见号码，只有唯一匹配的成功账户才自动恢复。查不到、资料不足或多个匹配时继续待核对，由管理员与 AdaPay 核实，不要手工把状态改成 ready。
+- 用户查询返回的 `settle_accounts` 只是摘要，不含 status/prod_mode，必须带 `member_id`、`settle_account_id` 再查完整结算账户。银行卡掩码可能保留前 10 位和后 1 位，不能固定比较后 4 位：需校验所有可见号码且至少 8 位可见数字。
+- 本地已有失败申请、AdaPay 尚未创建用户时，查询返回 `member_not_exists`（兼容 `member_not_exist`/`user_not_exist`/`user_not_exists`）。只有响应已验签且明确表示用户不存在时才继续创建原 `member_id`；配置错误、网络失败或未验签响应继续待核对。无需删除本地失败记录或更换应用密钥。
+- GET 请求与官方 SDK 一致，不发送 JSON `Content-Type`；错误添加该请求头会导致查询返回 `app_not_exists`。
+
+### 排查
+
+`Route Not Defined` 表示请求进入普通接口且缺少 route，不能据此判定 AdaPay 请求失败，也不能仅凭分钟级时间戳判定是定时调用。定时入口兼容 `Type: Timer`、`Type: timer` 及 `type: timer / triggerName`，并用可信 WXContext 拒绝带 OPENID 的调用。
+
+定时入口打印 `YUNSUQU_ENTRY_TIMER_V2`，任务完成打印 `YUNSUQU_TIMER_DONE`；无 route 且未识别为定时事件时打印 `YUNSUQU_ENTRY_UNROUTED_V2`（只含输入类型和约定字段是否存在）。如果新调用只有 `Route Not Defined` 而没有 V2 标记，核对上传的本地目录、云环境、执行入口 `index.main` 及触发器使用的版本。
+
+官方依据：[Node SDK](https://docs.adapay.tech/sdk/nodesdkaccess.html)、[交易及开户](https://docs.adapay.tech/api/trade.html)、[异步通知](https://docs.adapay.tech/api/webhook.html)。HTTP 签名与实名路径已对照官方 Node SDK 1.3.1 的 `Http.js` 和 Java SDK 1.2.10 的 `AdapayCommon.java`。
+
+## 上线验收
+
+真实扣款或转账验收须先取得用户明确授权，用两台真机完成：
+
+- 付款确认后才发布；取消或无人接单原路退款；取消与付款交错。
+- 微信支付：首次接单授权、确认收货后自动到账、重复确认和网络结果不明后的同单查询；在商户后台核对交易、退款和转账单。
+- AdaPay：无开户不能接单、本人实名绑卡、重复点击和通知不重复分账、90:10 分账、平台承担费用、银行卡真实到账；开户信息不出现在云日志中。
