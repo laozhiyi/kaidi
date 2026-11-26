@@ -71,6 +71,42 @@ async function harness(pickedUp = false) {
  };
 }
 
+test('both parties cannot enter exception handling after pickup or delivery', async () => {
+ const h = await harness(true);
+ assert.equal(h.stored().MAIL_STATUS, 4);
+ for (const actor of ['poster', 'rider']) {
+  await assert.rejects(h.f.service.exceptionMail(actor, h.id, { requestId: h.f.req('exception-pickup-' + actor), reason: '物品损坏', note: '申请异常处理' }), /仅已接单、尚未取件的订单可反馈配送异常/);
+  assert.equal(h.stored().MAIL_STATUS, 4);
+ }
+ await h.f.service.deliverMail('rider', h.id, { requestId: h.f.req('deliver-after-pickup'), note: '已送达', images: ['cloud://proof/delivered.png'] });
+ assert.equal(h.stored().MAIL_STATUS, 2);
+ for (const actor of ['poster', 'rider']) {
+  await assert.rejects(h.f.service.exceptionMail(actor, h.id, { requestId: h.f.req('exception-delivered-' + actor), reason: '联系不上', note: '申请异常处理' }), /仅已接单、尚未取件的订单可反馈配送异常/);
+  assert.equal(h.stored().MAIL_STATUS, 2);
+ }
+});
+
+test('the exception applicant can resume or cancel while other participants cannot', async () => {
+ const f = fixture(), id = await f.publish();
+ await f.service.acceptMail('rider', id, { requestId: f.req('accept') });
+ await f.service.exceptionMail('poster', id, { requestId: f.req('exception-poster'), reason: '取件失败', note: '快递点暂时找不到包裹' });
+ assert.equal((await f.service.viewMail('poster', id)).MAIL_EXCEPTION_CAN_RESOLVE, true);
+ const riderView = await f.service.viewMail('rider', id);
+ assert.equal(riderView.MAIL_EXCEPTION_CAN_RESOLVE, false); assert.equal(riderView.MAIL_EXCEPTION.applicantUserId, undefined);
+ await assert.rejects(f.service.resolveExceptionMail('rider', id, { requestId: f.req('resolve-rider'), resolution: 'resume' }), /仅异常申请人/);
+ await assert.rejects(f.service.resolveExceptionMail('poster', id, { requestId: f.req('resolve-complete'), resolution: 'complete' }), /只能恢复流程或取消订单/);
+ await f.service.resolveExceptionMail('poster', id, { requestId: f.req('resolve-resume'), resolution: 'resume' });
+ assert.equal(f.table('mail').get(id).MAIL_STATUS, 1);
+ const replay = await new (f.load('request_recovery_service.js'))().recover('poster', { route: 'mail/resolve_exception', id, requestId: f.req('resolve-resume') });
+ assert.equal(replay.state, 'committed');
+ await f.service.exceptionMail('rider', id, { requestId: f.req('exception-rider'), reason: '联系不上', note: '无法联系发布者' });
+ assert.equal((await f.service.viewMail('rider', id)).MAIL_EXCEPTION_CAN_RESOLVE, true);
+ assert.equal((await f.service.viewMail('poster', id)).MAIL_EXCEPTION_CAN_RESOLVE, false);
+ await assert.rejects(f.service.resolveExceptionMail('poster', id, { requestId: f.req('resolve-other-poster'), resolution: 'cancel' }), /仅异常申请人/);
+ await f.service.resolveExceptionMail('rider', id, { requestId: f.req('resolve-cancel'), resolution: 'cancel' });
+ assert.equal(f.table('mail').get(id).MAIL_STATUS, 99);
+});
+
 test('card pickup opens details for photo proof, and delivery only advances after proof is submitted', async () => {
  const h = await harness(), list = h.mount('order/index/order_index', { tab: 1 });
  list.onShow(); await list._syncOrders();

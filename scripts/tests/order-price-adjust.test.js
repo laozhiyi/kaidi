@@ -228,7 +228,7 @@ test('异常恢复到待收货后重新计时 8 小时，不会被立刻自动�
   await f.service.deliverMail('rider', f.id, { requestId: f.req('deliver'), note: '已放到门口', images: ['cloud://bucket/private-evidence/rider/one.png'] });
   const old = Date.now() - 9 * 3600000;
   f.table('mail').set(f.id, { ...f.mail(), MAIL_DELIVERED_TIME: old, MAIL_AUTO_CONFIRM_AT: old + 8 * 3600000 });
-  await f.service.exceptionMail('poster', f.id, { requestId: f.req('exception'), reason: '物品损坏', note: '外包装破损' });
+  await f.service.holdMail('admin', f.id, { requestId: f.req('exception'), note: '外包装破损，管理员介入处理' });
   await f.service.resolveMail('admin', f.id, { requestId: f.req('resolve'), resolution: 'resume', note: '核实后恢复' });
   assert.equal(f.mail().MAIL_STATUS, 2);
   assert.ok(f.mail().MAIL_DELIVERED_TIME > Date.now() - 60000, '送达时间按恢复时刻重新计算');

@@ -165,6 +165,7 @@ function detail(mail, now = Date.now()) {
  const serviceType = obj.serviceType || 'take';
  const serviceName = { take: '快递代取', send: '物品代送', buy: '商品代买' }[serviceType] || '快递代取';
  const participant = !!(mail.mypost || mail.myaccept);
+ const canResolveException = participant && status === 3 && mail.MAIL_EXCEPTION_CAN_RESOLVE === true;
  const legacyPayment = !['offline','wechat','adapay'].includes(mail.MAIL_PAYMENT_MODE);
  const expired = status === 0 && Number(mail.MAIL_END_TIME) > 0 && Number(mail.MAIL_END_TIME) <= now;
  // 已完成：顶栏整体转灰，并按角色显示发布人 / 骑手各自看到的结果。
@@ -192,8 +193,9 @@ function detail(mail, now = Date.now()) {
  else if (participant && mail.mypost && status === 2) { primary = 'confirm'; primaryLabel = '确认收货'; }
  // 已完成订单不再在详情页提供评价入口；评价只在订单列表「已完成」分组里发起。
  else if (participant && status === 9) { primary = 'done'; primaryLabel = mail.mypost ? '已收货' : mail.myaccept ? '已送达' : '订单已完成'; }
+ else if (canResolveException) { primary = 'resolve_exception'; primaryLabel = '处理异常订单'; }
  else if (phone) { primary = 'contact'; primaryLabel = mail.mypost ? '联系骑手' : '联系发布者'; }
- const actions = { overdue: '已超过预计送达时间', archive: '订单已归档', expire: '已超过接单截止时间', hold: '管理员已介入', resume: '配送已恢复', admin_cancel: '管理员已取消订单', admin_finish: '管理员已完结订单', publish: '订单已发布', accept: '骑手已接单', pickup: '骑手已取件，开始配送', edit: '订单信息已更新', deliver: '骑手已提交送达凭证', update_proof: '骑手已更新送达凭证', price_propose: '骑手申请调整费用', price_respond: '发布人已处理调价申请', release: '骑手放弃接单，订单已重新发布', finish: '已确认收货', confirm: '已确认收货', cancel: '订单已取消', exception: '已提交配送异常', resolve: '异常处理已更新', media_purge: '凭证照片和视频已清理' };
+ const actions = { overdue: '已超过预计送达时间', archive: '订单已归档', expire: '已超过接单截止时间', hold: '管理员已介入', resume: '配送已恢复', admin_cancel: '管理员已取消订单', admin_finish: '管理员已完结订单', publish: '订单已发布', accept: '骑手已接单', pickup: '骑手已取件，开始配送', edit: '订单信息已更新', deliver: '骑手已提交送达凭证', update_proof: '骑手已更新送达凭证', price_propose: '骑手申请调整费用', price_respond: '发布人已处理调价申请', release: '骑手放弃接单，订单已重新发布', finish: '已确认收货', confirm: '已确认收货', cancel: '订单已取消', exception: '已提交配送异常', resolve: '异常处理已更新', resolve_exception: '异常申请人已处理', media_purge: '凭证照片和视频已清理' };
  const history = mail.mypost && Array.isArray(mail.MAIL_HISTORY) ? mail.MAIL_HISTORY.filter(x => x && typeof x === 'object').map((x, i) => ({
   id: x.id || String(i), title: actions[x.action] || '订单状态已更新', note: x.note || '',
   actor: x.actor === 'admin' ? '管理员' : x.actor === 'poster' ? '发布者' : x.actor === 'rider' ? '骑手' : '系统', time: time(x.at) || '时间待确认'
@@ -202,6 +204,7 @@ function detail(mail, now = Date.now()) {
  let note = !participant && status === 0 && !expired ? '接单后可查看联系人信息、取件码和截图' : mail.myaccept && status === 1 ? '取齐本单包裹后，上传凭证（照片或视频）并点击“已取件”开始配送' : mail.myaccept && status === 4 ? '送到收件地址后，选择放置指定位置或当面交付，并提交凭证' : mail.myaccept && status === 2 ? '已通知发布者核对，可提醒对方确认收货；送达满8小时自动确认' : state.note;
  if (status === -1) {title='待支付，尚未发布';note='微信支付确认后订单才会出现在接单列表';}
  if (mail.MAIL_REFUND_STATUS) note=mail.MAIL_REFUND_STATUS === 'success' ? '款项已原路退回' : '退款处理中，请留意微信支付通知';
+ if (canResolveException) { title = '请处理配送异常'; note = '你是本次异常申请人，可以恢复原订单流程或取消订单'; }
  if (orderProgress.adminCompleted) { title = '管理员已完结订单'; note = '本单由管理员处理完结，具体情况请查看处理记录'; }
  if (serviceType !== 'take') {
   if (status === 1) { title = serviceType === 'buy' ? (mail.myaccept ? '请前往购买商品' : '等待骑手购买') : (mail.myaccept ? '请前往取件地址' : '等待骑手取件'); note = serviceType === 'buy' ? '请按要求购买，超出预算先联系发布者；购齐后开始配送' : '请按填写的取件位置交接物品，取齐后开始配送'; }
@@ -222,7 +225,7 @@ function detail(mail, now = Date.now()) {
   // 已送达待确认时不再暴露发布人电话，改为站内提醒。
   hideContactCall: !!(mail.myaccept && status === 2),
   canUpdateProof: !!mail.myaccept && status === 2 && !!mail.MAIL_DELIVERY_PROOF, proofUpdatedAt: time(mail.MAIL_DELIVERY_PROOF && mail.MAIL_DELIVERY_PROOF.updatedAt),
-  primary, primaryLabel, receipt: receipt(mail, now), history, canException: participant && [1, 2, 4].includes(status), canCancel: !!mail.mypost && [-1,0].includes(status), canConfirmEarnings: !!mail.myaccept && [2, 9].includes(status) && mail.MAIL_CAN_CONFIRM_EARNINGS === true,
+  primary, primaryLabel, receipt: receipt(mail, now), history, canException: participant && status === 1, canResolveException, canCancel: !!mail.mypost && [-1,0].includes(status), canConfirmEarnings: !!mail.myaccept && [2, 9].includes(status) && mail.MAIL_CAN_CONFIRM_EARNINGS === true,
   earningsClaimed: !!mail.myaccept && status === 9 && mail.MAIL_EARNINGS_STATUS === 'paid',
   earningsLabel: mail.MAIL_EARNINGS_STATUS === 'paid' ? '已领取' : '领取报酬'
  };

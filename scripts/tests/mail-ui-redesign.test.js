@@ -91,11 +91,20 @@ test('detail primary actions depend on actual order role and status, never on pa
  const cases = [[0, 'poster', 'edit'], [1, 'rider', 'pickup'], [4, 'rider', 'deliver'], [4, 'poster', 'contact'], [2, 'poster', 'confirm'], [2, 'rider', 'remind'], [3, 'rider', 'contact'], [9, 'poster', 'done'], [9, 'rider', 'done'], [99, 'public', 'orders']];
  for (const [status, role, action] of cases) {
   const mail = { ...base, MAIL_STATUS: status, mypost: role === 'poster', myaccept: role === 'rider', acceptUser: { USER_NAME: '小陈', USER_MOBILE: '13900000000' } };
-  const ui = UI.detail(mail, now); assert.equal(ui.primary, action); assert.equal(ui.canCancel, role === 'poster' && status === 0); assert.equal(ui.canException, role !== 'public' && [1,2,4].includes(status));
+  const ui = UI.detail(mail, now); assert.equal(ui.primary, action); assert.equal(ui.canCancel, role === 'poster' && status === 0); assert.equal(ui.canException, role !== 'public' && status === 1);
   if (status === 9 && role !== 'public') assert.equal(ui.primaryLabel, role === 'poster' ? '已收货' : '已送达');
  }
  const expired = UI.detail({ ...base, mypost: true, MAIL_END_TIME: now - 1 }, now); assert.equal(expired.expired, true); assert.equal(expired.step, -1); assert.notEqual(expired.primary, 'edit');
 });
+test('exception applicant gets a primary action to resume or cancel the order', () => {
+ const mail = { ...base, MAIL_STATUS: 3, myaccept: true, MAIL_EXCEPTION: { reason: '物品损坏' }, MAIL_EXCEPTION_CAN_RESOLVE: true };
+ const ui = UI.detail(mail, now);
+ assert.equal(ui.canResolveException, true); assert.equal(ui.primary, 'resolve_exception'); assert.equal(ui.primaryLabel, '处理异常订单');
+ assert.match(ui.note, /恢复原订单流程或取消订单/);
+ const other = UI.detail({ ...mail, MAIL_EXCEPTION_CAN_RESOLVE: false }, now);
+ assert.equal(other.canResolveException, false); assert.equal(other.primary, 'contact');
+});
+
 test('public presentation never projects contact or event history, even if a malformed DTO includes it', () => {
  const mail = { ...base, MAIL_HISTORY: [{ actor: 'poster', action: 'publish', note: 'private', at: now }] };
  const ui = UI.detail(mail, now); assert.equal(ui.phone, ''); assert.equal(ui.history.length, 0); assert.equal(ui.participant, false);
@@ -124,10 +133,20 @@ test('shared detail template handlers are implemented in both page controllers',
 });
 test('participant primary button confirms pickup and delivery before advancing, and honors busy/error', async () => {
  const p = page('my_detail/mail_my_detail.js'), calls = []; p.setData({ mail: base, loading: false });
- p.bindEditTap = () => calls.push('edit'); p.bindPanel = () => calls.push('unconfirmed-panel'); p.bindConfirm = e => calls.push(e.currentTarget.dataset.action); p.bindCallTap = () => calls.push('contact'); p.bindBackOrders = () => calls.push('orders');
- for (const primary of ['edit', 'pickup', 'deliver', 'confirm', 'contact', 'orders']) { p.setData({ detailUI: { primary } }); await p.bindPrimaryAction(); }
- assert.deepEqual(calls, ['edit', 'pickup', 'deliver', 'confirm', 'contact', 'orders']);
- p.setData({ busy: true }); p.bindPrimaryAction(); p.setData({ busy: false, error: true }); p.bindPrimaryAction(); assert.equal(calls.length, 6);
+ p.bindEditTap = () => calls.push('edit'); p.bindPanel = () => calls.push('unconfirmed-panel'); p.bindConfirm = e => calls.push(e.currentTarget.dataset.action); p.bindResolveExceptionTap = () => calls.push('resolve_exception'); p.bindCallTap = () => calls.push('contact'); p.bindBackOrders = () => calls.push('orders');
+ for (const primary of ['edit', 'pickup', 'deliver', 'confirm', 'resolve_exception', 'contact', 'orders']) { p.setData({ detailUI: { primary } }); await p.bindPrimaryAction(); }
+ assert.deepEqual(calls, ['edit', 'pickup', 'deliver', 'confirm', 'resolve_exception', 'contact', 'orders']);
+ p.setData({ busy: true }); p.bindPrimaryAction(); p.setData({ busy: false, error: true }); p.bindPrimaryAction(); assert.equal(calls.length, 7);
+});
+test('exception applicant confirms resume or cancel before submitting', async () => {
+ let sheet, modal, command;
+ const p = page('my_detail/mail_my_detail.js', { command: async (route, params) => { command = { route, params }; } }, { showActionSheet: value => sheet = value, showModal: value => modal = value, showToast() {} });
+ p._visible = true; p.load = async () => {};
+ const mail = { ...base, MAIL_STATUS: 3, myaccept: true, MAIL_EXCEPTION: { reason: '物品损坏' }, MAIL_EXCEPTION_CAN_RESOLVE: true };
+ p.setData({ id: 'order', loading: false, mail, detailUI: UI.detail(mail, now) });
+ p.bindResolveExceptionTap(); assert.deepEqual(Array.from(sheet.itemList), ['恢复订单流程', '取消订单']);
+ sheet.success({ tapIndex: 0 }); assert.match(modal.title, /恢复/); modal.success({ confirm: true }); await new Promise(resolve => setImmediate(resolve));
+ assert.equal(command.route, 'mail/resolve_exception'); assert.equal(command.params.resolution, 'resume');
 });
 test('more menu filters mutations by role/state, and cancellation is never performed without confirmation', async () => {
  let sheet, modal, commands = 0;
@@ -136,6 +155,8 @@ test('more menu filters mutations by role/state, and cancellation is never perfo
  p.bindMoreTap(); assert.ok(sheet.itemList.includes('取消订单')); assert.ok(!sheet.itemList.includes('配送异常 / 申请取消'));
  sheet.success({ tapIndex: 0 }); await new Promise(resolve => setImmediate(resolve)); assert.ok(modal.title.includes('取消')); assert.equal(commands, 0);
  p.setData({ detailUI: UI.detail({ ...base, myaccept: true, MAIL_STATUS: 1 }, now) }); p.bindMoreTap(); assert.ok(sheet.itemList.includes('配送异常 / 申请取消')); assert.ok(!sheet.itemList.includes('取消订单'));
+ p.setData({ detailUI: UI.detail({ ...base, myaccept: true, MAIL_STATUS: 4 }, now) }); p.bindMoreTap(); assert.ok(!sheet.itemList.some(item => item.includes('异常'))); assert.ok(sheet.itemList.includes('反馈与投诉'));
+ p.bindPanel({ currentTarget: { dataset: { action: 'exception' } } }); assert.equal(p.data.panel, '');
  p.setData({ detailUI: UI.detail(base, now) }); sheet = null; p.bindMoreTap(); assert.equal(sheet, null);
 });
 test('delivery sheet requires a note and a photo, ignores unsupported actions and caps attachments at ten', async () => {

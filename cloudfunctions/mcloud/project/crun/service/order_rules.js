@@ -150,6 +150,15 @@ function project(mail, userId, admin = false) {
  out.mypost = mypost; out.myaccept = myaccept;
  out.status = LABELS[mail.MAIL_STATUS] || '状态未知'; if (mail.MAIL_STATUS === 0 && mail.MAIL_END_TIME < Date.now()) out.status = '已过期';
  out.overdue = ACTIVE.includes(mail.MAIL_STATUS) && mail.MAIL_DUE_TIME > 0 && mail.MAIL_DUE_TIME < Date.now();
+ const exception = mail.MAIL_EXCEPTION && typeof mail.MAIL_EXCEPTION === 'object' ? mail.MAIL_EXCEPTION : null;
+ const exceptionEvent = history.filter(item => item.action === 'exception').slice(-1)[0];
+ const exceptionRole = exception && (exception.applicantRole || exceptionEvent && exceptionEvent.actor) || '';
+ out.MAIL_EXCEPTION_CAN_RESOLVE = !admin && !!userId && Number(mail.MAIL_STATUS) === 3 && !!exception && exception.reason !== '管理员介入'
+  && (exception.applicantUserId ? exception.applicantUserId === userId : exceptionRole === 'poster' ? mypost : exceptionRole === 'rider' ? myaccept : false);
+ if (privateAccess && out.MAIL_EXCEPTION && typeof out.MAIL_EXCEPTION === 'object') {
+  const { applicantUserId, resolvedBy, ...safeException } = out.MAIL_EXCEPTION;
+  out.MAIL_EXCEPTION = safeException;
+ }
  const progressMap = { 0: 0, 1: 1, 4: 2, 2: 3, 9: 4 };
  out.progressStep = progressMap[mail.MAIL_STATUS] === undefined || mail.MAIL_STATUS === 0 && mail.MAIL_END_TIME <= Date.now() ? -1 : progressMap[mail.MAIL_STATUS];
  // This identifies the current stage only; preceding milestones require their

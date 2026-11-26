@@ -28,6 +28,7 @@ module.exports = {
 "mail/price_respond":"mail_controller@respondPrice",
 "mail/release":"mail_controller@releaseMail",
 "mail/exception":"mail_controller@exceptionMail",
+"mail/resolve_exception":"mail_controller@resolveException",
 "operations/config":"operations_controller@getConfig",
 "operations/feed":"operations_controller@feed",
 "operations/notifications":"operations_controller@notifications",

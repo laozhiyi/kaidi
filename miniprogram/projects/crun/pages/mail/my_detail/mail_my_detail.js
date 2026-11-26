@@ -141,6 +141,7 @@ Page({
   // 已完成只是状态展示，按钮已置灰，不再提供评价入口。
   if (action === 'done') return;
   if (action === 'remind') return this.bindRemindTap();
+  if (action === 'resolve_exception') return this.bindResolveExceptionTap();
   if (['pickup', 'deliver', 'confirm'].includes(action)) return this.bindConfirm({ currentTarget: { dataset: { action } } });
   if (action === 'contact') return this.bindCallTap();
   this.bindBackOrders();
@@ -179,6 +180,7 @@ Page({
   const ui = this.data.detailUI;
   if (!ui || !ui.participant || this.data.busy || this.data.loading || this.data.error) return;
   const choices = [];
+  if (ui.canResolveException) choices.push({ label: '处理异常订单', action: 'resolve_exception' });
   if (ui.canException) choices.push({ label: '配送异常 / 申请取消', action: 'exception' });
   if (ui.canCancel) choices.push({ label: '取消订单', action: 'cancel' });
   choices.push({ label: '反馈与投诉', action: 'feedback' });
@@ -186,13 +188,41 @@ Page({
   wx.showActionSheet({ itemList: choices.map(x => x.label), success: result => {
    if (this.data.busy || this.data.loading || this.data.error) return;
    const item = choices[result.tapIndex]; if (!item) return;
-   if (item.action === 'exception') this.bindPanel({ currentTarget: { dataset: { action: 'exception' } } });
+   if (item.action === 'resolve_exception') this.bindResolveExceptionTap();
+   else if (item.action === 'exception') this.bindPanel({ currentTarget: { dataset: { action: 'exception' } } });
    else if (item.action === 'cancel') this.bindConfirm({ currentTarget: { dataset: { action: 'cancel' } } });
    else if (item.action === 'subscribe') this.bindSubscription();
    else this.bindFeedbackTap();
   } });
  },
  bindUpdateProofTap() { if (this._visible) return this.bindPanel({ currentTarget: { dataset: { action: 'update_proof' } } }); },
+ bindResolveExceptionTap() {
+  const ui = this.data.detailUI;
+  if (!this._visible || !ui || !ui.canResolveException || this.data.busy || this.data.loading || this.data.error || this._performing) return;
+  wx.showActionSheet({ itemList: ['恢复订单流程', '取消订单'], success: result => {
+   const resolution = result && result.tapIndex === 0 ? 'resume' : result && result.tapIndex === 1 ? 'cancel' : '';
+   if (!resolution || !this._visible) return;
+   const resume = resolution === 'resume';
+   wx.showModal({
+    title: resume ? '恢复订单流程' : '取消异常订单',
+    content: resume ? '恢复后订单将回到异常前的状态，双方继续按原流程履约。确定恢复吗？' : '取消后订单将结束，已付款订单按支付规则进入退款处理。确定取消吗？',
+    confirmText: resume ? '确定恢复' : '确定取消',
+    success: modal => { if (modal.confirm && this._visible) this._resolveException(resolution); }
+   });
+  } });
+ },
+ async _resolveException(resolution) {
+  const ui = this.data.detailUI;
+  if (!this._visible || !ui || !ui.canResolveException || !['resume', 'cancel'].includes(resolution) || this.data.busy || this.data.loading || this.data.error || this._performing) return;
+  this._performing = true; this.setData({ busy: true });
+  try {
+   if (!await PassportBiz.loginMustCancelWin(this) || !this._visible) return;
+   await Ops.command('mail/resolve_exception', { id: this.data.id, resolution });
+   invalidateOrderLists();
+   if (this._visible) { await this.load(); wx.showToast({ title: resolution === 'resume' ? '订单流程已恢复' : '订单已取消' }); }
+  } catch (e) { if (this._visible) { Ops.error(e); await this.load(); } }
+  finally { this._performing = false; if (this._visible) this.setData({ busy: false }); else this.data.busy = false; }
+ },
  bindPanel(e) {
   const action = e.currentTarget.dataset.action, ui = this.data.detailUI;
   const allowed = action === 'pickup' && ui && ui.primary === 'pickup'

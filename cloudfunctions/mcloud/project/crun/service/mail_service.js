@@ -8,7 +8,7 @@ const rules = require('./order_rules.js');
 const profileRules = require('./profile_rules.js');
 const media = require('./private_media_service.js');
 const TenantService = require('./tenant_service.js');
-const REQUEST_ROUTES = {publish:'mail/insert',edit:'mail/edit',accept:'mail/accept',pickup:'mail/pickup',cancel:'mail/cancel',deliver:'mail/deliver',update_proof:'mail/update_proof',price_propose:'mail/price_propose',price_respond:'mail/price_respond',release:'mail/release',confirm:'mail/finish',exception:'mail/exception',remind:'mail/remind',auto_confirm:'mail/auto_confirm',archive:'mail/del',hold:'admin/operations_hold',resolve:'admin/operations_resolve',admin_delete:'admin/operations_delete_order'};
+const REQUEST_ROUTES = {publish:'mail/insert',edit:'mail/edit',accept:'mail/accept',pickup:'mail/pickup',cancel:'mail/cancel',deliver:'mail/deliver',update_proof:'mail/update_proof',price_propose:'mail/price_propose',price_respond:'mail/price_respond',release:'mail/release',confirm:'mail/finish',exception:'mail/exception',resolve_exception:'mail/resolve_exception',remind:'mail/remind',auto_confirm:'mail/auto_confirm',archive:'mail/del',hold:'admin/operations_hold',resolve:'admin/operations_resolve',admin_delete:'admin/operations_delete_order'};
 // 送达后 8 小时内未确认收货，由订单维护任务自动确认。
 const AUTO_CONFIRM_MS = 8 * 3600000;
 // 「提醒发布人收货」的冷却：同一订单 5 分钟内只允许提醒一次，避免刷消息。
@@ -39,6 +39,14 @@ class MailService extends Base {
   return user;
  }
  _request(value) { if (typeof value !== 'string' || !/^[a-zA-Z0-9_-]{16,100}$/.test(value)) this.AppError('请求标识无效，请刷新后重试'); return value; }
+ _isExceptionApplicant(mail, userId) {
+  const exception = mail.MAIL_EXCEPTION;
+  if (!exception || typeof exception !== 'object' || !userId) return false;
+  if (exception.applicantUserId) return exception.applicantUserId === userId;
+  if (exception.reason === '管理员介入') return false;
+  const event = (Array.isArray(mail.MAIL_HISTORY) ? mail.MAIL_HISTORY : []).filter(item => item && item.action === 'exception').slice(-1)[0];
+  return !!event && (event.actor === 'poster' && mail.MAIL_USER_ID === userId || event.actor === 'rider' && mail.MAIL_ACCEPT_USER_ID === userId);
+ }
  async replayRequest(userId, action, input) {
   this._request(input.requestId);
   const seen = await store.get(store.database(), 'order_request', store.key(this.getProjectId(), userId, input.requestId));
@@ -212,7 +220,7 @@ class MailService extends Base {
     const expired = !(mail.MAIL_END_TIME > now);
     message = { only:'poster', title:'骑手已放弃接单', content:expired ? '调价未达成，骑手已放弃接单；订单已过接单截止时间，请编辑后重新发布' : '调价未达成，骑手已放弃接单，订单已按原价 ¥' + fee + ' 重新发布，等待其他骑手接单' };
    } else if (action === 'cancel') {
-    if (!poster || ![-1,0].includes(state)) this.AppError('只有发布者可取消待支付或待接单订单；已接单请提交异常申请'); mail.MAIL_STATUS = 99; note = rules.text(input.note || '发布者取消','取消原因',300,true);
+    if (!poster || ![-1,0].includes(state)) this.AppError('只有发布者可取消待支付或待接单订单；订单已接单后不能直接取消'); mail.MAIL_STATUS = 99; note = rules.text(input.note || '发布者取消','取消原因',300,true);
    } else if (action === 'deliver') {
     if (!rider || state !== 4) this.AppError('仅配送中的接单人可提交送达');
     // 两种送达方式：放置指定位置（须凭证）/ 当面交付（由发布人确认收货）。
@@ -236,19 +244,31 @@ class MailService extends Base {
    } else if (action === 'confirm') {
     if (!poster || state !== 2) this.AppError('仅发布者可确认已送达订单'); mail.MAIL_STATUS = 9; mail.MAIL_OVER_TIME = now; mail.MAIL_POSTER_ARCHIVED = true; mail.MAIL_RIDER_ARCHIVED = true;
    } else if (action === 'exception') {
-    if (![1,2,4].includes(state)) this.AppError('当前订单不能重复提交异常');
+    if (state !== 1) this.AppError('仅已接单、尚未取件的订单可反馈配送异常');
     const allowed = ['取件失败','取件码错误','联系不上','物品损坏','送错地址','申请取消','其他']; if (!allowed.includes(input.reason)) this.AppError('异常原因无效');
-    note = rules.text(input.note || '','异常说明',500,true); mail.MAIL_EXCEPTION = { reason:input.reason,note,images:rules.images(input.images || []),previousStatus:state,at:now }; mail.MAIL_STATUS = 3;
+    note = rules.text(input.note || '','异常说明',500,true); mail.MAIL_EXCEPTION = { reason:input.reason,note,images:rules.images(input.images || []),previousStatus:state,at:now,applicantUserId:userId,applicantRole:poster ? 'poster' : 'rider' }; mail.MAIL_STATUS = 3;
    } else if (action === 'hold') {
     if(!adminId || ![0,1,2,4].includes(state))this.AppError('仅管理员可将未结束订单转异常处理');
-    note=rules.text(input.note || '', '人工介入依据',500,true);mail.MAIL_EXCEPTION={reason:'管理员介入',note,images:[],previousStatus:state,at:now};mail.MAIL_STATUS=3;
-   } else if (action === 'resolve') {
-    if (!adminId || state !== 3) this.AppError('仅管理员可处理异常订单'); note = rules.text(input.note || '','处理依据',500,true);
-    if (!['resume','cancel','complete'].includes(input.resolution)) this.AppError('处理方式无效');
+    note=rules.text(input.note || '', '人工介入依据',500,true);mail.MAIL_EXCEPTION={reason:'管理员介入',note,images:[],previousStatus:state,at:now,applicantUserId:'',applicantRole:'admin'};mail.MAIL_STATUS=3;
+   } else if (action === 'resolve' || action === 'resolve_exception') {
+    const byApplicant = action === 'resolve_exception';
+    if (state !== 3) this.AppError('仅异常处理中的订单可继续处理');
+    if (byApplicant) {
+     if (adminId || !this._isExceptionApplicant(mail,userId)) this.AppError('仅异常申请人可处理该异常');
+     if (!['resume','cancel'].includes(input.resolution)) this.AppError('异常申请人只能恢复流程或取消订单');
+     note = input.resolution === 'resume' ? '异常申请人恢复订单流程' : '异常申请人取消订单';
+     message = input.resolution === 'resume'
+      ? { title:'订单流程已恢复', content:'异常申请人已恢复订单，请继续按订单进度履约' }
+      : { title:'订单已取消', content:'异常申请人已取消订单，本次服务结束' };
+    } else {
+     if (!adminId) this.AppError('仅管理员可处理异常订单');
+     note = rules.text(input.note || '','处理依据',500,true);
+     if (!['resume','cancel','complete'].includes(input.resolution)) this.AppError('处理方式无效');
+    }
     mail.MAIL_STATUS = input.resolution === 'resume' ? mail.MAIL_EXCEPTION.previousStatus : input.resolution === 'cancel' ? 99 : 9;
     if (![0,1,2,4,9,99].includes(mail.MAIL_STATUS)) this.AppError('异常订单原状态无效'); if (mail.MAIL_STATUS === 9) mail.MAIL_OVER_TIME = now;
     if (mail.MAIL_STATUS === 2) { mail.MAIL_DELIVERED_TIME = now; mail.MAIL_AUTO_CONFIRM_AT = now + AUTO_CONFIRM_MS; }
-    mail.MAIL_EXCEPTION = {...mail.MAIL_EXCEPTION,resolution:input.resolution,resolvedAt:now,resolvedBy:adminId,result:note};
+    mail.MAIL_EXCEPTION = {...mail.MAIL_EXCEPTION,resolution:input.resolution,resolvedAt:now,resolvedBy:adminId || userId,resolvedByRole:adminId ? 'admin' : 'applicant',result:note};
    } else if (action === 'edit') {
     if (!poster || state !== 0) this.AppError('仅可编辑尚未被接取的订单'); const normalized = rules.validateForms(input.forms,config,now);
     if (normalized.obj.serviceType !== (mail.MAIL_OBJ.serviceType || 'take')) this.AppError('不能修改订单服务类型');
@@ -337,6 +357,7 @@ class MailService extends Base {
  async exceptionMail(userId,id,input) { return this._change(userId,id,'exception',input); }
  async holdMail(adminId,id,input) { return this._change('',id,'hold',input,adminId); }
  async resolveMail(adminId,id,input) { return this._change('',id,'resolve',input,adminId); }
+ async resolveExceptionMail(userId,id,input) { return this._change(userId,id,'resolve_exception',input); }
  async deleteOrder(adminId,id,input) {
   if (!adminId) this.AppError('仅管理员可删除订单');
   if (typeof id !== 'string' || !id || id.length > 100) this.AppError('订单标识无效');

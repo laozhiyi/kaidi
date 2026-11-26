@@ -37,6 +37,7 @@ class MailController extends Base {
  async deliverMail() {return this._action('deliverMail',{note:'string|max:300',mode:'string|max:10',images:'array',videos:'array'},true);}
  async updateDeliveryProof() {return this._action('updateDeliveryProof',{note:'string|max:300',images:'array',videos:'array'},true);}
  async exceptionMail() {return this._action('exceptionMail',{reason:'must|string|max:30',note:'must|string|max:500',images:'array'},true);}
+ async resolveException() {return this._action('resolveExceptionMail',{resolution:'must|string|max:10'});}
  async statusMail() {return new MailService().statusMail();}
  async delMail() {return this._action('delMail');}
  async updateMailForms() {return new MailService().updateMailForms();}
