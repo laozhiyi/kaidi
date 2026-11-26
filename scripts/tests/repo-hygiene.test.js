@@ -6,7 +6,7 @@ const fs = require('node:fs'), path = require('node:path'), { execFileSync } = r
 
 const root = path.resolve(__dirname, '../..');
 const ROOT_DIRS = new Set(['miniprogram', 'cloudfunctions', 'scripts', 'docs', 'deployment', '.github']);
-const ROOT_FILES = new Set(['README.md', 'CONTRIBUTING.md', 'AGENTS.md', '.gitignore', 'project.config.json']);
+const ROOT_FILES = new Set(['README.md', 'CONTRIBUTING.md', 'AGENTS.md', 'CLAUDE.md', '.gitignore', 'project.config.json']);
 const MAX_BYTES = 1024 * 1024;
 const PROCESS_WORDS = ['本轮', '本次已', '本次未', '按用户要求', '尚未上传', '未执行云端', '未执行真机'];
 

@@ -40,7 +40,9 @@ git push origin main
 | `deployment/` | 数据库安全规则、索引清单等部署配置（只放 JSON 等配置，不放说明文档） |
 | `docs/` | 维护文档（见下文第三节） |
 | `.github/` | 自动检查配置 |
-| 根目录 | `README.md`、`CONTRIBUTING.md`、`AGENTS.md`、`.gitignore`、`project.config.json` |
+| 根目录 | `README.md`、`CONTRIBUTING.md`、`AGENTS.md`、`CLAUDE.md`、`.gitignore`、`project.config.json` |
+
+`AGENTS.md` 是给 AI 编程助手看的仓库规则（Codex、Cursor、Copilot 等直接读取）。`CLAUDE.md` 只有一行 `@AGENTS.md`，让 Claude Code 读取同一份规则；改规则只改 `AGENTS.md`。
 
 **不能提交**的内容已写进 [.gitignore](.gitignore)，主要有：
 

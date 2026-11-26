@@ -6,7 +6,7 @@
 #   cloudfunctions/     云函数源码（不含 node_modules 和打包副本）
 #   scripts/            检查脚本、回归测试与测试夹具
 #   deployment/ docs/   部署说明与维护文档
-#   project.config.json AGENTS.md README.md .gitignore
+#   project.config.json AGENTS.md CLAUDE.md README.md .gitignore
 #
 # 下面列出的都只在本机使用，不要提交。
 # 新增临时产物时，请放进 .tmp/，不要放在仓库根目录。
