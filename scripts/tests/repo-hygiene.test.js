@@ -51,7 +51,7 @@ test('单个文件不超过 1 MB', opts, () => {
 test('说明文档只放在 docs/、.github/ 和根目录', opts, () => {
 	const bad = files.filter(f => f.toLowerCase().endsWith('.md')
 		&& !ROOT_FILES.has(f) && !/^docs\/[^/]+\.md$/.test(f) && !/^\.github\/[^/]+\.md$/.test(f));
-	assert.deepEqual(bad, [], '模块说明请写进 docs/ 对应文档，过程记录写在 PR 里');
+	assert.deepEqual(bad, [], '模块说明请写进 docs/ 对应文档，过程记录写在提交说明里');
 });
 
 test('docs/ 下每份文档都在 README 的「维护文档」表中登记', opts, () => {
@@ -65,7 +65,7 @@ test('文档只描述现状，不含带日期的过程段落和过程用语', op
 	for (const f of ['README.md', ...docs()]) read(f).split(/\r?\n/).forEach((line, i) => {
 		if (/\b20\d{2}-\d{2}-\d{2}\b/.test(line) || PROCESS_WORDS.some(w => line.includes(w))) bad.push(`${f}:${i + 1}`);
 	});
-	assert.deepEqual(bad, [], '把结论改写进正文，过程写进提交说明或 PR，见 CONTRIBUTING.md 第三节');
+	assert.deepEqual(bad, [], '把结论改写进正文，过程写进提交说明，见 CONTRIBUTING.md 第三节');
 });
 
 test('文档里的相对链接都指向存在的文件', opts, () => {

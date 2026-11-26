@@ -28,10 +28,10 @@ Write focused regressions in `*.test.js` using `node:test` and `node:assert/stri
 Follow `CONTRIBUTING.md`; `scripts/tests/repo-hygiene.test.js` enforces it.
 
 - Commit only source, tests, deployment config, and maintained docs. Put logs, screenshots, previews, snapshots, and scratch scripts in `.tmp/`, which is ignored. Never create files at the repository root.
-- Do not write reports, summaries, diagnoses, or plans as Markdown files (no `*_REPORT.md`, `*_SUMMARY.md`, `FIX_*.md`). Put that content in the commit message, the PR description, or your reply to the user.
+- Do not write reports, summaries, diagnoses, or plans as Markdown files (no `*_REPORT.md`, `*_SUMMARY.md`, `FIX_*.md`). Put that content in the commit message or your reply to the user.
 - When behavior changes, edit the matching `docs/*.md` section in place so it describes the current state. Do not append dated changelog paragraphs or phrases such as 本次、本轮、尚未上传.
 - A new doc must be a module-level reference in `docs/` and be listed in the README table. Prefer extending an existing doc.
 
-## Commits and Pull Requests
+## Commits
 
-Use concise Chinese commit subjects that describe the change, as in `完善微信登录、手机号验证与雁山校区内测`. In PRs, explain the affected flow, list checks run, link relevant issues, and include screenshots for visible changes. Call out cloud deployment or database changes and follow `docs/DEPLOYMENT.md`. Work on a feature branch and merge through a PR; never force-push `main`. Keep credentials and `project.private.config.json` local.
+Use concise Chinese commit subjects that describe the change, as in `完善微信登录、手机号验证与雁山校区内测`. For larger changes, use the commit body to explain the affected flow and list checks run. Call out cloud deployment or database changes there and follow `docs/DEPLOYMENT.md`. Work directly on `main`: do not create branches or pull requests. Run `git pull --rebase origin main` and the regression suite before every push, and never force-push `main`. Keep credentials and `project.private.config.json` local.
