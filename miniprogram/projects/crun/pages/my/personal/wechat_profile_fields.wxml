@@ -2,14 +2,15 @@
   <view class="profile-section-head"><view><view class="profile-section-title">头像和昵称</view><view class="profile-section-subtitle">用于个人主页和订单展示</view></view></view>
   <view class="profile-field-list">
     <view id="guide-avatar" class="{{guideField === 'avatar' ? 'form-guide-invalid' : ''}}"><view wx:if="{{guideField === 'avatar'}}" class="form-guide-message">{{guideMessage}}</view>
-    <button wx:if="{{canChooseWechatAvatar}}" class="profile-avatar-button" open-type="chooseAvatar" bind:chooseavatar="bindPicTap" disabled="{{saving || phoneAuthorizing || identityLoggingIn || collectionSaving || loggingOut || cancellingAccount}}">
-      <view><view class="profile-field-label">头像</view><view class="profile-field-note">点击选择头像</view></view>
+    <button wx:if="{{canChooseWechatAvatar}}" class="profile-avatar-button" open-type="chooseAvatar" bindchooseavatar="bindPicTap" binderror="bindAvatarError" disabled="{{saving || phoneAuthorizing || identityLoggingIn || collectionSaving || loggingOut || cancellingAccount}}" aria-label="选择头像，可使用微信头像">
+      <view><view class="profile-field-label">头像</view><view class="profile-field-note">点击选择头像，可使用微信头像</view></view>
       <image wx:if="{{formPic}}" class="profile-avatar" mode="aspectFill" src="{{formPic}}" /><view wx:else class="profile-avatar-placeholder"><text class="icon-cameraadd"></text></view><text class="icon-right profile-arrow"></text>
     </button>
-    <button wx:else class="profile-avatar-button" bindtap="bindChooseAvatar" disabled="{{saving || phoneAuthorizing || identityLoggingIn || collectionSaving || loggingOut || cancellingAccount}}">
+    <button wx:else class="profile-avatar-button" bindtap="bindChooseAvatar" disabled="{{saving || phoneAuthorizing || identityLoggingIn || collectionSaving || loggingOut || cancellingAccount}}" aria-label="从相册选择头像或拍照">
       <view><view class="profile-field-label">头像</view><view class="profile-field-note">从相册选择或拍照</view></view>
       <image wx:if="{{formPic}}" class="profile-avatar" mode="aspectFill" src="{{formPic}}" /><view wx:else class="profile-avatar-placeholder"><text class="icon-cameraadd"></text></view><text class="icon-right profile-arrow"></text>
     </button>
+    <view wx:if="{{avatarError}}" class="profile-required-hint">{{avatarError}}</view>
     </view>
     <view id="guide-nickname" class="profile-field {{guideField === 'nickname' ? 'form-guide-invalid' : ''}}"><view wx:if="{{guideField === 'nickname'}}" class="form-guide-message">{{guideMessage}}</view><text class="profile-field-label">昵称</text><input class="profile-field-input" name="nickname" type="{{!canUseWechatNickname ? 'text' : 'nickname'}}" value="{{formName}}" maxlength="30" placeholder="{{!canUseWechatNickname ? '请输入昵称' : '点击填写，可选择微信昵称'}}" bindinput="bindProfileNameInput" bindblur="bindProfileNameInput" disabled="{{saving || phoneAuthorizing || identityLoggingIn || collectionSaving || loggingOut || cancellingAccount}}" /></view>
   </view>

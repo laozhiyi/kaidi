@@ -173,9 +173,18 @@ function readSubmittedNickname(page, e) {
 function bindPicTap(e) {
   if (profileBusy(this) || PassportBiz.isLoggedOut() && !this.data.wechatProfileVisible) return;
   const pic = e && e.detail && e.detail.avatarUrl;
-  if (typeof pic !== 'string' || !pic.trim()) return;
-  this._profileDirty = true; this.setData({ formPic: pic });
+  if (typeof pic !== 'string' || !pic.trim()) return bindAvatarError.call(this, {detail:{errMsg:'未获取到微信头像'}});
+  this._profileDirty = true; this.setData({ formPic: pic, avatarError: '' });
   Guide.clear(this, 'avatar');
+}
+function bindAvatarError(e) {
+  if (profileBusy(this)) return;
+  const message = e && e.detail && e.detail.errMsg || '';
+  if (/cancel/i.test(message)) return;
+  const privacy = /privacy|api scope.*not.*declared|隐私/i.test(message);
+  const hint = privacy ? '微信头像暂不可用，请通过反馈联系管理员处理。' : '头像选择未完成，请稍后重试。';
+  this.setData({avatarError:hint});
+  pageHelper.showNoneToast(hint);
 }
 function bindProfileMobileInput(e) {
   Guide.clear(this, 'phone');
@@ -183,19 +192,32 @@ function bindProfileMobileInput(e) {
   this._profileDirty = true; this.setData({ formMobile: e.detail.value });
 }
 function bindChooseAvatar() {
-  if (profileBusy(this) || PassportBiz.isLoggedOut() && !this.data.wechatProfileVisible) return;
+  if (profileBusy(this) || this._avatarPicking || PassportBiz.isLoggedOut() && !this.data.wechatProfileVisible) return;
   const epoch = sessionEpoch();
+  this._avatarPicking = true;
+  this.setData({avatarError:''});
   const success = result => {
-    const file = result.tempFiles && result.tempFiles[0];
-    const path = file && file.tempFilePath || result.tempFilePaths && result.tempFilePaths[0];
+    this._avatarPicking = false;
+    const file = result && result.tempFiles && result.tempFiles[0];
+    const path = file && file.tempFilePath || result && result.tempFilePaths && result.tempFilePaths[0];
+    if (!path) { fail(new Error('未获取到选择的图片')); return; }
     if (profileBusy(this) || PassportBiz.isLoggedOut() && !this.data.wechatProfileVisible || !path
       || epoch !== sessionEpoch()) return;
-    this._profileDirty = true; this.setData({ formPic: path });
+    this._profileDirty = true; this.setData({ formPic: path, avatarError:'' });
+    Guide.clear(this, 'avatar');
   };
-  const fail = error => { if (!this._unloaded && !/cancel/i.test(error && error.errMsg || '')) pageHelper.showNoneToast('头像选择失败，请重试'); };
-  if (typeof wx.chooseMedia === 'function' && supportsNative('chooseMedia')) wx.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'], success, fail });
-  else if (typeof wx.chooseImage === 'function') wx.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'], success, fail });
-  else pageHelper.showNoneToast('当前微信无法选择图片，请更新微信后重试');
+  const fail = error => {
+    this._avatarPicking = false;
+    if (this._unloaded || epoch !== sessionEpoch() || /cancel/i.test(error && error.errMsg || '')) return;
+    const message = /auth|privacy|permission|隐私|权限/i.test(String(error && (error.errMsg || error.message) || ''))
+      ? '微信未允许选择图片，请检查相册或相机授权后重试。' : '头像选择失败，请重试。';
+    this.setData({avatarError:message});pageHelper.showNoneToast(message);
+  };
+  try {
+    if (typeof wx.chooseMedia === 'function' && supportsNative('chooseMedia')) wx.chooseMedia({ count: 1, mediaType: ['image'], sizeType:['compressed'], sourceType: ['album', 'camera'], success, fail });
+    else if (typeof wx.chooseImage === 'function') wx.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'], success, fail });
+    else fail(new Error('当前微信无法选择图片，请更新微信后重试'));
+  } catch(error) { fail(error); }
 }
 function bindWechatPhoneTap() {
   if (!(this.data.profilePhoneRequired || this.data.phoneLoginEnabled) || profileBusy(this)) return;
@@ -703,4 +725,4 @@ async function bindSubmitTap(e) {
     pageHelper.showNoneToast(message);
   } finally { if (!this._unloaded) this.setData({ saving: false }); }
 }
-module.exports = { initProfileCapabilities, applyRegistrationPolicy, isProfileReady, loadCampuses, getCachedProfileUser, getProfileUser, invalidateProfileCache, clearLocalCaches, applyUser, finishProfile, bindProfileNameInput, bindProfileMobileInput, bindPicTap, bindChooseAvatar, bindWechatPhoneTap, bindWechatPhone, bindCampusChange, bindOpenCampusPicker, bindSelectCampus, bindConfirmCampus, bindCloseCampusPicker, bindProfileSheetTouchMove, bindGenderTap, bindOpenEducationPicker, bindCloseEducationPicker, bindEducationSearch, bindSelectEducation, bindEnterMajorManually, bindProfileFieldInput, bindDisclaimerTap, bindViewDisclaimer, bindViewPrivacy, bindChooseStudentCard, bindPreviewStudentCard, bindDeleteStudentCard, bindContactInput, bindAddressInput, bindOpenPlacePicker, bindSelectPlace, bindConfirmPlace, bindClearPlace, bindClosePlacePicker, bindPlaceSheetStop, bindAddContact, bindEditContact, bindSetDefaultContact, bindDeleteContact, bindCancelContact, bindSaveContact, bindAddAddress, bindEditAddress, bindSetDefaultAddress, bindDeleteAddress, bindCancelAddress, bindSaveAddress, bindSaveWechatProfile, bindSubmitTap, bindInviteCodeInput, bindCopyMyInviteCode, loadInviteInfo };
+module.exports = { initProfileCapabilities, applyRegistrationPolicy, isProfileReady, loadCampuses, getCachedProfileUser, getProfileUser, invalidateProfileCache, clearLocalCaches, applyUser, finishProfile, bindProfileNameInput, bindProfileMobileInput, bindPicTap, bindAvatarError, bindChooseAvatar, bindWechatPhoneTap, bindWechatPhone, bindCampusChange, bindOpenCampusPicker, bindSelectCampus, bindConfirmCampus, bindCloseCampusPicker, bindProfileSheetTouchMove, bindGenderTap, bindOpenEducationPicker, bindCloseEducationPicker, bindEducationSearch, bindSelectEducation, bindEnterMajorManually, bindProfileFieldInput, bindDisclaimerTap, bindViewDisclaimer, bindViewPrivacy, bindChooseStudentCard, bindPreviewStudentCard, bindDeleteStudentCard, bindContactInput, bindAddressInput, bindOpenPlacePicker, bindSelectPlace, bindConfirmPlace, bindClearPlace, bindClosePlacePicker, bindPlaceSheetStop, bindAddContact, bindEditContact, bindSetDefaultContact, bindDeleteContact, bindCancelContact, bindSaveContact, bindAddAddress, bindEditAddress, bindSetDefaultAddress, bindDeleteAddress, bindCancelAddress, bindSaveAddress, bindSaveWechatProfile, bindSubmitTap, bindInviteCodeInput, bindCopyMyInviteCode, loadInviteInfo };

@@ -224,9 +224,15 @@ function smokeRender(code) {
       const phoneInput = inputs.find(node => node.attr.bindinput === 'bindProfileMobileInput');
       assert.equal(!!phoneInput, !fixture.wechatOnly && (data.phoneLoginEnabled === false || data.allowManualRegistration === true && !data.phoneVerified), '头像昵称单独保存；完整资料允许手填联系电话');
       if (phoneInput) assert.equal(phoneInput.attr.type, 'number');
-      const avatar = controls.find(button => button.attr.openType === 'chooseAvatar' || button.attr.bindtap === 'bindChooseAvatar');
+      const avatars = controls.filter(button => String(button.attr.class || '').split(/\s+/).includes('profile-avatar-button'));
+      assert.equal(avatars.length, 1, '每种状态只展示一个头像入口');
+      const avatar = avatars[0];
       assert.ok(avatar, '必须能够选择头像');
-      assert.equal(avatar.attr.openType === 'chooseAvatar', data.canChooseWechatAvatar !== false, '微信头像不可用时应支持普通图片选择');
+      assert.equal(avatar.attr.openType === 'chooseAvatar', !!data.canChooseWechatAvatar, '支持原生能力时点击头像直接使用微信头像选择');
+      if (data.canChooseWechatAvatar) {
+        assert.equal(avatar.attr.bindchooseavatar, 'bindPicTap');
+        assert.equal(avatar.attr.binderror, 'bindAvatarError');
+      } else assert.equal(avatar.attr.bindtap, 'bindChooseAvatar', '旧版本仅在同一个头像位置提供相册选择');
       const phone = controls.find(button => button.attr.bindgetphonenumber === 'bindWechatPhone');
       if (!fixture.wechatOnly && data.canGetWechatPhone !== false && !phoneInput) assert.equal(phone && phone.attr.openType, 'getPhoneNumber');
       assert.equal(!!avatar.attr.disabled, !!(data.saving || data.phoneAuthorizing || data.loggingOut || data.collectionSaving || data.identityLoggingIn || data.cancellingAccount));

@@ -32,6 +32,28 @@ function client(initial = null, storage = new Map()) {
   return { passport: module.exports, calls, modals, navigation, diagnostics, responses, storage, get token() { return token; } };
 }
 
+test('guest acceptance offers login or continued browsing and returns through the existing page stack', async () => {
+  const f = client(), page = { _visible: true, setData() {} };
+  assert.equal(await f.passport.loginMustCancelWin(page, { action: 'accept' }), false);
+  assert.equal(f.modals[0].title, '登录后接单');
+  assert.equal(f.modals[0].cancelText, '暂不登录');
+  f.modals[0].success({ cancel: true });
+  assert.equal(f.navigation.length, 0);
+  assert.equal(f.calls.length, 0);
+  await f.passport.loginMustCancelWin(page, { action: 'accept' });
+  f.modals[1].success({ confirm: true });
+  assert.equal(f.navigation[0].url, '/projects/crun/pages/my/reg/my_reg?retUrl=back');
+  assert.equal(f.calls.length, 0, 'opening login never accepts an order');
+});
+
+test('acceptance login callback cannot navigate after its page is hidden', async () => {
+  const f = client(), page = { _visible: true, setData() {} };
+  await f.passport.loginMustCancelWin(page, { action: 'accept' });
+  page._visible = false;
+  f.modals[0].success({ confirm: true });
+  assert.equal(f.navigation.length, 0);
+});
+
 test('logout keeps silent refresh and business guards signed out across an app restart', async () => {
   const f = client({ ...ready });
   f.passport.logout();

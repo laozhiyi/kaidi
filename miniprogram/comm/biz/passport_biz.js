@@ -86,8 +86,8 @@ class PassportBiz extends BaseBiz {
  }
 
 	// 必须登陆 可以取消(窗口形式) 
-	static async loginMustCancelWin(that) {
-		return await PassportBiz.loginCheck(true, 'cancel', '', that);
+	static async loginMustCancelWin(that, options = {}) {
+		return await PassportBiz.loginCheck(true, 'cancel', '', that, options);
 	}
 
 	// 必须登陆 只能强制注册或者回上页(窗口形式)  
@@ -179,23 +179,23 @@ class PassportBiz extends BaseBiz {
 	// 登录判断及处理
 	static async loginCheck(mustLogin = false, method = 'back', title = '', that = null, options = {}) {
   const allowPending = options.allowPending === true;
-  if (PassportBiz.isLoggedOut()) return PassportBiz._loginDecision(null, mustLogin, method, that, allowPending);
+  if (PassportBiz.isLoggedOut()) return PassportBiz._loginDecision(null, mustLogin, method, that, allowPending, options);
   const token = PassportBiz.getToken();
-  if (!token) return PassportBiz._loginDecision(null, mustLogin, method, that, allowPending);
+  if (!token) return PassportBiz._loginDecision(null, mustLogin, method, that, allowPending, options);
   // Manual sessions recheck the temporary server policy on guarded entry.
   if (token && method !== 'must' && !(token.allowManualRegistration === true && token.phoneVerified !== true)
     && typeof token.phoneVerified === 'boolean' && typeof token.profileComplete === 'boolean') {
-   return PassportBiz._loginDecision(token, mustLogin, method, that, allowPending);
+   return PassportBiz._loginDecision(token, mustLogin, method, that, allowPending, options);
   }
   const version = sessionVersion;
   try {
    const result = await cloudHelper.callCloudSumbit('passport/login', {}, { title: title || '登录中', ...(mustLogin ? { hint: false } : {}) });
    // A stale background refresh must not undo a newer authorization or save.
-   if (version !== sessionVersion) return PassportBiz._loginDecision(PassportBiz.getToken(), mustLogin, method, that, allowPending);
+   if (version !== sessionVersion) return PassportBiz._loginDecision(PassportBiz.getToken(), mustLogin, method, that, allowPending, options);
    const current = result && result.data && result.data.token || null;
    if (current) PassportBiz.setToken(current);
    else PassportBiz.clearToken();
-   return PassportBiz._loginDecision(current, mustLogin, method, that, allowPending);
+   return PassportBiz._loginDecision(current, mustLogin, method, that, allowPending, options);
   } catch (err) {
    const currentRequest = version === sessionVersion;
    if (version === sessionVersion && err && err.code && err.code !== 500 && !err.staleScope) PassportBiz.clearToken();
@@ -207,7 +207,7 @@ class PassportBiz extends BaseBiz {
   }
 	}
 
- static _loginDecision(token, mustLogin, method, that, allowPending = false) {
+ static _loginDecision(token, mustLogin, method, that, allowPending = false, options = {}) {
   const allowed = !!(token && token.id && (token.status === 1 || allowPending && token.status === 0) && PassportBiz.isProfileReady(token));
   if (that && !that._unloaded) that.setData({ isLogin: allowed });
   if (allowed || !mustLogin) return allowed;
@@ -217,11 +217,13 @@ class PassportBiz extends BaseBiz {
    return PassportBiz.loginStatusHandler(method, token.status);
   }
   const completing = !!(token && (token.profilePhoneRequired || token.phoneVerified || token.allowManualRegistration));
+  const accepting = options.action === 'accept' && !token;
   wx.showModal({
-   title: completing ? '完善联系资料' : '微信登录',
-   content: completing ? '发布或接单前，请先完善联系资料。' : '请先使用微信登录。',
-   confirmText: completing ? '完善资料' : '去登录', cancelText: method === 'back' ? '返回' : '取消',
+   title: completing ? '完善联系资料' : accepting ? '登录后接单' : '微信登录',
+   content: completing ? '发布或接单前，请先完善联系资料。' : accepting ? '接单需要先登录。登录完成后将返回当前页面，请核对订单后再次点击接单。' : '请先使用微信登录。',
+   confirmText: completing ? '完善资料' : '去登录', cancelText: method === 'back' ? '返回' : accepting ? '暂不登录' : '取消',
    success(result) {
+    if (that && (that._unloaded || that._visible === false)) return;
     if (result.confirm) {
      const retUrl = method === 'back' ? encodeURIComponent(pageHelper.getCurrentPageUrlWithArgs()) : 'back';
      const page = token && token.profilePhoneRequired ? '/pages/my/personal/my_personal' : '/pages/my/reg/my_reg';

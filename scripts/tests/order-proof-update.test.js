@@ -87,7 +87,7 @@ async function mount(f, options = {}, actor = 'rider', file = 'my_detail/mail_my
    if (name.includes('operations_biz')) return ops;
    if (name.includes('cloud_helper')) return { callCloudSumbit: async (route, params) => ({ data: await ops.get(route, params) }) };
    if (name.includes('project_biz')) return { initPage() {} };
-   if (name.includes('passport_biz')) return { loginMustCancelWin: async () => true };
+   if (name.includes('passport_biz')) return { getUserId: () => actor, loginMustCancelWin: async () => true };
    if (name.includes('order_sync_biz')) return { subscribe: () => () => {} };
    if (name.includes('order_fav_biz')) return { watch: () => ({ refresh() {}, stop() {} }) };
    return {};

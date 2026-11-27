@@ -54,7 +54,7 @@ Page({
 
 		// 支持 ?tab=1/2 直接进入对应分段
 		const tab = Number(options && options.tab);
-		if (tab === 1 || tab === 2 || tab === 3) {
+		if ((tab === 1 || tab === 2 || tab === 3) && PassportBiz.getUserId()) {
 			this.setData({ tabIndex: tab });
 		}
 		if (tab === 1 || tab === 2 || tab === 3) wx.removeStorageSync('crun-order-tab');
@@ -78,11 +78,14 @@ Page({
 	onShow: function () {
 		this._visible = true;
 		const identity = PassportBiz.getUserId ? PassportBiz.getUserId() : '';
+		// Personal tabs and their requests must not survive logout. Public orders remain browsable.
+		if (!identity && this.data.tabIndex !== 0) this.setData({ tabIndex: 0, dataList: null });
 		if (this._dataListUser !== undefined && this._dataListUser !== identity) {
 			this._tabSnapshots = new Map(); this.setData({ dataList: null });
 		}
 		if (this._stopOrderSync) this._stopOrderSync();
-		this._stopOrderSync = OrderSync.subscribe(() => this._syncOrders());
+		// operations/feed requires an account; subscribing as a guest expires the session and redirects.
+		this._stopOrderSync = identity ? OrderSync.subscribe(() => this._syncOrders()) : null;
 		const tabBar = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
 		if (tabBar) tabBar.setData({ selected: 1 });
 		const pendingTab = wx.getStorageSync('crun-order-tab');
@@ -210,6 +213,7 @@ Page({
 	bindTabTap: function (e) {
 		const idx = Number(e.currentTarget.dataset.idx);
 		if (!Number.isInteger(idx) || idx < 0 || idx > 3 || idx === this.data.tabIndex) return;
+		if (idx > 0 && !PassportBiz.getUserId()) { PassportBiz.loginMustCancelWin(this); return; }
 		const snapshots = this._tabSnapshots || (this._tabSnapshots = new Map());
 		const identity = PassportBiz.getUserId ? PassportBiz.getUserId() : '';
 		if (this.data.dataList && !this.data.dataList.error && this._dataListUser === identity) snapshots.set(this._snapshotKey(this.data.tabIndex), { at: Date.now(), value: this.data.dataList });
@@ -374,7 +378,7 @@ Page({
 		if (typeof console.info === 'function') console.info('[order-accept]', { entry: 'list', stage: 'started' });
 		let loading = false;
 		try {
-			if (!await PassportBiz.loginMustCancelWin(this) || !this._visible) {
+			if (!await PassportBiz.loginMustCancelWin(this, { action: 'accept' }) || !this._visible) {
 				if (typeof console.info === 'function') console.info('[order-accept]', { entry: 'list', stage: 'login_stopped', visible: !!this._visible });
 				return;
 			}

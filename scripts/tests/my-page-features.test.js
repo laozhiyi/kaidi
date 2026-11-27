@@ -896,6 +896,42 @@ test('manual avatar selection supports the modern picker and keeps the current i
   assert.equal(h.messages.length, 0);
 });
 
+test('native privacy errors preserve the avatar and do not silently switch to a different image API', () => {
+  const h=harness(),page=h.page('my/personal/my_personal.js');
+  page.setData({canChooseWechatAvatar:true,formPic:'cloud://old-avatar',guideField:'avatar',guideMessage:'请选择头像'});
+  page.bindAvatarError({detail:{errMsg:'chooseAvatar:fail api scope is not declared in the privacy agreement'}});
+  assert.match(page.data.avatarError,/联系管理员/);assert.equal(page.data.formPic,'cloud://old-avatar');
+  assert.equal(page.data.canChooseWechatAvatar,true);assert.equal(h.images.length,0);
+  page.setData({canChooseWechatAvatar:false});
+  h.wx.chooseMedia=options=>options.success({tempFiles:[{tempFilePath:'temp/new-avatar.jpg'}]});
+  page.bindChooseAvatar();assert.equal(page.data.formPic,'temp/new-avatar.jpg');
+  assert.equal(page.data.avatarError,'');assert.equal(page.data.guideField,'');
+  assert.equal(page._profileDirty,true);assert.equal(page._avatarPicking,false);
+});
+
+test('avatar picker ignores duplicate taps and surfaces both native and synchronous picker failures', () => {
+  const h=harness(),page=h.page('my/personal/my_personal.js');let picker,count=0;
+  page.setData({formPic:'cloud://old-avatar'});
+  h.wx.chooseMedia=options=>{count++;picker=options;};
+  page.bindChooseAvatar();page.bindChooseAvatar();assert.equal(count,1);
+  picker.fail({errMsg:'chooseMedia:fail auth deny'});
+  assert.match(page.data.avatarError,/授权/);assert.equal(page._avatarPicking,false);
+  assert.equal(page.data.formPic,'cloud://old-avatar');
+  h.wx.chooseMedia=()=>{throw Error('picker failed');};page.bindChooseAvatar();
+  assert.match(page.data.avatarError,/失败/);assert.equal(page._avatarPicking,false);
+});
+
+test('a late avatar choice after logout or unload cannot overwrite the previous account', () => {
+  for(const leave of ['logout','unload']){
+    const h=harness({realSessionSignals:true}),page=h.page('my/personal/my_personal.js');let picker;
+    page.setData({formPic:'cloud://old-avatar'});h.wx.chooseMedia=options=>{picker=options;};page.bindChooseAvatar();
+    if(leave==='logout')h.load('miniprogram/helper/cloud_helper.js').invalidateSessionRequests('logout');
+    else page._unloaded=true;
+    picker.success({tempFiles:[{tempFilePath:'temp/late.jpg'}]});
+    assert.equal(page.data.formPic,'cloud://old-avatar');
+  }
+});
+
 test('retired manual entry cannot submit a profile before WeChat login', async () => {
   const h = harness({ guest: true, manualRegistration: true }); h.responses['passport/my_detail'] = null;
   const page = h.page('my/reg/my_reg.js'); await page.onLoad({});

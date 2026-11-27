@@ -40,7 +40,7 @@ Page({
 	onShow: function () {
 		this._visible = true;
 		if (this._stopOrderSync) this._stopOrderSync();
-		this._stopOrderSync = OrderSync.subscribe(() => this._loadDetail({ silent: true }));
+		this._stopOrderSync = PassportBiz.getUserId() ? OrderSync.subscribe(() => this._loadDetail({ silent: true })) : null;
 		if (this._wasHidden) { this._wasHidden = false; return this._loadDetail(); }
 	},
  onHide: function () { this._visible = false; this._wasHidden = true; this._seq = (this._seq || 0) + 1; if (this._favoriteWatcher) this._favoriteWatcher.stop(); this._favoriteWatcher = null; if (this._stopOrderSync) this._stopOrderSync(); this._stopOrderSync = null; },
@@ -171,7 +171,7 @@ Page({
   if (typeof console.info === 'function') console.info('[order-accept]', { entry: 'detail', stage: 'started' });
   let loading = false;
   try {
-   if (!await PassportBiz.loginMustCancelWin(this)) {
+   if (!await PassportBiz.loginMustCancelWin(this, { action: 'accept' }) || !this._visible) {
     if (typeof console.info === 'function') console.info('[order-accept]', { entry: 'detail', stage: 'login_stopped', visible: !!this._visible });
     return;
    }
