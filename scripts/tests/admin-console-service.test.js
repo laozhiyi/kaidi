@@ -135,17 +135,53 @@ test('reports include records beyond the database single-read cap and include ex
 });
 
 test('user status changes resolve mini-program user ids instead of confusing them with document ids', async () => {
-  const edited = [], row = { _id: 'document-id', USER_MINI_OPENID: 'openid', USER_STATUS: 0 };
+  const { svc, edited } = statusHarness({ _id: 'document-id', USER_MINI_OPENID: 'openid', USER_STATUS: 0, USER_PROFILE_COMPLETE: true });
+  await svc.statusUser('openid', 1, '已核实');
+  assert.equal(edited[0].where._id, 'document-id'); assert.equal(edited[0].data.USER_STATUS, 1);
+  await assert.rejects(svc.statusUser('openid', 8, ''), /原因/);
+});
+
+function statusHarness(row) {
+  const edited = [];
   class Base { AppError(message) { throw new Error(message); } }
   const module = { exports: {} };
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../cloudfunctions/mcloud/project/crun/service/admin/admin_user_service.js'), 'utf8'), { module, require(request) {
     if (request.includes('base_project_admin_service')) return Base;
     if (request.includes('admin_mgr_service')) return class { async setUserAdminActive() {} };
-    if (request.includes('admin_roles')) return { normalize: value => value, label: () => '', ofAdmin: () => 'admin', grantError: () => '', ROLES: {} };
-    if (request.includes('user_model')) return { getOne: async where => where.USER_MINI_OPENID === row.USER_MINI_OPENID ? row : null, edit: async (where, data) => edited.push({ where, data }), count: async () => 1 };
+    if (request.endsWith('/profile_rules.js')) return { isComplete: user => !!user && user.USER_PROFILE_COMPLETE === true };
+    if (request.includes('admin_roles')) return { normalize: value => value, label: () => '', ofAdmin: admin => admin && admin.ADMIN_ROLE || 'admin', grantError: () => '', isStaff: () => false, ROLES: {} };
+    if (request.includes('user_model')) return { getOne: async where => where.USER_MINI_OPENID === row.USER_MINI_OPENID ? row : null, edit: async (where, data) => { edited.push({ where, data }); Object.assign(row, data); }, count: async () => 1 };
     return {};
   } });
-  const svc = new module.exports(); await svc.statusUser('openid', 1, '已核实');
-  assert.equal(edited[0].where._id, 'document-id'); assert.equal(edited[0].data.USER_STATUS, 1);
-  await assert.rejects(svc.statusUser('openid', 8, ''), /原因/);
+  return { svc: new module.exports(), edited, row };
+}
+
+test('accounts that only tapped WeChat login cannot be approved or rejected', async () => {
+  const { svc, edited } = statusHarness({ _id: 'empty', USER_MINI_OPENID: 'openid', USER_STATUS: 0, USER_PROFILE_COMPLETE: false });
+  await assert.rejects(svc.statusUser('openid', 1, ''), /还没有提交注册资料/);
+  await assert.rejects(svc.statusUser('openid', 8, '资料不全'), /还没有提交注册资料/);
+  await assert.rejects(svc.statusUser('openid', 1, '', { ADMIN_ROLE: 'service' }), /还没有提交注册资料/);
+  assert.equal(edited.length, 0);
+  // 管理员仍可停用；恢复这类账号只能回到 0（未完善资料），不能直接变成正常。
+  await svc.statusUser('openid', 9, '违规');
+  await assert.rejects(svc.statusUser('openid', 1, ''), /还没有提交注册资料/);
+  await svc.statusUser('openid', 0, '');
+  assert.deepEqual(edited.map(item => item.data.USER_STATUS), [9, 0]);
+});
+
+test('customer service only reviews pending accounts and cannot restore stopped users', async () => {
+  const service = { ADMIN_ROLE: 'service' };
+  for (const status of [1, 8, 9]) {
+    const { svc, edited } = statusHarness({ _id: 'u', USER_MINI_OPENID: 'openid', USER_STATUS: status, USER_PROFILE_COMPLETE: true });
+    await assert.rejects(svc.statusUser('openid', 1, '恢复', service), /客服只能审核待审核的账号/);
+    await assert.rejects(svc.statusUser('openid', 8, '驳回', service), /客服只能审核待审核的账号/);
+    assert.equal(edited.length, 0);
+  }
+  const { svc, edited } = statusHarness({ _id: 'u', USER_MINI_OPENID: 'openid', USER_STATUS: 0, USER_PROFILE_COMPLETE: true });
+  await svc.statusUser('openid', 1, '已核实', service);
+  assert.equal(edited[0].data.USER_STATUS, 1);
+  // 管理员可以恢复停用的完整账号。
+  const admin = statusHarness({ _id: 'u', USER_MINI_OPENID: 'openid', USER_STATUS: 9, USER_PROFILE_COMPLETE: true });
+  await admin.svc.statusUser('openid', 1, '', { ADMIN_ROLE: 'admin' });
+  assert.equal(admin.edited[0].data.USER_STATUS, 1);
 });

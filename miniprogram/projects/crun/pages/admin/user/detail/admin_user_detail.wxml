@@ -7,7 +7,8 @@
   <block wx:if="{{profile}}">
     <view class="ac-card ac-detail-hero">
       <view class="ac-account"><view class="ac-avatar"><text class="icon-profile"></text></view><view><view class="ac-detail-status">{{profile.name}}</view><text class="ac-badge {{profile.tone}}">{{profile.statusLabel}}</text><text class="ac-badge">{{profile.roleLabel}}</text></view></view>
-      <view wx:if="{{profile.USER_STATUS===0}}" class="ac-notice amber">待审核：该账号尚未完成注册。审核通过前只能发布订单，不能接单。</view>
+      <view wx:if="{{profile.reviewable}}" class="ac-notice amber">待审核：该账号尚未完成注册。审核通过前只能发布订单，不能接单。</view>
+      <view wx:if="{{profile.USER_STATUS===0 && profile.incomplete}}" class="ac-notice">未完善资料：该用户只点过微信登录，还没提交注册资料和学生证，暂时不需要审核。提交后会自动进入待审核。</view>
       <view wx:if="{{profile.USER_STATUS===8}}" class="ac-notice amber">审核未通过：<text>{{profile.USER_CHECK_REASON || '未填写原因'}}</text></view>
       <view wx:if="{{profile.USER_STATUS===9}}" class="ac-notice amber">账号已停用：<text>{{profile.USER_CHECK_REASON || '未填写原因'}}</text></view>
     </view>
@@ -115,13 +116,14 @@
 
     <view class="ac-card">
       <view class="ac-section-title">账户审核与状态</view>
-      <view wx:if="{{isServiceAdmin}}" class="ac-muted">客服可审核注册（通过 / 不通过）；停用、恢复与后台授权由管理员处理。</view>
+      <view wx:if="{{isServiceAdmin}}" class="ac-muted">客服只审核待审核的账号（通过 / 不通过）；审核未过、停用、恢复与后台授权由管理员处理。</view>
       <block>
         <view class="ac-field-label">处理说明（审核不通过时必填）</view>
         <textarea value="{{reason}}" bindinput="bindReason" disabled="{{busy}}" maxlength="200" placeholder="记录审核依据或账号状态调整原因" /><view class="ac-counter">{{reason.length}} / 200</view>
         <view class="ac-form-actions">
-          <button wx:if="{{profile.USER_STATUS!==1 && (!staffTarget || canManageTarget)}}" class="ac-primary" data-status="1" bindtap="bindStatus" disabled="{{busy || loading || error}}">{{profile.USER_STATUS===9?'恢复使用':'审核通过'}}</button>
-          <button wx:if="{{profile.USER_STATUS===0 && (!staffTarget || canManageTarget)}}" class="ac-ghost" data-status="8" bindtap="bindStatus" disabled="{{busy || loading || error}}">审核不通过</button>
+          <button wx:if="{{(profile.reviewable || profile.USER_STATUS===8 && !profile.incomplete && !isServiceAdmin) && (!staffTarget || canManageTarget)}}" class="ac-primary" data-status="1" bindtap="bindStatus" disabled="{{busy || loading || error}}">审核通过</button>
+          <button wx:if="{{profile.USER_STATUS===9 && !isServiceAdmin && (!staffTarget || canManageTarget)}}" class="ac-primary" data-status="{{profile.incomplete?0:1}}" bindtap="bindStatus" disabled="{{busy || loading || error}}">恢复使用</button>
+          <button wx:if="{{profile.reviewable && (!staffTarget || canManageTarget)}}" class="ac-ghost" data-status="8" bindtap="bindStatus" disabled="{{busy || loading || error}}">审核不通过</button>
           <button wx:if="{{profile.USER_STATUS!==9 && !isServiceAdmin && (!staffTarget || canManageTarget)}}" class="ac-ghost ac-text-red" data-status="9" bindtap="bindStatus" disabled="{{busy || loading || error}}">停用用户</button>
         </view>
       </block>

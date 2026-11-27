@@ -187,6 +187,7 @@ test('user service resolves document, OpenID and legacy ids, preserves project i
   const writes = [], reads = [];
   const svc = service('admin/admin_user_service.js', request => {
     if (request.includes('admin_mgr_service')) return class { async setUserAdminActive() {} async syncUserRole() {} };
+    if (request.endsWith('/profile_rules.js')) return { isComplete: () => true };
     if (request.includes('admin_roles')) return { normalize: value => value, label: () => '', ofAdmin: () => 'admin', grantError: () => '', ROLES: {} };
     if (request.endsWith('/user_model.js')) return {
       getOne: async where => { reads.push(where); return rows.find(row => row._pid === 'crun' && Object.entries(where).every(([key, val]) => row[key] === val)) || null; },

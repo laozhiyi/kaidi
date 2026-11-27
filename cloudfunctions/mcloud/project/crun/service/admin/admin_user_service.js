@@ -14,6 +14,7 @@ const UserModel = require('../../model/user_model.js');
 const AdminHomeService = require('./admin_home_service.js');
 const Roles = require('./admin_roles.js');
 const AdminMgrService = require('./admin_mgr_service.js');
+const profileRules = require('../profile_rules.js');
 
 // 导出用户数据KEY
 const EXPORT_USER_DATA_KEY = 'EXPORT_USER_DATA';
@@ -26,6 +27,9 @@ const SERVICE_DETAIL_FIELDS = [...SERVICE_LIST_FIELDS, 'USER_LOGIN_TIME', 'USER_
 const ORDER_FIELDS = ['USER_ADD_TIME'];
 // 待审核（USER_STATUS=0）：客服这时候要核对学号与学生证，只读放开这两项。
 const USER_STATUS_PENDING = 0;
+// 微信登录就会建出 USER_STATUS=0 的账号，但只有提交过注册资料的才算「待审核」；
+// 没提交的列为「未完善资料」，不进审核列表，也不能被通过或驳回。
+const PROFILE_FIELDS = ['USER_PROFILE_COMPLETE', 'USER_FORMS'];
 
 /** 138****1234；非 11 位手机号原样返回，避免把空值变成星号串。 */
 function maskMobile(value) {
@@ -59,8 +63,15 @@ function serviceUser(row, fields, options = {}) {
 	}
 	if (row.USER_MOBILE !== undefined) out.USER_MOBILE = maskMobile(row.USER_MOBILE);
 	// 只有待审核状态才把学号与学生证交给控制器做只读核对；列表永远不带这两项。
-	if (options.audit === true && Number(row.USER_STATUS) === USER_STATUS_PENDING) out.USER_AUDIT = auditOf(row.USER_FORMS);
+	if (options.audit === true && Number(row.USER_STATUS) === USER_STATUS_PENDING && row.USER_PROFILE_DONE) out.USER_AUDIT = auditOf(row.USER_FORMS);
+	out.USER_PROFILE_DONE = row.USER_PROFILE_DONE === true;
 	return out;
+}
+
+/** 资料是否已提交：与用户端「能否发单」用同一套判断。 */
+function withProfileDone(row) {
+	if (row) row.USER_PROFILE_DONE = profileRules.isComplete(row);
+	return row;
 }
 
 class AdminUserService extends BaseProjectAdminService {
@@ -73,12 +84,14 @@ class AdminUserService extends BaseProjectAdminService {
 	}, options = {}) {
 		if (typeof userId !== 'string' || !userId.trim()) this.AppError('请选择有效的用户');
 		const limited = options.service === true;
-		const projection = limited ? [...SERVICE_DETAIL_FIELDS, 'USER_FORMS'].join(',') : fields;
+		const projection = limited ? [...SERVICE_DETAIL_FIELDS, ...PROFILE_FIELDS].join(',') : fields;
 		// Current lists use the document id. Old links may contain an OpenID or
 		// USER_ID; resolve them here and always mutate the resolved document.
 		for (const field of ['_id', 'USER_MINI_OPENID', 'USER_ID']) {
 			const user = await UserModel.getOne({ [field]: userId.trim() }, projection);
-			if (user) return limited ? serviceUser(user, SERVICE_DETAIL_FIELDS, options) : user;
+			if (!user) continue;
+			withProfileDone(user);
+			return limited ? serviceUser(user, SERVICE_DETAIL_FIELDS, options) : user;
 		}
 		return null;
 	}
@@ -111,7 +124,7 @@ class AdminUserService extends BaseProjectAdminService {
 
 		orderBy = orderBy || { USER_ADD_TIME: 'desc' };
 		const limited = options.service === true;
-		let fields = limited ? [...SERVICE_LIST_FIELDS, 'USER_FORMS'].join(',') : '*';
+		let fields = limited ? [...SERVICE_LIST_FIELDS, ...PROFILE_FIELDS].join(',') : '*';
 
 
 		let where = {};
@@ -139,6 +152,11 @@ class AdminUserService extends BaseProjectAdminService {
 				case 'status':
 					if (![0, 1, 8, 9].includes(Number(sortVal))) this.AppError('用户状态无效');
 					where.and.USER_STATUS = Number(sortVal);
+					if (Number(sortVal) === USER_STATUS_PENDING) where.and.USER_PROFILE_COMPLETE = true;
+					break;
+				case 'incomplete':
+					where.and.USER_STATUS = USER_STATUS_PENDING;
+					where.and.USER_PROFILE_COMPLETE = ['<>', true];
 					break;
 				case 'sort': {
 					orderBy = this.fmtOrderBySort(sortVal, 'USER_ADD_TIME');
@@ -149,7 +167,8 @@ class AdminUserService extends BaseProjectAdminService {
 		// 排序在拼装完条件后统一校验：无论 orderBy 来自入参还是 sortVal，都只允许白名单字段。
 		orderBy = this._orderBy(orderBy);
 		let result = await UserModel.getList(where, fields, orderBy, page, size, true, oldTotal, false);
-		if (limited) result.list = (result.list || []).map(row => serviceUser(row, SERVICE_LIST_FIELDS));
+		result.list = (result.list || []).map(withProfileDone);
+		if (limited) result.list = result.list.map(row => serviceUser(row, SERVICE_LIST_FIELDS));
 
 		// 为导出增加一个参数condition
 		result.condition = encodeURIComponent(JSON.stringify(where));
@@ -163,6 +182,11 @@ class AdminUserService extends BaseProjectAdminService {
 		const user = await this.getUser({ userId: id });
 		if (!user) this.AppError('用户不存在');
 		this._assertManage(user, myAdmin, '停用');
+		const next = Number(status);
+		// 客服只审核「待审核」的账号；审核未过、已停用、正常账号的状态调整都归管理员。
+		if (myAdmin && Roles.ofAdmin(myAdmin) === 'service' && Number(user.USER_STATUS) !== USER_STATUS_PENDING) this.AppError('客服只能审核待审核的账号');
+		// 通过 / 不通过都要求已提交注册资料；未完善资料的停用账号恢复时回到 0。
+		if ((next === 1 || next === 8) && !profileRules.isComplete(user)) this.AppError('该用户还没有提交注册资料，暂时无法审核');
 		let data = { USER_STATUS: Number(status), USER_CHECK_REASON: String(reason || '').trim() };
 		if (data.USER_CHECK_REASON.length > 200) this.AppError('处理说明不能超过200字');
 		if (Number(status) === 8 && !data.USER_CHECK_REASON) this.AppError('请填写审核不通过的原因');

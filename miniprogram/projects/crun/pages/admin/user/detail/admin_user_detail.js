@@ -133,17 +133,22 @@ Page({
   async bindStatus(e) {
     if (!UI.authorize(this) || this.data.busy || this.data.loading || this.data.error || !this.data.user) return;
     const status = Number(e.currentTarget.dataset.status);
-    if (![1, 8, 9].includes(status)) return;
-    // 客服只做注册审核（通过/不通过）；停用与恢复账号仍归管理员。
-    if (this.data.isServiceAdmin && status === 9) { Ops.error(new Error('客服账号没有停用用户的权限')); return; }
+    if (![0, 1, 8, 9].includes(status)) return;
+    const profile = this.data.profile || {}, restoring = profile.USER_STATUS === 9 && status !== 9;
+    // 客服只审核待审核的账号（通过/不通过）；停用、恢复与处理审核未过的账号仍归管理员。
+    if (this.data.isServiceAdmin && (status === 9 || !profile.reviewable)) { Ops.error(new Error('客服只能审核待审核的账号')); return; }
+    // 没提交注册资料的账号没有可审核的内容；恢复停用的这类账号时回到「未完善资料」。
+    if (!restoring && (status === 1 || status === 8) && profile.incomplete) { Ops.error(new Error('该用户还没有提交注册资料，暂时无法审核')); return; }
+    if (status === 0 && !restoring) return;
     // 同级与上级的后台账号不能停用或恢复，停掉超管等于变相夺权。
     if (this.data.staffTarget && !this.data.canManageTarget) { Ops.error(new Error(this.data.roleNotice || '没有管理该账号的权限')); return; }
     const reason = this.data.reason.trim();
     if (status === 8 && !reason) { Ops.error(new Error('请填写审核未通过的原因')); return; }
     this.setData({ busy: true });
     try {
-      const title = status === 1 ? '审核通过' : status === 8 ? '审核不通过' : '停用用户';
-      const content = status === 1 ? '审核通过后该账号完成注册，可以接单和发单。'
+      const title = restoring ? '恢复使用' : status === 1 ? '审核通过' : status === 8 ? '审核不通过' : '停用用户';
+      const content = restoring ? (status === 0 ? '该用户还没提交注册资料，恢复后回到「未完善资料」，提交资料后再审核。' : '恢复后该账号可以继续发单和接单。')
+        : status === 1 ? '审核通过后该账号完成注册，可以接单和发单。'
         : status === 9 ? '停用后用户无法发布或接取新订单，历史订单与履约凭证保留。'
         : '审核不通过后，用户需要修改资料重新提交审核。';
       if (!await UI.confirm(title, content)) return;

@@ -42,7 +42,7 @@ test('customer service list and detail only expose the masked whitelist', async 
   assert.equal(row.USER_MOBILE, '138****1234');
   assert.equal(row.USER_CAMPUS, '育才校区');
   assert.deepEqual(Object.keys(row).sort(),
-    ['USER_ADD_TIME', 'USER_CAMPUS', 'USER_MOBILE', 'USER_NAME', 'USER_PIC', 'USER_STATUS', '_id'].sort());
+    ['USER_ADD_TIME', 'USER_CAMPUS', 'USER_MOBILE', 'USER_NAME', 'USER_PIC', 'USER_PROFILE_DONE', 'USER_STATUS', '_id'].sort());
   assert.equal(row.USER_MINI_OPENID, undefined);
   assert.equal(row.USER_FORMS, undefined);
 
@@ -58,6 +58,25 @@ test('customer service list and detail only expose the masked whitelist', async 
   assert.equal(text.includes('20230001'), false, '不返回学号');
   assert.equal(text.includes('card.jpg'), false, '不返回学生证图片');
   assert.equal(text.includes('私有备注'), false, '不返回注册资料以外的私有内容');
+});
+
+test('accounts without submitted registration data are listed as incomplete, not pending', async () => {
+  const { f, svc } = setup();
+  // 只点过微信登录：状态同样是 0，但没提交资料与学生证。
+  f.user('u3', { USER_NAME: '', USER_PIC: '', USER_MOBILE: '', USER_STATUS: 0, USER_PROFILE_COMPLETE: false, USER_FORMS: [], USER_ADD_TIME: 1700000002000 });
+  const ids = result => result.list.map(item => item._id).sort();
+  for (const options of [{}, { service: true }]) {
+    assert.deepEqual(ids(await svc.getUserList({ page: 1, size: 20, sortType: 'status', sortVal: 0 }, options)), ['u2']);
+    const incomplete = await svc.getUserList({ page: 1, size: 20, sortType: 'incomplete', sortVal: 1 }, options);
+    assert.deepEqual(ids(incomplete), ['u3']);
+    assert.equal(incomplete.list[0].USER_PROFILE_DONE, false);
+  }
+  const all = await svc.getUserList({ page: 1, size: 20 }, { service: true });
+  assert.equal(all.list.find(item => item._id === 'u2').USER_PROFILE_DONE, true);
+  const detail = await svc.getUser({ userId: 'u3' }, { service: true, audit: true });
+  assert.equal(detail.USER_PROFILE_DONE, false);
+  assert.equal(detail.USER_AUDIT, undefined, '未提交资料的账号没有可审核的学号与学生证');
+  await assert.rejects(svc.statusUser('u3', 1, ''), /还没有提交注册资料/);
 });
 
 test('administrators keep the complete record', async () => {
@@ -99,6 +118,15 @@ test('only the whitelisted order field and direction are accepted', async () => 
   await assert.rejects(svc.getUserList({ page: 1, sortType: 'sort', sortVal: 'USER_MOBILE|desc' }), /排序字段/);
   const ok = await svc.getUserList({ page: 1, orderBy: { USER_ADD_TIME: 'asc' } }, { service: true });
   assert.ok(ok.list.some(item => item._id === 'u1'));
+});
+
+test('the admin console labels login-only accounts as incomplete and keeps review actions for submitted ones', () => {
+  const UI = require('../../miniprogram/projects/crun/biz/admin_console_biz.js');
+  const empty = UI.user({ _id: 'u3', USER_STATUS: 0, USER_PROFILE_DONE: false });
+  assert.equal(empty.statusLabel, '未完善资料'); assert.equal(empty.reviewable, false); assert.equal(empty.incomplete, true);
+  const pending = UI.user({ _id: 'u2', USER_STATUS: 0, USER_PROFILE_DONE: true });
+  assert.equal(pending.statusLabel, '待审核'); assert.equal(pending.reviewable, true);
+  assert.equal(UI.user({ _id: 'u1', USER_STATUS: 1, USER_PROFILE_DONE: true }).statusLabel, '正常');
 });
 
 test('the detail mapper renders restricted rows safely and shows the masked phone', () => {

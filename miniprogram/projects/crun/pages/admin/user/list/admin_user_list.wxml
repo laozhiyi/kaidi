@@ -9,7 +9,7 @@
   <view wx:for="{{list}}" wx:key="_id" class="ac-card" data-id="{{item.userId}}" bindtap="bindDetail">
     <view class="ac-user-head"><view class="ac-avatar"><text class="icon-profile"></text></view><view class="ac-user-name"><view class="ac-order-title">{{item.USER_NAME || '未填写姓名'}}<text wx:if="{{item.USER_ROLE}}" class="ac-badge">{{item.USER_ROLE_LABEL}}</text></view><view class="ac-order-meta">{{item.USER_MOBILE || '未填写电话'}}</view></view><text class="ac-badge {{item.tone}}">{{item.statusLabel}}</text></view>
     <view wx:if="{{item.USER_CHECK_REASON && item.USER_STATUS!==1}}" class="ac-order-warning">{{item.USER_CHECK_REASON}}</view>
-    <view class="ac-order-foot"><text>{{item.USER_ADD_TIME}} 注册</text><text class="ac-link">{{item.USER_STATUS===0?'查看并审核':'用户详情'}} ›</text></view>
+    <view class="ac-order-foot"><text>{{item.USER_ADD_TIME}} 注册</text><text class="ac-link">{{item.reviewable?'查看并审核':'用户详情'}} ›</text></view>
   </view>
   <view class="ac-list-footer"><button wx:if="{{hasMore}}" class="ac-secondary" bindtap="bindMore" loading="{{loading}}" disabled="{{loading}}">加载更多</button><text wx:if="{{list.length}}">已显示 {{list.length}} / {{total}} 位{{!hasMore && !loading?' · 已到底':''}}</text><text wx:elif="{{loading}}">正在读取用户…</text></view>
   <admin-nav active="users" />

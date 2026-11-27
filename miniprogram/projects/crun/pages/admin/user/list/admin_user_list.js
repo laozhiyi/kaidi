@@ -1,7 +1,7 @@
 const UI = require('../../../../biz/admin_console_biz.js');
 Page({
   data: { list: [], page: 0, total: 0, hasMore: false, loading: false, refreshing: false, error: '', searchDraft: '', search: '', status: -1, condition: '',
-    statuses: [{ value: -1, label: '全部用户' }, { value: 0, label: '待审核' }, { value: 1, label: '正常' }, { value: 8, label: '审核未过' }, { value: 9, label: '已停用' }] },
+    statuses: [{ value: -1, label: '全部用户' }, { value: 0, label: '待审核' }, { value: 1, label: '正常' }, { value: 8, label: '审核未过' }, { value: 9, label: '已停用' }, { value: -2, label: '未完善资料' }] },
   onLoad(options = {}) {
     if (!UI.start(this)) return;
     const status = Number(options.status);
@@ -17,6 +17,8 @@ Page({
   load(reset = true, preserve = false) {
     const params = { search: this.data.search, size: 20, isTotal: true, oldTotal: 0 };
     if (this.data.status >= 0) { params.sortType = 'status'; params.sortVal = this.data.status; }
+    // 未完善资料：只点过微信登录、还没提交注册资料的账号，不需要审核。
+    else if (this.data.status === -2) { params.sortType = 'incomplete'; params.sortVal = 1; }
     return UI.loadList(this, 'admin/user_list', params, UI.user, typeof reset === 'boolean' ? reset : true, preserve);
   },
   resetList(patch) { this._scrollTop = 0; this.setData({ ...patch, list: [], page: 0, total: 0, hasMore: false }); return this.load(); },

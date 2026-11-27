@@ -102,12 +102,15 @@ function feedback(row) {
 function user(row) {
   const id = row._id || row.USER_MINI_OPENID || row.USER_ID;
   const status = [0, 1, 8, 9].includes(Number(row.USER_STATUS)) && row.USER_STATUS !== null && row.USER_STATUS !== '' ? Number(row.USER_STATUS) : -1;
-  return { ...row, _id: id, userId: id, USER_STATUS: status,
+  // 只点过微信登录、没提交注册资料的账号也是状态 0，但不算待审核。
+  const incomplete = row.USER_PROFILE_DONE === false;
+  return { ...row, _id: id, userId: id, USER_STATUS: status, incomplete, reviewable: status === 0 && !incomplete,
     USER_FORMS: Array.isArray(row.USER_FORMS) ? row.USER_FORMS.filter(item => item && typeof item === 'object').map(item => ({ ...item,
       images: item.type === 'image' ? (Array.isArray(item.val) ? item.val : item.val ? [item.val] : []) : [],
       displayValue: item.val === undefined || item.val === null || item.val === '' ? '未填写' : Array.isArray(item.val) ? item.val.join('、') : String(item.val) })) : [],
     USER_ADD_TIME: time(row.USER_ADD_TIME), USER_LOGIN_TIME: time(row.USER_LOGIN_TIME) === '—' ? '未登录' : time(row.USER_LOGIN_TIME),
-    statusLabel: ({ 0: '待审核', 1: '正常', 8: '审核未过', 9: '已停用' })[status] || '状态未知', tone: ({ 0: 'amber', 1: 'green', 8: 'red', 9: 'muted' })[status] || 'muted' };
+    statusLabel: status === 0 && incomplete ? '未完善资料' : ({ 0: '待审核', 1: '正常', 8: '审核未过', 9: '已停用' })[status] || '状态未知',
+    tone: status === 0 && incomplete ? 'muted' : ({ 0: 'amber', 1: 'green', 8: 'red', 9: 'muted' })[status] || 'muted' };
 }
 
 const ROLE_LABELS = { super: '超级管理员', admin: '管理员', service: '客服' };

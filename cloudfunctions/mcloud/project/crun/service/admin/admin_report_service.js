@@ -59,6 +59,13 @@ class AdminReportService extends Base {
    if (![0, 1, 8, 9].includes(input.and.USER_STATUS)) this.AppError('用户状态无效');
    where.and.USER_STATUS = input.and.USER_STATUS;
   }
+  // 与列表一致：待审核只导出已提交资料的账号，「未完善资料」单独一档。
+  const complete = input.and && input.and.USER_PROFILE_COMPLETE;
+  if (complete !== undefined) {
+   if (complete === true) where.and.USER_PROFILE_COMPLETE = true;
+   else if (Array.isArray(complete) && complete.length === 2 && complete[0] === '<>' && complete[1] === true) where.and.USER_PROFILE_COMPLETE = ['<>', true];
+   else this.AppError('用户筛选条件无效');
+  }
   if (input.or) {
    if (!Array.isArray(input.or) || input.or.length > 3) this.AppError('用户筛选条件无效');
    where.or = input.or.map(part => {
@@ -69,7 +76,7 @@ class AdminReportService extends Base {
   }
   const rows = await this.rows(User, where, 'USER_ADD_TIME');
   const data = [['姓名', '手机号码', '账号状态', '注册时间', '最近登录', '最近处理说明']];
-  for (const row of rows) data.push([safe(row.USER_NAME), safe(row.USER_MOBILE), ({ 0: '待审核', 1: '正常', 8: '审核未过', 9: '已停用' })[row.USER_STATUS] || '状态未知', dateText(row.USER_ADD_TIME), dateText(row.USER_LOGIN_TIME), safe(row.USER_CHECK_REASON)]);
+  for (const row of rows) data.push([safe(row.USER_NAME), safe(row.USER_MOBILE), (row.USER_STATUS === 0 && row.USER_PROFILE_COMPLETE !== true ? '未完善资料' : ({ 0: '待审核', 1: '正常', 8: '审核未过', 9: '已停用' })[row.USER_STATUS] || '状态未知'), dateText(row.USER_ADD_TIME), dateText(row.USER_LOGIN_TIME), safe(row.USER_CHECK_REASON)]);
   return this._export('用户报表', key, rows.length, data, adminId);
  }
  // 生成文件后登记到自动清理表；登记失败不影响本次下载，只记日志。

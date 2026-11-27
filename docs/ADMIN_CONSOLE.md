@@ -22,7 +22,7 @@
 - “不能修改自己的角色”只针对**用微信身份登录的会话**。账号密码管理员操作自己的微信用户属于两套身份之间的授权，不做限制。
 - 登录仍校验最新令牌、微信身份与有效期。客服负责**咨询接待 + 投诉处理 + 订单履约处理 + 用户注册审核**；后台角色授权、停用/恢复账号、删除订单、报表导出、业务/价格设置、公告与学校授权仍归管理员及以上。
 - 客服权限在接口层按白名单收紧（`base_project_admin_controller.js` 的 `SERVICE_ROUTES`）：会话 4 条、投诉 `admin/feedback_list|feedback_detail|feedback_reply`、订单 `admin/operations_config|operations_orders|operations_order|operations_hold|operations_resolve`、用户审核 `admin/user_list|user_detail|user_status`，以及网络中断后核对结果的 `admin/operations_recover`。白名单之外的接口一律返回“客服账号没有该操作权限”，前端隐藏导航不能代替这层校验。
-- 客服的用户注册审核只允许「审核通过／审核不通过」（`status=1/8`），停用与恢复账号（`status=9`）在控制器层被拦截、仍归管理员；`admin/user_role`（授权）与删除、导出仍不在白名单内。
+- 客服的用户注册审核只允许「审核通过／审核不通过」（`status=1/8`），且只能处理待审核（`USER_STATUS=0` 且已提交资料）的账号：停用（`status=9`）在控制器层被拦截，审核未过、已停用、正常账号的状态调整在 `admin_user_service.statusUser` 中拒绝，仍归管理员；`admin/user_role`（授权）与删除、导出仍不在白名单内。
 - 投诉里的信誉分评分只给管理员：客服可以回复、结案，但 `ratingAction` 只能是 `keep`（`admin_feedback_controller` 按角色传 `allowRating`，服务层再复核）。已评分的投诉被改成「继续跟进」或「不予处理」会顺带撤销评分，所以这种情况客服会被拒绝调整状态，需要管理员处理。
 - 客服账号不需要走学生注册：`USER_ROLE=service` 且 `USER_STAFF=true` 的账号登录后不弹资料补全，`passport/staff_invite_redeem` 与客服对话接口在账号路由白名单内，未完成注册资料也能使用。
 
@@ -47,7 +47,7 @@
 | 订单详情 | `orders/detail/admin_order_detail` | 取送信息、参与人、配送凭证、履约时间线、人工介入与异常处理 |
 | 投诉列表 | `feedback/list/admin_feedback_list` | 搜索、状态筛选、分页 |
 | 反馈详情 | `feedback/detail/admin_feedback_detail` | 关联订单、问题与凭证、历史回复、处理结论 |
-| 用户列表 | `user/list/admin_user_list` | 搜索、账号状态筛选、分页、用户导出入口 |
+| 用户列表 | `user/list/admin_user_list` | 搜索、账号状态筛选（含「未完善资料」）、分页、用户导出入口 |
 | 用户详情 | `user/detail/admin_user_detail` | 资料审核、不通过理由、停用与恢复 |
 | 管理中心 | `settings/index/admin_settings` | 业务设置、内容客服、数据系统、账号权限的统一入口，客服登录时只保留客服分组 |
 | 客服工作台 | `index/home/admin_home` | 客服登录后显示待回复会话、待处理投诉与注册审核三项待办，运营汇总数据只给管理员 |
@@ -86,6 +86,7 @@
 - 用户详情优先按数据库文档 ID 查询，同时兼容 OpenID 和旧 `USER_ID` 链接；审核、停用和恢复均更新解析后的同一条记录，保留项目隔离与历史资料。
 - 管理员会话过期时，云请求在跳转登录页后返回明确的鉴权错误，让读取和提交流程结束，并保留未提交的处理说明。
 - 用户详情的学生证照片位于本人私有目录，详情接口在管理员鉴权后用 `private_media_service.urlMap` 换取 5 分钟有效的临时链接；取不到时显示“图片暂时无法读取”，不能把 `cloud://` 当图片地址。
+- 微信登录即建出 `USER_STATUS=0` 的账号，但只有 `USER_PROFILE_COMPLETE=true` 的才算「待审核」。只点过登录、没提交资料和学生证的账号显示为「未完善资料」，有单独筛选档，不计入工作台待审核人数和待审核导出；云端拒绝对资料不完整的账号执行通过或不通过（`profile_rules.isComplete`）。管理员恢复这类停用账号时回到 0（未完善资料），用户提交资料后自动进入待审核。
 - 邀请关系随注册提交当场绑定：待审核记 0，审核通过转已注册（1），不通过或停用记未通过（2）。
 - 反馈群沿用 `SETUP_CONTENT_AFTERSALES` 内容接口，只保存标注为“QQ 群号”和“加群说明”的文本，不再上传、预览或保存微信二维码。未配置 QQ 信息时使用内置群号 `856190901`；旧微信图片和说明不会转换成 QQ 联系方式，用户卡片忽略历史图片。群信息加载失败时仍可复制已有群号并重试；有关联订单的问题仍通过小程序反馈处理。后台保存群信息后，用户重新进入反馈页或反馈详情页读取最新配置，不需要重新发布小程序。
 
