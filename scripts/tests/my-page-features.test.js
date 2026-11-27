@@ -771,8 +771,9 @@ test('every personal-center entry reaches its intended destination and private e
   };
   const h = harness(), page = h.page('my/index/my_index.js');
   for (const [handler, route] of Object.entries(routes)) { await page[handler](); assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/' + route); }
-  const before = h.navigation.length; page.bindCampusServiceTap();
-  assert.equal(h.navigation.length, before, 'online customer service is not open yet'); assert.equal(h.messages.at(-1), '待开发');
+  page.bindCampusServiceTap();
+  assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/feedback/index/feedback_index', 'closed customer service falls back to feedback');
+  assert.equal(page.data.serviceOpen, false);
   page.bindAboutTap(); assert.match(h.navigation.at(-1).url, /about_index$/);
   const denied = harness({ allowed: false }), guest = denied.page('my/index/my_index.js');
   for (const handler of Object.keys(routes)) await guest[handler]();
@@ -900,9 +901,11 @@ test('native privacy errors preserve the avatar and do not silently switch to a 
   const h=harness(),page=h.page('my/personal/my_personal.js');
   page.setData({canChooseWechatAvatar:true,formPic:'cloud://old-avatar',guideField:'avatar',guideMessage:'请选择头像'});
   page.bindAvatarError({detail:{errMsg:'chooseAvatar:fail api scope is not declared in the privacy agreement'}});
-  assert.match(page.data.avatarError,/联系管理员/);assert.equal(page.data.formPic,'cloud://old-avatar');
+  assert.match(page.data.avatarError,/从相册选择或拍照/);assert.equal(page.data.formPic,'cloud://old-avatar');
   assert.equal(page.data.canChooseWechatAvatar,true);assert.equal(h.images.length,0);
-  page.setData({canChooseWechatAvatar:false});
+  // 微信头像不可用时，用户可主动点下方的相册入口改用 chooseMedia，而不是自动切换。
+  const fields=fs.readFileSync(path.join(__dirname,'../../miniprogram/projects/crun/pages/my/personal/wechat_profile_fields.wxml'),'utf8');
+  assert.match(fields,/wx:if="\{\{canChooseWechatAvatar\}\}" class="profile-avatar-fallback" bindtap="bindChooseAvatar"/);
   h.wx.chooseMedia=options=>options.success({tempFiles:[{tempFilePath:'temp/new-avatar.jpg'}]});
   page.bindChooseAvatar();assert.equal(page.data.formPic,'temp/new-avatar.jpg');
   assert.equal(page.data.avatarError,'');assert.equal(page.data.guideField,'');

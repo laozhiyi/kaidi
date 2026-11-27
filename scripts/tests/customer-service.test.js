@@ -474,20 +474,34 @@ test('客服可以处理投诉、订单履约与用户注册审核，但拿不�
 	assert.doesNotMatch(routes, /admin\/campus_service_/);
 });
 
-test('every user-facing customer service entry shows 待开发 instead of opening the chat', () => {
+test('closed customer service entries open feedback and are labelled 反馈与投诉', () => {
 	const read = file => fs.readFileSync(path.join(__dirname, '../../miniprogram/projects/crun', file), 'utf8');
 	const entries = { 'pages/about/index/about_index.js': 'bindService', 'pages/my/index/my_index.js': 'bindCampusServiceTap',
 		'pages/mail/add/mail_add_logic.js': 'bindServiceHelpTap', 'pages/mail/detail/mail_detail.js': 'bindServiceHelpTap',
 		'pages/mail/my_detail/mail_my_detail.js': 'bindServiceHelpTap' };
 	for (const [file, handler] of Object.entries(entries)) {
 		const source = read(file);
-		assert.match(source, new RegExp(handler + "\\(\\) \\{ require\\('\\.\\./\\.\\./\\.\\./biz/customer_service_biz\\.js'\\)\\.openCustomerService\\(\\); \\}"), file);
+		assert.match(source, new RegExp(handler + "\\(\\) \\{[^}]*require\\('\\.\\./\\.\\./\\.\\./biz/customer_service_biz\\.js'\\)\\.openCustomerService\\("), file);
+		assert.match(source, /serviceOpen:\s*require\('\.\.\/\.\.\/\.\.\/biz\/customer_service_biz\.js'\)\.OPEN/, file);
 		assert.doesNotMatch(source, /customer_service_chat/, file);
 	}
-	const toasts = [], navigation = [], sandbox = { module: { exports: {} }, wx: { showToast: data => toasts.push(data), navigateTo: data => navigation.push(data) } };
-	sandbox.exports = sandbox.module.exports;
-	vm.runInNewContext(read('biz/customer_service_biz.js'), sandbox);
-	sandbox.module.exports.openCustomerService();
-	assert.equal(sandbox.module.exports.OPEN, false);
-	assert.equal(JSON.stringify(toasts), JSON.stringify([{ title: '待开发', icon: 'none' }])); assert.equal(navigation.length, 0);
+	// 未开放时不能再出现「待开发」提示，也不能有指向在线客服的文字引导。
+	for (const file of ['pages/about/index/about_index.js', 'pages/my/reg/my_reg.wxml', 'biz/mail_ui_biz.js', 'pages/mail/detail/mail_detail.js', 'pages/mail/my_detail/mail_my_detail.js']) {
+		assert.doesNotMatch(read(file).replace(/serviceOpen \? '[^']*'/g, ''), /待开发|联系在线客服|「我的 · 在线客服」/, file);
+	}
+	for (const file of ['pages/about/index/about_index.wxml', 'pages/mail/add/mail_add.wxml', 'pages/mail/detail/mail_detail.wxml', 'pages/mail/my_detail/mail_my_detail.wxml', 'pages/mail/tpl/mail_detail_tpl.wxml']) {
+		assert.match(read(file), /bindtap="(?:bindService|bindServiceHelpTap)">(?:<text class="icon-service"><\/text><text>)?\{\{serviceOpen \? '[^']+' : '(?:反馈与投诉|反馈)'\}\}/, file);
+	}
+	assert.match(read('pages/my/index/my_index.wxml'), /wx:if="\{\{serviceOpen\}\}" class="my-grid-item" bindtap="bindCampusServiceTap"/);
+
+	const run = orderId => {
+		const toasts = [], navigation = [], sandbox = { module: { exports: {} }, wx: { showToast: data => toasts.push(data), navigateTo: data => navigation.push(data) } };
+		sandbox.exports = sandbox.module.exports;
+		vm.runInNewContext(read('biz/customer_service_biz.js'), sandbox);
+		sandbox.module.exports.openCustomerService(orderId);
+		assert.equal(sandbox.module.exports.OPEN, false); assert.equal(toasts.length, 0);
+		return navigation.map(item => item.url);
+	};
+	assert.deepEqual(run(), ['/projects/crun/pages/feedback/index/feedback_index']);
+	assert.deepEqual(run('order 1'), ['/projects/crun/pages/feedback/index/feedback_index?orderId=order%201']);
 });

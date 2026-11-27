@@ -52,7 +52,7 @@ module.exports = {
 	data: {
 		isLoad: false,
 		serviceType: 'take', serviceName: '快递代取', serviceForm:'parcel-fields',
-		serviceState: { kind: 'loading', canPublish: false }, campusIndex: 0,
+		serviceState: { kind: 'loading', canPublish: false }, serviceOpen: require('../../../biz/customer_service_biz.js').OPEN, campusIndex: 0,
 		packageTypes: [
 			{ mark: 'small', label: '小件', price: '2.00', count: 0 },
 			{ mark: 'medium', label: '中件', price: '4.00', count: 0 },
@@ -483,14 +483,6 @@ module.exports = {
 		this._profileEdited = this._profileEdited || {};
 		this._profileEdited[mark] = true;
 		this._setFormVal(mark, value);
-	},
-
-	bindPasteCode: function () {
-		wx.getClipboardData({
-			success: (res) => {
-				if (res.data) this._setFormVal('code', String(res.data).trim());
-			},
-		});
 	},
 
 	bindUploadImageTap: function () {

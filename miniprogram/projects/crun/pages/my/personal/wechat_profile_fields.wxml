@@ -10,6 +10,7 @@
       <view><view class="profile-field-label">头像</view><view class="profile-field-note">从相册选择或拍照</view></view>
       <image wx:if="{{formPic}}" class="profile-avatar" mode="aspectFill" src="{{formPic}}" /><view wx:else class="profile-avatar-placeholder"><text class="icon-cameraadd"></text></view><text class="icon-right profile-arrow"></text>
     </button>
+    <view wx:if="{{canChooseWechatAvatar}}" class="profile-avatar-fallback" bindtap="bindChooseAvatar" role="button" aria-label="无法使用微信头像时，从相册选择或拍照">无法使用微信头像？<text class="profile-avatar-fallback-link">从相册选择或拍照</text></view>
     <view wx:if="{{avatarError}}" class="profile-required-hint">{{avatarError}}</view>
     </view>
     <view id="guide-nickname" class="profile-field {{guideField === 'nickname' ? 'form-guide-invalid' : ''}}"><view wx:if="{{guideField === 'nickname'}}" class="form-guide-message">{{guideMessage}}</view><text class="profile-field-label">昵称</text><input class="profile-field-input" name="nickname" type="{{!canUseWechatNickname ? 'text' : 'nickname'}}" value="{{formName}}" maxlength="30" placeholder="{{!canUseWechatNickname ? '请输入昵称' : '点击填写，可选择微信昵称'}}" bindinput="bindProfileNameInput" bindblur="bindProfileNameInput" disabled="{{saving || phoneAuthorizing || identityLoggingIn || collectionSaving || loggingOut || cancellingAccount}}" /></view>

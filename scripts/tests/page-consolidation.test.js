@@ -33,6 +33,8 @@ function harness(file, get, options = {}) {
       page.setData({ isAdmin: true, isSuperAdmin: options.superAdmin !== false }); return true;
     } };
     if (module.includes('cloud_helper')) return { callCloudData: ops.get, callCloudSumbit: async (...args) => ({ data: await ops.get(...args) }) };
+    if (module.includes('customer_service_biz')) return { OPEN: false, openCustomerService: orderId => navigation.push({ url: 'customer-service:' + (orderId || '') }) };
+    if (module.includes('public/agreements')) return require(path.join(root, 'miniprogram/projects/crun/public/agreements.js'));
     if (module.includes('project_setting')) return { SETUP_CONTENT_ITEMS: [
       { key: 'SETUP_CONTENT_ABOUT', title: '关于我们' }, { key: 'SETUP_CONTENT_CONTACT', title: '联系我们' }
     ] };
@@ -126,4 +128,15 @@ test('unified about page defaults to editable about content and refresh retains 
   h.page.onLoad(); await tick(); assert.equal(h.calls[0].params.key, 'SETUP_CONTENT_ABOUT'); assert.equal(h.page.data.about[0].val, '后台配置内容');
   h.page.onLoad({ key: 'SETUP_CONTENT_CONTACT' }); await tick(); await h.page.onPullDownRefresh();
   assert.equal(h.calls.at(-1).params.key, 'SETUP_CONTENT_CONTACT'); assert.equal(h.page.data.title, '联系我们');
+});
+
+test('about page opens every agreement row rendered in its template and ignores unknown keys', () => {
+  const h = harness(mini + 'about/index/about_index.js', () => []);
+  const keys = [...read(mini + 'about/index/about_index.wxml').matchAll(/data-key="([^"]+)"[^>]*bindtap="bindAgreement"/g)].map(match => match[1]);
+  assert.deepEqual(keys, ['user', 'rider', 'privacy', 'identity']);
+  for (const key of keys) {
+    h.page.bindAgreement(event({ key }));
+    assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/about/agreement/about_agreement?key=' + key);
+  }
+  const opened = h.navigation.length; h.page.bindAgreement(event({ key: 'unknown' })); assert.equal(h.navigation.length, opened);
 });

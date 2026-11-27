@@ -182,7 +182,7 @@ function bindAvatarError(e) {
   const message = e && e.detail && e.detail.errMsg || '';
   if (/cancel/i.test(message)) return;
   const privacy = /privacy|api scope.*not.*declared|隐私/i.test(message);
-  const hint = privacy ? '微信头像暂不可用，请通过反馈联系管理员处理。' : '头像选择未完成，请稍后重试。';
+  const hint = privacy ? '微信头像暂不可用，请点击下方「从相册选择或拍照」上传头像。' : '头像选择未完成，请稍后重试。';
   this.setData({avatarError:hint});
   pageHelper.showNoneToast(hint);
 }

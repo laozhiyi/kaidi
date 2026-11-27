@@ -26,7 +26,7 @@ function profileFromToken(token) {
 }
 
 Page(Object.assign({
-  data: { user: null, hasSession: false, loggingOut: false, cancellingAccount: false, loading: false, userError: '', settingsVisible: false, unreadCount: 0, messageBadge: '', serviceBadge: '' },
+  data: { user: null, hasSession: false, loggingOut: false, cancellingAccount: false, loading: false, userError: '', settingsVisible: false, unreadCount: 0, messageBadge: '', serviceBadge: '', serviceOpen: require('../../../biz/customer_service_biz.js').OPEN },
   onLoad() {
     ProjectBiz.initPage(this);
     this._showSavedProfile();

@@ -17,7 +17,7 @@ function historyTime(value) {
  return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 19).replace('T', ' ') : '时间未知';
 }
 Page({
- data:{id:'',mail:null,detailUI:null,loading:true,error:false,errorMessage:'',notFound:false,configError:false,confirmGate:false,confirmCountdown:0,busy:false,panel:'',note:'',images:[],imagePreviews:{},video:'',videoPreview:'',deliveryMode:'place',reasons:['取件失败','取件码错误','联系不上','物品损坏','送错地址','申请取消','其他'],reasonIndex:0,config:null,pickupGate:false,pickupCountdown:2,priceSheet:false,priceValue:'',priceReason:'',priceReasons:['实际是中件','实际是大件','包裹超重','体积过大']},
+ data:{id:'',serviceOpen:require('../../../biz/customer_service_biz.js').OPEN,mail:null,detailUI:null,loading:true,error:false,errorMessage:'',notFound:false,configError:false,confirmGate:false,confirmCountdown:0,busy:false,panel:'',note:'',images:[],imagePreviews:{},video:'',videoPreview:'',deliveryMode:'place',reasons:['取件失败','取件码错误','联系不上','物品损坏','送错地址','申请取消','其他'],reasonIndex:0,config:null,pickupGate:false,pickupCountdown:2,priceSheet:false,priceValue:'',priceReason:'',priceReasons:['实际是中件','实际是大件','包裹超重','体积过大']},
  onLoad(options = {}) {
   ProjectBiz.initPage(this);
   this._openPanelAfterLoad = ['pickup', 'deliver', 'update_proof'].includes(options.panel) ? options.panel : '';
@@ -113,9 +113,9 @@ Page({
  },
  bindReload() { return this.load(); },
  bindBackOrders() { wx.switchTab({ url: '/projects/crun/pages/order/index/order_index' }); },
- bindServiceHelpTap() { require('../../../biz/customer_service_biz.js').openCustomerService(); },
+ bindServiceHelpTap() { require('../../../biz/customer_service_biz.js').openCustomerService(this.data.id); },
  bindCopyOrderTap() { const mail = this.data.mail; if (mail) wx.setClipboardData({ data: String(mail.MAIL_ID || mail._id) }); },
- bindNoticeTap() { if(this.data.mail && (this.data.mail.MAIL_PAYMENT_MODE === 'wechat' || this.data.mail.MAIL_PAYMENT_MODE === 'adapay')) return wx.showModal({title:'微信支付说明',content:require('../../../biz/payment_biz.js').PAY_NOTICE,showCancel:false}); wx.showModal({ title: '结算核对说明', content: '本单结算方式待核对，请联系在线客服核对支付与退款记录，勿重复向对方转账。', showCancel: false, confirmText: '我知道了' }); },
+ bindNoticeTap() { if(this.data.mail && (this.data.mail.MAIL_PAYMENT_MODE === 'wechat' || this.data.mail.MAIL_PAYMENT_MODE === 'adapay')) return wx.showModal({title:'微信支付说明',content:require('../../../biz/payment_biz.js').PAY_NOTICE,showCancel:false}); wx.showModal({ title: '结算核对说明', content: '本单结算方式待核对，请通过「我的 · 反馈与投诉」核对支付与退款记录，勿重复向对方转账。', showCancel: false, confirmText: '我知道了' }); },
  bindEditTap() { if (this.data.detailUI && this.data.detailUI.primary === 'edit') wx.navigateTo({ url: '../add/mail_add?id=' + this.data.id }); },
  bindCallTap() { const ui = this.data.detailUI; if (ui && ui.participant && ui.phone) wx.makePhoneCall({ phoneNumber: String(ui.phone) }); },
  bindCopyCodeTap(e) { const mail = this.data.mail; if (!mail || !(mail.mypost || mail.myaccept)) return; const index = e && e.currentTarget.dataset.index; const item = index != null && this.data.detailUI && this.data.detailUI.pickupItems[index]; const code = index != null ? item && item.code : mail.MAIL_OBJ && mail.MAIL_OBJ.code; if (code) wx.setClipboardData({ data: String(code) }); },

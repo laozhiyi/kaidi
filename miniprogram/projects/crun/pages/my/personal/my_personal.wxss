@@ -85,6 +85,8 @@ page { background: #f3f6fb; }
 .profile-campus-sheet-actions .profile-campus-confirm[disabled] { color:#94a4b8; background:#e8edf4; }
 .profile-required-hint, .profile-save-error { color:#c27b42; font-size:22rpx; line-height:1.5; }
 .profile-required-hint { margin-top:14rpx; }
+.profile-avatar-fallback { margin-top:12rpx; color:#8494a9; font-size:22rpx; line-height:1.6; }
+.profile-avatar-fallback-link { color:#3f7bd9; }
 .profile-save { width:100%; height:86rpx; margin-top:24rpx; border-radius:14rpx; color:#fff; background:#397bc8; font-size:29rpx; font-weight:600; line-height:86rpx; box-shadow:0 8rpx 18rpx rgba(57,123,200,.16); }
 .profile-save[disabled] { color:#9aa9ba; background:#dce4ee; box-shadow:none; }
 .profile-logout { width:100%; height:86rpx; margin-top:24rpx; border:1rpx solid #eadbdd; border-radius:14rpx; color:#c95353; background:#fff; font-size:29rpx; font-weight:500; line-height:84rpx; box-sizing:border-box; }

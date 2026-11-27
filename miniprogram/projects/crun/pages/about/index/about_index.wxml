@@ -23,5 +23,5 @@
     <view class="about-agreement" data-key="identity" bindtap="bindAgreement" hover-class="about-agreement-hover"><text>实名与结算信息处理说明</text><text class="icon-right"></text></view>
   </view>
   <button wx:if="{{key==='SETUP_CONTENT_ABOUT'}}" class="op-button-secondary" bindtap="bindContact">联系我们</button>
-  <button class="op-button-primary" bindtap="bindService">联系在线客服</button>
+  <button class="op-button-primary" bindtap="bindService">{{serviceOpen ? '联系在线客服' : '反馈与投诉'}}</button>
 </view>

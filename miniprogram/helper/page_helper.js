@@ -566,12 +566,8 @@ function url(e, that) {
 		case 'copy': {
 			wx.setClipboardData({
 				data: url,
-				success(res) {
-					wx.getClipboardData({
-						success(res) {
-							showNoneToast('已复制到剪贴板');
-						}
-					})
+				success() {
+					showNoneToast('已复制到剪贴板');
 				}
 			});
 			break;
