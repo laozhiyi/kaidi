@@ -31,13 +31,17 @@ const SIZE_GUIDE = [
 ];
 
 // 跑腿费下限（元），与云端 order_plugins/parcel.js 的 MIN_FEE 一致，页面上写明「1元起步」。
-// 每件价格最多两位小数，整数最多 4 位（与云端每件 10000 元上限一致）：输入时去掉开头的 0 和多余小数点；
+// 每件价格最多两位小数，整数最多 5 位（云端每件和整单合计都不超过 10000 元，含上楼费）：输入时去掉开头的 0 和多余小数点；
 // 离开输入框时自动补全两位小数，清空则恢复参考价。
 const MIN_FEE = 1;
+const MAX_FEE = 10000;
+// 与云端 order_plugins/parcel.js 一致：每单最多 10 张取件截图，每件取件码最多 200 字。
+const MAX_PROOF_IMAGES = 10;
+const MAX_CODE_LENGTH = 200;
 function feeInput(raw) {
 	const text = String(raw == null ? '' : raw).replace(/[^\d.]/g, '').replace(/^[0.]+/, '');
 	const dot = text.indexOf('.');
-	const whole = (dot < 0 ? text : text.slice(0, dot)).slice(0, 4);
+	const whole = (dot < 0 ? text : text.slice(0, dot)).slice(0, 5);
 	return dot < 0 ? whole : whole + '.' + text.slice(dot + 1).replace(/\./g, '').slice(0, 2);
 }
 function feeComplete(value, fallback) {
@@ -614,8 +618,14 @@ module.exports = {
    if (Array.isArray(item.imagePreviews) && item.imagePreviews.length) return item.imagePreviews;
    return Array.isArray(item.images) ? item.images : [];
   },
+  // 云端每单最多保存 10 张取件截图（含旧版整单截图），超出时在选图前就拦下，避免上传后才被拒绝。
+  _proofImageCount(exceptIndex = -1) {
+   const general = Array.isArray(this.data.proofImages) ? this.data.proofImages.length : 0;
+   return (this.data.packageItems || []).reduce((sum, item, i) => sum + (i === exceptIndex || !item || !Array.isArray(item.images) ? 0 : item.images.length), general);
+  },
   _choosePackageImage(index) {
    if (this.data.submitting) return;
+   if (this._proofImageCount(index) >= MAX_PROOF_IMAGES) { wx.showToast({ title: '每单最多上传' + MAX_PROOF_IMAGES + '张截图，其余包裹请填写取件码', icon: 'none' }); return; }
    wx.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'], success: res => {
     const file = res.tempFiles && res.tempFiles[0];
     if (!file) return;
@@ -827,8 +837,19 @@ module.exports = {
   for (let index = 0; index < packages.length; index++) {
    const item = packages[index], field = this.data.serviceType === 'buy' ? 'purchase' : 'parcel-' + item.id;
    if (!String(item.pickupPoint || '').trim()) throw Guide.invalid(field, this.data.serviceType === 'buy' ? '请填写购买地点' : '请填写第' + (index + 1) + '件包裹的取件点');
-   if (!/^\d+(?:\.\d{1,2})?$/.test(String(item.price)) || Number(item.price) < MIN_FEE || Number(item.price) > 10000) throw Guide.invalid(field, '请填写' + (this.data.serviceType === 'buy' ? '本单' : '第' + (index + 1) + '件包裹的') + '跑腿费，金额须在1至10000元之间，最多两位小数');
+   if (!/^\d+(?:\.\d{1,2})?$/.test(String(item.price)) || Number(item.price) < MIN_FEE || Number(item.price) > MAX_FEE) throw Guide.invalid(field, '请填写' + (this.data.serviceType === 'buy' ? '本单' : '第' + (index + 1) + '件包裹的') + '跑腿费，金额须在1至10000元之间，最多两位小数');
    if (this.data.serviceType === 'take' && !String(item.code || '').trim() && !(item.images && item.images.length)) throw Guide.invalid(field, '请填写第' + (index + 1) + '件包裹的取件码，或上传取件码截图');
+   if (String(item.code || '').trim().length > MAX_CODE_LENGTH) throw Guide.invalid(field, '第' + (index + 1) + '件包裹的取件码最多' + MAX_CODE_LENGTH + '字，请只保留取件码');
+  }
+  // 云端按「各件跑腿费 + 上楼费」核对整单合计，超出时定位到让合计超限的那一件。
+  const tipCents = this.data.serviceType === 'take' && this.data.upstairs ? Math.round((Number(this.data.tip) || 0) * 100) : 0;
+  let runningCents = tipCents;
+  const overFee = packages.findIndex(item => (runningCents += Math.round(Number(item.price) * 100)) > MAX_FEE * 100);
+  if (overFee >= 0) throw Guide.invalid(this.data.serviceType === 'buy' ? 'purchase' : 'parcel-' + packages[overFee].id, '本单合计（各件跑腿费' + (tipCents ? '加上楼费' : '') + '）不能超过' + MAX_FEE + '元，请调整第' + (overFee + 1) + '件包裹的跑腿费');
+  if (this._proofImageCount() > MAX_PROOF_IMAGES) {
+   let seen = Array.isArray(this.data.proofImages) ? this.data.proofImages.length : 0;
+   const over = packages.findIndex(item => (seen += item && Array.isArray(item.images) ? item.images.length : 0) > MAX_PROOF_IMAGES);
+   throw Guide.invalid(over >= 0 ? 'parcel-' + packages[over].id : 'packages', '每单最多上传' + MAX_PROOF_IMAGES + '张取件截图，请把第' + (over + 1) + '件及之后多出的包裹改为填写取件码');
   }
   const values = this.data.mailValues || {};
   if (!String(values.address2 || '').trim()) throw Guide.invalid('address2', '请填写送达地址');

@@ -427,23 +427,45 @@ function collectionForms(page, contacts, addresses) {
   );
   return forms;
 }
+// 协议版本更新后，云端要求资料修改随附当前版本的同意记录；联系人和地址页没有协议勾选框，保存前单独征得同意。
+function askCurrentAgreements() {
+  return new Promise(resolve => wx.showModal({
+    title: '协议已更新',
+    content: '用户服务协议及隐私政策已更新。保存常用联系人和地址前，请阅读并同意当前版本；点击“查看协议”可阅读全文。',
+    confirmText: '同意并保存', cancelText: '查看协议',
+    success: result => resolve(result && result.confirm ? 'accept' : result && result.cancel ? 'view' : 'dismiss'),
+    fail: () => resolve('dismiss')
+  }));
+}
 async function saveCollections(page, patch, closeEditor = {}) {
-  if (profileBusy(page) || !PassportBiz.getUserId()) return false;
+  if (profileBusy(page) || page._agreementPrompting || !PassportBiz.getUserId()) return false;
   const userId = PassportBiz.getUserId(), requestScope = scopeKey(), epoch = sessionEpoch();
   const isCurrent = () => !page._unloaded && !PassportBiz.isLoggedOut() && PassportBiz.getUserId() === userId && scopeKey() === requestScope
     && epoch === sessionEpoch();
+  let agreements;
+  if (page.data.profileAgreementCurrent === false) {
+    page._agreementPrompting = true;
+    let choice;
+    try { choice = await askCurrentAgreements(); } finally { page._agreementPrompting = false; }
+    if (!isCurrent() || profileBusy(page)) return false;
+    if (choice === 'view') wx.navigateTo({ url: '/projects/crun/pages/about/agreement/about_agreement?key=user' });
+    if (choice !== 'accept') return false;
+    agreements = { accepted: true, userVersion: Agreements.VERSION, privacyVersion: Agreements.VERSION };
+  }
   const contacts = ProfileBiz.normalizeContacts(patch.contacts || page.data.contacts);
   const addresses = ProfileBiz.normalizeAddresses(patch.addresses || page.data.addresses);
   const forms = collectionForms(page, contacts, addresses);
   page.setData({ collectionSaving: true, saveError: '' });
   try {
     await withTimeout(cloudHelper.callCloudSumbit('passport/edit_base', {
-      name: page.data.formName || '', mobile: page.data.formMobile || '', pic: page.data.formPic || '', forms
+      name: page.data.formName || '', mobile: page.data.formMobile || '', pic: page.data.formPic || '', forms,
+      ...(agreements ? { agreements } : {})
     }, { title: '保存中' }));
     if (!isCurrent()) return false;
     invalidateProfileCache();
     page._profileDirty = true;
-    if (!page._unloaded) page.setData({ contacts, addresses, formForms: forms, ...closeEditor });
+    if (!page._unloaded) page.setData({ contacts, addresses, formForms: forms, ...closeEditor,
+      ...(agreements ? { profileAgreementCurrent: true, profileDisclaimer: true } : {}) });
     return true;
   } catch (error) {
     const message = error && (error.msg || error.message) || '保存失败，请重试';

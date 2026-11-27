@@ -67,7 +67,7 @@ function validateForms(forms, config, now) {
   obj.tip = tipFee / 100;
   if (tipFee) { totalFee += tipFee; obj.price = totalFee / 100; }
  }
- if (!Number.isSafeInteger(totalFee) || totalFee < 1 || totalFee > 1000000) fail('订单费用超出范围');
+ if (!Number.isSafeInteger(totalFee) || totalFee < 1 || totalFee > 1000000) fail('本单合计（跑腿费加上楼费）须在1至10000元之间，请调整跑腿费');
  // 下单人选的是「期待送达时间」；接单截止由它往前减掉配送时长推算，
  // 这样骑手接到单时仍留得出配送时间。状态机只认推算出来的 endTime。
  const deliveryMinutes = obj.urgent ? config.urgentMinutes : config.deliveryMinutes;
@@ -103,6 +103,7 @@ function requireOpen(config, now = Date.now()) {
  if (!Number.isInteger(config.openHour) || !Number.isInteger(config.closeHour) || config.openHour < 0 || config.closeHour > 24
   || config.openHour >= config.closeHour || !Number.isFinite(hour) || hour < config.openHour || hour >= config.closeHour) fail('当前不在营业时间，请稍后再试');
 }
+const POSTER_CONTACT_KEYS = ['poster','posterPic','tel','tel2'];
 function project(mail, userId, admin = false) {
  mail = deliveryAddress.complete(mail);
  const mypost = !!userId && mail.MAIL_USER_ID === userId;
@@ -147,8 +148,11 @@ function project(mail, userId, admin = false) {
  const plugin = Object.prototype.hasOwnProperty.call(SERVICES,obj.serviceType || 'take') ? plugins.get(obj.serviceType || 'take') : null;
  const publicFields = ['title','serviceType','small','medium','large','num','price','referencePrice','urgent','riderGender','upstairs','tip','campus','address1','address2','addressPhase',...(plugin ? plugin.publicFields : [])];
  out.MAIL_OBJ = privateAccess ? { ...obj } : Object.fromEntries(publicFields.filter(k => obj[k] !== undefined).map(k => [k,obj[k]]));
- // 订单完成后骑手不再看到发布者的称呼、头像和电话；发布者那边由 viewMail 不再附带骑手资料。
- if (!admin && myaccept && Number(mail.MAIL_STATUS) === 9) for (const key of ['poster','posterPic','tel','tel2']) delete out.MAIL_OBJ[key];
+ // 订单完成后骑手不再看到发布者的称呼、头像和电话（MAIL_OBJ 与表单快照 MAIL_FORMS 都要去掉）；发布者那边由 viewMail 不再附带骑手资料。
+ if (!admin && myaccept && Number(mail.MAIL_STATUS) === 9) {
+  for (const key of POSTER_CONTACT_KEYS) delete out.MAIL_OBJ[key];
+  if (Array.isArray(out.MAIL_FORMS)) out.MAIL_FORMS = out.MAIL_FORMS.filter(item => !(item && POSTER_CONTACT_KEYS.includes(item.mark)));
+ }
  out.mypost = mypost; out.myaccept = myaccept;
  out.status = LABELS[mail.MAIL_STATUS] || '状态未知'; if (mail.MAIL_STATUS === 0 && mail.MAIL_END_TIME < Date.now()) out.status = '已过期';
  out.overdue = ACTIVE.includes(mail.MAIL_STATUS) && mail.MAIL_DUE_TIME > 0 && mail.MAIL_DUE_TIME < Date.now();

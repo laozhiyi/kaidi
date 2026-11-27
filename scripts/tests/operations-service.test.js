@@ -110,6 +110,24 @@ test('only rider can submit required proof; only poster can confirm; quotas rele
  for(const quota of f.table('order_quota').values())assert.equal(quota.active.length,0);
  await f.service.delMail('poster',id,{requestId:f.req('archive')});assert.ok(f.table('mail').has(id));
 });
+test('completed orders stay anonymous in every field the counterparty receives',async()=>{
+ const f=fixture(),id=await f.publish();await f.service.acceptMail('rider',id,{requestId:f.req('accept')});
+ await f.service.pickupMail('rider',id,{requestId:f.req('pickup'),images:['cloud://bucket/private-evidence/rider/pickup.png']});
+ await f.service.deliverMail('rider',id,{note:'已当面交付',images:['cloud://proof'],requestId:f.req('deliver')});
+ const row=f.table('mail').get(id);row.MAIL_OBJ.tel2='PRIVATE_SECOND_CONTACT';row.MAIL_FORMS.push({mark:'tel2',title:'tel2',type:'text',val:'PRIVATE_SECOND_CONTACT'});
+ const active=await f.service.viewMail('rider',id);
+ assert.ok(active.MAIL_FORMS.some(item=>item.mark==='tel'),'进行中的订单骑手仍可联系发布者');assert.notEqual(active.MAIL_FEEDBACK_TARGET.name,'匿名用户');
+ await f.service.finishMail('poster',id,{requestId:f.req('finish')});
+ const rider=await f.service.viewMail('rider',id),poster=await f.service.viewMail('poster',id);
+ for(const key of ['poster','posterPic','tel','tel2'])assert.equal(rider.MAIL_OBJ[key],undefined,key);
+ assert.equal(rider.MAIL_FORMS.filter(item=>['poster','posterPic','tel','tel2'].includes(item.mark)).length,0);
+ assert.ok(rider.MAIL_FORMS.some(item=>item.mark==='address2'),'非联系方式的表单项保留');
+ for(const value of ['小王','13800000000','PRIVATE_SECOND_CONTACT'])assert.ok(!JSON.stringify(rider).includes(value),value);
+ assert.equal(JSON.stringify(rider.MAIL_FEEDBACK_TARGET),JSON.stringify({name:'匿名用户',role:'发布者'}));
+ assert.equal(JSON.stringify(poster.MAIL_FEEDBACK_TARGET),JSON.stringify({name:'匿名用户',role:'接单人'}));assert.equal(poster.acceptUser,undefined);
+ assert.equal(poster.MAIL_OBJ.tel,'13800000000','发布者仍能看到自己的资料');
+ const admin=await f.service.getMailDetail(null,id);assert.ok(admin.MAIL_FORMS.some(item=>item.mark==='tel'),'管理员保留完整表单');
+});
 
 test('exception freezes flow and requires active administrator resolution with audit',async()=>{
  const f=fixture(),id=await f.publish();await f.service.acceptMail('rider',id,{requestId:f.req('accept')});

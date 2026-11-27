@@ -22,6 +22,10 @@ Page({
  onShow() {
   this._unloaded = false; this._active = true;
   this._generation = (this._generation || 0) + 1;
+  // 开通、换卡或确认协议的请求还没返回：保持提交中，等结果回来再更新页面，不清表单、不刷新状态。
+  if (this._submitInFlight) { this._hiddenAt = 0; return; }
+  // 切到后台期间返回的办理结果，回到页面时再告知。
+  if (this._pendingNotice) { const notice = this._pendingNotice; this._pendingNotice = null; wx.showModal(notice); }
   const expired = this._hiddenAt && Date.now() - this._hiddenAt > FORM_KEEP_MS;
   this._hiddenAt = 0;
   if (expired) this.clearForm();
@@ -68,7 +72,12 @@ Page({
  onHide() {
   this._generation = (this._generation || 0) + 1; this._active = false;
   this._hiddenAt = Date.now();
-  this.setData({document:null,submitting:false});
+  // 不重置 submitting：请求仍在进行时按钮保持不可用，避免回到页面后重复提交。
+  this.setData({document:null});
+ },
+ // 页面在前台直接弹窗；在后台时先记下，回到页面再弹。
+ _notify(modal) {
+  if (this._active !== false) wx.showModal(modal); else this._pendingNotice = modal;
  },
  onUnload() {
   this._unloaded = true; this._generation = (this._generation || 0) + 1; this._active = false;
@@ -116,19 +125,19 @@ Page({
   const changing = this.data.mode === 'change';
   const updating = account && account.opened && !changing && !account.consentCurrent;
   if (this.data.submitting || this.data.statusLoading || this.data.statusError || !account || account.opened !== changing && !updating) return;
-  const acceptanceGeneration = this._generation;
-  const acceptanceCurrent = () => !this._unloaded && this._active && acceptanceGeneration === this._generation;
+  // 提交结果以云端返回为准：切到后台期间返回也照常更新页面，只有关闭页面才丢弃。
+  const alive = () => !this._unloaded;
   if (updating) {
    if (!this.data.rulesAccepted || !this.data.authorizationAccepted) { const message='请分别阅读并勾选新版骑手协议与实名信息授权'; this.setData({error:message}); Guide.show(this, this.data.rulesAccepted ? 'authorization' : 'rules', message); return; }
+   this._submitInFlight = true;
    this.setData({submitting:true,error:''});
    try {
     const result=await Ops.get('settlement/accept',{rulesAccepted:true,authorizationAccepted:true,rulesVersion:Agreements.VERSION,authorizationVersion:Agreements.VERSION});
-    if (acceptanceCurrent()) this.setData({account:{...account,...result},rulesAccepted:false,authorizationAccepted:false});
-   } catch(error) {if (acceptanceCurrent()) this.setData({error:error.msg || error.message || '确认失败，请重试'});}
-   finally {if (acceptanceCurrent()) this.setData({submitting:false});}
+    if (alive()) this.setData({account:{...account,...result},rulesAccepted:false,authorizationAccepted:false});
+   } catch(error) {if (alive()) this.setData({error:error.msg || error.message || '确认失败，请重试'});}
+   finally {this._submitInFlight = false; if (alive()) this.setData({submitting:false});}
    return;
   }
-  const generation=this._generation;
   const form = this.data.form;
   let error = '', field = '';
   if (!form.realName.trim()) field = 'realName', error = changing ? '请填写开通时的本人真实姓名' : '请填写本人真实姓名';
@@ -139,24 +148,25 @@ Page({
   this.setData({ error });
   if (error) { Guide.show(this, field, error); return; }
   Guide.clear(this);
+  this._submitInFlight = true;
   this.setData({ submitting: true });
-  const isCurrent = () => !this._unloaded && this._active !== false && generation === this._generation;
   try {
    const result=await Ops.get(changing ? 'settlement/change' : 'settlement/open', {...form,rulesAccepted:this.data.rulesAccepted,authorizationAccepted:this.data.authorizationAccepted,rulesVersion:Agreements.VERSION,authorizationVersion:Agreements.VERSION});
-   if(!isCurrent())return;
+   if(!alive())return;
    this.clearForm(); this.setData({account:result,boundAtText:dateText(result.boundAt)});
    const title = result.opened ? (changing ? '更换成功' : '开通成功') : '申请处理中';
    const content = result.opened
     ? (changing ? '结算银行卡已更换为尾号 ' + result.cardTail + ' 的银行卡，之后的收益将结算至新卡。' : '跑腿结算账户已开通，收益将按支付机构规则结算至本人银行卡。')
     : '支付机构正在处理，请稍后刷新本页核对办理结果。';
-   wx.showModal({title,content,showCancel:false});
+   this._notify({title,content,showCancel:false});
   } catch(e) {
-   if(!isCurrent())return;
+   this._submitInFlight = false;
+   if(!alive())return;
    this.setData({submitting:false});
    // 云端返回的是具体原因（如预留手机号不一致），用弹窗明确告知；填写内容保留，方便修改后重新提交。
-   wx.showModal({title:changing ? '更换未完成' : '开通未成功',content:e.msg || e.message || '办理结果待确认，请稍后刷新或通过反馈与投诉提交问题',showCancel:false,confirmText:'我知道了'});
-   // 失败后状态可能已变化（例如原卡已解除、进入待核对），静默刷新页面上的状态。
+   this._notify({title:changing ? '更换未完成' : '开通未成功',content:e.msg || e.message || '办理结果待确认，请稍后刷新或通过反馈与投诉提交问题',showCancel:false,confirmText:'我知道了'});
+   // 失败后状态可能已变化（例如原卡已解除、进入待核对），静默刷新页面上的状态；在后台时由回到页面的刷新处理。
    this._refreshStatus(true);
-  } finally {if(isCurrent())this.setData({submitting:false});}
+  } finally {this._submitInFlight = false; if(alive())this.setData({submitting:false});}
  }
 });

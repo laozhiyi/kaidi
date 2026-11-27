@@ -95,10 +95,10 @@ test('sent and received review lists expose public profiles and ratings without 
   await service.insert('rider', review(f, id, 4));
   f.table('user').set('foreign-profile', { _id: 'foreign-profile', _pid: 'elsewhere', USER_MINI_OPENID: 'rider', USER_NAME: 'foreign-name', USER_PIC: 'foreign-avatar' });
   for (const [user, direction, name, avatar, score] of [
-    ['poster', 'sent', '陈同学', 'cloud://chen-avatar', 5],
-    ['poster', 'received', '陈同学', 'cloud://chen-avatar', 4],
-    ['rider', 'sent', '林同学', 'cloud://lin-avatar', 4],
-    ['rider', 'received', '林同学', 'cloud://lin-avatar', 5]
+    ['poster', 'sent', '匿名用户', '', 5],
+    ['poster', 'received', '匿名用户', '', 4],
+    ['rider', 'sent', '匿名用户', '', 4],
+    ['rider', 'received', '匿名用户', '', 5]
   ]) {
     const result = await service.myList(user, 1, direction);
     assert.equal(result.list.length, 1);
@@ -106,6 +106,8 @@ test('sent and received review lists expose public profiles and ratings without 
     assert.deepEqual(Object.keys(row).sort(), ['_id', 'REVIEW_NAME', 'REVIEW_PIC', 'REVIEW_SCORE', 'REVIEW_CONTENT'].sort());
     assert.equal(row.REVIEW_NAME, name); assert.equal(row.REVIEW_PIC, avatar); assert.equal(row.REVIEW_SCORE, score); assert.equal(row.REVIEW_CONTENT, '沟通及时');
     assert.ok(!JSON.stringify(result).includes(id));
+    // 已完成订单双方匿名：列表不能带出对方的称呼或头像。
+    for (const secret of ['陈同学', '林同学', 'chen-avatar', 'lin-avatar', 'foreign']) assert.ok(!JSON.stringify(result).includes(secret), secret);
   }
   assert.equal((await service.myList('other', 1, 'received')).total, 0);
   await assert.rejects(service.myList('poster', 1, 'all'), /评价类型/);
@@ -119,7 +121,7 @@ test('historical reviews remain readable when the order is unavailable or the co
   f.table('mail').delete(id);
   f.table('user').delete('rider');
   const result = await service.myList('poster');
-  assert.equal(result.list.length, 1); assert.equal(result.list[0].REVIEW_NAME, 'rider');
+  assert.equal(result.list.length, 1); assert.equal(result.list[0].REVIEW_NAME, '匿名用户');
   assert.equal(result.list[0].REVIEW_PIC, ''); assert.equal(result.list[0].REVIEW_CONTENT, '沟通及时');
   assert.equal(result.list[0].REVIEW_ORDER_ID, undefined);
 });

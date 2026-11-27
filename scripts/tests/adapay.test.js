@@ -592,6 +592,44 @@ test('the settlement card cannot be changed while the rider has unfinished order
  assert.deepEqual(t.calls.filter(x=>x.includes('delete')),[]);
 });
 
+test('an order accepted between the open-order check and the change reservation cancels the change before the provider is called',async()=>{
+ const t=accountHarness((m,p,b,member)=>{
+  if(p==='/v1/members/realname')return realnameOk(member);
+  if(p==='/v1/settle_accounts')return bank('bank1',b.account_info.card_id);
+  throw Error('unexpected '+p);
+ });
+ await t.service.open('rider',riderForm());
+ const before=JSON.stringify(t.row());
+ // 第一次检查时还没有订单；写入 changing 后再查，接单已经提交。
+ let checks=0;t.service.openOrders=async()=>++checks===1?'':'你还有未完成的接单订单，订单全部完成或取消后才能更换结算银行卡';
+ await assert.rejects(t.service.change('rider',riderForm({bankCard:'6222020000005678'})),/未完成的接单订单/);
+ assert.equal(checks,2);assert.deepEqual(t.calls.filter(x=>x.includes('delete')),[]);
+ const row=t.row();assert.equal(row.status,'ready');assert.equal(row.accountId,'bank1');assert.equal(row.cardTail,'1234');
+ const {updatedAt:_a,...restored}=row,{updatedAt:_b,...original}=JSON.parse(before);
+ assert.equal(JSON.stringify(restored),JSON.stringify(original),'the account returns to its state before the attempt');
+ await t.service.requireReady('rider');
+});
+
+test('legacy accounts keep their opening and bind times when a change is refused or terms are accepted again',async()=>{
+ const t=accountHarness((m,p,b,member)=>{
+  if(p==='/v1/members/realname')return realnameOk(member);
+  if(p==='/v1/settle_accounts')return bank('bank1',b.account_info.card_id);
+  if(p==='/v1/settle_accounts/delete')throw rejected('');
+  throw Error('unexpected '+p);
+ });
+ await t.service.open('rider',riderForm());
+ const legacyAt=Date.now()-30*86400000,stored=t.row();
+ delete stored.openedAt;delete stored.cardBoundAt;stored.consentedAt=legacyAt;
+ await assert.rejects(t.service.change('rider',riderForm({bankCard:'6222020000005678'})),/继续有效/);
+ assert.equal((await t.service.status('rider')).boundAt,legacyAt,'a refused change does not move the bind time');
+ assert.equal((await t.service.adminSummary('rider')).openedAt,legacyAt);
+ const again=t.row();delete again.openedAt;delete again.cardBoundAt;again.consentedAt=legacyAt;again.consentVersion=again.authorizationVersion='2026-01-01';
+ await t.service.acceptAgreements('rider',riderForm());
+ assert(t.row().consentedAt>legacyAt,'the new consent time is recorded');
+ assert.equal((await t.service.status('rider')).boundAt,legacyAt);
+ assert.equal((await t.service.adminSummary('rider')).openedAt,legacyAt,'re-accepting terms does not move the opening time');
+});
+
 test('every card change is kept in the account history with its own time, and the bind time moves to the new card',async()=>{
  let deletion='ok';
  const t=accountHarness((m,p,b,member)=>{

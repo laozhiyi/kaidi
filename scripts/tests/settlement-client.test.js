@@ -94,6 +94,31 @@ test('switching to the background keeps the form in page memory without reloadin
  assert.equal(page.data.rulesAccepted, true);
  assert.equal(page.data.authorizationAccepted, true);
 });
+test('leaving the page while opening keeps the request result and reports it on return', async () => {
+ for (const outcome of ['success', 'failure']) {
+  const calls=[];let finish;
+  const { page, modals } = settlement(async (route) => {
+   calls.push(route);
+   if (route === 'settlement/status') return { opened: outcome === 'success' && calls.includes('settlement/open') };
+   return new Promise((resolve, reject) => { finish = () => outcome === 'success' ? resolve({ opened:true, cardTail:'0000', boundAt: 1 }) : reject(new Error('预留手机号不一致')); });
+  });
+  await page.onShow();
+  page.data.form = filled(); page.bindAgreement({ detail:{ value:['rules','authorization'] } });
+  const submit = page.bindSubmit(); assert.equal(page.data.submitting, true);
+  page.onHide(); assert.equal(page.data.submitting, true, outcome + ': hiding keeps the button disabled');
+  page.onShow(); assert.equal(page.data.submitting, true, outcome + ': returning before the reply does not re-enable submit');
+  assert.equal(calls.filter(route => route === 'settlement/status').length, 1, outcome + ': no refresh races the pending request');
+  await page.bindSubmit(); assert.equal(calls.filter(route => route === 'settlement/open').length, 1, outcome + ': no duplicate submission');
+  page.onHide(); finish(); await submit;
+  assert.equal(page.data.submitting, false); assert.equal(modals.length, 0, outcome + ': no dialog while hidden');
+  if (outcome === 'success') { assert.equal(page.data.account.opened, true); assert(Object.values(page.data.form).every(value => value === '')); }
+  else assert.deepEqual(page.data.form, filled(), 'failure keeps the form for correction');
+  await page.onShow();
+  assert.equal(modals.length, 1); assert.equal(modals[0].title, outcome === 'success' ? '开通成功' : '开通未成功');
+  if (outcome === 'failure') assert.match(modals[0].content, /预留手机号不一致/);
+  await page.onShow(); assert.equal(modals.length, 1, outcome + ': the notice is shown once');
+ }
+});
 test('a long absence clears the form when the page is shown again', async () => {
  const { page } = settlement(async () => ({ opened:false }));
  await page.onShow();

@@ -420,7 +420,8 @@ class MailService extends Base {
   const result = rules.project(mail,userId);
   if (result.mypost || result.myaccept) { await this._user(userId, { allowPending: result.mypost && !result.myaccept }); if (mail.MAIL_ACCEPT_USER_ID && mail.MAIL_STATUS !== 9) result.acceptUser = await UserModel.getOne({USER_MINI_OPENID:mail.MAIL_ACCEPT_USER_ID},'USER_NAME,USER_MOBILE'); }
   if ((result.mypost || result.myaccept) && mail.MAIL_ACCEPT_USER_ID && mail.MAIL_ACCEPT_USER_ID !== mail.MAIL_USER_ID) result.MAIL_FEEDBACK_TARGET = {
-   name: result.mypost ? mail.MAIL_ACCEPT_USER_NAME || '接单人' : mail.MAIL_USER_NAME || (mail.MAIL_OBJ || {}).poster || '发布者', role: result.mypost ? '接单人' : '发布者'
+   // 已完成订单双方匿名：反馈页只显示对方角色，不显示称呼。
+   name: mail.MAIL_STATUS === 9 ? '匿名用户' : result.mypost ? mail.MAIL_ACCEPT_USER_NAME || '接单人' : mail.MAIL_USER_NAME || (mail.MAIL_OBJ || {}).poster || '发布者', role: result.mypost ? '接单人' : '发布者'
   };
   const favorite = (await new (require('./fav_service.js'))().orderStats(userId, [id], [mail])).list[0];
   Object.assign(result, { MAIL_FAV_CNT: favorite.count, MAIL_IS_FAV: favorite.isFav, MAIL_CAN_FAV: favorite.available });

@@ -109,21 +109,12 @@ class ReviewService extends Base {
     await new Mail()._user(userId);
     if (!['sent', 'received'].includes(direction)) this.AppError('评价类型无效');
     const result = await new (require('./operations_service.js'))().list('order_review', { [direction === 'received' ? 'REVIEW_TO_USER_ID' : 'REVIEW_FROM_USER_ID']: userId }, page, 'REVIEW_ADD_TIME', size);
-    const personField = direction === 'received' ? 'REVIEW_FROM_USER_ID' : 'REVIEW_TO_USER_ID';
-    const nameField = direction === 'received' ? 'REVIEW_FROM_NAME' : 'REVIEW_TO_NAME';
-    const personIds = [...new Set(result.list.map(item => item[personField]).filter(id => typeof id === 'string' && id))];
-    const db = store.database();
-    const people = personIds.length ? await db.collection(store.collection('user')).where({
-      _pid: this.getProjectId(), USER_MINI_OPENID: db.command.in(personIds)
-    }).field({ USER_MINI_OPENID: true, USER_NAME: true, USER_PIC: true }).limit(personIds.length).get() : { data: [] };
-    const profiles = new Map(people.data.map(person => [person.USER_MINI_OPENID, person]));
-    // Review lists expose display fields only; order and account identifiers stay on the server.
+    // 评价只发生在已完成订单上，双方匿名：列表不返回对方称呼、头像，也不返回订单和账号标识。
     result.list = result.list.map(item => {
-      const person = profiles.get(item[personField]);
       return {
         _id: item._id,
-        REVIEW_NAME: person && person.USER_NAME || item[nameField] || '用户',
-        REVIEW_PIC: person && person.USER_PIC || '',
+        REVIEW_NAME: '匿名用户',
+        REVIEW_PIC: '',
         REVIEW_SCORE: item.REVIEW_SCORE,
         REVIEW_CONTENT: item.REVIEW_CONTENT || ''
       };

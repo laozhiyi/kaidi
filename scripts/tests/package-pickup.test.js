@@ -70,6 +70,7 @@ async function formHarness(entry = 'mail_add.js', options = {}) {
    if (name.includes('mail_biz')) return { CHECK_FORM: {}, initFormData: () => ({ fields: setting.MAIL_FIELDS, formCateId: '1', formOrder: 9999 }) };
    if (name.includes('/validate.js')) return { check: data => ({ cateId: data.formCateId, end: data.formEnd }) };
    if (name.includes('cloud_helper')) return { callCloudSumbit: async () => ({ data: options.mail }), callCloudData: async () => options.profile };
+   if (name.includes('content_check_helper')) return { imgTypeCheck: () => true, imgSizeCheck: () => true };
    if (name.includes('public_biz')) return { removeCacheList() {} };
    if (name.includes('page_helper')) return { fmtURLByPID: url => '/projects/crun' + url, showSuccToast() {} };
    if (name.includes('operations_biz')) return { get: async () => f.config, pendingCommand: () => null, error: error => errors.push(error.message),
@@ -94,7 +95,7 @@ async function formHarness(entry = 'mail_add.js', options = {}) {
  assert.equal(page.data.isLoad, true);
  // Parcel counts now start at 0; new-order pages add one small parcel like a user tapping "+".
  if (!options.mail && !page.data.packageItems.length) page.bindPackageTap({ currentTarget: { dataset: { index: 0, step: 1 } } });
- return { page, calls, errors, uploads, backend: f, Controller, async show() {
+ return { page, calls, errors, uploads, backend: f, Controller, wx, async show() {
   if (component) { component.pageLifetimes.show.call(page); await new Promise(resolve => setImmediate(resolve)); }
   else await page.onShow();
  } };
@@ -191,6 +192,60 @@ test('order validation locates missing contacts and preserves the entire draft w
  assert.equal(page.data.packageItems[0].code,'123-456');assert.equal(page.data.mailValues.address2,'二期1栋101');
  assert.equal(calls.length,0);assert.equal(uploads.length,0);
  page.bindMailInput(event({mark:'tel'},'13800000000'));assert.equal(page.data.guideField,'');
+});
+
+test('parcel screenshots stop at the server limit of 10 before anything is uploaded', async () => {
+ const {page,calls,uploads,wx}=await formHarness('mail_add_embedded.js');
+ for(let i=1;i<11;i++)page.bindPackageTap(event({index:0,step:1}));
+ assert.equal(page.data.packageItems.length,11);
+ const toasts=[];let picks=0;wx.showToast=data=>toasts.push(data.title);
+ wx.chooseMedia=options=>{picks++;options.success({tempFiles:[{tempFilePath:'temp/shot-'+picks+'.png',size:1000}]});};
+ for(let i=0;i<10;i++)page.bindPackageImageTap(event({index:i}));
+ assert.equal(picks,10);assert.equal(page.data.packageItems.filter(item=>item.images&&item.images.length).length,10);
+ // 第 11 件不能再选图，提示改填取件码；替换已有截图不受影响。
+ page.bindPackageImageTap(event({index:10}));assert.equal(picks,10);assert.match(toasts.at(-1),/最多上传10张截图.*取件码/);
+ page._choosePackageImage(3);assert.equal(picks,11);
+ // 旧草稿里已有 11 张时，提交前定位到超出的包裹，不上传也不提交。
+ const items=page.data.packageItems.map((item,i)=>({...item,pickupPoint:'雅园 · 中通',images:['temp/'+i+'.png'],code:''}));page.setData({packageItems:items});
+ page.bindMailInput(event({mark:'address2'},'二期1栋101'));page.bindMailInput(event({mark:'poster'},'测试同学'));page.bindMailInput(event({mark:'tel'},'13800000000'));
+ await page.bindFormSubmit();
+ assert.equal(page.data.guideField,'parcel-'+items[10].id);assert.match(page.data.guideMessage,/最多上传10张取件截图.*第11件/);
+ assert.equal(uploads.length,0);assert.equal(calls.length,0);
+});
+
+test('pickup codes are limited to 200 characters on the client and named clearly by the server', async () => {
+ const fields=fs.readFileSync(path.join(root,'miniprogram/projects/crun/pages/mail/add/business_order_fields.wxml'),'utf8');
+ assert.match(fields,/data-mark="code" bindinput="bindPackageItemInput" placeholder="取件码" maxlength="200" disabled="\{\{submitting\}\}"/);
+ const {page,calls,uploads}=await formHarness('mail_add_embedded.js');
+ setPickup(page,0,'雅园','中通');page.bindPackageItemInput(event({index:0,mark:'code'},'快递短信'.repeat(51)));
+ page.bindMailInput(event({mark:'address2'},'二期1栋101'));page.bindMailInput(event({mark:'poster'},'测试同学'));page.bindMailInput(event({mark:'tel'},'13800000000'));
+ await page.bindFormSubmit();
+ assert.equal(page.data.guideField,'parcel-'+page.data.packageItems[0].id);assert.match(page.data.guideMessage,/第1件包裹的取件码最多200字/);
+ assert.equal(calls.length,0);assert.equal(uploads.length,0);
+ const parcel=fs.readFileSync(path.join(root,'cloudfunctions/mcloud/project/crun/service/order_plugins/parcel.js'),'utf8');
+ assert.doesNotMatch(parcel,/'code',200/);assert.match(parcel,/件包裹的取件码（最多200字）/);
+});
+
+test('the order total including the upstairs fee is checked against the server limit of 10000 before upload', async () => {
+ const {page,calls,uploads}=await formHarness('mail_add_embedded.js');
+ page.bindPackageTap(event({index:0,step:1}));
+ for(const i of [0,1]){page.bindPackageItemInput(event({index:i,mark:'code'},'CODE'+i));}
+ setPickup(page,0,'雅园','中通');setPickup(page,1,'雅园','中通');
+ page.bindMailInput(event({mark:'address2'},'二期1栋101'));page.bindMailInput(event({mark:'poster'},'测试同学'));page.bindMailInput(event({mark:'tel'},'13800000000'));
+ const price=(i,v)=>{page.bindPackageItemInput(event({index:i,mark:'price'},v));page.bindPackagePriceBlur(event({index:i,mark:'price'},v));};
+ price(0,'6000');price(1,'6000');
+ await page.bindFormSubmit();
+ assert.equal(page.data.guideField,'parcel-'+page.data.packageItems[1].id);assert.match(page.data.guideMessage,/合计.*不能超过10000元.*第2件/);
+ price(1,'4000');page.setData({upstairs:true,tip:5,tipInput:'5'});
+ await page.bindFormSubmit();assert.match(page.data.guideMessage,/加上楼费.*第2件/);
+ assert.equal(calls.length,0);assert.equal(uploads.length,0);
+});
+
+test('the buy fee completes on blur like per-parcel prices', () => {
+ const fields=fs.readFileSync(path.join(root,'miniprogram/projects/crun/pages/mail/add/business_order_fields.wxml'),'utf8');
+ assert.match(fields,/placeholder="请填写本单跑腿费" bindinput="bindPackageItemInput" bindblur="bindPackagePriceBlur" data-index="0" data-mark="price"/);
+ const rules=fs.readFileSync(path.join(root,'cloudfunctions/mcloud/project/crun/service/order_rules.js'),'utf8');
+ assert.doesNotMatch(rules,/订单费用超出范围/);
 });
 
 test('editing a different parcel does not hide the first parcel problem', async () => {

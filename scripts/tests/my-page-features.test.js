@@ -754,6 +754,39 @@ test('collection saves coalesce repeated taps and do not discard an editor befor
   pending.resolve({ ok: true }); await first; assert.equal(page.data.contactEditorVisible, false);
 });
 
+test('collection saves ask for current agreements when the stored consent is outdated', async () => {
+  const h = harness(), page = h.page('my/contact/contact.js');
+  page.applyUser(page, { ...h.user, USER_AGREEMENTS: { userVersion: '2026-01-01', privacyVersion: '2026-01-01', acceptedAt: 1 } });
+  assert.equal(page.data.profileAgreementCurrent, false);
+  const dialogs = []; let answer = { cancel: true };
+  h.wx.showModal = dialog => { dialogs.push(dialog); dialog.success(answer); };
+  const edits = () => h.calls.filter(call => call.route === 'passport/edit_base');
+
+  // 「查看协议」打开协议页，不保存，编辑框保留。
+  page.bindEditContact(event({ index: 0 })); await page.bindSaveContact();
+  assert.equal(dialogs.length, 1); assert.match(dialogs[0].content, /隐私政策已更新/); assert.equal(dialogs[0].confirmText, '同意并保存');
+  assert.match(h.navigation.at(-1).url, /about_agreement\?key=user$/); assert.equal(edits().length, 0); assert.equal(page.data.contactEditorVisible, true);
+
+  // 直接关闭弹窗同样不保存。
+  answer = { confirm: false, cancel: false }; await page.bindSaveContact(); assert.equal(edits().length, 0);
+
+  // 同意后随请求提交当前版本，之后的保存不再询问。
+  answer = { confirm: true }; await page.bindSaveContact();
+  assert.equal(edits().length, 1);
+  assert.equal(JSON.stringify(edits()[0].params.agreements), JSON.stringify({ accepted: true, userVersion: '2026-11-27', privacyVersion: '2026-11-27' }));
+  assert.equal(page.data.profileAgreementCurrent, true); assert.equal(page.data.contactEditorVisible, false);
+  page.bindEditContact(event({ index: 0 })); await page.bindSaveContact();
+  assert.equal(dialogs.length, 3); assert.equal(edits().length, 2); assert.equal(edits()[1].params.agreements, undefined);
+});
+
+test('collection saves for users with current consent send no agreement fields and never prompt', async () => {
+  const h = harness(), page = h.page('my/contact/contact.js'); page.applyUser(page, h.user);
+  let prompted = 0; h.wx.showModal = () => { prompted++; };
+  page.bindEditContact(event({ index: 0 })); await page.bindSaveContact();
+  const edit = h.calls.find(call => call.route === 'passport/edit_base');
+  assert.equal(prompted, 0); assert.ok(edit); assert.equal(edit.params.agreements, undefined);
+});
+
 test('deleting a preceding contact keeps the current edit attached to the same person', async () => {
   const h = harness(), page = h.page('my/contact/contact.js'); page.applyUser(page, h.user);
   page.bindEditContact(event({ index: 1 }));

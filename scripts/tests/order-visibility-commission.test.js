@@ -343,7 +343,7 @@ test('each package price keeps at most two decimals without a 10 yuan cap, compl
  h.page.bindPackageTap({ currentTarget: { dataset: { index: 0, step: 1 } } });
  const input = value => h.page.bindPackageItemInput({ currentTarget: { dataset: { index: 0, mark: 'price' } }, detail: { value } });
  const blur = value => h.page.bindPackagePriceBlur({ currentTarget: { dataset: { index: 0 } }, detail: { value } });
- for (const [raw, kept] of [['12', '12'], ['128.5', '128.5'], ['123456', '1234'], ['9.999', '9.99'], ['15.678', '15.67'], ['0.5', '5'], ['.8', '8'], ['3.4.5', '3.45'], ['a7', '7']]) assert.equal(input(raw), kept, raw);
+ for (const [raw, kept] of [['12', '12'], ['128.5', '128.5'], ['123456', '12345'], ['10000', '10000'], ['9.999', '9.99'], ['15.678', '15.67'], ['0.5', '5'], ['.8', '8'], ['3.4.5', '3.45'], ['a7', '7']]) assert.equal(input(raw), kept, raw);
  for (const [raw, done] of [['5', '5.00'], ['5.', '5.00'], ['5.5', '5.50'], ['9.99', '9.99'], ['25', '25.00']]) {
   assert.equal(blur(raw), done, raw);
   assert.equal(h.page.data.packageItems[0].price, done);

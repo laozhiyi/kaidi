@@ -19,6 +19,7 @@ function setData(patch, callback) {
 
 function makeProfile(address = '1栋101室') {
   return { _id: 'profile', USER_NAME: '小林', USER_MOBILE: '13800000000', USER_STATUS: 1,
+    USER_AGREEMENTS: { userVersion: '2026-11-27', privacyVersion: '2026-11-27', acceptedAt: 1 },
     USER_FORMS: [
       { mark: 'campus', type: 'text', val: '育才校区' },
       { mark: 'contacts', type: 'json', val: [{ name: '联系人', phone: '13900000000', isDefault: true }] },

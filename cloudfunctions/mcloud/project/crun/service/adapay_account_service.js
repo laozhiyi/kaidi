@@ -69,6 +69,11 @@ function readyFields(row, accountId) {
  if (last && last.result === 'failed' && last.toTail !== row.cardTail) history = addHistory({cardHistory:history},{id:crypto.randomBytes(8).toString('hex'),at:now,fromTail:last.fromTail,toTail:row.cardTail,result:'succeeded',updatedAt:now});
  return {openedAt:row.openedAt || now,cardBoundAt:changed ? now : row.cardBoundAt,cardHistory:history};
 }
+// 老记录没有 cardBoundAt / openedAt，显示时借用 consentedAt。换卡和重新同意协议会改写 consentedAt，
+// 改写前先把这两个时间固定下来，避免显示成之后某次操作的时间。
+function pinTimes(row) {
+ return {cardBoundAt:row.cardBoundAt === undefined ? row.consentedAt || 0 : row.cardBoundAt,openedAt:row.openedAt || row.consentedAt || 0};
+}
 // Compare visible digits of provider-masked numbers in memory; never persist them.
 function numberMatches(value, expected) {
  if (typeof value !== 'string') return false;
@@ -191,10 +196,21 @@ class AdapayAccountService {
    await store.limitInTransaction(tx,'crun',userId,'adapay-open',5,3600000);
    // 记下原账户：若进程在删除前后中断，下次提交时 reconcile 可据此查询并恢复。
    // 同时写一条换卡记录，后续每个结束分支都会更新它的结果。
-   await store.set(tx,'payment',id,{...row,consentVersion:CONSENT_VERSION,authorizationVersion:CONSENT_VERSION,consentedAt:now,status:'changing',previousAccountId:row.accountId,previousCardTail:row.cardTail,leaseUntil:now+60000,updatedAt:now,
+   await store.set(tx,'payment',id,{...row,...pinTimes(row),consentVersion:CONSENT_VERSION,authorizationVersion:CONSENT_VERSION,consentedAt:now,status:'changing',previousAccountId:row.accountId,previousCardTail:row.cardTail,leaseUntil:now+60000,updatedAt:now,
     cardHistory:addHistory(row,{id:entryId,at:now,fromTail:row.cardTail || '',toTail:p.card.slice(-4),result:'processing',updatedAt:now})});
    return row;
   });
+  // 上面的检查在事务外：检查之后、写入 changing 之前提交的接单仍可能通过。写入 changing 后新的接单都会被拒，
+  // 此时再查一次；发现进行中的订单就恢复原账户，不调用支付机构。
+  const lateBlocked = await this.openOrders(userId);
+  if (lateBlocked) {
+   await store.transaction(async tx => {
+    const row = await this.stored(userId,tx);
+    if (row?.status !== 'changing' || !(row.cardHistory || []).some(item => item.id === entryId)) return;
+    await store.set(tx,'payment',id,{...old,updatedAt:Date.now()});
+   });
+   throw new AppError(lateBlocked);
+  }
   try {
    const result = await api.request('POST','/v1/settle_accounts/delete',{member_id:old.memberId,settle_account_id:old.accountId});
    if (result?.status !== 'succeeded' || result.id && result.id !== old.accountId) throw new Error('ADAPAY_DELETE_NOT_CONFIRMED');
@@ -236,7 +252,7 @@ class AdapayAccountService {
    if (!row || row.status!=='ready') throw new AppError('请先完成结算开户');
    if (Agreements.currentRider(row)) return mask(row);
    const now=Date.now(), record={consentVersion:CONSENT_VERSION,authorizationVersion:CONSENT_VERSION,consentedAt:now};
-   const next={...row,...record,cardBoundAt:row.cardBoundAt === undefined ? row.consentedAt || 0 : row.cardBoundAt,consentHistory:[...(row.consentHistory || []),{consentVersion:row.consentVersion || '',authorizationVersion:row.authorizationVersion || '',consentedAt:row.consentedAt || 0}],updatedAt:now};
+   const next={...row,...record,...pinTimes(row),consentHistory:[...(row.consentHistory || []),{consentVersion:row.consentVersion || '',authorizationVersion:row.authorizationVersion || '',consentedAt:row.consentedAt || 0}],updatedAt:now};
    await store.set(tx,'payment',key(userId),next); return mask(next);
   });
  }

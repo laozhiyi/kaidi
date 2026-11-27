@@ -79,3 +79,24 @@ test('group UI contains no QR rendering or image actions, and existing admin nav
  const settings=fs.readFileSync(path.join(root,'miniprogram/projects/crun/pages/admin/settings/index/admin_settings.js'),'utf8');
  assert.match(settings,/key: 'aftersales'/);assert.match(settings,/云速取-反馈群/);
 });
+
+test('a failed QQ group load shows the error, leaves loading and can be retried',async()=>{
+ let fail=true;const h=harness(page,()=>{if(fail)throw Error('读取失败');return Group.build('123456789','');});
+ await h.page.onLoad();
+ assert.match(h.page.data.error,/读取失败/);assert.equal(h.page.data.loading,false);assert.equal(h.page.data.isLoad,false);
+ assert.equal(h.page.data.groupNumber,Group.DEFAULT_NUMBER,'the default number stays visible');
+ fail=false;await h.page.load();
+ assert.equal(h.page.data.error,'');assert.equal(h.page.data.isLoad,true);assert.equal(h.page.data.groupNumber,'123456789');
+});
+
+test('the QQ group settings page is reachable from admin settings and the about list',()=>{
+ const target='/projects/crun/pages/admin/settings/aftersales/admin_aftersales_settings';
+ const {UI}=harness(page,()=>[]);
+ assert.equal(UI.ROUTES.aftersales,target);assert.equal(UI.url('aftersales'),target);
+ const app=fs.readFileSync(path.join(root,'miniprogram/app.json'),'utf8');assert.ok(app.includes('admin/settings/aftersales/admin_aftersales_settings'));
+ const list=fs.readFileSync(path.join(root,'miniprogram/projects/crun/pages/admin/setup/about_list/admin_setup_about_list.wxml'),'utf8');
+ const link=/wx:if="\{\{item\.key==='SETUP_CONTENT_AFTERSALES'\}\}"[^>]*bindtap="url" data-url="([^"]+)">设置 QQ 群号/.exec(list);
+ assert.ok(link,'about list keeps the QQ group entry');
+ const from=path.join(root,'miniprogram/projects/crun/pages/admin/setup/about_list');
+ assert.equal(path.resolve(from,link[1]),path.join(root,'miniprogram'+target),'the relative link resolves to the settings page');
+});
