@@ -3,13 +3,13 @@
 	<!-- 顶部蓝色导语区：系统导航栏已提供返回，这里只保留标题、说明与历史入口 -->
 	<view class="hero">
 		<view class="hero-bar">
-			<text class="hero-title">反馈投诉</text>
+			<text class="hero-title">意见反馈</text>
 			<view class="hero-history" bindtap="bindMyListTap" hover-class="hero-hover">
 				<text>我的反馈</text>
 				<text class="hero-history-arrow">›</text>
 			</view>
 		</view>
-		<view class="hero-desc">您的建议和投诉是我们改进的动力</view>
+		<view class="hero-desc">您的建议和反馈是我们改进的动力</view>
 	</view>
 
 	<view class="form-wrap">
@@ -44,7 +44,7 @@
 				<text class="fb-order-empty-arrow">›</text>
 			</view>
 
-            <view wx:if="{{orderBrief}}" class="fb-order-tip">提交投诉不会自动暂停确认收货或分账。管理员核实后可将未完成订单转入异常处理；请及时查看处理回复。</view>
+            <view wx:if="{{orderBrief}}" class="fb-order-tip">提交反馈不会自动暂停确认收货或分账。管理员核实后可将未完成订单转入异常处理；请及时查看处理回复。</view>
 			<view wx:if="{{orderLoading}}" class="fb-order-tip">正在核实关联订单…</view>
 			<view wx:elif="{{orderError}}" class="fb-order-tip fb-order-tip-error">{{orderError}}<text class="retry-link" bindtap="loadOrder">重新加载</text></view>
 		</view>
@@ -59,10 +59,10 @@
 
 		<aftersales-card />
 
-		<!-- 选择投诉对象 -->
+		<!-- 选择反馈对象 -->
 		<view wx:if="{{!orderTarget}}" class="card">
 			<view class="card-title">
-				<text class="card-title-text">投诉对象</text>
+				<text class="card-title-text">反馈对象</text>
 				<text class="card-title-required">*</text>
 			</view>
 			<view class="tag-row">
@@ -79,15 +79,15 @@
 
 			<!-- 自定义输入框 -->
 			<view wx:if="{{customShow}}" class="custom-input-wrap">
-				<input class="custom-input" maxlength="20" placeholder="请输入投诉对象"
+				<input class="custom-input" maxlength="20" placeholder="请输入反馈对象"
 					value="{{customTarget}}" bindinput="bindCustomInput" disabled="{{isSubmit}}" />
 			</view>
 		</view>
 
-		<!-- 写投诉内容 -->
+		<!-- 写反馈内容 -->
 		<view class="card">
 			<view class="card-title">
-				<text class="card-title-text">投诉内容</text>
+				<text class="card-title-text">反馈内容</text>
 				<text class="card-title-required">*</text>
 			</view>
 			<textarea class="textarea" maxlength="500"

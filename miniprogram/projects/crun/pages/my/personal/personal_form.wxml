@@ -44,7 +44,7 @@
         <view wx:else class="profile-card-add" bindtap="bindChooseStudentCard" role="button" aria-label="上传学生证"><text class="icon-add"></text><text class="profile-card-add-text">上传</text></view>
       </view>
       <view wx:if="{{!isEdit && !profileStudentCard.length}}" class="profile-required-hint">请上传学生证照片后再保存</view>
-      <view wx:if="{{studentProofLocked}}" class="profile-required-hint">已审核，如需更正请通过反馈与投诉申请</view>
+      <view wx:if="{{studentProofLocked}}" class="profile-required-hint">已审核，如需更正请通过意见反馈申请</view>
     </view>
     <view id="guide-campus" class="{{guideField === 'campus' ? 'form-guide-invalid' : ''}} profile-campus-control {{campus ? 'profile-campus-selected' : ''}}" bindtap="bindOpenCampusPicker" hover-class="profile-campus-pressed" role="button" aria-label="{{profileCampusFixed ? '查看校区' : '选择所在校区'}}"><view wx:if="{{guideField === 'campus'}}" class="form-guide-message">{{guideMessage}}</view><view><view class="profile-field-label">所在校区</view><view class="profile-campus-value">{{campus || '请选择所在校区'}}</view></view><view class="profile-campus-action">{{profileCampusFixed ? '查看校区' : campus ? '更换' : '选择'}}<text class="icon-right"></text></view></view>
   </view>

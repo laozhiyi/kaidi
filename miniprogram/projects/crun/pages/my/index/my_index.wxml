@@ -44,7 +44,7 @@
     <view class="my-section-title">服务与帮助</view>
     <view class="my-grid">
       <view wx:if="{{serviceOpen}}" class="my-grid-item" bindtap="bindCampusServiceTap" hover-class="my-tap" aria-label="在线客服{{serviceBadge?'，'+serviceBadge+'条未读回复':''}}"><view class="my-grid-icon my-service-icon"><text class="icon-service"></text><text wx:if="{{serviceBadge}}" class="my-message-badge">{{serviceBadge}}</text></view><text class="my-grid-label">在线客服</text></view>
-      <view class="my-grid-item" bindtap="bindFeedbackTap" hover-class="my-tap"><view class="my-grid-icon"><text class="icon-comment"></text></view><text class="my-grid-label">反馈与投诉</text></view>
+      <view class="my-grid-item" bindtap="bindFeedbackTap" hover-class="my-tap"><view class="my-grid-icon"><text class="icon-comment"></text></view><text class="my-grid-label">意见反馈</text></view>
       <view class="my-grid-item" bindtap="bindInviteTap" hover-class="my-tap"><view class="my-grid-icon my-icon-warm"><text class="icon-friendadd"></text></view><text class="my-grid-label">邀请好友</text></view>
       <view class="my-grid-item" bindtap="bindAboutTap" hover-class="my-tap"><view class="my-grid-icon my-icon-green"><text class="icon-info"></text></view><text class="my-grid-label">关于我们</text></view>
     </view>

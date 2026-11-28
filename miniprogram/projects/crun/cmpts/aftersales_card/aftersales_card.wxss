@@ -4,11 +4,8 @@
 .as-tag { color:#397bc8; font-size:22rpx; }
 .as-muted { color:#8494a9; font-size:24rpx; line-height:1.6; }
 .as-link { margin-left:12rpx; color:#397bc8; }
-.as-number-row { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:24rpx; border:1rpx solid #dce7f7; border-radius:14rpx; background:#f5f8fd; }
-.as-number-copy { flex:1; min-width:0; }
-.as-number-label { margin-bottom:8rpx; color:#687d99; font-size:24rpx; }
-.as-number { color:#243b5b; font-size:38rpx; font-weight:600; line-height:1.4; word-break:break-all; }
-.as-copy { flex-shrink:0; margin:0; padding:16rpx 20rpx; border-radius:10rpx; background:#397bc8; color:#fff; font-size:24rpx; line-height:1.4; }
-.as-copy::after { border:0; }
+.as-qr { display:block; width:100%; margin:0 auto 24rpx; }
+.as-save { margin:0 auto; padding:12rpx 24rpx; width:auto; max-width:280rpx; background:#edf3ff; color:#397bc8; border-radius:12rpx; font-size:26rpx; line-height:1.7; }
+.as-save::after { border:0; }
 .as-tip,.as-note { margin-top:20rpx; color:#52647c; font-size:26rpx; line-height:1.7; word-break:break-all; }
 .as-footnote { margin-top:16rpx; }

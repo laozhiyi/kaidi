@@ -9,12 +9,16 @@ function harness(relative, get = () => ({}), options = {}) {
   const calls = [], navigation = [], errors = [], patches = [], scrolls = [], events = [], confirmations = [], sheets = [], cache = {};
   const wx = {
     setNavigationBarColor() {}, setNavigationBarTitle() {}, stopPullDownRefresh() {}, showToast() {}, showLoading() {}, hideLoading() {},
-    enableAlertBeforeUnload() {}, disableAlertBeforeUnload() {}, previewImage() {}, makePhoneCall() {},
+    enableAlertBeforeUnload() {}, disableAlertBeforeUnload() {}, previewImage(data) { if (data.success) data.success(); }, makePhoneCall() {},
+    env: { USER_DATA_PATH: 'wxfile://usr' },
+    getImageInfo(data) { data.success({path:data.src}); },
+    getFileSystemManager() { return {copyFile(data) { data.success(); }}; },
     setClipboardData: data => events.push({ copy: data.data }),
     pageScrollTo: data => scrolls.push(data),
     chooseMedia(data) {
-      if (options.mediaCancelled) { if (data.fail) data.fail({ errMsg: 'chooseMedia:fail cancel' }); return; }
+      if (options.mediaCancelled) { if (data.fail) data.fail({ errMsg: 'chooseMedia:fail cancel' }); if (data.complete) data.complete(); return; }
       if (data.success) data.success({ tempFiles: [{ tempFilePath: 'wxfile://tmp/qr.png', size: 640 * 1024 }] });
+      if (data.complete) data.complete();
     },
     showModal(data) { confirmations.push(data); if (data.success) data.success({ confirm: options.confirm !== false }); },
     showActionSheet(data) { sheets.push(data); },
@@ -85,7 +89,7 @@ function harness(relative, get = () => ({}), options = {}) {
         };
         if (request.endsWith('/public_biz.js')) return { removeCacheList() {}, getRichEditorDesc: (desc, content) => desc || content.filter(item => item.type === 'text').map(item => item.val).join('').slice(0, 100) };
         if (request.endsWith('/file_helper.js')) return { openDoc: (title, url) => events.push({ open: url, title }) };
-        if (/\/(?:admin_(?:console|settings|export|catalog|manager_form|news)_biz|mail_ui_biz|address_biz|news_biz|validate|project_setting|feedback_group|chat_page)\.js$/.test(request)) return evaluate(path.relative(mini, path.resolve(path.dirname(absolute), request)));
+        if (/\/(?:admin_(?:console|settings|export|catalog|manager_form|news)_biz|mail_ui_biz|address_biz|news_biz|validate|project_setting|feedback_group|feedback_image_biz|chat_page)\.js$/.test(request)) return evaluate(path.relative(mini, path.resolve(path.dirname(absolute), request)));
         throw new Error('Unexpected dependency: ' + request);
       }
     }, { filename: absolute });

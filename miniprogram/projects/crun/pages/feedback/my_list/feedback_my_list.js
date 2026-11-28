@@ -43,7 +43,7 @@ Page({
 		if (res && Array.isArray(res.list)) {
 			list = res.list.map(item => ({
 				...item,
-				// 提交反馈时 FB_TITLE 存的是投诉对象文本，直接作为卡片左上角标签
+				// 提交反馈时 FB_TITLE 存的是反馈对象文本，直接作为卡片左上角标签
 				_targetText: item.FB_TITLE || '其他',
 				_statusDesc: STATUS_DESC[item.FB_STATUS] || STATUS_DESC[0]
 			}));

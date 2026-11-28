@@ -7,7 +7,7 @@ const MailUI = require('../../../biz/mail_ui_biz.js');
 
 Page({
 	data: {
-		// 投诉对象
+		// 反馈对象
 		targetArr: [
 			{ val: 'manager', label: '校区负责人' },
 			{ val: 'rider', label: '接单人' },
@@ -99,7 +99,7 @@ Page({
 		wx.navigateBack();
 	},
 
-	// 切换投诉对象
+	// 切换反馈对象
 	bindTargetTap: function (e) {
 		if (this.data.isSubmit || this._submitted) return;
 		let idx = pageHelper.dataset(e, 'idx');
@@ -164,7 +164,7 @@ Page({
 		});
 	},
 
-	// 获取最终投诉对象文本
+	// 获取最终反馈对象文本
 	_getTargetText: function () {
 		if (this.data.orderTarget) return this.data.orderTarget.role + ' · ' + this.data.orderTarget.name;
 		let { targetArr, targetIdx, customShow, customTarget } = this.data;
@@ -187,10 +187,10 @@ Page({
 
 		let targetText = this._getTargetText();
 		if (!targetText) {
-			return pageHelper.showModal('请选择或填写投诉对象', '温馨提示');
+			return pageHelper.showModal('请选择或填写反馈对象', '温馨提示');
 		}
 		if (!content || !content.trim()) {
-			return pageHelper.showModal('请填写投诉内容', '温馨提示');
+			return pageHelper.showModal('请填写反馈内容', '温馨提示');
 		}
 		if (content.length > 500) {
 			return pageHelper.showModal('内容不能超过500字', '温馨提示');

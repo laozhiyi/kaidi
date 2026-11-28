@@ -6,9 +6,8 @@ Page({
   onLoad() {
     if (!UI.start(this)) return;
     const meta = {
-      SETUP_CONTENT_CONTACT: { icon: 'service', description: '联系渠道、咨询方式与服务说明' },
       SETUP_CONTENT_DISCLAIMER: { icon: 'info', description: '注册时用户需阅读并同意的免责声明；留空则显示默认文案' },
-      SETUP_CONTENT_AFTERSALES: { icon: 'service', description: '反馈投诉页的 QQ 群号与说明，在「云速取-反馈群」中设置' }
+      SETUP_CONTENT_AFTERSALES: { icon: 'service', description: '意见反馈页的 微信群二维码与说明，在「云速取-反馈群」中设置' }
     };
     this.setData({ list: projectSetting.SETUP_CONTENT_ITEMS.map(item => ({ ...item,
       icon: (meta[item.key] || {}).icon || 'info',

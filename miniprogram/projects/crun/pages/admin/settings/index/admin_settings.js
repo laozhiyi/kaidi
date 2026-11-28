@@ -12,10 +12,10 @@ Page({
     { title: '内容与客服', items: [
       { key: 'news', title: '公告管理', desc: '发布公告、编辑内容、调整展示', icon: 'icon-notice' },
       { key: 'chats', title: '客服会话', desc: '查看咨询并回复用户', icon: 'icon-message', serviceAllowed: true },
-      { key: 'feedback', title: '投诉与反馈', desc: '核实投诉、回复用户并结案', icon: 'icon-notice', serviceAllowed: true },
+      { key: 'feedback', title: '意见反馈', desc: '核实问题、回复用户并结案', icon: 'icon-notice', serviceAllowed: true },
       { key: 'invite', title: '客服邀请码', desc: '一次性开通客服权限，2 小时内有效', icon: 'icon-friendadd' },
-      { key: 'about', title: '关于与联系', desc: '小程序介绍与联系信息', icon: 'icon-info' },
-      { key: 'aftersales', title: '云速取-反馈群', desc: '设置 QQ 群号和加群说明', icon: 'icon-group' },
+      { key: 'about', title: '关于与说明', desc: '小程序介绍与内容设置', icon: 'icon-info' },
+      { key: 'aftersales', title: '云速取-反馈群', desc: '更换微信群二维码和加群说明', icon: 'icon-group' },
       { key: 'qr', title: '小程序码', desc: '获取小程序推广入口', icon: 'icon-qr_code' }
     ] },
     { title: '数据与系统', items: [

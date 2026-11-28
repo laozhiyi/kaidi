@@ -1,12 +1,11 @@
 <view class="as-card">
- <view class="as-head"><text class="as-title">云速取-反馈群</text><text class="as-tag">QQ 群交流</text></view>
+ <view class="as-head"><text class="as-title">云速取-反馈群</text><text class="as-tag">微信群交流</text></view>
  <view wx:if="{{loading}}" class="as-muted">正在更新群信息…</view>
- <view wx:if="{{error}}" class="as-muted">群信息暂未更新，可先使用以下群号<text class="as-link" bindtap="load">重试</text></view>
- <view class="as-number-row">
-  <view class="as-number-copy"><view class="as-number-label">QQ 群号</view><text class="as-number" user-select>{{group.number}}</text></view>
-  <button class="as-copy" bindtap="bindCopy" aria-label="复制 QQ 群号">复制群号</button>
- </view>
- <view class="as-tip">复制群号后，打开 QQ，搜索群号并申请入群。</view>
+ <view wx:if="{{error}}" class="as-muted">群信息暂未更新，可重试或直接提交反馈。<text class="as-link" bindtap="load">重试</text></view>
+ <image wx:if="{{!imageError}}" class="as-qr" src="{{group.image}}" mode="widthFix" show-menu-by-longpress bindtap="bindPreview" binderror="bindImageError" aria-label="云速取反馈群二维码，点击查看大图" />
+ <view wx:else class="as-muted">二维码暂时无法显示，请重试或在下方提交反馈。</view>
+ <button class="as-save" bindtap="bindSave" loading="{{saving}}" disabled="{{saving || imageError}}">保存二维码</button>
+ <view class="as-tip">点击二维码查看大图；也可保存后在微信“扫一扫”中从相册选择，申请加入群聊。</view>
  <view wx:if="{{group.note}}" class="as-note"><text user-select>{{group.note}}</text></view>
- <view class="as-muted as-footnote">订单问题请同时在小程序内提交反馈，便于管理员核实与处理。</view>
+ <view class="as-muted as-footnote">二维码失效或群已满时，请直接提交反馈。订单问题建议关联订单提交，便于管理员核实处理。入群为自愿选择。</view>
 </view>

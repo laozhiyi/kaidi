@@ -3,7 +3,7 @@ const pageHelper = require('../../../../../helper/page_helper.js');
 const ProjectBiz = require('../../../biz/project_biz.js');
 const PassportBiz = require('../../../../../comm/biz/passport_biz.js');
 const Notifications = require('../../../biz/notification_biz.js');
-const TYPE_DESC = { bug: '功能异常', suggest: '功能建议', complain: '投诉举报', other: '其他' };
+const TYPE_DESC = { bug: '功能异常', suggest: '功能建议', complain: '订单与服务问题', other: '其他' };
 function displayTime(value) {
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.replace('T', ' ').slice(0, 16);
   const date = new Date(Number(value) + 8 * 3600000);

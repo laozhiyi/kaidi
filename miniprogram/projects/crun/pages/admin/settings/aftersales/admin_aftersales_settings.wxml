@@ -1,13 +1,13 @@
 <view wx:if="{{isAdmin}}" class="ac-page">
  <view class="ac-breadcrumb"><text class="ac-link" bindtap="bindBack">‹ 管理中心</text><text>/</text><text>云速取-反馈群</text></view>
- <view class="ac-heading"><view><view class="ac-title">QQ 反馈群设置</view><view class="ac-subtitle">用户复制群号后，在 QQ 中搜索并申请入群，无需二维码</view></view></view>
+ <view class="ac-heading"><view><view class="ac-title">微信反馈群设置</view><view class="ac-subtitle">展示微信群二维码，供用户查看或保存后申请入群</view></view></view>
  <view wx:if="{{loading && !isLoad}}" class="ac-card ac-state ac-muted">正在读取群信息…</view>
  <view wx:if="{{error}}" class="ac-card ac-state"><view>{{error}}</view><button wx:if="{{!isLoad}}" class="ac-secondary ac-small" bindtap="load">重新读取</button></view>
  <view wx:if="{{isLoad}}" class="ac-card">
-  <view class="ac-section-head"><text class="ac-section-title">云速取-反馈群</text><text class="ac-badge green">{{configured ? '已配置' : '默认群号'}}</text></view>
-  <view class="ac-field"><view class="ac-label">QQ 群号</view><input class="ac-input" type="number" maxlength="12" value="{{groupNumber}}" data-field="groupNumber" bindinput="bindInput" placeholder="填写用户可搜索的 QQ 群号" disabled="{{busy}}"/></view>
+  <view class="ac-section-head"><text class="ac-section-title">云速取-反馈群</text><text class="ac-badge green">{{configured ? '已配置' : '内置二维码'}}</text></view>
+  <view class="ac-field"><view class="ac-label">微信群二维码</view><image class="group-qr" src="{{qrImage}}" mode="widthFix" bindtap="bindPreview"/><button class="ac-secondary ac-small" bindtap="bindChoose" disabled="{{busy || loading || choosing}}">更换二维码</button></view>
   <view class="ac-field"><view class="ac-label">加群说明（选填）</view><textarea class="ac-textarea" maxlength="200" value="{{note}}" data-field="note" bindinput="bindInput" placeholder="例如：申请入群时请备注校区与问题类型" disabled="{{busy}}"/></view>
-  <view class="ac-row-desc">保存后供反馈页和反馈详情页读取。历史微信二维码不会再展示。</view>
-  <view class="ac-card-actions two"><button class="ac-primary" bindtap="bindSave" loading="{{busy}}" disabled="{{busy || loading}}">保存群信息</button><button class="ac-secondary" bindtap="bindViewPage">查看反馈页</button></view>
+  <view class="ac-row-desc">二维码失效或群已满时，请在此更换。保存后用户重新进入意见反馈页即可读取。</view>
+  <view class="ac-card-actions two"><button class="ac-primary" bindtap="bindSave" loading="{{busy}}" disabled="{{busy || loading || choosing}}">保存群信息</button><button class="ac-secondary" bindtap="bindViewPage">查看反馈页</button></view>
  </view>
 </view>

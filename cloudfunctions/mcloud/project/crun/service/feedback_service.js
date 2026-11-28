@@ -93,7 +93,7 @@ class FeedbackService extends Base {
    await store.set(tx,'feedback',id,{...row,...patch,FB_STATUS:status,FB_REPLY:reply,FB_REPLY_TIME:now,FB_EDIT_TIME:now,FB_VERSION:version+1,FB_HANDLER:adminId,FB_HISTORY:[...(row.FB_HISTORY||[]),event].slice(-100)});
    await store.set(tx,'feedback_request',key,{_pid:this.getProjectId(),id,fingerprint,createdAt:now});
    await store.set(tx,'operation_audit',key,{_pid:this.getProjectId(),action:'feedback_reply',feedbackId:id,...event});
-   await store.set(tx,'notification',key,{_pid:this.getProjectId(),userId:row.FB_USER_ID,feedbackId:id,title:'投诉反馈有新回复',content:'请查看处理结果',createdAt:now,read:false,delivery:'skipped',attempts:0,nextAttemptAt:0});
+   await store.set(tx,'notification',key,{_pid:this.getProjectId(),userId:row.FB_USER_ID,feedbackId:id,title:'意见反馈有新回复',content:'请查看处理结果',createdAt:now,read:false,delivery:'skipped',attempts:0,nextAttemptAt:0});
    const targetId = target ? target.userId : row.FB_TARGET_USER_ID;
    if (targetId && oldScore !== nextScore) await store.set(tx,'notification',store.key(key,'reputation'),{_pid:this.getProjectId(),userId:targetId,reputation:true,title:'信誉分审核结果更新',content:nextScore ? '管理员已完成申诉审核，请查看星级与计分记录。' : '此前的申诉评分已撤销，请查看最新信誉分。',createdAt:now,read:false,delivery:'skipped',attempts:0,nextAttemptAt:0});
   });return {id};

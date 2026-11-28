@@ -4,24 +4,28 @@ const cloudHelper = require('../../../../../helper/cloud_helper.js');
 const Agreements = require('../../../public/agreements.js');
 const EMPTY_TEXT = {
   SETUP_CONTENT_ABOUT: '云速取提供校区内的快递代取与互助服务。具体开放校区和服务规则以平台当前配置为准。',
-  SETUP_CONTENT_CONTACT: '联系方式尚未配置，如需帮助，请在「我的 · 反馈与投诉」联系运营人员。',
   SETUP_CONTENT_DISCLAIMER: '本平台仅为校园同学之间的互助信息撮合，不对订单履约、物品完好及交易纠纷承担担保责任。请在发布和接单前核实对方信息，妥善保管个人隐私与贵重物品，并遵守校规校纪与相关法律法规。使用平台即表示你已知悉并同意以上内容。',
-  SETUP_CONTENT_AFTERSALES: '售后群信息尚未配置，如需帮助，请在「我的 · 反馈与投诉」联系运营人员。'
+  SETUP_CONTENT_AFTERSALES: '售后群信息尚未配置，如需帮助，请在「我的 · 意见反馈」联系运营人员。'
 };
-// 反馈群统一由 QQ 群组件显示。
+// 反馈群统一由微信群二维码组件显示。
 
 Page({
-  data: { key: 'SETUP_CONTENT_ABOUT', title: '关于我们', emptyText: EMPTY_TEXT.SETUP_CONTENT_ABOUT, about: [], hasImage: false, loading: false, error: false, serviceOpen: require('../../../biz/customer_service_biz.js').OPEN },
+  data: { key: 'SETUP_CONTENT_ABOUT', title: '关于我们', emptyText: EMPTY_TEXT.SETUP_CONTENT_ABOUT, about: [], hasImage: false, loading: false, error: false },
   onLoad(options = {}) {
+    if (options.key === 'SETUP_CONTENT_CONTACT') {
+      this._redirected = true;
+      wx.redirectTo({ url: '/projects/crun/pages/feedback/index/feedback_index' });
+      return;
+    }
     ProjectBiz.initPage(this);
     const item = projectSetting.SETUP_CONTENT_ITEMS.find(x => x.key === options.key) || projectSetting.SETUP_CONTENT_ITEMS[0];
-    this.setData({ key: item.key, title: item.title, emptyText: EMPTY_TEXT[item.key] || EMPTY_TEXT.SETUP_CONTENT_CONTACT });
+    this.setData({ key: item.key, title: item.title, emptyText: EMPTY_TEXT[item.key] || EMPTY_TEXT.SETUP_CONTENT_ABOUT });
     wx.setNavigationBarTitle({ title: item.title });
     this.load();
   },
   onUnload() { this._unloaded = true; },
   async load() {
-    if (this.data.loading) return;
+    if (this._redirected || this.data.loading) return;
     this.setData({ loading: true, error: false });
     try {
       const result = await cloudHelper.callCloudSumbit('home/setup_get', { key: this.data.key }, { hint: false });
@@ -44,6 +48,5 @@ Page({
     if (/^cloud:\/\//.test(url)) { try { target = await cloudHelper.getTempFileURLOne(url) || url; } catch (error) { /* 预览失败不影响页面 */ } }
     wx.previewImage({ current: target, urls: [target] });
   },
-  bindContact() { wx.navigateTo({ url: '/projects/crun/pages/about/index/about_index?key=SETUP_CONTENT_CONTACT' }); },
-  bindService() { require('../../../biz/customer_service_biz.js').openCustomerService(); }
+  bindService() { wx.navigateTo({ url: '/projects/crun/pages/feedback/index/feedback_index' }); }
 });

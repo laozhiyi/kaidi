@@ -115,7 +115,7 @@ Page({
  bindBackOrders() { wx.switchTab({ url: '/projects/crun/pages/order/index/order_index' }); },
  bindServiceHelpTap() { require('../../../biz/customer_service_biz.js').openCustomerService(this.data.id); },
  bindCopyOrderTap() { const mail = this.data.mail; if (mail) wx.setClipboardData({ data: String(mail.MAIL_ID || mail._id) }); },
- bindNoticeTap() { if(this.data.mail && (this.data.mail.MAIL_PAYMENT_MODE === 'wechat' || this.data.mail.MAIL_PAYMENT_MODE === 'adapay')) return wx.showModal({title:'微信支付说明',content:require('../../../biz/payment_biz.js').PAY_NOTICE,showCancel:false}); wx.showModal({ title: '结算核对说明', content: '本单结算方式待核对，请通过「我的 · 反馈与投诉」核对支付与退款记录，勿重复向对方转账。', showCancel: false, confirmText: '我知道了' }); },
+ bindNoticeTap() { if(this.data.mail && (this.data.mail.MAIL_PAYMENT_MODE === 'wechat' || this.data.mail.MAIL_PAYMENT_MODE === 'adapay')) return wx.showModal({title:'微信支付说明',content:require('../../../biz/payment_biz.js').PAY_NOTICE,showCancel:false}); wx.showModal({ title: '结算核对说明', content: '本单结算方式待核对，请通过「我的 · 意见反馈」核对支付与退款记录，勿重复向对方转账。', showCancel: false, confirmText: '我知道了' }); },
  bindEditTap() { if (this.data.detailUI && this.data.detailUI.primary === 'edit') wx.navigateTo({ url: '../add/mail_add?id=' + this.data.id }); },
  bindCallTap() { const ui = this.data.detailUI; if (ui && ui.participant && ui.phone) wx.makePhoneCall({ phoneNumber: String(ui.phone) }); },
  bindCopyCodeTap(e) { const mail = this.data.mail; if (!mail || !(mail.mypost || mail.myaccept)) return; const index = e && e.currentTarget.dataset.index; const item = index != null && this.data.detailUI && this.data.detailUI.pickupItems[index]; const code = index != null ? item && item.code : mail.MAIL_OBJ && mail.MAIL_OBJ.code; if (code) wx.setClipboardData({ data: String(code) }); },
@@ -163,7 +163,7 @@ Page({
   if (ui.canResolveException) choices.push({ label: '处理异常订单', action: 'resolve_exception' });
   if (ui.canException) choices.push({ label: '配送异常 / 申请取消', action: 'exception' });
   if (ui.canCancel) choices.push({ label: '取消订单', action: 'cancel' });
-  choices.push({ label: '反馈与投诉', action: 'feedback' });
+  choices.push({ label: '意见反馈', action: 'feedback' });
   if (this.data.config && this.data.config.templateId) choices.push({ label: '订阅订单提醒', action: 'subscribe' });
   wx.showActionSheet({ itemList: choices.map(x => x.label), success: result => {
    if (this.data.busy || this.data.loading || this.data.error) return;

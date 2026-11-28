@@ -164,7 +164,7 @@ Page({
    if(!alive())return;
    this.setData({submitting:false});
    // 云端返回的是具体原因（如预留手机号不一致），用弹窗明确告知；填写内容保留，方便修改后重新提交。
-   this._notify({title:changing ? '更换未完成' : '开通未成功',content:e.msg || e.message || '办理结果待确认，请稍后刷新或通过反馈与投诉提交问题',showCancel:false,confirmText:'我知道了'});
+   this._notify({title:changing ? '更换未完成' : '开通未成功',content:e.msg || e.message || '办理结果待确认，请稍后刷新或通过意见反馈提交问题',showCancel:false,confirmText:'我知道了'});
    // 失败后状态可能已变化（例如原卡已解除、进入待核对），静默刷新页面上的状态；在后台时由回到页面的刷新处理。
    this._refreshStatus(true);
   } finally {this._submitInFlight = false; if(alive())this.setData({submitting:false});}

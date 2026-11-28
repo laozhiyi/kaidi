@@ -63,7 +63,7 @@ function service(config, now = Date.now()) {
  const pad = n => String(n).padStart(2, '0');
  const hours = validHours ? pad(config.openHour) + ':00–' + pad(config.closeHour) + ':00' : '';
  if (config.enabled !== true) return { kind: 'paused', title: '校区暂时停止接单', hours,
-  description: '管理员已暂停新订单。你可以先填写信息，或在「我的 · 反馈与投诉」咨询恢复时间。', canPublish: false };
+  description: '管理员已暂停新订单。你可以先填写信息，或在「我的 · 意见反馈」咨询恢复时间。', canPublish: false };
  if (config.enforceBusinessHours !== true) return { kind: 'open', title: '正常接单', hours: '全天可发布',
   description: '填写取送信息，发布后等待骑手接单', canPublish: true };
  const hour = new Date(now + 8 * 3600000).getUTCHours();

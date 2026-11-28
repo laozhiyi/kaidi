@@ -16,7 +16,7 @@ const OrderFilter = require('../../../biz/order_filter_biz.js');
  *   1 我接的（进行中）              mail/list + sortType='my_accept'
  *   2 我发布的（待支付、待接单与进行中） mail/list + sortType='my_post'
  *   3 已完成（本人未删除）           mail/list + sortType='my_done'
- * 已完成或已取消的订单不再出现在 1、2；已完成订单留在 3，直到本人在卡片上删除，之后只能在反馈投诉里选到。
+ * 已完成或已取消的订单不再出现在 1、2；已完成订单留在 3，直到本人在卡片上删除，之后只能在意见反馈里选到。
  */
 Page({
 	data: {
@@ -467,12 +467,12 @@ Page({
 
 	bindOverTap: function (e) { this.bindDetailTap(e); },
 
-	/** 已完成卡片的删除：只从本人的「已完成」移除，对方不受影响，反馈投诉里仍可选到。 */
+	/** 已完成卡片的删除：只从本人的「已完成」移除，对方不受影响，意见反馈里仍可选到。 */
 	bindDeleteDoneTap: async function (e) {
 		const id = e.currentTarget.dataset.id;
 		const order = (this.data.dataList && this.data.dataList.list || []).find(row => row._id === id);
 		if (!id || !order || this.data.tabIndex !== 3 || Number(order.MAIL_STATUS) !== 9 || this.data.deletingId) return;
-		if (!await pageHelper.showConfirm('删除后订单不再显示在「已完成」里，如需反馈问题仍可在「反馈投诉」中选择。确定删除吗？') || !this._visible) return;
+		if (!await pageHelper.showConfirm('删除后订单不再显示在「已完成」里，如需反馈问题仍可在「意见反馈」中选择。确定删除吗？') || !this._visible) return;
 		this.setData({ deletingId: id });
 		try {
 			await Ops.command('mail/del', { id });

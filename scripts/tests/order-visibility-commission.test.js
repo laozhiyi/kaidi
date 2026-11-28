@@ -59,7 +59,7 @@ test('a completed order stays in the done tab after reviews until each participa
  assert.deepEqual(reviewed.map(row => row._id), [id], 'reviewing no longer removes the order');
  assert.equal(reviewed[0].MAIL_CAN_REVIEW, false);
  assert.equal(reviewed[0].MAIL_REVIEWED, true); assert.equal(reviewed[0].MAIL_REVIEW_AUTO, false, 'a review written by the user is not marked auto');
- // 删除只影响自己这一侧，对方的「已完成」和双方的反馈投诉选单都不受影响。
+ // 删除只影响自己这一侧，对方的「已完成」和双方的意见反馈选单都不受影响。
  await f.service.delMail('poster', id, { requestId: f.req('delete-poster') });
  assert.equal(f.table('mail').get(id).MAIL_POSTER_DONE_DELETED, true);
  assert.equal(f.table('mail').get(id).MAIL_STATUS, 9, 'deleting keeps the order state');

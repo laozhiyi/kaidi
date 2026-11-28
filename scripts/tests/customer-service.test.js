@@ -474,9 +474,9 @@ test('客服可以处理投诉、订单履约与用户注册审核，但拿不�
 	assert.doesNotMatch(routes, /admin\/campus_service_/);
 });
 
-test('closed customer service entries open feedback and are labelled 反馈与投诉', () => {
+test('closed customer service entries open feedback and are labelled 意见反馈', () => {
 	const read = file => fs.readFileSync(path.join(__dirname, '../../miniprogram/projects/crun', file), 'utf8');
-	const entries = { 'pages/about/index/about_index.js': 'bindService', 'pages/my/index/my_index.js': 'bindCampusServiceTap',
+	const entries = { 'pages/my/index/my_index.js': 'bindCampusServiceTap',
 		'pages/mail/add/mail_add_logic.js': 'bindServiceHelpTap', 'pages/mail/detail/mail_detail.js': 'bindServiceHelpTap',
 		'pages/mail/my_detail/mail_my_detail.js': 'bindServiceHelpTap' };
 	for (const [file, handler] of Object.entries(entries)) {
@@ -489,8 +489,9 @@ test('closed customer service entries open feedback and are labelled 反馈与�
 	for (const file of ['pages/about/index/about_index.js', 'pages/my/reg/my_reg.wxml', 'biz/mail_ui_biz.js', 'pages/mail/detail/mail_detail.js', 'pages/mail/my_detail/mail_my_detail.js']) {
 		assert.doesNotMatch(read(file).replace(/serviceOpen \? '[^']*'/g, ''), /待开发|联系在线客服|「我的 · 在线客服」/, file);
 	}
-	for (const file of ['pages/about/index/about_index.wxml', 'pages/mail/add/mail_add.wxml', 'pages/mail/detail/mail_detail.wxml', 'pages/mail/my_detail/mail_my_detail.wxml', 'pages/mail/tpl/mail_detail_tpl.wxml']) {
-		assert.match(read(file), /bindtap="(?:bindService|bindServiceHelpTap)">(?:<text class="icon-service"><\/text><text>)?\{\{serviceOpen \? '[^']+' : '(?:反馈与投诉|反馈)'\}\}/, file);
+	assert.match(read('pages/about/index/about_index.wxml'), /bindtap="bindService">意见反馈<\/button>/);
+	for (const file of ['pages/mail/add/mail_add.wxml', 'pages/mail/detail/mail_detail.wxml', 'pages/mail/my_detail/mail_my_detail.wxml', 'pages/mail/tpl/mail_detail_tpl.wxml']) {
+		assert.match(read(file), /bindtap="(?:bindService|bindServiceHelpTap)">(?:<text class="icon-service"><\/text><text>)?\{\{serviceOpen \? '[^']+' : '(?:意见反馈|反馈)'\}\}/, file);
 	}
 	assert.match(read('pages/my/index/my_index.wxml'), /wx:if="\{\{serviceOpen\}\}" class="my-grid-item" bindtap="bindCampusServiceTap"/);
 

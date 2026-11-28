@@ -156,7 +156,7 @@ test('more menu filters mutations by role/state, and cancellation is never perfo
  p.bindMoreTap(); assert.ok(sheet.itemList.includes('取消订单')); assert.ok(!sheet.itemList.includes('配送异常 / 申请取消'));
  sheet.success({ tapIndex: 0 }); await new Promise(resolve => setImmediate(resolve)); assert.ok(modal.title.includes('取消')); assert.equal(commands, 0);
  p.setData({ detailUI: UI.detail({ ...base, myaccept: true, MAIL_STATUS: 1 }, now) }); p.bindMoreTap(); assert.ok(sheet.itemList.includes('配送异常 / 申请取消')); assert.ok(sheet.itemList.includes('取消订单'));
- p.setData({ detailUI: UI.detail({ ...base, myaccept: true, MAIL_STATUS: 4 }, now) }); p.bindMoreTap(); assert.ok(!sheet.itemList.some(item => item.includes('异常'))); assert.ok(sheet.itemList.includes('反馈与投诉'));
+ p.setData({ detailUI: UI.detail({ ...base, myaccept: true, MAIL_STATUS: 4 }, now) }); p.bindMoreTap(); assert.ok(!sheet.itemList.some(item => item.includes('异常'))); assert.ok(sheet.itemList.includes('意见反馈'));
  p.bindPanel({ currentTarget: { dataset: { action: 'exception' } } }); assert.equal(p.data.panel, '');
  p.setData({ detailUI: UI.detail(base, now) }); sheet = null; p.bindMoreTap(); assert.equal(sheet, null);
 });

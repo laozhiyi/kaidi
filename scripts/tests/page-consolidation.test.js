@@ -15,7 +15,7 @@ function harness(file, get, options = {}) {
   let definition;
   const calls = [], navigation = [], errors = [], patches = [];
   const wx = {
-    setNavigationBarTitle: value => navigation.push(value), navigateTo: value => { navigation.push(value); if (value.complete) value.complete(); },
+    setNavigationBarTitle: value => navigation.push(value), navigateTo: value => { navigation.push(value); if (value.complete) value.complete(); }, redirectTo: value => navigation.push(value),
     pageScrollTo() {}, stopPullDownRefresh() {}, showToast() {}, showModal(value) { if (value.success) value.success({ confirm: true }); }, previewImage() {}
   };
   const ops = {
@@ -36,7 +36,7 @@ function harness(file, get, options = {}) {
     if (module.includes('customer_service_biz')) return { OPEN: false, openCustomerService: orderId => navigation.push({ url: 'customer-service:' + (orderId || '') }) };
     if (module.includes('public/agreements')) return require(path.join(root, 'miniprogram/projects/crun/public/agreements.js'));
     if (module.includes('project_setting')) return { SETUP_CONTENT_ITEMS: [
-      { key: 'SETUP_CONTENT_ABOUT', title: '关于我们' }, { key: 'SETUP_CONTENT_CONTACT', title: '联系我们' }
+      { key: 'SETUP_CONTENT_ABOUT', title: '关于我们' }
     ] };
     throw new Error('Unexpected dependency: ' + module);
   } }, { filename: file });
@@ -123,11 +123,14 @@ test('duplicate message clicks do not submit extra requests', async () => {
 });
 // Independent admin pages, navigation, drafts and permissions are covered in admin-console.test.js.
 
-test('unified about page defaults to editable about content and refresh retains the contact key', async () => {
+test('about page loads its content and retired contact links open feedback without loading contact content', async () => {
   const h = harness(mini + 'about/index/about_index.js', () => [{ type: 'text', val: '后台配置内容' }]);
   h.page.onLoad(); await tick(); assert.equal(h.calls[0].params.key, 'SETUP_CONTENT_ABOUT'); assert.equal(h.page.data.about[0].val, '后台配置内容');
   h.page.onLoad({ key: 'SETUP_CONTENT_CONTACT' }); await tick(); await h.page.onPullDownRefresh();
-  assert.equal(h.calls.at(-1).params.key, 'SETUP_CONTENT_CONTACT'); assert.equal(h.page.data.title, '联系我们');
+  assert.equal(h.calls.at(-1).params.key, 'SETUP_CONTENT_ABOUT');
+  assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/feedback/index/feedback_index');
+  h.page.bindService();assert.equal(h.navigation.at(-1).url, '/projects/crun/pages/feedback/index/feedback_index');
+  assert.doesNotMatch(read(mini + 'about/index/about_index.wxml'), /联系我们|bindContact/);
 });
 
 test('about page opens every agreement row rendered in its template and ignores unknown keys', () => {
