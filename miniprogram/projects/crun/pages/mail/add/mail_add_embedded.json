@@ -1,1 +1,1 @@
-{"component":true,"usingComponents":{"cmpt-form-show":"/cmpts/public/form/form_show/form_show_cmpt","deadline-picker":"/projects/crun/cmpts/deadline_picker/deadline_picker"}}
+{"component":true,"usingComponents":{"cmpt-form-show":"/cmpts/public/form/form_show/form_show_cmpt","deadline-picker":"/projects/crun/cmpts/deadline_picker/deadline_picker","endtime-picker":"/projects/crun/cmpts/endtime_picker/endtime_picker"}}

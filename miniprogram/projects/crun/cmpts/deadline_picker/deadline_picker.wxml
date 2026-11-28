@@ -2,7 +2,7 @@
 <view wx:if="{{visible}}" class="deadline-mask" catchtouchmove="stop" bindtap="close">
   <view class="deadline-sheet" catchtap="stop">
     <view class="deadline-head"><view><view class="deadline-title">期待送达时间</view><view class="deadline-note">选择未来 7 天内的送达时间段，区间内送达不算超时</view></view><button class="deadline-close deadline-button" bindtap="close" aria-label="关闭时间选择">×</button></view>
-    <view class="deadline-quick"><button wx:for="{{quicks}}" wx:key="minutes" class="deadline-button" data-minutes="{{item.minutes}}" bindtap="selectQuick">{{item.label}}</button></view>
+    <view wx:if="{{quicks.length}}" class="deadline-quick"><button wx:for="{{quicks}}" wx:key="minutes" class="deadline-button" data-minutes="{{item.minutes}}" bindtap="selectQuick">{{item.label}}</button></view>
     <scroll-view scroll-y class="deadline-body">
       <view class="deadline-label">日期 <text class="deadline-text">正在编辑：{{active === 'start' ? '最早送达' : '最晚送达'}}</text></view>
       <scroll-view scroll-x class="deadline-dates" scroll-into-view="day-{{active === 'start' ? start.date : end.date}}" show-scrollbar="{{false}}"><view class="deadline-date-row"><button wx:for="{{days}}" wx:key="value" id="day-{{item.value}}" class="deadline-date {{(active === 'start' ? start.date : end.date) === item.value ? 'selected' : ''}} deadline-button" data-value="{{item.value}}" bindtap="selectDate"><view>{{item.label}}</view><view class="deadline-date-text">{{item.date}}</view></button></view></scroll-view>

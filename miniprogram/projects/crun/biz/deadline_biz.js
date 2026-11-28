@@ -55,7 +55,7 @@ function days(now = Date.now(), lead = 0) {
 
 // 单个端点归一到合法范围：不早于 now+lead，不晚于 7 天。
 function normalizePoint(point, now, lead, isEnd = false) {
-  const min = earliest(now, lead), max = now + MAX_DAYS * DAY;
+  const min = earliest(now, 0), max = now + MAX_DAYS * DAY;
   const value = at(point);
   if (!Number.isFinite(value)) return endpoint(isEnd ? Math.min(now + 3 * 3600000 + 30 * MINUTE, max) : Math.min(now + 3 * 3600000, max));
   return endpoint(clamp(value, min, max));
@@ -85,7 +85,7 @@ function quickRange(minutes = 0, now = Date.now(), lead = 0) {
 }
 
 function quickOptions(now = Date.now(), lead = 0) {
-  return [{ minutes: 0, label: '尽快送达' }, { minutes: 60, label: '1 小时后' }, { minutes: 180, label: '3 小时后' }]
+  return []
     .map(item => ({ minutes: item.minutes, label: item.label, time: at(quickRange(item.minutes, now, lead).start) }));
 }
 
@@ -123,8 +123,8 @@ function normalize(value, now = Date.now(), lead = 0) {
 function validate(range, now = Date.now(), lead = 0) {
   const start = at(range.start), end = at(range.end);
   if (!Number.isFinite(start) || !Number.isFinite(end)) return '请选择完整的送达时间段';
-  const min = earliest(now, lead);
-  if (start < min) return (lead > 0 ? '最早送达至少要留出 ' + Math.max(1, Math.round(lead / MINUTE)) + ' 分钟的配送时间' : '最早送达时间需晚于当前时间');
+  if (start <= now) return '最早送达时间需晚于当前时间';
+  if (end <= now + Math.max(0, Number(lead) || 0)) return '最晚送达时间需留足配送时长';
   if (end > now + MAX_DAYS * DAY) return '只能在未来 7 天内选择送达时间';
   if (end - start < MIN_SPAN) return '最晚送达时间需比最早晚 10 分钟以上';
   return '';

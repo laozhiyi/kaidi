@@ -75,8 +75,9 @@ module.exports = {
 		sizeGuide: SIZE_GUIDE,
 		sizeGuideMark: '',
 		sizeGuideItem: null,
-		expectLead: 0,
-		config:null,campuses:[],campus:'',configError:false,loadError:'',pageLoading:false,submitting:false,hasPendingSubmission:false,
+	expectLead: 0,
+	endAtInput: '',
+	config:null,campuses:[],campus:'',configError:false,loadError:'',pageLoading:false,submitting:false,hasPendingSubmission:false,
 		proofImages: [], proofPreview:{}, packageItems: [], profileContacts: [], profileAddresses: [], contactPickerVisible: false, addressPickerVisible: false,
 		mailValues: {
 			code: '',
@@ -715,7 +716,12 @@ module.exports = {
 		this.setData({ formEnd: e.detail, formEndFocus: '' });
 	},
 
- bindOpenPackagePickup(e) {
+	bindEndAtSelect: function (e) {
+		Guide.clear(this, 'deadline');
+		this.setData({ endAtInput: e.detail });
+	},
+
+	bindOpenPackagePickup(e) {
   if (this.data.submitting) return;
   const index = this.data.packageItems.findIndex(item => item.id === e.currentTarget.dataset.id);
   if (index < 0) return;
@@ -791,7 +797,7 @@ module.exports = {
 		this._profileEdited = {};
 		const packageTypes = (this.data.packageTypes || []).map((item, index) => Object.assign({}, item, { count: index === 0 ? initialCount : 0 }));
 		Guide.clear(this);
-		this.setData({ editId: '', mailId: '', formEnd: end, formEndFocus: '', mailValues, proofImages: [], proofPreview: {}, packageItems: [], packageTypes, totalCount: initialCount, totalFee: initialCount ? firstPrice : '0.00', urgent: false, riderGender: 'any', upstairs: false, tip: 0, tipInput: '', tipError: '', campus, campusIndex: Math.max(0, (this.data.campuses || []).indexOf(campus)) });
+		this.setData({ editId: '', mailId: '', formEnd: end, formEndFocus: '', endAtInput: '', mailValues, proofImages: [], proofPreview: {}, packageItems: [], packageTypes, totalCount: initialCount, totalFee: initialCount ? firstPrice : '0.00', urgent: false, riderGender: 'any', upstairs: false, tip: 0, tipInput: '', tipError: '', campus, campusIndex: Math.max(0, (this.data.campuses || []).indexOf(campus)) });
 		this._syncPackageItems([]);
 		this._setFormVal('title', this.data.serviceName);
 		this.bindClosePackagePickup();
@@ -857,10 +863,18 @@ module.exports = {
   if (!String(values.poster || '').trim()) throw Guide.invalid('poster', '请填写联系人');
   if (!/^1[3-9]\d{9}$/.test(String(values.tel || '').trim())) throw Guide.invalid('tel', '请填写正确的11位手机号');
   if (!String(this.data.formEnd || '').trim()) throw Guide.invalid('deadline', '请选择期待送达时间');
-  if (this._endEdited) {
+  if (this._endEdited || this.data.endAtInput) {
    const range = Deadline.parseRange(this.data.formEnd);
    const reason = range ? Deadline.validate(range, Date.now(), this.data.expectLead || 0) : '请选择完整的送达时间段';
    if (reason) throw Guide.invalid('deadline', reason);
+   const endAt = String(this.data.endAtInput || '').trim();
+   if (endAt) {
+    const endAtTs = Deadline.parse(endAt);
+    if (!Number.isFinite(endAtTs)) throw Guide.invalid('deadline', '接单截止时间格式为 2026-11-30 13:00');
+    if (endAtTs <= Date.now()) throw Guide.invalid('deadline', '接单截止时间须在未来');
+    if (range && endAtTs > Deadline.at(range.end)) throw Guide.invalid('deadline', '接单截止时间不能晚于最晚送达时间');
+    if (range && endAtTs + (this.data.expectLead || 0) > Deadline.at(range.end)) throw Guide.invalid('deadline', '接单截止与最晚送达时间之间需要留足配送时长');
+   }
   }
  },
  bindFormSubmit: async function () {
@@ -927,6 +941,8 @@ module.exports = {
    for(const item of forms)if(item.type==='image')item.val=await Ops.upload(item.val||[]);
    forms.push({mark:'campus',title:'校区',type:'text',val:this.data.campus});
    if(data.end)forms.push({mark:'formEnd',title:'期待送达时间',type:'date',val:data.end});
+   const endAt = String(this.data.endAtInput || '').trim();
+   if(endAt)forms.push({mark:'endAt',title:'接单截止时间',type:'date',val:endAt});
    const params={forms,cateId:data.cateId,price:String(this.data.totalFee)};if(this.data.editId)params.id=this.data.editId;
    const result=await Ops.command(this.data.editId?'mail/edit':'mail/insert',params);
    this.setData({mailId:result._id||result.id});wx.hideLoading();PublicBiz.removeCacheList('mail-list');

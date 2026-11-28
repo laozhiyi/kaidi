@@ -219,6 +219,11 @@
 .publish-page .pub-profile-confirm { flex:1.4; color:#fff; background:#397bc8; font-weight:600; }
 .publish-page .pub-profile-confirm.pub-disabled { color:#9aa9ba; background:#e8edf4; }
 .publish-page .pub-deadline { display:block; border-bottom:0; }
+.publish-page .pub-cutoff-row { display:block; padding:20rpx 0 0; border-top:1rpx solid #edf1f6; margin-top:20rpx; }
+.publish-page .pub-cutoff-label { display:flex; flex-direction:column; width:100%; margin-bottom:18rpx; }
+.publish-page .pub-cutoff-label > .pub-text { font-size:27rpx; }
+.publish-page .pub-cutoff-label .pub-caption { margin-top:6rpx; line-height:1.6; }
+.publish-page .pub-cutoff-row endtime-picker { display:block; width:100%; }
 .publish-page .pub-deadline .pub-option-label { margin-bottom:18rpx; }
 .publish-page .pub-sheet-mask { z-index:20000; }
 /* 每件包裹信息：标题与「1 元起步」同行，说明另起一行；价格框带 ¥ 前缀，金额加粗 */

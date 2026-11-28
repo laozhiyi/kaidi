@@ -68,8 +68,8 @@ function validateForms(forms, config, now) {
   if (tipFee) { totalFee += tipFee; obj.price = totalFee / 100; }
  }
  if (!Number.isSafeInteger(totalFee) || totalFee < 1 || totalFee > 1000000) fail('本单合计（跑腿费加上楼费）须在1至10000元之间，请调整跑腿费');
- // 下单人选的是「期待送达时间」；接单截止由它往前减掉配送时长推算，
- // 这样骑手接到单时仍留得出配送时间。状态机只认推算出来的 endTime。
+ // 下单人选的是「期待送达时间」与「接单截止」。接单截止用户可自行指定，或由最晚送达 - 配送时长自动生成。
+ // 状态机只认 endTime。
  const deliveryMinutes = obj.urgent ? config.urgentMinutes : config.deliveryMinutes;
  const deliveryMs = (Number.isFinite(deliveryMinutes) && deliveryMinutes > 0 ? deliveryMinutes : 60) * 60000;
  const windowText = deliveryMs >= 3600000 ? Math.round(deliveryMs / 3600000 * 10) / 10 + ' 小时' : Math.round(deliveryMs / 60000) + ' 分钟';
@@ -79,12 +79,24 @@ function validateForms(forms, config, now) {
   // 也接受旧客户端的单个时间点，此时区间起止相同。
   const raw = text(input.formEnd, '期待送达时间', 60, true);
   const [from, to] = raw.split(/\s*~\s*/);
-  const startAt = wallTime(from), endAt = to === undefined ? startAt : wallTime(to);
-  if (!Number.isFinite(startAt) || !Number.isFinite(endAt)) fail('期待送达时间不是有效日期与时间');
-  if (endAt < startAt) fail('最晚送达时间须晚于最早送达时间');
-  if (startAt <= now + deliveryMs) fail('最早送达时间至少要留出 ' + windowText + ' 的配送时间');
-  if (endAt > now + 7 * 86400000) fail('期待送达时间须在未来7天内');
-  expectStart = startAt; expectTime = endAt; endTime = startAt - deliveryMs;
+  const startAt = wallTime(from), expectEnd = to === undefined ? startAt : wallTime(to);
+  if (!Number.isFinite(startAt) || !Number.isFinite(expectEnd)) fail('期待送达时间不是有效日期与时间');
+  if (expectEnd < startAt) fail('最晚送达时间须晚于最早送达时间');
+  if (startAt <= now) fail('最早送达时间须在未来');
+  if (expectEnd <= now + deliveryMs) fail('最晚送达时间至少要留出 ' + windowText + ' 的配送时间');
+  if (expectEnd > now + 7 * 86400000) fail('期待送达时间须在未来7天内');
+  expectStart = startAt; expectTime = expectEnd;
+  // 接单截止：用户自选或按最晚送达 - 配送时长推算
+  if (input.endAt != null) {
+   const userEndAt = wallTime(text(input.endAt, '接单截止时间', 60, true));
+   if (!Number.isFinite(userEndAt)) fail('接单截止时间不是有效日期与时间');
+   if (userEndAt <= now) fail('接单截止时间须在未来');
+   if (userEndAt > expectTime) fail('接单截止时间不能晚于最晚送达时间');
+   if (userEndAt + deliveryMs > expectEnd) fail('接单截止与最晚送达时间之间需要至少 ' + windowText + ' 的配送时间');
+   endTime = userEndAt;
+  } else {
+   endTime = expectEnd - deliveryMs;
+  }
  }
  if (!Number.isFinite(expectTime) || expectTime <= now || expectTime > now + 7 * 86400000) fail('期待送达时间须在未来7天内');
  if (!Number.isFinite(expectStart) || expectStart <= now) fail('期待送达时间须在未来7天内');

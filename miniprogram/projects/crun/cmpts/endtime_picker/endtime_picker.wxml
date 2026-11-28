@@ -1,0 +1,18 @@
+<view class="endtime-trigger {{disabled ? 'endtime-disabled' : ''}}" bindtap="open"><text class="endtime-text">{{display || '请选择接单截止时间'}}</text><text class="endtime-arrow endtime-text">›</text></view>
+<view wx:if="{{visible}}" class="endtime-mask" catchtouchmove="stop" bindtap="close">
+  <view class="endtime-sheet" catchtap="stop">
+    <view class="endtime-head"><view><view class="endtime-title">接单截止时间</view><view class="endtime-note">骑手需在此时间前接单</view></view><button class="endtime-close endtime-button" bindtap="close" aria-label="关闭时间选择">×</button></view>
+    <scroll-view scroll-y class="endtime-body">
+      <view class="endtime-label">日期</view>
+      <scroll-view scroll-x class="endtime-dates" scroll-into-view="day-{{point.date}}" show-scrollbar="{{false}}"><view class="endtime-date-row"><button wx:for="{{days}}" wx:key="value" id="day-{{item.value}}" class="endtime-date {{point.date === item.value ? 'selected' : ''}} endtime-button" data-value="{{item.value}}" bindtap="selectDate"><view>{{item.label}}</view><view class="endtime-date-text">{{item.date}}</view></button></view></scroll-view>
+      <view class="endtime-label">时间 <text class="endtime-text">点击即选</text></view>
+      <picker-view class="endtime-wheel" indicator-class="endtime-wheel-indicator" mask-class="endtime-wheel-mask" value="{{wheel}}" bindchange="wheelChange"><picker-view-column><view class="endtime-wheel-item" wx:for="{{hours}}" wx:key="*this">{{item}} 时</view></picker-view-column><picker-view-column><view class="endtime-wheel-item" wx:for="{{minutes}}" wx:key="*this">{{item}} 分</view></picker-view-column></picker-view>
+    </scroll-view>
+    <view class="endtime-foot">
+      <view class="endtime-manual"><text class="endtime-manual-label">手动输入</text><input class="endtime-manual-input" value="{{manual}}" bindinput="manualInput" placeholder="2026-11-30 13:00" maxlength="16" placeholder-class="endtime-manual-placeholder" /><text class="endtime-manual-hint">格式: 年-月-日 时:分</text></view>
+      <view wx:if="{{error}}" class="endtime-error">{{error}}</view>
+      <view wx:else class="endtime-summary">{{summary}}</view>
+      <button class="endtime-confirm endtime-button" bindtap="confirm">确认接单截止时间</button>
+    </view>
+  </view>
+</view>

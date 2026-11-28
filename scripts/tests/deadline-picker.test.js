@@ -38,15 +38,11 @@ test('invalid, reversed and out-of-window ranges cannot be accepted; stale value
   assert.deepEqual(Deadline.parseRange('2026-10-30 13:00'), { start: { date: '2026-10-30', hour: '13', minute: '00' }, end: { date: '2026-10-30', hour: '13', minute: '00' } });
 });
 
-test('快捷按钮不再承诺做不到的时间：一律以最早可送达为基准', () => {
+test('快捷按钮已移除', () => {
   const now = Date.parse('2026-09-14T10:00:00+08:00');
   const lead = 120 * MINUTE;
   const quicks = Deadline.quickOptions(now, lead);
-  assert.deepEqual(quicks.map(item => item.label), ['尽快送达', '1 小时后', '3 小时后']);
-  // 「尽快送达」就是 earliest，且要严格大于服务端的 now + 配送时长。
-  assert.ok(Deadline.at(Deadline.quickRange(0, now, lead).start) > now + lead);
-  assert.equal(quicks[1].time - quicks[0].time, 60 * MINUTE);
-  for (const item of quicks) assert.equal(Deadline.validate(Deadline.quickRange(item.minutes, now, lead), now, lead), '');
+  assert.equal(quicks.length, 0);
 });
 
 test('the picker edits one draft range with wheel, date and manual input, and only emits after confirmation', () => {
@@ -68,10 +64,9 @@ test('the picker edits one draft range with wheel, date and manual input, and on
   picker.open();
   assert.equal(picker.data.visible, true);
   assert.equal(events.length, 0);
-  picker.selectQuick({ currentTarget: { dataset: { minutes: 180 } } });
-  const preset = picker.data.draft;
+  const draft = picker.data.draft;
   picker.confirm();
-  assert.deepEqual(events, [{ name: 'select', detail: preset }]);
+  assert.deepEqual(events, [{ name: 'select', detail: draft }]);
   assert.equal(picker.data.visible, false);
 
   // 滚轮、日期与手动输入都作用在当前选中端（最早 / 最晚）。

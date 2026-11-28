@@ -7,6 +7,22 @@ const vm = require('node:vm');
 const { fixture } = require('../test-support/operations-fixture.cjs');
 const { concurrentTransactions } = require('../test-support/concurrent-transactions.cjs');
 
+test('acceptance cutoff is based on latest delivery and allows an earlier custom cutoff', async () => {
+  const f = fixture();
+  const now = Date.now(), minute = 60000;
+  const format = at => new Date(at + 8 * 3600000).toISOString().slice(0, 16).replace('T', ' ');
+  const start = Math.ceil((now + 30 * minute) / minute) * minute;
+  const end = Math.ceil((now + 6 * 3600000) / minute) * minute;
+  const cutoff = end - f.config.deliveryMinutes * minute;
+  const forms = endAt => [...f.forms(), { mark: 'formEnd', val: format(start) + ' ~ ' + format(end) },
+    ...(endAt === undefined ? [] : [{ mark: 'endAt', val: format(endAt) }])];
+  const id = await f.publish({ forms: forms() });
+  assert.equal(f.table('mail').get(id).MAIL_END_TIME, cutoff);
+  const custom = await f.publish({ forms: forms(cutoff), requestId: f.req('custom-cutoff') });
+  assert.equal(f.table('mail').get(custom).MAIL_END_TIME, cutoff);
+  await assert.rejects(f.publish({ forms: forms(cutoff + minute), requestId: f.req('late-cutoff') }), /最晚送达/);
+});
+
 test('100 overlapping riders can claim an order only once, with one quota and atomic history/notifications', async () => {
   const f = fixture(), metrics = concurrentTransactions(f), id = await f.publish();
   const riders = Array.from({ length: 100 }, (_, i) => 'rider-' + i);
