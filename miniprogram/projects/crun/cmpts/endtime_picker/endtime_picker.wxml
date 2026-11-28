@@ -1,4 +1,4 @@
-<view class="endtime-trigger {{disabled ? 'endtime-disabled' : ''}}" bindtap="open"><text class="endtime-text">{{display || '请选择接单截止时间'}}</text><text class="endtime-arrow endtime-text">›</text></view>
+<view class="endtime-trigger {{disabled ? 'endtime-disabled' : ''}}" bindtap="open"><text class="endtime-text">{{display}}</text><text class="endtime-arrow endtime-text">›</text></view>
 <view wx:if="{{visible}}" class="endtime-mask" catchtouchmove="stop" bindtap="close">
   <view class="endtime-sheet" catchtap="stop">
     <view class="endtime-head"><view><view class="endtime-title">接单截止时间</view><view class="endtime-note">骑手需在此时间前接单</view></view><button class="endtime-close endtime-button" bindtap="close" aria-label="关闭时间选择">×</button></view>

@@ -22,12 +22,15 @@ Component({
     error: '' 
   },
   observers: {
-    value() { this._syncDisplay(); }
+    'value, formEnd, lead'() { this._syncDisplay(); }
   },
   lifetimes: { attached() { this._syncDisplay(); } },
   methods: {
     _syncDisplay() {
-      const timestamp = Deadline.parse(this.data.value);
+      const selected = Deadline.parse(this.data.value);
+      const range = Deadline.parseRange(this.data.formEnd);
+      const timestamp = Number.isFinite(selected) ? selected
+        : range ? Deadline.at(range.end) - (this.data.lead || 0) : NaN;
       this.setData({ display: Number.isFinite(timestamp) ? Deadline.label(timestamp) : '' });
     },
     _state(point, error = '', manual) {
