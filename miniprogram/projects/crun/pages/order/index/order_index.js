@@ -460,27 +460,6 @@ Page({
 		finally { this._orderActionBusy = false; if (!this._unloaded) this.setData({ actionBusyId: '' }); }
 	},
 
-	/** 把订单的期待送达时间段加入手机日历（用户点击后才请求日历写入权限）。 */
-	bindAddCalendarTap: function (e) {
-		const id = e.currentTarget.dataset.id;
-		const order = (this.data.dataList && this.data.dataList.list || []).find(row => row._id === id);
-		if (!order) return;
-		const end = Math.floor(Number(order.MAIL_EXPECT_TIME || order.MAIL_END_TIME) / 1000);
-		if (!end) return pageHelper.showNoneToast('暂无期待送达时间');
-		const startMs = Number(order.MAIL_EXPECT_START) || 0;
-		const start = startMs && startMs < end * 1000 ? Math.floor(startMs / 1000) : end - 3600;
-		const title = '跑腿订单 ' + (order.MAIL_OBJ && order.MAIL_OBJ.address1 ? order.MAIL_OBJ.address1 + ' ' : '') + '期待送达';
-		wx.addPhoneCalendar({
-			title, startTime: start, endTime: end, alarm: true, alarmOffset: 900,
-			success: () => pageHelper.showSuccToast('已加入日历'),
-			fail: res => {
-				if (res && res.errMsg && /refuse|deny|auth/i.test(res.errMsg)) {
-					pageHelper.showModal('请在手机的"设置›微信"中，允许微信访问你的日历', '日历权限未开启');
-				}
-			},
-		});
-	},
-
 	bindComplaintTap: function (e) {
 		const id = e.currentTarget.dataset.id;
 		if (id) wx.navigateTo({ url: pageHelper.fmtURLByPID('/pages/feedback/index/feedback_index?orderId=' + encodeURIComponent(id)) });
